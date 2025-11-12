@@ -1,5 +1,14 @@
 import { NextResponse } from 'next/server';
 
+// Minimal typing for karyawan rows we get from upstream API.
+// Keep fields optional because upstream data shape may vary.
+interface KaryawanRow {
+  fcba?: string | number | null;
+  sectionname?: string | null;
+  gangcode?: string | null;
+  [key: string]: unknown;
+}
+
 export async function POST(request: Request) {
   try {
     const { username, password } = await request.json();
@@ -65,7 +74,7 @@ export async function POST(request: Request) {
 
       if (listRes.ok) {
         const raw = await listRes.json();
-        const rows: any[] = Array.isArray(raw?.data) ? raw.data : Array.isArray(raw) ? raw : [];
+  const rows: KaryawanRow[] = Array.isArray(raw?.data) ? (raw.data as KaryawanRow[]) : Array.isArray(raw) ? (raw as KaryawanRow[]) : [];
 
         // Uniq by triplet fcba|sectionname|gangcode
         const tripletMap = new Map<string, { fcba: string; sectionname: string; gangcode: string }>();

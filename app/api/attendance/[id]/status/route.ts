@@ -4,8 +4,9 @@ const BASE_URL = "http://dev.skj.my.id:82/api/apps/absensis";
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const params = await Promise.resolve(context.params);
   const { id } = params;
 
   try {

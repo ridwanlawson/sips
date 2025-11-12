@@ -1,6 +1,14 @@
 // app/api/karyawans/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
+// Minimal typing for karyawan rows returned by upstream API.
+interface KaryawanRow {
+  fcba?: string | number | null;
+  sectionname?: string | null;
+  gangcode?: string | null;
+  [key: string]: unknown;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const token = req.cookies.get('auth_token')?.value;
@@ -23,8 +31,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: false, error: raw?.message || 'Upstream error' }, { status: upstream.status });
     }
 
-    // Normalisasi: pastikan array ada di raw.data atau raw
-    const rows: any[] = Array.isArray(raw?.data) ? raw.data : Array.isArray(raw) ? raw : [];
+  // Normalisasi: pastikan array ada di raw.data atau raw
+  const rows: KaryawanRow[] = Array.isArray(raw?.data) ? (raw.data as KaryawanRow[]) : Array.isArray(raw) ? (raw as KaryawanRow[]) : [];
 
     return NextResponse.json({ ok: true, data: rows });
   } catch (e) {

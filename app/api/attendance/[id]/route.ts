@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 
 export async function GET(
   _req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   const params = await Promise.resolve(context.params);
   const id = params.id;
@@ -27,7 +27,7 @@ export async function GET(
 
 export async function PUT(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   const params = await Promise.resolve(context.params);
   const id = params.id;
@@ -74,7 +74,7 @@ export async function PUT(
 
 export async function DELETE(
   _req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   const params = await Promise.resolve(context.params);
   const id = params.id;
