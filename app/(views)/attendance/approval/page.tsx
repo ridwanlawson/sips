@@ -673,7 +673,6 @@ export default function AttendanceApproval() {
                 width={40}
                 height={40}
                 className="rounded-lg ring-1 ring-base-300 object-cover w-10 h-10"
-                unoptimized
                 loading="lazy"
               />
             </a>

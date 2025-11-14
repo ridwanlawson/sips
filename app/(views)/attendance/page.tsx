@@ -1676,7 +1676,6 @@ export default function Attendance() {
                 width={40}
                 height={40}
                 className="rounded-lg ring-1 ring-base-300 object-cover w-10 h-10"
-                unoptimized
                 loading="lazy"
               />
             </a>
@@ -2454,7 +2453,6 @@ export default function Attendance() {
                         alt="preview"
                         fill
                         className="object-contain rounded-xl ring-1 ring-inset ring-black/10"
-                        unoptimized
                       />
                     ) : (
                       <a
@@ -2467,7 +2465,6 @@ export default function Attendance() {
                           alt="preview"
                           fill
                           className="object-contain rounded-xl ring-1 ring-inset ring-black/10"
-                          unoptimized
                         />
                       </a>
                     )}
