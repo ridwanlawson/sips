@@ -2143,7 +2143,7 @@ export default function Attendance() {
                 />
               </fieldset>
 
-              <fieldset className="fieldset col-span-6">
+              <fieldset className="fieldset  col-span-12 md:col-span-6">
                 <legend className="fieldset-legend">Karyawan *</legend>
                 <SearchSelect
                   options={employeeOptions}
