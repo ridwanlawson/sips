@@ -28,22 +28,35 @@ export default function Home() {
       const data = await response.json();
 
       if (response.ok) {
-        // Redirect to dashboard - token is now handled by the server
+        // Redirect to dashboard with a brief delay to show success feedback
+        await new Promise((resolve) => setTimeout(resolve, 500));
         router.push("/dashboard/user");
       } else {
         setError(
           data.message || "Login failed. Please check your credentials."
         );
+        setIsLoading(false);
       }
     } catch {
       setError("An error occurred. Please try again.");
-    } finally {
       setIsLoading(false);
     }
   };
 
   return (
     <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
+      {/* Loading Overlay - Smooth fade effect */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
+          <div className="flex flex-col items-center gap-4">
+            <span className="loading loading-spinner loading-lg text-primary" />
+            <p className="text-white font-medium">
+              Mengverifikasi kredensial...
+            </p>
+          </div>
+        </div>
+      )}
+
       <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
         <div className="card bg-base-100 card-border border-base-300 card-sm overflow-hidden">
           <div className="border-base-300 border-b border-dashed">
@@ -82,6 +95,7 @@ export default function Home() {
                   placeholder="Username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
+                  disabled={isLoading}
                   required
                 />
               </label>
@@ -106,6 +120,7 @@ export default function Home() {
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
                   required
                   minLength={8}
                 />

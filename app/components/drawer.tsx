@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+// import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRef, useEffect, useState } from "react";
@@ -79,7 +79,7 @@ export const Drawer = () => {
           {/* Header/brand */}
           <li className="pointer-events-none">
             <div>
-              <div className="w-10">
+              {/* <div className="w-10">
                 <Image
                   alt="Logo Perusahaan"
                   src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"
@@ -87,7 +87,7 @@ export const Drawer = () => {
                   height={40}
                   className="rounded-full"
                 />
-              </div>
+              </div> */}
               <span>Sentosa Kalimantan Jaya</span>
             </div>
           </li>

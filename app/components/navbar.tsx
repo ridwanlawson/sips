@@ -26,6 +26,7 @@ export default function Navbar() {
   const router = useRouter();
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [fullNameDisplay, setFullNameDisplay] = useState<string | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     const photoCookie = getCookie("user_Photo");
@@ -47,13 +48,22 @@ export default function Navbar() {
   }, []);
 
   const handleLogout = async () => {
+    setIsLoggingOut(true);
     try {
       const response = await fetch("/api/auth/logout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
-      if (response.ok) router.push("/");
+      if (response.ok) {
+        // Brief delay to show the logout animation
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        router.push("/");
+      } else {
+        setIsLoggingOut(false);
+        console.error("Logout failed:", response.statusText);
+      }
     } catch (error) {
+      setIsLoggingOut(false);
       console.error("Logout failed:", error);
     }
   };
@@ -117,11 +127,33 @@ export default function Navbar() {
               <a>Settings</a>
             </li>
             <li>
-              <a onClick={handleLogout}>Logout</a>
+              <a
+                onClick={handleLogout}
+                className={isLoggingOut ? "opacity-50 cursor-not-allowed" : ""}
+              >
+                {isLoggingOut ? (
+                  <span className="flex items-center gap-2">
+                    <span className="loading loading-spinner loading-xs" />
+                    Logout
+                  </span>
+                ) : (
+                  "Logout"
+                )}
+              </a>
             </li>
           </ul>
         </div>
       </div>
+
+      {/* Global logout overlay */}
+      {isLoggingOut && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
+          <div className="flex flex-col items-center gap-4">
+            <span className="loading loading-spinner loading-lg text-primary" />
+            <p className="text-white font-medium">Signing out...</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

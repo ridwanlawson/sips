@@ -2,9 +2,9 @@
     "configurations": [
         {
             "type": "msedge",
-            "name": "http://localhost:3000/api/attendance",
+            "name": "http://localhost:3000",
             "request": "launch",
-            "url": "http://localhost:3000/api/attendance"
+            "url": "http://localhost:3000"
         }
     ]
 }

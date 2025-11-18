@@ -17,6 +17,7 @@ export function buildFilteredUrl(base: string, searchParams: URLSearchParams) {
   const url = new URL(base);
   const validParams = [
     "tanggal",
+    "tanggal_end",
     "kode_karyawan_mandor",
     "kode_karyawan",
     "fcba",
