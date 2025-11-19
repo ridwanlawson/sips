@@ -119,10 +119,16 @@ export function SimplePieChart({ data, title }: PieChartProps) {
   );
 }
 
+/* =========================
+   L I N E   "C H A R T"
+   (tabel tren dengan Pulang Awal)
+========================= */
+
 interface LineChartData {
   label: string;
   hadir: number;
   telat: number;
+  pulangAwal: number;
   alpa: number;
 }
 
@@ -150,39 +156,55 @@ export function SimpleLineChart({ data, title }: LineChartProps) {
               <th>Periode</th>
               <th className="text-center">Hadir</th>
               <th className="text-center">Telat</th>
+              <th className="text-center">Pulang Awal</th>
               <th className="text-center">Alpa</th>
               <th className="text-center">% Hadir</th>
               <th className="text-center">% Telat</th>
+              <th className="text-center">% Pulang Awal</th>
               <th className="text-center">% Alpa</th>
             </tr>
           </thead>
           <tbody>
             {data.map((item, idx) => {
-              const total = item.hadir + item.telat + item.alpa || 1;
+              const total =
+                item.hadir + item.telat + item.pulangAwal + item.alpa || 1;
+
               const pHadir = ((item.hadir / total) * 100).toFixed(1);
               const pTelat = ((item.telat / total) * 100).toFixed(1);
+              const pPulangAwal = ((item.pulangAwal / total) * 100).toFixed(1);
               const pAlpa = ((item.alpa / total) * 100).toFixed(1);
 
               return (
                 <tr key={idx} className="hover:bg-base-200">
                   <td className="font-medium">{item.label}</td>
+
                   <td className="text-center">
                     <span className="badge badge-success badge-sm">
                       {item.hadir}
                     </span>
                   </td>
+
                   <td className="text-center">
                     <span className="badge badge-warning badge-sm">
                       {item.telat}
                     </span>
                   </td>
+
+                  <td className="text-center">
+                    <span className="badge badge-info badge-sm">
+                      {item.pulangAwal}
+                    </span>
+                  </td>
+
                   <td className="text-center">
                     <span className="badge badge-error badge-sm">
                       {item.alpa}
                     </span>
                   </td>
+
                   <td className="text-center">{pHadir}%</td>
                   <td className="text-center">{pTelat}%</td>
+                  <td className="text-center">{pPulangAwal}%</td>
                   <td className="text-center">{pAlpa}%</td>
                 </tr>
               );

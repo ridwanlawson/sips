@@ -51,7 +51,7 @@ export default function Home() {
           <div className="flex flex-col items-center gap-4">
             <span className="loading loading-spinner loading-lg text-primary" />
             <p className="text-white font-medium">
-              Mengverifikasi kredensial...
+              Memverifikasi kredensial...
             </p>
           </div>
         </div>

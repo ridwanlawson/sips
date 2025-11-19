@@ -29,6 +29,7 @@ interface AttendanceRecord {
   tanggal?: string | null; // "YYYY-MM-DD HH:mm:ss"
   attendance?: string | null; // KJ, WH, WS, KB, OT, P1, MK, dll
   total_late_time?: string | null; // "HH:MM"
+  go_home_early?: string | null; // "HH:MM" → pulang awal
   fcba?: string | null;
   section?: string | null;
   gang?: string | null;
@@ -37,6 +38,7 @@ interface AttendanceRecord {
 interface DashboardStats {
   totalHadir: number;
   totalTelat: number;
+  totalPulangAwal: number;
   totalAlpa: number;
 }
 
@@ -51,6 +53,25 @@ interface DailyGroupKey {
 interface DailySummary extends DailyGroupKey {
   hadir: number;
   telat: number;
+  pulangAwal: number;
+  alpa: number;
+}
+
+interface MonthlySummary {
+  year: number;
+  month: number;
+  monthName: string;
+  hadir: number;
+  telat: number;
+  pulangAwal: number;
+  alpa: number;
+}
+
+interface YearlySummary {
+  year: number;
+  hadir: number;
+  telat: number;
+  pulangAwal: number;
   alpa: number;
 }
 
@@ -64,6 +85,8 @@ interface Option {
   value: string;
   label: string;
 }
+
+type DetailMode = "perHari" | "perBaris";
 
 /* =========================
    U T I L S
@@ -130,28 +153,54 @@ const formatDateID = (yyyyMmDd: string): string => {
   });
 };
 
-// Klasifikasi berdasarkan KODE + total_late_time
-type ClassifiedStatus = "HADIR" | "TELAT" | "ALPHA" | "OTHER";
+const formatMonthID = (year: number, month: number): string => {
+  const date = new Date(year, month - 1, 1);
+  return date.toLocaleDateString("id-ID", {
+    month: "long",
+    year: "numeric",
+  });
+};
+
+const formatYearID = (year: number): string => {
+  return year.toString();
+};
+
+// Klasifikasi berdasarkan KODE + total_late_time + go_home_early
+type ClassifiedStatus = "HADIR" | "TELAT" | "PULANG_AWAL" | "ALPHA" | "OTHER";
+
+const isNonZeroTime = (raw?: string | null): boolean => {
+  if (!raw) return false;
+  const t = raw.trim();
+  if (!t) return false;
+  if (t === "0" || t === "00:00" || t === "0:00") return false;
+  return true;
+};
 
 const classifyStatus = (record: AttendanceRecord): ClassifiedStatus => {
   const code = (record.attendance || "").toUpperCase().trim();
-  const lateRaw = (record.total_late_time || "").trim();
+  const lateRaw = record.total_late_time;
+  const goHomeRaw = record.go_home_early;
 
   const isHadirCode = ["KJ", "WH", "WS", "OT", "KB"].includes(code);
   const isAlphaCode = ["P1", "MK"].includes(code);
 
+  // Urutan prioritas:
+  // 1. ALPHA (izin/mangkir)
+  // 2. PULANG_AWAL (kalau ada go_home_early)
+  // 3. TELAT (kalau late > 0)
+  // 4. HADIR biasa
   if (isAlphaCode) return "ALPHA";
+
   if (isHadirCode) {
-    if (
-      lateRaw &&
-      lateRaw !== "00:00" &&
-      lateRaw !== "0:00" &&
-      lateRaw !== "0"
-    ) {
+    if (isNonZeroTime(goHomeRaw)) {
+      return "PULANG_AWAL";
+    }
+    if (isNonZeroTime(lateRaw)) {
       return "TELAT";
     }
     return "HADIR";
   }
+
   return "OTHER";
 };
 
@@ -342,6 +391,9 @@ export default function UserDashboard() {
 
   const [showFilters, setShowFilters] = useState(false);
 
+  // Mode tampilan riwayat: per hari (rekap) / per baris (detail)
+  const [detailMode, setDetailMode] = useState<DetailMode>("perHari");
+
   // State untuk mengatasi hydration mismatch
   const [isClient, setIsClient] = useState(false);
 
@@ -465,7 +517,9 @@ export default function UserDashboard() {
     if (!ckTrip) {
       (async () => {
         try {
-          const res = await fetch("/api/karyawans", { credentials: "include" });
+          const res = await fetch("/api/karyawans", {
+            credentials: "include",
+          });
           const json: unknown = await res.json();
           const t = extractTriplets(json);
           if (t.length > 0) setTriplets(t);
@@ -606,20 +660,23 @@ export default function UserDashboard() {
   const stats: DashboardStats = useMemo(() => {
     let totalHadir = 0;
     let totalTelat = 0;
+    let totalPulangAwal = 0;
     let totalAlpa = 0;
 
     for (const r of filteredAttendance) {
       const cls = classifyStatus(r);
       if (cls === "HADIR") totalHadir += 1;
       else if (cls === "TELAT") totalTelat += 1;
+      else if (cls === "PULANG_AWAL") totalPulangAwal += 1;
       else if (cls === "ALPHA") totalAlpa += 1;
     }
 
-    return { totalHadir, totalTelat, totalAlpa };
+    return { totalHadir, totalTelat, totalPulangAwal, totalAlpa };
   }, [filteredAttendance]);
 
-  /* ===== Aggregasi Harian ===== */
+  /* ===== Aggregasi berdasarkan Timeframe ===== */
 
+  // Aggregasi Harian (dipakai utk Riwayat Per Hari & Line Chart harian)
   const dailySummaries: DailySummary[] = useMemo(() => {
     const map = new Map<string, DailySummary>();
 
@@ -654,6 +711,7 @@ export default function UserDashboard() {
           ...keyObj,
           hadir: 0,
           telat: 0,
+          pulangAwal: 0,
           alpa: 0,
         };
         map.set(key, summary);
@@ -662,6 +720,7 @@ export default function UserDashboard() {
       const cls = classifyStatus(r);
       if (cls === "HADIR") summary.hadir += 1;
       else if (cls === "TELAT") summary.telat += 1;
+      else if (cls === "PULANG_AWAL") summary.pulangAwal += 1;
       else if (cls === "ALPHA") summary.alpa += 1;
     }
 
@@ -671,12 +730,106 @@ export default function UserDashboard() {
     return arr;
   }, [filteredAttendance, userLevel]);
 
+  // Aggregasi Bulanan (untuk line chart monthly / yearly)
+  const monthlySummaries: MonthlySummary[] = useMemo(() => {
+    if (timeframe !== "monthly" && timeframe !== "yearly") return [];
+
+    const map = new Map<string, MonthlySummary>();
+
+    for (const r of filteredAttendance) {
+      const dateOnly = parseDateOnly(r.tanggal);
+      if (!dateOnly) continue;
+
+      const [year, month] = dateOnly.split("-").map(Number);
+      const monthKey = `${year}-${month.toString().padStart(2, "0")}`;
+
+      let summary = map.get(monthKey);
+      if (!summary) {
+        summary = {
+          year,
+          month,
+          monthName: formatMonthID(year, month),
+          hadir: 0,
+          telat: 0,
+          pulangAwal: 0,
+          alpa: 0,
+        };
+        map.set(monthKey, summary);
+      }
+
+      const cls = classifyStatus(r);
+      if (cls === "HADIR") summary.hadir += 1;
+      else if (cls === "TELAT") summary.telat += 1;
+      else if (cls === "PULANG_AWAL") summary.pulangAwal += 1;
+      else if (cls === "ALPHA") summary.alpa += 1;
+    }
+
+    const arr = Array.from(map.values());
+    // sort berdasarkan tahun dan bulan (terbaru dulu)
+    arr.sort((a, b) => {
+      if (a.year !== b.year) return b.year - a.year;
+      return b.month - a.month;
+    });
+    return arr;
+  }, [filteredAttendance, timeframe]);
+
+  // Aggregasi Tahunan (untuk line chart yearly)
+  const yearlySummaries: YearlySummary[] = useMemo(() => {
+    if (timeframe !== "yearly") return [];
+
+    const map = new Map<number, YearlySummary>();
+
+    for (const r of filteredAttendance) {
+      const dateOnly = parseDateOnly(r.tanggal);
+      if (!dateOnly) continue;
+
+      const year = parseInt(dateOnly.split("-")[0]);
+
+      let summary = map.get(year);
+      if (!summary) {
+        summary = {
+          year,
+          hadir: 0,
+          telat: 0,
+          pulangAwal: 0,
+          alpa: 0,
+        };
+        map.set(year, summary);
+      }
+
+      const cls = classifyStatus(r);
+      if (cls === "HADIR") summary.hadir += 1;
+      else if (cls === "TELAT") summary.telat += 1;
+      else if (cls === "PULANG_AWAL") summary.pulangAwal += 1;
+      else if (cls === "ALPHA") summary.alpa += 1;
+    }
+
+    const arr = Array.from(map.values());
+    // sort berdasarkan tahun (terbaru dulu)
+    arr.sort((a, b) => b.year - a.year);
+    return arr;
+  }, [filteredAttendance, timeframe]);
+
+  // Data per-baris untuk Riwayat Detail (urut tanggal terbaru dulu)
+  const rowDetails: AttendanceRecord[] = useMemo(() => {
+    const arr = filteredAttendance.slice();
+    arr.sort((a, b) => {
+      const da = parseDateOnly(a.tanggal) || "";
+      const db = parseDateOnly(b.tanggal) || "";
+      if (da < db) return 1;
+      if (da > db) return -1;
+      return 0;
+    });
+    return arr;
+  }, [filteredAttendance]);
+
   /* ===== Data Chart ===== */
 
   const barChartData = useMemo(
     () => [
       { label: "Hadir", value: stats.totalHadir },
       { label: "Telat", value: stats.totalTelat },
+      { label: "Pulang Awal", value: stats.totalPulangAwal },
       { label: "Alpha", value: stats.totalAlpa },
     ],
     [stats]
@@ -686,31 +839,65 @@ export default function UserDashboard() {
     () => [
       { label: "Hadir", value: stats.totalHadir, color: "#10b981" },
       { label: "Telat", value: stats.totalTelat, color: "#f59e0b" },
+      { label: "Pulang Awal", value: stats.totalPulangAwal, color: "#3b82f6" },
       { label: "Alpha", value: stats.totalAlpa, color: "#ef4444" },
     ],
     [stats]
   );
 
-  const lineChartData = useMemo(
-    () =>
-      dailySummaries
+  // 🔥 Data untuk Line Chart berdasarkan timeframe (sekarang sudah ada Pulang Awal)
+  const lineChartData = useMemo(() => {
+    if (timeframe === "daily" || timeframe === "weekly") {
+      return dailySummaries
         .slice()
         .reverse()
         .map((d) => ({
           label: formatDateID(d.date),
           hadir: d.hadir,
           telat: d.telat,
+          pulangAwal: d.pulangAwal,
           alpa: d.alpa,
-        })),
-    [dailySummaries]
-  );
+        }));
+    } else if (timeframe === "monthly") {
+      return monthlySummaries
+        .slice()
+        .reverse()
+        .map((m) => ({
+          label: m.monthName,
+          hadir: m.hadir,
+          telat: m.telat,
+          pulangAwal: m.pulangAwal,
+          alpa: m.alpa,
+        }));
+    } else if (timeframe === "yearly") {
+      return yearlySummaries
+        .slice()
+        .reverse()
+        .map((y) => ({
+          label: formatYearID(y.year),
+          hadir: y.hadir,
+          telat: y.telat,
+          pulangAwal: y.pulangAwal,
+          alpa: y.alpa,
+        }));
+    }
+    return [];
+  }, [timeframe, dailySummaries, monthlySummaries, yearlySummaries]);
 
-  const grandTotal = stats.totalHadir + stats.totalTelat + stats.totalAlpa;
+  const grandTotal =
+    stats.totalHadir +
+    stats.totalTelat +
+    stats.totalPulangAwal +
+    stats.totalAlpa;
+
   const pctHadir = grandTotal
     ? Math.round((stats.totalHadir / grandTotal) * 100)
     : 0;
   const pctTelat = grandTotal
     ? Math.round((stats.totalTelat / grandTotal) * 100)
+    : 0;
+  const pctPulangAwal = grandTotal
+    ? Math.round((stats.totalPulangAwal / grandTotal) * 100)
     : 0;
   const pctAlpa = grandTotal
     ? Math.round((stats.totalAlpa / grandTotal) * 100)
@@ -737,15 +924,33 @@ export default function UserDashboard() {
       case "daily":
         return "Per Hari";
       case "weekly":
-        return "Per Minggu";
+        return "7 Hari Terakhir";
+      case "monthly":
+        return "Per Bulan (bulan ini)";
+      case "yearly":
+        return "Per Tahun (tahun ini)";
+      default:
+        return "";
+    }
+  };
+
+  const getTrendLabel = (): string => {
+    switch (timeframe) {
+      case "daily":
+        return "Per Hari";
+      case "weekly":
+        return "Per Hari (7 Hari Terakhir)";
       case "monthly":
         return "Per Bulan";
       case "yearly":
         return "Per Tahun";
       default:
-        return "";
+        return "Per Hari";
     }
   };
+
+  const detailModeLabel =
+    detailMode === "perHari" ? "Per Hari (Rekap)" : "Per Baris (Detail)";
 
   /* =========================
      R E N D E R
@@ -842,7 +1047,7 @@ export default function UserDashboard() {
         </div>
       )}
 
-      {/* FILTER BAR (MINIMIZE) */}
+      {/* FILTER BAR */}
       <div className="card bg-base-100 shadow-sm border border-base-300 animate-slideUp">
         <div className="card-body py-3">
           <div className="flex items-center justify-between gap-2">
@@ -898,7 +1103,8 @@ export default function UserDashboard() {
                 <label className="text-xs font-semibold">Keterangan</label>
                 <p className="text-xs text-base-content/60">
                   • <b>HADIR</b> = KJ, WH, WS, OT, KB <br />• <b>ALPHA</b> = P1
-                  (izin dianggap alpha), MK (mangkir)
+                  (izin dianggap alpha), MK (mangkir) <br />• <b>Pulang Awal</b>{" "}
+                  = <code>go_home_early</code> lebih dari 0 menit.
                 </p>
               </div>
             </div>
@@ -912,7 +1118,8 @@ export default function UserDashboard() {
         <div className="card bg-base-100 shadow-md border border-base-300 animate-slideUp">
           <div className="card-body">
             <h2 className="card-title text-sm md:text-lg">
-              🧭 Komposisi HADIR / TELAT / ALPHA ({timeframeLabel(timeframe)})
+              🧭 Komposisi HADIR / TELAT / PULANG AWAL / ALPHA (
+              {timeframeLabel(timeframe)})
             </h2>
             {loading ? (
               <div className="h-64 bg-base-300 rounded animate-pulse mt-4" />
@@ -946,7 +1153,7 @@ export default function UserDashboard() {
         <div className="card-body">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
             <h2 className="card-title text-sm md:text-lg">
-              📈 Tren Absensi (Per Hari)
+              📈 Tren Absensi ({getTrendLabel()})
             </h2>
             <div className="flex flex-wrap gap-2 text-xs">
               <span className="badge badge-success gap-1">
@@ -954,6 +1161,9 @@ export default function UserDashboard() {
               </span>
               <span className="badge badge-warning gap-1">
                 Telat {stats.totalTelat} ({pctTelat}%)
+              </span>
+              <span className="badge badge-info gap-1">
+                Pulang Awal {stats.totalPulangAwal} ({pctPulangAwal}%)
               </span>
               <span className="badge badge-error gap-1">
                 Alpha {stats.totalAlpa} ({pctAlpa}%)
@@ -968,17 +1178,49 @@ export default function UserDashboard() {
         </div>
       </div>
 
-      {/* Riwayat Absensi Detail Per Hari */}
+      {/* Riwayat Absensi Detail */}
       <div className="card bg-base-100 shadow-md border border-base-300 animate-slideUp">
         <div className="card-body">
-          <h2 className="card-title text-sm md:text-lg mb-2">
-            📋 Riwayat Absensi Detail (Per Hari)
-          </h2>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
+            <h2 className="card-title text-sm md:text-lg">
+              📋 Riwayat Absensi Detail
+            </h2>
+            <div className="flex flex-wrap gap-2 items-center">
+              <span className="text-xs text-base-content/60">
+                Mode tampilan:
+              </span>
+              <button
+                type="button"
+                className={`btn btn-xs md:btn-sm ${
+                  detailMode === "perHari"
+                    ? "btn-primary"
+                    : "btn-ghost border border-base-300"
+                }`}
+                onClick={() => setDetailMode("perHari")}
+              >
+                Per Hari (Rekap)
+              </button>
+              <button
+                type="button"
+                className={`btn btn-xs md:btn-sm ${
+                  detailMode === "perBaris"
+                    ? "btn-primary"
+                    : "btn-ghost border border-base-300"
+                }`}
+                onClick={() => setDetailMode("perBaris")}
+              >
+                Per Baris (Detail)
+              </button>
+            </div>
+          </div>
+
           <p className="text-xs text-base-content/60 mb-3">
-            Setiap baris adalah <b>ringkasan per hari</b> berdasarkan level:
-            {userLevel === "ADM" && " per Tanggal + FCBA + Afdeling."}
-            {userLevel === "MGR" && " per Tanggal + Afdeling."}
-            {userLevel === "AST" && " per Tanggal (Afdeling dari akun Anda)."}
+            Periode: <b>{timeframeLabel(timeframe)}</b> • Mode:{" "}
+            <b>{detailModeLabel}</b> • Data mengikuti pola level login:
+            {userLevel === "ADM" && " ADM melihat per FCBA & Afdeling."}
+            {userLevel === "MGR" && " MGR melihat per Afdeling dalam FCBA-nya."}
+            {userLevel === "AST" &&
+              " AST melihat data sesuai FCBA & Afdeling akun login."}
           </p>
 
           {loading ? (
@@ -990,74 +1232,247 @@ export default function UserDashboard() {
                 />
               ))}
             </div>
-          ) : dailySummaries.length === 0 ? (
+          ) : filteredAttendance.length === 0 ? (
             <div className="text-center py-8 text-base-content/60">
               📭 Tidak ada data absensi pada periode & filter yang dipilih.
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="table table-sm w-full text-xs md:text-sm">
-                <thead>
-                  <tr className="border-b border-base-300">
-                    <th>Tanggal</th>
-                    {userLevel === "ADM" && (
-                      <>
-                        <th>FCBA</th>
-                        <th>Afdeling</th>
-                      </>
-                    )}
-                    {userLevel === "MGR" && <th>Afdeling</th>}
-                    <th className="text-center">Hadir</th>
-                    <th className="text-center">Telat</th>
-                    <th className="text-center">Alpha</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {dailySummaries.map((d, idx) => (
-                    <tr key={`${d.date}-${idx}`} className="hover:bg-base-200">
-                      <td className="whitespace-nowrap font-medium">
-                        {formatDateID(d.date)}
-                      </td>
+              {/* MODE PER HARI (REKAP) */}
+              {detailMode === "perHari" && (
+                <table className="table table-sm w-full text-xs md:text-sm">
+                  <thead>
+                    <tr className="border-b border-base-300">
+                      <th>Tanggal</th>
                       {userLevel === "ADM" && (
                         <>
-                          <td>
-                            <span className="badge badge-ghost badge-sm font-mono">
-                              {d.fcba || "-"}
-                            </span>
-                          </td>
+                          <th>FCBA</th>
+                          <th>Afdeling</th>
+                        </>
+                      )}
+                      {userLevel === "MGR" && <th>Afdeling</th>}
+                      <th className="text-center">Hadir</th>
+                      <th className="text-center">Telat</th>
+                      <th className="text-center">Pulang Awal</th>
+                      <th className="text-center">Alpha</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dailySummaries.map((d, idx) => (
+                      <tr
+                        key={`${d.date}-${d.fcba ?? ""}-${
+                          d.afdeling ?? ""
+                        }-${idx}`}
+                        className="hover:bg-base-200"
+                      >
+                        <td className="whitespace-nowrap font-medium">
+                          {formatDateID(d.date)}
+                        </td>
+                        {userLevel === "ADM" && (
+                          <>
+                            <td>
+                              <span className="badge badge-ghost badge-sm font-mono">
+                                {d.fcba || "-"}
+                              </span>
+                            </td>
+                            <td>
+                              <span className="badge badge-ghost badge-sm font-mono">
+                                {d.afdeling || "-"}
+                              </span>
+                            </td>
+                          </>
+                        )}
+                        {userLevel === "MGR" && (
                           <td>
                             <span className="badge badge-ghost badge-sm font-mono">
                               {d.afdeling || "-"}
                             </span>
                           </td>
+                        )}
+                        <td className="text-center">
+                          <span className="badge badge-success badge-sm">
+                            {d.hadir}
+                          </span>
+                        </td>
+                        <td className="text-center">
+                          <span className="badge badge-warning badge-sm">
+                            {d.telat}
+                          </span>
+                        </td>
+                        <td className="text-center">
+                          <span className="badge badge-info badge-sm">
+                            {d.pulangAwal}
+                          </span>
+                        </td>
+                        <td className="text-center">
+                          <span className="badge badge-error badge-sm">
+                            {d.alpa}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {/* MODE PER BARIS (DETAIL) */}
+              {detailMode === "perBaris" && (
+                <table className="table table-sm w-full text-xs md:text-sm">
+                  <thead>
+                    <tr className="border-b border-base-300">
+                      <th>Tanggal</th>
+                      {userLevel === "ADM" && (
+                        <>
+                          <th>FCBA</th>
+                          <th>Afdeling</th>
+                          <th>Gang</th>
                         </>
                       )}
                       {userLevel === "MGR" && (
-                        <td>
-                          <span className="badge badge-ghost badge-sm font-mono">
-                            {d.afdeling || "-"}
-                          </span>
-                        </td>
+                        <>
+                          <th>Afdeling</th>
+                          <th>Gang</th>
+                        </>
                       )}
-                      <td className="text-center">
-                        <span className="badge badge-success badge-sm">
-                          {d.hadir}
-                        </span>
-                      </td>
-                      <td className="text-center">
-                        <span className="badge badge-warning badge-sm">
-                          {d.telat}
-                        </span>
-                      </td>
-                      <td className="text-center">
-                        <span className="badge badge-error badge-sm">
-                          {d.alpa}
-                        </span>
-                      </td>
+                      {userLevel === "AST" && (
+                        <>
+                          <th>FCBA</th>
+                          <th>Afdeling</th>
+                          <th>Gang</th>
+                        </>
+                      )}
+                      <th>Kode</th>
+                      <th>Status</th>
+                      <th className="text-center">Telat</th>
+                      <th className="text-center">Pulang Awal</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {rowDetails.map((r, idx) => {
+                      const dateOnly = parseDateOnly(r.tanggal) || "-";
+                      const status = classifyStatus(r);
+
+                      // FIX DUPLICATE KEY: gabungkan id + index
+                      const keyBase =
+                        r.id !== undefined && r.id !== null
+                          ? String(r.id)
+                          : `${dateOnly}`;
+                      const rowKey = `${keyBase}-${idx}`;
+
+                      return (
+                        <tr key={rowKey} className="hover:bg-base-200">
+                          <td className="whitespace-nowrap">
+                            {dateOnly !== "-" ? formatDateID(dateOnly) : "-"}
+                          </td>
+
+                          {/* Kolom lokasi disesuaikan level */}
+                          {userLevel === "ADM" && (
+                            <>
+                              <td>
+                                <span className="badge badge-ghost badge-sm font-mono">
+                                  {r.fcba || "-"}
+                                </span>
+                              </td>
+                              <td>
+                                <span className="badge badge-ghost badge-sm font-mono">
+                                  {r.section || "-"}
+                                </span>
+                              </td>
+                              <td>
+                                <span className="badge badge-ghost badge-sm font-mono">
+                                  {r.gang || "-"}
+                                </span>
+                              </td>
+                            </>
+                          )}
+
+                          {userLevel === "MGR" && (
+                            <>
+                              <td>
+                                <span className="badge badge-ghost badge-sm font-mono">
+                                  {r.section || "-"}
+                                </span>
+                              </td>
+                              <td>
+                                <span className="badge badge-ghost badge-sm font-mono">
+                                  {r.gang || "-"}
+                                </span>
+                              </td>
+                            </>
+                          )}
+
+                          {userLevel === "AST" && (
+                            <>
+                              <td>
+                                <span className="badge badge-ghost badge-sm font-mono">
+                                  {r.fcba || "-"}
+                                </span>
+                              </td>
+                              <td>
+                                <span className="badge badge-ghost badge-sm font-mono">
+                                  {r.section || "-"}
+                                </span>
+                              </td>
+                              <td>
+                                <span className="badge badge-ghost badge-sm font-mono">
+                                  {r.gang || "-"}
+                                </span>
+                              </td>
+                            </>
+                          )}
+
+                          <td>
+                            <span className="badge badge-outline badge-sm font-mono">
+                              {r.attendance || "-"}
+                            </span>
+                          </td>
+                          <td>
+                            {status === "HADIR" && (
+                              <span className="badge badge-success badge-sm">
+                                HADIR
+                              </span>
+                            )}
+                            {status === "TELAT" && (
+                              <span className="badge badge-warning badge-sm">
+                                TELAT
+                              </span>
+                            )}
+                            {status === "PULANG_AWAL" && (
+                              <span className="badge badge-info badge-sm">
+                                PULANG AWAL
+                              </span>
+                            )}
+                            {status === "ALPHA" && (
+                              <span className="badge badge-error badge-sm">
+                                ALPHA
+                              </span>
+                            )}
+                            {status === "OTHER" && (
+                              <span className="badge badge-ghost badge-sm">
+                                OTHER
+                              </span>
+                            )}
+                          </td>
+                          <td className="text-center">
+                            <span className="badge badge-ghost badge-sm font-mono">
+                              {isNonZeroTime(r.total_late_time)
+                                ? r.total_late_time
+                                : "-"}
+                            </span>
+                          </td>
+                          <td className="text-center">
+                            <span className="badge badge-ghost badge-sm font-mono">
+                              {isNonZeroTime(r.go_home_early)
+                                ? r.go_home_early
+                                : "-"}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
             </div>
           )}
         </div>
