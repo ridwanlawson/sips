@@ -29,7 +29,7 @@ export function middleware(request: NextRequest) {
 
   // Sudah login & sedang di halaman public -> lempar ke dashboard
   if (isPublic && token) {
-    return NextResponse.redirect(new URL("/dashboard/user", origin));
+    return NextResponse.redirect(new URL("/dashboard", origin));
   }
 
   // Restrict access to attendance approval page to ADM and MGR only (server-side)
@@ -43,7 +43,7 @@ export function middleware(request: NextRequest) {
     const level = String(levelRaw).toUpperCase();
     if (level !== "ADM" && level !== "MGR") {
       // Redirect to a safer page (dashboard) for unauthorized users
-      return NextResponse.redirect(new URL("/dashboard/user", origin));
+      return NextResponse.redirect(new URL("/dashboard", origin));
     }
   }
 

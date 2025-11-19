@@ -702,7 +702,7 @@ export default function AttendanceApproval() {
           <b>MGR</b>.
         </p>
         <div className="mt-4">
-          <a href="/dashboard/user" className="btn btn-primary btn-sm">
+          <a href="/dashboard" className="btn btn-primary btn-sm">
             Kembali ke Dashboard
           </a>
         </div>

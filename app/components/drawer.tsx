@@ -97,8 +97,8 @@ export const Drawer = () => {
           {/* Link Dashboard */}
           <li>
             <Link
-              href="/dashboard/user"
-              className={isActive("/dashboard/user")}
+              href="/dashboard"
+              className={isActive("/dashboard")}
               onClick={closeDrawer}
             >
               {/* optional: ikon */}

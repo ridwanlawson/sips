@@ -30,7 +30,7 @@ export default function Home() {
       if (response.ok) {
         // Redirect to dashboard with a brief delay to show success feedback
         await new Promise((resolve) => setTimeout(resolve, 500));
-        router.push("/dashboard/user");
+        router.push("/dashboard");
       } else {
         setError(
           data.message || "Login failed. Please check your credentials."
