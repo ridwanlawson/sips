@@ -6,6 +6,7 @@ import {
   SimplePieChart,
   SimpleLineChart,
 } from "@/app/components/dashboard-chart";
+import { logoutAndRedirect } from "@/utils/authHelper";
 
 /* =========================
    T Y P E S
@@ -619,6 +620,10 @@ export default function UserDashboard() {
             setAttendanceRaw([]);
             return;
           }
+          if (res.status === 401) {
+            await logoutAndRedirect();
+            return;
+          }
           throw new Error(`HTTP ${res.status}`);
         }
 
@@ -959,7 +964,8 @@ export default function UserDashboard() {
   // Tampilkan loading skeleton sampai client-side rendering siap
   if (!isClient) {
     return (
-      <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
+      <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
+        <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
         <div className="animate-slideUp flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="h-8 bg-base-300 rounded w-64 animate-pulse mb-2" />
@@ -982,12 +988,14 @@ export default function UserDashboard() {
             </div>
           </div>
         </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
+    <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
+      <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div className="animate-slideUp flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
@@ -1476,6 +1484,7 @@ export default function UserDashboard() {
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

@@ -17,6 +17,14 @@ export const Drawer = () => {
   };
 
   const [userLevel, setUserLevel] = useState<string>("");
+  const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
+
+  useEffect(() => {
+    // Buka dropdown hanya jika berada di halaman /attendance...
+    // Tutup jika pindah ke halaman lain (misal Dashboard)
+    setIsAttendanceOpen(pathname.startsWith("/attendance"));
+  }, [pathname]);
+
   useEffect(() => {
     const levelRaw =
       readCookie("user_Level") ||
@@ -68,7 +76,7 @@ export const Drawer = () => {
         </label>
       </div>
 
-      <div className="drawer-side">
+      <div className="drawer-side z-[9999]">
         <label
           htmlFor="my-drawer"
           aria-label="close sidebar"
@@ -77,23 +85,17 @@ export const Drawer = () => {
 
         <ul className="menu bg-base-200 text-base-content min-h-full w-80 p-4 gap-1">
           {/* Header/brand */}
-          <li className="pointer-events-none">
-            <div>
-              {/* <div className="w-10">
-                <Image
-                  alt="Logo Perusahaan"
-                  src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"
-                  width={40}
-                  height={40}
-                  className="rounded-full"
-                />
-              </div> */}
-              <span>Sentosa Kalimantan Jaya</span>
+          <li className="pointer-events-none mb-4">
+            <div className="flex flex-col items-center justify-center gap-3 py-4 bg-base-100 rounded-xl shadow-sm border border-base-300">              <div className="text-center">
+                <span className="block font-bold text-lg leading-tight text-base-content">
+                  Sentosa Kalimantan Jaya
+                </span>
+                <span className="text-xs text-base-content/60 font-medium tracking-wide uppercase mt-1 block">
+                  SIPS Mobile Web
+                </span>
+              </div>
             </div>
           </li>
-
-          <div className="divider"></div>
-
           {/* Link Dashboard */}
           <li>
             <Link
@@ -116,7 +118,11 @@ export const Drawer = () => {
 
           {/* Dropdown Attendance */}
           <li>
-            <details className="[&_summary::-webkit-details-marker]:hidden">
+            <details
+              className="[&_summary::-webkit-details-marker]:hidden"
+              open={isAttendanceOpen}
+              onToggle={(e) => setIsAttendanceOpen(e.currentTarget.open)}
+            >
               <summary className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <svg

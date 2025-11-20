@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Drawer } from "./drawer";
 import { Theme } from "./theme";
 import { toTitleCase } from "@/utils/textManipulation";
@@ -116,15 +117,15 @@ export default function Navbar() {
               </a>
             </li>
             <li>
-              <Theme />
-            </li>
-            <li>
-              <a className="justify-between">
-                Profile <span className="badge">New</span>
+              <a target="_blank" href="https://sipsmobile.web.app/" className="justify-between">
+                SIPS Mobile <span className="badge">Download</span>
               </a>
             </li>
             <li>
-              <a>Settings</a>
+              <Theme />
+            </li>
+            <li>
+              <Link href="/change-password">Change Password</Link>
             </li>
             <li>
               <a

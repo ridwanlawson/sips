@@ -28,15 +28,19 @@ export default function Home() {
   const [tipIndex, setTipIndex] = useState(0);
 
   // Generate fireflies sekali saja (random posisi/ukuran)
-  const [fireflies] = useState<Firefly[]>(() =>
-    Array.from({ length: 24 }, () => ({
-      top: Math.random() * 100, // 0–100% vh
-      left: Math.random() * 100, // 0–100% vw
-      duration: 10 + Math.random() * 10, // 10–20s
-      delay: Math.random() * 8, // 0–8s
-      size: 4 + Math.random() * 6, // 4–10px
-    }))
-  );
+  const [fireflies, setFireflies] = useState<Firefly[]>([]);
+
+  useEffect(() => {
+    setFireflies(
+      Array.from({ length: 24 }, () => ({
+        top: Math.random() * 100,
+        left: Math.random() * 100,
+        duration: 10 + Math.random() * 10,
+        delay: Math.random() * 8,
+        size: 4 + Math.random() * 6,
+      }))
+    );
+  }, []);
 
   // Rotasi tips saat loading
   useEffect(() => {
@@ -156,10 +160,7 @@ export default function Home() {
             </div>
             <div className="text-[0.7rem] leading-snug">
               <p className="font-semibold text-base-content">
-                Mandor siap pantau lapangan
-              </p>
-              <p className="text-base-content/60">
-                Login sebentar, kontrol seharian.
+                Pastikan Data SiPS Mobile sudah diupload!
               </p>
             </div>
           </div>

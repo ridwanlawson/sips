@@ -131,6 +131,8 @@ type EmployeesApiRow = {
 /* =========================
    U T I L S
 ========================= */
+import { logoutAndRedirect } from "@/utils/authHelper";
+
 const readCookie = (name: string) => {
   if (typeof document === "undefined") return null;
   const m = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
@@ -931,6 +933,10 @@ export default function Attendance() {
             return; // keluar tanpa throw → tidak masuk catch
           }
           // Status lain (500, 401, dll) → tetap dianggap error
+          if (res.status === 401) {
+            await logoutAndRedirect();
+            return;
+          }
           throw new Error(`HTTP ${res.status}`);
         }
         // ⬆⬆⬆ SAMPAI SINI
@@ -1195,6 +1201,12 @@ export default function Attendance() {
         body: fd,
         credentials: "include",
       });
+
+      if (res.status === 401) {
+        await logoutAndRedirect();
+        return;
+      }
+
       const json: unknown = await res.json();
 
       if (
@@ -1670,13 +1682,16 @@ export default function Attendance() {
               rel="noopener noreferrer"
               title="Buka foto"
             >
-              <Image
+              <img
                 src={r.images}
                 alt="foto"
-                width={40}
-                height={40}
-                className="rounded-lg ring-1 ring-base-300 object-cover w-10 h-10"
+                className="rounded-lg ring-1 ring-base-300 object-cover w-10 h-10 bg-base-200"
                 loading="lazy"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src =
+                    "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDQwIDQwIj48cmVjdCB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIGZpbGw9IiNlN2U1ZTQiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZHk9Ii4zZW0iIGZpbGw9IiNhM2EzYTMiIGZvbnQtc2l6ZT0iMTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPk4vQTwvdGV4dD48L3N2Zz4=";
+                }}
               />
             </a>
           ) : (
@@ -1722,7 +1737,8 @@ export default function Attendance() {
   const canAddOrEdit = userLevel === "ADM" || userLevel === "AST";
 
   return (
-    <div className="p-4 sm:p-6 max-w-screen-2xl mx-auto w-full overflow-x-hidden">
+    <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
+      <div className="p-4 sm:p-6 max-w-screen-2xl mx-auto w-full overflow-x-hidden">
       {/* Toast */}
       <div className="toast toast-top right-4 z-50">
         {alert && (
@@ -1945,7 +1961,7 @@ export default function Attendance() {
       )}
 
       {/* DataTable */}
-      <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto">
+      <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100">
         <div className="min-w-[900px] md:min-w-0">
           <DataTable
             keyField="_rowKey"
@@ -2499,6 +2515,7 @@ export default function Attendance() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

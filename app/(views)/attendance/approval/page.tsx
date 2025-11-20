@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import Image from "next/image";
 import DataTable, { TableColumn } from "react-data-table-component";
+import { logoutAndRedirect } from "@/utils/authHelper";
 
 /* =========================
    T Y P E S
@@ -267,6 +268,10 @@ export default function AttendanceApproval() {
           setLoading(false);
           return;
         }
+        if (res.status === 401) {
+          await logoutAndRedirect();
+          return;
+        }
         throw new Error(`HTTP ${res.status}`);
       }
 
@@ -347,6 +352,12 @@ export default function AttendanceApproval() {
               credentials: "include",
               body: JSON.stringify({ status_attendance: newStatus }),
             });
+
+            if (res.status === 401) {
+              await logoutAndRedirect();
+              return { ok: false, error: "Unauthorized" };
+            }
+
             const j: unknown = await res.json().catch(() => ({}));
             if (!res.ok) {
               return { ok: false, error: `HTTP ${res.status}`, detail: j };
@@ -667,13 +678,16 @@ export default function AttendanceApproval() {
               rel="noopener noreferrer"
               title="Buka foto"
             >
-              <Image
+              <img
                 src={r.images}
                 alt="foto"
-                width={40}
-                height={40}
-                className="rounded-lg ring-1 ring-base-300 object-cover w-10 h-10"
+                className="rounded-lg ring-1 ring-base-300 object-cover w-10 h-10 bg-base-200"
                 loading="lazy"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src =
+                    "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDQwIDQwIj48cmVjdCB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIGZpbGw9IiNlN2U1ZTQiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZHk9Ii4zZW0iIGZpbGw9IiNhM2EzYTMiIGZvbnQtc2l6ZT0iMTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPk4vQTwvdGV4dD48L3N2Zz4=";
+                }}
               />
             </a>
           ) : (
@@ -695,7 +709,8 @@ export default function AttendanceApproval() {
   const allowed = userLevel === "ADM" || userLevel === "MGR";
   if (scopeReady && !allowed) {
     return (
-      <div className="p-6 max-w-screen-lg mx-auto">
+      <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
+        <div className="p-6 max-w-screen-lg mx-auto">
         <h2 className="text-2xl font-bold">Akses Ditolak</h2>
         <p className="mt-2 text-base-content/80">
           Halaman ini hanya dapat diakses oleh user dengan level <b>ADM</b> atau{" "}
@@ -706,12 +721,14 @@ export default function AttendanceApproval() {
             Kembali ke Dashboard
           </a>
         </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-screen-2xl mx-auto w-full overflow-x-hidden">
+    <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
+      <div className="p-4 sm:p-6 max-w-screen-2xl mx-auto w-full overflow-x-hidden">
       {/* Toast */}
       <div className="toast toast-top right-4 z-50">
         {alert && (
@@ -811,7 +828,7 @@ export default function AttendanceApproval() {
       </div>
 
       {/* DataTable */}
-      <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto">
+      <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100">
         <div className="min-w-[900px] md:min-w-0">
           <DataTable
             keyField="_rowKey"
@@ -838,6 +855,7 @@ export default function AttendanceApproval() {
             clearSelectedRows={clearSelectedToggle}
           />
         </div>
+      </div>
       </div>
     </div>
   );
