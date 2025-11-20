@@ -10,7 +10,7 @@ import React, {
 import Image from "next/image";
 import DataTable, { TableColumn } from "react-data-table-component";
 import { logoutAndRedirect } from "@/utils/authHelper";
-import { SafeImage } from "@/app/components/safe-image";
+import SafeImage from "@/app/components/safe-image";
 
 /* =========================
    T Y P E S
@@ -682,7 +682,7 @@ export default function AttendanceApproval() {
               <SafeImage
                 src={r.images}
                 alt="foto"
-                className="rounded-lg ring-1 ring-base-300 object-cover w-10 h-10"
+                className="rounded-lg ring-1 ring-base-300 object-cover"
                 width={40}
                 height={40}
               />
