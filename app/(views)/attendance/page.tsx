@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import DataTable, { TableColumn } from "react-data-table-component";
-import SafeImage from "@/app/components/safe-image";
 
 /* =========================
    T Y P E S
@@ -1683,12 +1682,16 @@ export default function Attendance() {
               rel="noopener noreferrer"
               title="Buka foto"
             >
-              <SafeImage
+              <img
                 src={r.images}
                 alt="foto"
-                className="rounded-lg ring-1 ring-base-300 object-cover"
-                width={40}
-                height={40}
+                className="rounded-lg ring-1 ring-base-300 object-cover w-10 h-10 bg-base-200"
+                loading="lazy"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src =
+                    "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDQwIDQwIj48cmVjdCB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIGZpbGw9IiNlN2U1ZTQiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZHk9Ii4zZW0iIGZpbGw9IiNhM2EzYTMiIGZvbnQtc2l6ZT0iMTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPk4vQTwvdGV4dD48L3N2Zz4=";
+                }}
               />
             </a>
           ) : (
