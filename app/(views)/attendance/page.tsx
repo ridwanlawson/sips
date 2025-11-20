@@ -132,6 +132,7 @@ type EmployeesApiRow = {
    U T I L S
 ========================= */
 import { logoutAndRedirect } from "@/utils/authHelper";
+import { SafeImage } from "@/app/components/safe-image";
 
 const readCookie = (name: string) => {
   if (typeof document === "undefined") return null;
@@ -1674,34 +1675,25 @@ export default function Attendance() {
       {
         name: <span title="Foto pendukung absensi (bila ada)">Foto</span>,
         width: "90px",
-        cell: (r) => {
-          if (!r.images || r.images.trim() === "") return <>-</>;
-          
-          return (
+        cell: (r) =>
+          r.images ? (
             <a
               href={r.images}
               target="_blank"
               rel="noopener noreferrer"
               title="Buka foto"
             >
-              <img
+              <SafeImage
                 src={r.images}
                 alt="foto"
-                className="rounded-lg ring-1 ring-base-300 object-cover w-10 h-10 bg-base-200"
-                loading="lazy"
-                onError={(e) => {
-                  // Hide image if it fails to load
-                  e.currentTarget.style.display = "none";
-                  // Show text fallback in parent
-                  const parent = e.currentTarget.parentElement;
-                  if (parent) {
-                    parent.innerHTML = '<span class="text-xs text-base-content/50">-</span>';
-                  }
-                }}
+                className="rounded-lg ring-1 ring-base-300 object-cover w-10 h-10"
+                width={40}
+                height={40}
               />
             </a>
-          );
-        },
+          ) : (
+            "-"
+          ),
         ignoreRowClick: true,
       },
     ],
