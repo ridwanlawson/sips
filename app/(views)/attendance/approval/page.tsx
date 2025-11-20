@@ -670,8 +670,10 @@ export default function AttendanceApproval() {
       {
         name: <span title="Foto pendukung absensi (bila ada)">Foto</span>,
         width: "90px",
-        cell: (r) =>
-          r.images ? (
+        cell: (r) => {
+          if (!r.images || r.images.trim() === "") return <>-</>;
+          
+          return (
             <a
               href={r.images}
               target="_blank"
@@ -684,15 +686,18 @@ export default function AttendanceApproval() {
                 className="rounded-lg ring-1 ring-base-300 object-cover w-10 h-10 bg-base-200"
                 loading="lazy"
                 onError={(e) => {
-                  e.currentTarget.onerror = null;
-                  e.currentTarget.src =
-                    "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDQwIDQwIj48cmVjdCB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIGZpbGw9IiNlN2U1ZTQiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZHk9Ii4zZW0iIGZpbGw9IiNhM2EzYTMiIGZvbnQtc2l6ZT0iMTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPk4vQTwvdGV4dD48L3N2Zz4=";
+                  // Hide image if it fails to load
+                  e.currentTarget.style.display = "none";
+                  // Show text fallback in parent
+                  const parent = e.currentTarget.parentElement;
+                  if (parent) {
+                    parent.innerHTML = '<span class="text-xs text-base-content/50">-</span>';
+                  }
                 }}
               />
             </a>
-          ) : (
-            "-"
-          ),
+          );
+        },
         ignoreRowClick: true,
       },
     ],
