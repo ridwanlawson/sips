@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { toTitleCase } from "@/utils/textManipulation";
+import { getProxiedImageUrl } from "@/utils/imageHelper";
 
 type UserProfile = {
   id: number;
@@ -123,7 +124,7 @@ export default function ChangePasswordPage() {
                   <div className="avatar mb-2">
                     <div className="w-24 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2 shadow-lg">
                       <Image 
-                        src={profile.photo || "https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"} 
+                        src={getProxiedImageUrl(profile.photo) || "https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"} 
                         alt="Avatar" 
                         width={96} 
                         height={96}

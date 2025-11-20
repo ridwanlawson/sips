@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Drawer } from "./drawer";
 import { Theme } from "./theme";
 import { toTitleCase } from "@/utils/textManipulation";
+import { getProxiedImageUrl } from "@/utils/imageHelper";
 
 /** Ambil nilai cookie by name (handle URL-encoded value juga) */
 function getCookie(name: string) {
@@ -96,13 +97,13 @@ export default function Navbar() {
               <Image
                 alt="User Avatar"
                 src={
-                  photoUrl ??
+                  getProxiedImageUrl(photoUrl) ||
                   "https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"
                 }
                 width={40}
                 height={40}
                 className="rounded-full object-cover"
-                unoptimized={/^data:image\//.test(photoUrl || "")}
+                unoptimized={true}
               />
             </div>
           </div>

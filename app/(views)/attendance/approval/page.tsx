@@ -10,6 +10,7 @@ import React, {
 import Image from "next/image";
 import DataTable, { TableColumn } from "react-data-table-component";
 import { logoutAndRedirect } from "@/utils/authHelper";
+import { getProxiedImageUrl, PLACEHOLDER_IMAGE } from "@/utils/imageHelper";
 
 /* =========================
    T Y P E S
@@ -673,16 +674,20 @@ export default function AttendanceApproval() {
         cell: (r) =>
           r.images ? (
             <a
-              href={r.images}
+              href={getProxiedImageUrl(r.images)}
               target="_blank"
               rel="noopener noreferrer"
               title="Buka foto"
             >
               <img
-                src={r.images}
+                src={getProxiedImageUrl(r.images)}
                 alt="foto"
                 className="rounded-lg ring-1 ring-base-300 object-cover w-10 h-10 bg-base-200"
                 loading="lazy"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = PLACEHOLDER_IMAGE;
+                }}
               />
             </a>
           ) : (
