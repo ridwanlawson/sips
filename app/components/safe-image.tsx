@@ -28,6 +28,21 @@ export default function SafeImage({
   // Placeholder SVG (gray box with "N/A" text)
   const placeholderSvg = `data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDQwIDQwIj48cmVjdCB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIGZpbGw9IiNlN2U1ZTQiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZHk9Ii4zZW0iIGZpbGw9IiNhM2EzYTMiIGZvbnQtc2l6ZT0iMTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPk4vQTwvdGV4dD48L3N2Zz4=`;
 
+  // Use proxy for external images to bypass CORS
+  const getImageSrc = () => {
+    if (!src) return placeholderSvg;
+    
+    // If it's an external URL from dev.skj.my.id, use proxy
+    if (src.startsWith('http://dev.skj.my.id:82/')) {
+      return `/api/image-proxy?url=${encodeURIComponent(src)}`;
+    }
+    
+    // Otherwise use direct URL (for local or data URLs)
+    return src;
+  };
+
+  const imageSrc = getImageSrc();
+
   if (error || !src) {
     return (
       <img
@@ -41,7 +56,15 @@ export default function SafeImage({
   }
 
   return (
-    <div className="relative" style={{ width, height }}>
+    <div 
+      className="relative overflow-hidden flex items-center justify-center" 
+      style={{ 
+        width, 
+        height,
+        maxWidth: width,
+        maxHeight: height,
+      }}
+    >
       {loading && (
         <div
           className="absolute inset-0 flex items-center justify-center bg-base-200 rounded-lg"
@@ -51,18 +74,25 @@ export default function SafeImage({
         </div>
       )}
       <img
-        src={src}
+        src={imageSrc}
         alt={alt}
         className={className}
         width={width}
         height={height}
         loading="lazy"
+        crossOrigin="anonymous"
         onLoad={() => setLoading(false)}
-        onError={() => {
+        onError={(e) => {
+          console.warn("Image failed to load:", imageSrc, e);
           setError(true);
           setLoading(false);
         }}
-        style={loading ? { opacity: 0 } : { opacity: 1 }}
+        style={{
+          opacity: loading ? 0 : 1,
+          maxWidth: '100%',
+          maxHeight: '100%',
+          objectFit: 'cover',
+        }}
       />
     </div>
   );
