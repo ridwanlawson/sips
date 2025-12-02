@@ -28,6 +28,8 @@ export function buildFilteredUrl(base: string, searchParams: URLSearchParams) {
     "attendance_type",
     "fcba_destination",
     "sourcetime",
+    "nodokumen",
+    "tph",
   ];
   validParams.forEach((key) => {
     const v = searchParams.get(key);

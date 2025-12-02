@@ -68,33 +68,95 @@ export function SimplePieChart({ data, title }: PieChartProps) {
     );
   }
 
-  let cumulativePercentage = 0;
-  const gradientStops = data.map((item) => {
+  // SVG Pie Chart with separated slices
+  const size = 200;
+  const center = size / 2;
+  const radius = 80;
+  const holeRadius = 50; // Donut hole
+  const separation = 3; // Gap between slices in degrees
+
+  let currentAngle = -90; // Start from top
+
+  const slices = data.map((item, index) => {
     const percentage = (item.value / total) * 100;
-    const start = cumulativePercentage;
-    cumulativePercentage += percentage;
-    return `${item.color} ${start}%, ${item.color} ${cumulativePercentage}%`;
+    const angle = (percentage / 100) * 360;
+    
+    // Add separation gap
+    const startAngle = currentAngle + separation / 2;
+    const endAngle = currentAngle + angle - separation / 2;
+    
+    // Calculate path for donut slice
+    const startRad = (startAngle * Math.PI) / 180;
+    const endRad = (endAngle * Math.PI) / 180;
+    
+    const x1 = center + radius * Math.cos(startRad);
+    const y1 = center + radius * Math.sin(startRad);
+    const x2 = center + radius * Math.cos(endRad);
+    const y2 = center + radius * Math.sin(endRad);
+    
+    const x3 = center + holeRadius * Math.cos(endRad);
+    const y3 = center + holeRadius * Math.sin(endRad);
+    const x4 = center + holeRadius * Math.cos(startRad);
+    const y4 = center + holeRadius * Math.sin(startRad);
+    
+    const largeArc = angle - separation > 180 ? 1 : 0;
+    
+    const pathData = [
+      `M ${x1} ${y1}`,
+      `A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}`,
+      `L ${x3} ${y3}`,
+      `A ${holeRadius} ${holeRadius} 0 ${largeArc} 0 ${x4} ${y4}`,
+      'Z'
+    ].join(' ');
+    
+    currentAngle += angle;
+    
+    return {
+      path: pathData,
+      color: item.color,
+      label: item.label,
+      value: item.value,
+      percentage: percentage.toFixed(1)
+    };
   });
 
   return (
     <div className="w-full">
       {title && <p className="text-sm font-semibold mb-4">{title}</p>}
       <div className="flex flex-col gap-4">
-        {/* Donut Chart */}
+        {/* SVG Pie Chart */}
         <div className="flex justify-center">
-          <div
-            className="rounded-full w-48 h-48"
-            style={{
-              backgroundImage: `conic-gradient(${gradientStops.join(",")})`,
-            }}
-          >
-            <div className="w-full h-full rounded-full flex items-center justify-center bg-base-100">
-              <div className="text-center">
-                <p className="text-2xl font-bold">{total}</p>
-                <p className="text-xs text-base-content/60">Total</p>
-              </div>
-            </div>
-          </div>
+          <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+            {slices.map((slice, idx) => (
+              <g key={idx}>
+                <path
+                  d={slice.path}
+                  fill={slice.color}
+                  className="transition-all duration-300 hover:opacity-80"
+                  style={{
+                    filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
+                  }}
+                />
+              </g>
+            ))}
+            {/* Center text */}
+            <text
+              x={center}
+              y={center - 5}
+              textAnchor="middle"
+              className="text-2xl font-bold fill-current"
+            >
+              {total}
+            </text>
+            <text
+              x={center}
+              y={center + 15}
+              textAnchor="middle"
+              className="text-xs fill-current opacity-60"
+            >
+              Total
+            </text>
+          </svg>
         </div>
 
         {/* Legend */}

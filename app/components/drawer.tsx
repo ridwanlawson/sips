@@ -18,11 +18,13 @@ export const Drawer = () => {
 
   const [userLevel, setUserLevel] = useState<string>("");
   const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
+  const [isHarvestOpen, setIsHarvestOpen] = useState(false);
 
   useEffect(() => {
     // Buka dropdown hanya jika berada di halaman /attendance...
     // Tutup jika pindah ke halaman lain (misal Dashboard)
     setIsAttendanceOpen(pathname.startsWith("/attendance"));
+    setIsHarvestOpen(pathname.startsWith("/harvest"));
   }, [pathname]);
 
   useEffect(() => {
@@ -173,6 +175,49 @@ export const Drawer = () => {
                     </Link>
                   </li>
                 )}
+              </ul>
+            </details>
+          </li>
+
+          {/* Dropdown Harvest */}
+          <li>
+            <details
+              className="[&_summary::-webkit-details-marker]:hidden"
+              open={isHarvestOpen}
+              onToggle={(e) => setIsHarvestOpen(e.currentTarget.open)}
+            >
+              <summary className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM11 6h2v6h-2V6zm0 8h2v2h-2v-2z" />
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
+                  </svg>
+                  <span>Harvest</span>
+                </div>
+              </summary>
+              <ul className="menu menu-sm">
+                <li>
+                  <Link
+                    href="/harvest"
+                    className={isActive("/harvest")}
+                    onClick={closeDrawer}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" />
+                    </svg>
+                    Data List
+                  </Link>
+                </li>
               </ul>
             </details>
           </li>

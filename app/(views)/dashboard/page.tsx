@@ -37,7 +37,8 @@ interface AttendanceRecord {
 }
 
 interface DashboardStats {
-  totalHadir: number;
+  totalHadir: number; // Total semua hadir (termasuk telat & pulang awal)
+  totalTepatWaktu: number; // Hadir tepat waktu
   totalTelat: number;
   totalPulangAwal: number;
   totalAlpa: number;
@@ -167,7 +168,9 @@ const formatYearID = (year: number): string => {
 };
 
 // Klasifikasi berdasarkan KODE + total_late_time + go_home_early
-type ClassifiedStatus = "HADIR" | "TELAT" | "PULANG_AWAL" | "ALPHA" | "OTHER";
+// HADIR = semua kode kecuali MK dan P1 (tidak peduli telat/pulang awal)
+// TEPAT_WAKTU = hadir tanpa telat dan tanpa pulang awal
+type ClassifiedStatus = "HADIR" | "TEPAT_WAKTU" | "TELAT" | "PULANG_AWAL" | "ALPHA" | "OTHER";
 
 const isNonZeroTime = (raw?: string | null): boolean => {
   if (!raw) return false;
@@ -182,27 +185,20 @@ const classifyStatus = (record: AttendanceRecord): ClassifiedStatus => {
   const lateRaw = record.total_late_time;
   const goHomeRaw = record.go_home_early;
 
-  const isHadirCode = ["KJ", "WH", "WS", "OT", "KB"].includes(code);
+  // ALPHA hanya untuk MK dan P1
   const isAlphaCode = ["P1", "MK"].includes(code);
-
-  // Urutan prioritas:
-  // 1. ALPHA (izin/mangkir)
-  // 2. PULANG_AWAL (kalau ada go_home_early)
-  // 3. TELAT (kalau late > 0)
-  // 4. HADIR biasa
   if (isAlphaCode) return "ALPHA";
 
-  if (isHadirCode) {
-    if (isNonZeroTime(goHomeRaw)) {
-      return "PULANG_AWAL";
-    }
-    if (isNonZeroTime(lateRaw)) {
-      return "TELAT";
-    }
-    return "HADIR";
-  }
+  // Semua kode lainnya dianggap HADIR
+  // Tapi kita tetap klasifikasi detail untuk TEPAT_WAKTU, TELAT, PULANG_AWAL
+  const isLate = isNonZeroTime(lateRaw);
+  const isEarly = isNonZeroTime(goHomeRaw);
 
-  return "OTHER";
+  // Selalu return HADIR untuk total count
+  // Tapi untuk detail breakdown:
+  if (isEarly) return "PULANG_AWAL";
+  if (isLate) return "TELAT";
+  return "TEPAT_WAKTU"; // Tepat waktu (tidak telat, tidak pulang awal)
 };
 
 // Ekstrak array data dari response API (ok + data / data.data)
@@ -664,19 +660,28 @@ export default function UserDashboard() {
 
   const stats: DashboardStats = useMemo(() => {
     let totalHadir = 0;
+    let totalTepatWaktu = 0;
     let totalTelat = 0;
     let totalPulangAwal = 0;
     let totalAlpa = 0;
 
     for (const r of filteredAttendance) {
       const cls = classifyStatus(r);
-      if (cls === "HADIR") totalHadir += 1;
-      else if (cls === "TELAT") totalTelat += 1;
-      else if (cls === "PULANG_AWAL") totalPulangAwal += 1;
-      else if (cls === "ALPHA") totalAlpa += 1;
+      if (cls === "TEPAT_WAKTU") {
+        totalTepatWaktu += 1;
+        totalHadir += 1; // Tepat waktu juga dihitung sebagai hadir
+      } else if (cls === "TELAT") {
+        totalTelat += 1;
+        totalHadir += 1; // Telat juga dihitung sebagai hadir
+      } else if (cls === "PULANG_AWAL") {
+        totalPulangAwal += 1;
+        totalHadir += 1; // Pulang awal juga dihitung sebagai hadir
+      } else if (cls === "ALPHA") {
+        totalAlpa += 1;
+      }
     }
 
-    return { totalHadir, totalTelat, totalPulangAwal, totalAlpa };
+    return { totalHadir, totalTepatWaktu, totalTelat, totalPulangAwal, totalAlpa };
   }, [filteredAttendance]);
 
   /* ===== Aggregasi berdasarkan Timeframe ===== */
@@ -723,10 +728,17 @@ export default function UserDashboard() {
       }
 
       const cls = classifyStatus(r);
-      if (cls === "HADIR") summary.hadir += 1;
-      else if (cls === "TELAT") summary.telat += 1;
-      else if (cls === "PULANG_AWAL") summary.pulangAwal += 1;
-      else if (cls === "ALPHA") summary.alpa += 1;
+      if (cls === "TEPAT_WAKTU") {
+        summary.hadir += 1; // Tepat waktu = hadir
+      } else if (cls === "TELAT") {
+        summary.telat += 1;
+        summary.hadir += 1; // Telat juga hadir
+      } else if (cls === "PULANG_AWAL") {
+        summary.pulangAwal += 1;
+        summary.hadir += 1; // Pulang awal juga hadir
+      } else if (cls === "ALPHA") {
+        summary.alpa += 1;
+      }
     }
 
     const arr = Array.from(map.values());
@@ -763,10 +775,17 @@ export default function UserDashboard() {
       }
 
       const cls = classifyStatus(r);
-      if (cls === "HADIR") summary.hadir += 1;
-      else if (cls === "TELAT") summary.telat += 1;
-      else if (cls === "PULANG_AWAL") summary.pulangAwal += 1;
-      else if (cls === "ALPHA") summary.alpa += 1;
+      if (cls === "TEPAT_WAKTU") {
+        summary.hadir += 1;
+      } else if (cls === "TELAT") {
+        summary.telat += 1;
+        summary.hadir += 1;
+      } else if (cls === "PULANG_AWAL") {
+        summary.pulangAwal += 1;
+        summary.hadir += 1;
+      } else if (cls === "ALPHA") {
+        summary.alpa += 1;
+      }
     }
 
     const arr = Array.from(map.values());
@@ -803,10 +822,17 @@ export default function UserDashboard() {
       }
 
       const cls = classifyStatus(r);
-      if (cls === "HADIR") summary.hadir += 1;
-      else if (cls === "TELAT") summary.telat += 1;
-      else if (cls === "PULANG_AWAL") summary.pulangAwal += 1;
-      else if (cls === "ALPHA") summary.alpa += 1;
+      if (cls === "TEPAT_WAKTU") {
+        summary.hadir += 1;
+      } else if (cls === "TELAT") {
+        summary.telat += 1;
+        summary.hadir += 1;
+      } else if (cls === "PULANG_AWAL") {
+        summary.pulangAwal += 1;
+        summary.hadir += 1;
+      } else if (cls === "ALPHA") {
+        summary.alpa += 1;
+      }
     }
 
     const arr = Array.from(map.values());
@@ -832,7 +858,8 @@ export default function UserDashboard() {
 
   const barChartData = useMemo(
     () => [
-      { label: "Hadir", value: stats.totalHadir },
+      { label: "Hadir (Total)", value: stats.totalHadir },
+      { label: "Tepat Waktu", value: stats.totalTepatWaktu },
       { label: "Telat", value: stats.totalTelat },
       { label: "Pulang Awal", value: stats.totalPulangAwal },
       { label: "Alpha", value: stats.totalAlpa },
@@ -842,7 +869,7 @@ export default function UserDashboard() {
 
   const pieChartData = useMemo(
     () => [
-      { label: "Hadir", value: stats.totalHadir, color: "#10b981" },
+      { label: "Tepat Waktu", value: stats.totalTepatWaktu, color: "#10b981" },
       { label: "Telat", value: stats.totalTelat, color: "#f59e0b" },
       { label: "Pulang Awal", value: stats.totalPulangAwal, color: "#3b82f6" },
       { label: "Alpha", value: stats.totalAlpa, color: "#ef4444" },
@@ -1110,9 +1137,11 @@ export default function UserDashboard() {
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold">Keterangan</label>
                 <p className="text-xs text-base-content/60">
-                  • <b>HADIR</b> = KJ, WH, WS, OT, KB <br />• <b>ALPHA</b> = P1
-                  (izin dianggap alpha), MK (mangkir) <br />• <b>Pulang Awal</b>{" "}
-                  = <code>go_home_early</code> lebih dari 0 menit.
+                  • <b>HADIR</b> = Semua kode kecuali MK dan P1 <br />
+                  • <b>TEPAT WAKTU</b> = Hadir tanpa telat & tanpa pulang awal <br />
+                  • <b>TELAT</b> = <code>total_late_time</code> lebih dari 0 <br />
+                  • <b>PULANG AWAL</b> = <code>go_home_early</code> lebih dari 0 <br />
+                  • <b>ALPHA</b> = P1 (izin) atau MK (mangkir)
                 </p>
               </div>
             </div>
@@ -1126,7 +1155,7 @@ export default function UserDashboard() {
         <div className="card bg-base-100 shadow-md border border-base-300 animate-slideUp">
           <div className="card-body">
             <h2 className="card-title text-sm md:text-lg">
-              🧭 Komposisi HADIR / TELAT / PULANG AWAL / ALPHA (
+              🧭 Komposisi TEPAT WAKTU / TELAT / PULANG AWAL / ALPHA (
               {timeframeLabel(timeframe)})
             </h2>
             {loading ? (
