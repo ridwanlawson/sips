@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import DataTable, { TableColumn } from "react-data-table-component";
 
 /* =========================
@@ -72,32 +72,7 @@ const readCookie = (name: string) => {
   return m ? decodeURIComponent(m.pop() as string) : null;
 };
 
-/* =========================
-   Searchable Select (Simplified)
-========================= */
-const SearchSelect: React.FC<{
-  options: Option[];
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  disabled?: boolean;
-}> = ({ options, value, onChange, placeholder, disabled }) => {
-  return (
-    <select
-      className="select select-bordered w-full"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      disabled={disabled}
-    >
-      <option value="">{placeholder || "Pilih..."}</option>
-      {options.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
-  );
-};
+
 
 /* =========================
    M A I N
@@ -153,7 +128,7 @@ export default function HarvestPage() {
     ).toUpperCase();
 
     if (levelRaw === "ADM" || levelRaw === "MGR" || levelRaw === "AST") {
-      setUserLevel(levelRaw as any);
+      setUserLevel(levelRaw);
     } else {
       setUserLevel("OTHER");
     }

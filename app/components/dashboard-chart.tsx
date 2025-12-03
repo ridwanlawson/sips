@@ -77,7 +77,7 @@ export function SimplePieChart({ data, title }: PieChartProps) {
 
   let currentAngle = -90; // Start from top
 
-  const slices = data.map((item, index) => {
+  const slices = data.map((item) => {
     const percentage = (item.value / total) * 100;
     const angle = (percentage / 100) * 360;
     

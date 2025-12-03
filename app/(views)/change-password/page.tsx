@@ -23,7 +23,6 @@ type UserProfile = {
 };
 
 export default function ChangePasswordPage() {
-  const router = useRouter();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -44,8 +43,8 @@ export default function ChangePasswordPage() {
           // Handle potential nested data structure variations
           setProfile(json.data.data || json.data); 
         }
-      } catch (err) {
-        console.error("Failed to fetch profile", err);
+      } catch {
+        console.error("Failed to fetch profile");
       } finally {
         setProfileLoading(false);
       }
@@ -93,7 +92,7 @@ export default function ChangePasswordPage() {
       } else {
         setError(data.message || "Gagal mengubah password.");
       }
-    } catch (err) {
+    } catch {
       setError("Terjadi kesalahan tidak terduga.");
     } finally {
       setLoading(false);

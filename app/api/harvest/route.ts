@@ -119,9 +119,10 @@ export async function GET(req: NextRequest) {
         }
 
         return NextResponse.json({ ok: true, data: [], message: "OK" });
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : "Internal Server Error";
         return NextResponse.json(
-            { ok: false, error: error.message || "Internal Server Error" },
+            { ok: false, error: msg },
             { status: 500 }
         );
     }
