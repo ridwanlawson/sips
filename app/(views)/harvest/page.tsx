@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import DataTable, { TableColumn } from "react-data-table-component";
 
 /* =========================
@@ -41,8 +41,6 @@ type Filters = Partial<{
   tph: string;
 }>;
 
-type Option = { value: string; label: string };
-
 /* =========================
    U T I L S
 ========================= */
@@ -72,8 +70,6 @@ const readCookie = (name: string) => {
   return m ? decodeURIComponent(m.pop() as string) : null;
 };
 
-
-
 /* =========================
    M A I N
 ========================= */
@@ -94,21 +90,34 @@ export default function HarvestPage() {
     };
   });
 
+  const [q, setQ] = useState("");
   const [showFilters, setShowFilters] = useState(false);
-  const [userLevel, setUserLevel] = useState<"ADM" | "MGR" | "AST" | "OTHER">("OTHER");
+  const [userLevel, setUserLevel] = useState<"ADM" | "MGR" | "AST" | "OTHER">(
+    "OTHER"
+  );
   const [homeFcba, setHomeFcba] = useState<string>("");
   const [homeSection, setHomeSection] = useState<string>("");
 
   // Toast
-  const [alert, setAlert] = useState<{ type: "success" | "error"; msg: string } | null>(null);
-  const showAlert = useCallback((msg: string, type: "success" | "error" = "success") => {
-    setAlert({ msg, type });
-    setTimeout(() => setAlert(null), 4000);
-  }, []);
+  const [alert, setAlert] = useState<{
+    type: "success" | "error";
+    msg: string;
+  } | null>(null);
+  const showAlert = useCallback(
+    (msg: string, type: "success" | "error" = "success") => {
+      setAlert({ msg, type });
+      setTimeout(() => setAlert(null), 4000);
+    },
+    []
+  );
 
   // Initialize User Level & Defaults
   useEffect(() => {
-    const ckHome = readCookie("user_Fcba") || readCookie("user_FCBA") || readCookie("user_fcba") || "";
+    const ckHome =
+      readCookie("user_Fcba") ||
+      readCookie("user_FCBA") ||
+      readCookie("user_fcba") ||
+      "";
     setHomeFcba(ckHome);
 
     const ckSection =
@@ -137,25 +146,33 @@ export default function HarvestPage() {
   // Apply defaults to filters based on level
   useEffect(() => {
     if (userLevel === "MGR") {
-        setFilters(f => ({ ...f, fcba: homeFcba }));
+      setFilters((f) => ({ ...f, fcba: homeFcba }));
     } else if (userLevel === "AST") {
-        setFilters(f => ({ ...f, fcba: homeFcba, afdeling: homeSection }));
+      setFilters((f) => ({ ...f, fcba: homeFcba, afdeling: homeSection }));
     }
   }, [userLevel, homeFcba, homeSection]);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (overrideFilters?: Filters) => {
     setLoading(true);
     try {
+      const currentFilters = overrideFilters || filters;
       const p = new URLSearchParams();
-      if (filters.tanggal) p.set("tanggal", filters.tanggal);
-      if (filters.tanggal_end) p.set("tanggal_end", filters.tanggal_end);
-      if (filters.nodokumen) p.set("nodokumen", filters.nodokumen);
-      if (filters.kode_karyawan) p.set("kode_karyawan", filters.kode_karyawan);
-      if (filters.fcba) p.set("fcba", filters.fcba);
-      if (filters.afdeling) p.set("afdeling", filters.afdeling);
-      if (filters.tph) p.set("tph", filters.tph);
+      if (currentFilters.tanggal) p.set("tanggal", currentFilters.tanggal!);
+      if (currentFilters.tanggal_end) p.set("tanggal_end", currentFilters.tanggal_end!);
+      if (currentFilters.nodokumen) p.set("nodokumen", currentFilters.nodokumen!);
+      if (currentFilters.kode_karyawan) p.set("kode_karyawan", currentFilters.kode_karyawan!);
+      if (currentFilters.fcba) p.set("fcba", currentFilters.fcba!);
+      if (currentFilters.afdeling) p.set("afdeling", currentFilters.afdeling!);
+      if (currentFilters.tph) p.set("tph", currentFilters.tph!);
 
       const res = await fetch(`/api/harvest?${p.toString()}`);
+
+      if (res.status === 404) {
+        setItems([]);
+        setLoading(false);
+        return;
+      }
+
       const json = await res.json();
       if (json.ok) {
         setItems(json.data || []);
@@ -174,7 +191,39 @@ export default function HarvestPage() {
     fetchData();
   }, [fetchData]);
 
-  const columns: TableColumn<Harvest>[] = [
+  /* ===== Quick search lokal ===== */
+  const filtered = useMemo(() => {
+    let res = items;
+    if (q.trim()) {
+      const s = q.toLowerCase();
+      res = items.filter((it) =>
+        [
+          it.nodokumen,
+          it.kode_karyawan,
+          it.nama_karyawan,
+          it.fcba,
+          it.afdeling,
+          it.tph,
+          it.fieldcode,
+          it.status_harvesting,
+          it.card_id,
+          it.id_device,
+        ]
+          .filter(Boolean)
+          .some((v) => String(v).toLowerCase().includes(s))
+      );
+    }
+    // Add index
+    return res.map((item, index) => ({ ...item, _index: index + 1 }));
+  }, [q, items]);
+
+  const columns: TableColumn<Harvest & { _index: number }>[] = [
+    {
+      name: "No",
+      selector: (row) => row._index,
+      width: "60px",
+      sortable: true,
+    },
     {
       name: "No Dokumen",
       selector: (row) => row.nodokumen,
@@ -219,11 +268,73 @@ export default function HarvestPage() {
       width: "100px",
     },
     {
+      name: "Field Code",
+      selector: (row) => row.fieldcode,
+      sortable: true,
+      width: "120px",
+    },
+    {
       name: "Output",
       selector: (row) => row.output,
       sortable: true,
-      right: true,
+      style: { justifyContent: "end" },
       width: "100px",
+    },
+    {
+      name: "Mentah",
+      selector: (row) => row.mentah,
+      sortable: true,
+      style: { justifyContent: "end" },
+      width: "100px",
+    },
+    {
+      name: "Overripe",
+      selector: (row) => row.overripe,
+      sortable: true,
+      style: { justifyContent: "end" },
+      width: "100px",
+    },
+    {
+      name: "Busuk",
+      selector: (row) => row.busuk,
+      sortable: true,
+      style: { justifyContent: "end" },
+      width: "100px",
+    },
+    {
+      name: "Busuk 2",
+      selector: (row) => row.busuk2,
+      sortable: true,
+      style: { justifyContent: "end" },
+      width: "100px",
+    },
+    {
+      name: "Buah Kecil",
+      selector: (row) => row.buahkecil,
+      sortable: true,
+      style: { justifyContent: "end" },
+      width: "100px",
+    },
+    {
+      name: "Brondol",
+      selector: (row) => row.brondol,
+      sortable: true,
+      style: { justifyContent: "end" },
+      width: "100px",
+    },
+    {
+      name: "Alas Brondol",
+      selector: (row) => row.alasbrondol,
+      sortable: true,
+      style: { justifyContent: "end" },
+      width: "120px",
+    },
+    {
+      name: "Tangkai Pjg",
+      selector: (row) => row.tangkai_panjang,
+      sortable: true,
+      style: { justifyContent: "end" },
+      width: "120px",
     },
     {
       name: "Status",
@@ -231,214 +342,213 @@ export default function HarvestPage() {
       sortable: true,
       width: "120px",
       cell: (row) => (
-        <span className={`badge ${row.status_harvesting === 'Planned' ? 'badge-info' : 'badge-ghost'}`}>
+        <span
+          className={`badge ${
+            row.status_harvesting === "Planned" ? "badge-info" : "badge-ghost"
+          }`}
+        >
           {row.status_harvesting}
         </span>
       ),
     },
+    {
+      name: "Card ID",
+      selector: (row) => row.card_id,
+      sortable: true,
+      width: "150px",
+    },
+    {
+      name: "Device ID",
+      selector: (row) => row.id_device,
+      sortable: true,
+      width: "200px",
+    },
   ];
 
-  // Expanded component for details
-  const ExpandedComponent = ({ data }: { data: Harvest }) => (
-    <div className="p-4 bg-base-200 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-      <div>
-        <div className="font-bold opacity-70">Field Code</div>
-        <div>{data.fieldcode}</div>
-      </div>
-      <div>
-        <div className="font-bold opacity-70">Mentah</div>
-        <div>{data.mentah}</div>
-      </div>
-      <div>
-        <div className="font-bold opacity-70">Overripe</div>
-        <div>{data.overripe}</div>
-      </div>
-      <div>
-        <div className="font-bold opacity-70">Busuk</div>
-        <div>{data.busuk}</div>
-      </div>
-      <div>
-        <div className="font-bold opacity-70">Busuk 2</div>
-        <div>{data.busuk2}</div>
-      </div>
-      <div>
-        <div className="font-bold opacity-70">Buah Kecil</div>
-        <div>{data.buahkecil}</div>
-      </div>
-      <div>
-        <div className="font-bold opacity-70">Brondol</div>
-        <div>{data.brondol}</div>
-      </div>
-      <div>
-        <div className="font-bold opacity-70">Alas Brondol</div>
-        <div>{data.alasbrondol}</div>
-      </div>
-      <div>
-        <div className="font-bold opacity-70">Tangkai Panjang</div>
-        <div>{data.tangkai_panjang}</div>
-      </div>
-      <div>
-        <div className="font-bold opacity-70">Card ID</div>
-        <div>{data.card_id}</div>
-      </div>
-      <div>
-        <div className="font-bold opacity-70">Device ID</div>
-        <div>{data.id_device}</div>
-      </div>
-    </div>
-  );
-
   return (
-    <div className="p-4 min-h-screen bg-base-100 text-base-content">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Data Panen</h1>
-          <p className="text-sm opacity-60">List data hasil panen harian</p>
-        </div>
-        <div className="flex gap-2">
-            <button
-            className="btn btn-sm btn-outline"
-            onClick={() => setShowFilters(!showFilters)}
+    <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
+      <div className="p-4 sm:p-6 max-w-screen-2xl mx-auto w-full overflow-x-hidden">
+        {/* Toast */}
+        <div className="toast toast-top right-4 z-50">
+          {alert && (
+            <div
+              className={`alert ${
+                alert.type === "success" ? "alert-success" : "alert-error"
+              }`}
             >
-            Filter {showFilters ? "▲" : "▼"}
+              <div>
+                <span className="font-semibold">
+                  {alert.type === "success" ? "Berhasil" : "Gagal"}
+                </span>
+                <span className="ml-2 whitespace-pre-line">{alert.msg}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Header */}
+        <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start">
+          <h1
+            className="text-2xl sm:text-3xl font-bold min-w-0 truncate"
+            title="Halaman pengelolaan Harvest (Panen)"
+          >
+            Harvesting (Panen)
+          </h1>
+          <div className="flex justify-start sm:justify-end gap-2 flex-wrap w-full">
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={() => setShowFilters((s) => !s)}
+              title="Tampilkan / sembunyikan filter lanjutan"
+            >
+              {showFilters ? "Sembunyikan Filter" : "Tampilkan Filter"}
             </button>
-            <button className="btn btn-sm btn-primary" onClick={fetchData} disabled={loading}>
-                {loading ? "Loading..." : "Refresh"}
+            <button
+              className="btn btn-sm"
+              onClick={() => fetchData()}
+              title="Refresh data panen"
+              disabled={loading}
+            >
+              {loading ? "Loading..." : "Refresh"}
             </button>
-        </div>
-      </div>
-
-      {/* Alert */}
-      {alert && (
-        <div
-          role="alert"
-          className={`alert ${
-            alert.type === "success" ? "alert-success" : "alert-error"
-          } mb-4`}
-        >
-          <span>{alert.msg}</span>
-        </div>
-      )}
-
-      {/* Filters */}
-      {showFilters && (
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6 p-4 bg-base-200 rounded-xl">
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">Tanggal Awal</span>
-            </label>
-            <input
-              type="date"
-              className="input input-bordered"
-              value={filters.tanggal}
-              onChange={(e) =>
-                setFilters((s) => ({ ...s, tanggal: e.target.value }))
-              }
-            />
-          </div>
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">Tanggal Akhir</span>
-            </label>
-            <input
-              type="date"
-              className="input input-bordered"
-              value={filters.tanggal_end}
-              onChange={(e) =>
-                setFilters((s) => ({ ...s, tanggal_end: e.target.value }))
-              }
-            />
-          </div>
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">No Dokumen</span>
-            </label>
-            <input
-              type="text"
-              className="input input-bordered"
-              placeholder="Cari No Dokumen..."
-              value={filters.nodokumen}
-              onChange={(e) =>
-                setFilters((s) => ({ ...s, nodokumen: e.target.value }))
-              }
-            />
-          </div>
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">Kode Karyawan</span>
-            </label>
-            <input
-              type="text"
-              className="input input-bordered"
-              placeholder="Cari Kode Karyawan..."
-              value={filters.kode_karyawan}
-              onChange={(e) =>
-                setFilters((s) => ({ ...s, kode_karyawan: e.target.value }))
-              }
-            />
-          </div>
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">FCBA</span>
-            </label>
-            <input
-              type="text"
-              className="input input-bordered"
-              placeholder="FCBA..."
-              value={filters.fcba}
-              disabled={userLevel === "MGR" || userLevel === "AST"}
-              onChange={(e) =>
-                setFilters((s) => ({ ...s, fcba: e.target.value }))
-              }
-            />
-          </div>
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">Afdeling</span>
-            </label>
-            <input
-              type="text"
-              className="input input-bordered"
-              placeholder="Afdeling..."
-              value={filters.afdeling}
-              disabled={userLevel === "AST"}
-              onChange={(e) =>
-                setFilters((s) => ({ ...s, afdeling: e.target.value }))
-              }
-            />
-          </div>
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">TPH</span>
-            </label>
-            <input
-              type="text"
-              className="input input-bordered"
-              placeholder="TPH..."
-              value={filters.tph}
-              onChange={(e) =>
-                setFilters((s) => ({ ...s, tph: e.target.value }))
-              }
-            />
           </div>
         </div>
-      )}
 
-      {/* Table */}
-      <div className="card bg-base-100 shadow-xl border border-base-300">
-        <div className="card-body p-0">
-          <DataTable
-            columns={columns}
-            data={items}
-            progressPending={loading}
-            pagination
-            expandableRows
-            expandableRowsComponent={ExpandedComponent}
-            highlightOnHover
-            pointerOnHover
-            responsive
+        {/* Quick Search */}
+        <div className="mb-3 flex justify-end gap-2">
+          <input
+            className="input input-bordered w-full md:w-96"
+            placeholder="Cari apapun (No Dokumen, Karyawan, FCBA, TPH...)"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            title="Pencarian cepat di semua kolom penting"
           />
+        </div>
+
+        {/* Filters */}
+        {showFilters && (
+          <div className="bg-base-100 p-4 rounded-xl shadow-sm mb-4 border border-base-200">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              <input
+                type="date"
+                className="input input-bordered w-full"
+                placeholder="Tanggal Awal"
+                value={filters.tanggal}
+                onChange={(e) =>
+                  setFilters((s) => ({ ...s, tanggal: e.target.value }))
+                }
+                title="Filter tanggal awal"
+              />
+              <input
+                type="date"
+                className="input input-bordered w-full"
+                placeholder="Tanggal Akhir"
+                value={filters.tanggal_end}
+                onChange={(e) =>
+                  setFilters((s) => ({ ...s, tanggal_end: e.target.value }))
+                }
+                title="Filter tanggal akhir"
+              />
+              <input
+                type="text"
+                className="input input-bordered w-full"
+                placeholder="No Dokumen"
+                value={filters.nodokumen}
+                onChange={(e) =>
+                  setFilters((s) => ({ ...s, nodokumen: e.target.value }))
+                }
+              />
+              <input
+                type="text"
+                className="input input-bordered w-full"
+                placeholder="Kode Karyawan"
+                value={filters.kode_karyawan}
+                onChange={(e) =>
+                  setFilters((s) => ({ ...s, kode_karyawan: e.target.value }))
+                }
+              />
+              <input
+                type="text"
+                className="input input-bordered w-full"
+                placeholder="FCBA"
+                value={filters.fcba}
+                disabled={userLevel === "MGR" || userLevel === "AST"}
+                onChange={(e) =>
+                  setFilters((s) => ({ ...s, fcba: e.target.value }))
+                }
+              />
+              <input
+                type="text"
+                className="input input-bordered w-full"
+                placeholder="Afdeling"
+                value={filters.afdeling}
+                disabled={userLevel === "AST"}
+                onChange={(e) =>
+                  setFilters((s) => ({ ...s, afdeling: e.target.value }))
+                }
+              />
+              <input
+                type="text"
+                className="input input-bordered w-full"
+                placeholder="TPH"
+                value={filters.tph}
+                onChange={(e) =>
+                  setFilters((s) => ({ ...s, tph: e.target.value }))
+                }
+              />
+            </div>
+            
+            <div className="flex justify-start gap-2 pt-3 border-t border-base-200">
+              <button
+                className="btn btn-outline"
+                onClick={() => fetchData()}
+                title="Terapkan filter"
+              >
+                Terapkan Filter
+              </button>
+              <button
+                className="btn"
+                onClick={() => {
+                  const resetFilters = {
+                    tanggal: "",
+                    tanggal_end: "",
+                    nodokumen: "",
+                    kode_karyawan: "",
+                    fcba: "",
+                    afdeling: "",
+                    tph: "",
+                  };
+                  setFilters(resetFilters);
+                  fetchData(resetFilters);
+                }}
+                title="Reset semua filter"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Table */}
+        <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100">
+          <div className="min-w-[900px] md:min-w-0">
+            <DataTable
+              columns={columns}
+              data={filtered}
+              progressPending={loading}
+              pagination
+              paginationPerPage={10}
+              paginationRowsPerPageOptions={[10, 30, 100, 500]}
+              highlightOnHover
+              pointerOnHover
+              fixedHeader
+              fixedHeaderScrollHeight="520px"
+              persistTableHead
+              responsive
+              noDataComponent={
+                <div className="py-8 text-base-content/70">Tidak ada data.</div>
+              }
+            />
+          </div>
         </div>
       </div>
     </div>
