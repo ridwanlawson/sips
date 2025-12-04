@@ -44,6 +44,44 @@ interface DashboardStats {
   totalAlpa: number;
 }
 
+interface HarvestingRecord {
+  id?: string;
+  nodokumen?: string;
+  tanggal?: string;
+  kode_karyawan?: string;
+  nama_karyawan?: string;
+  output?: string | number;
+  status_harvesting?: string;
+  fcba?: string;
+  afdeling?: string;
+}
+
+interface PengangkutanRecord {
+  id?: string;
+  nopengangkutan?: string;
+  tanggal?: string;
+  status_pengangkutan?: string;
+  driver?: string;
+  type_pengangkutan?: string;
+  fcba?: string;
+  afdeling?: string;
+}
+
+interface HarvestingStats {
+  total: number;
+  totalOutput: number;
+  approved: number;
+  planned: number;
+}
+
+interface PengangkutanStats {
+  total: number;
+  approved: number;
+  planned: number;
+  completed: number;
+  totalOutput?: number;
+}
+
 type Timeframe = "daily" | "weekly" | "monthly" | "yearly";
 
 interface DailyGroupKey {
@@ -54,6 +92,7 @@ interface DailyGroupKey {
 
 interface DailySummary extends DailyGroupKey {
   hadir: number;
+  tepatWaktu: number;
   telat: number;
   pulangAwal: number;
   alpa: number;
@@ -64,6 +103,7 @@ interface MonthlySummary {
   month: number;
   monthName: string;
   hadir: number;
+  tepatWaktu: number;
   telat: number;
   pulangAwal: number;
   alpa: number;
@@ -72,6 +112,7 @@ interface MonthlySummary {
 interface YearlySummary {
   year: number;
   hadir: number;
+  tepatWaktu: number;
   telat: number;
   pulangAwal: number;
   alpa: number;
@@ -170,7 +211,13 @@ const formatYearID = (year: number): string => {
 // Klasifikasi berdasarkan KODE + total_late_time + go_home_early
 // HADIR = semua kode kecuali MK dan P1 (tidak peduli telat/pulang awal)
 // TEPAT_WAKTU = hadir tanpa telat dan tanpa pulang awal
-type ClassifiedStatus = "HADIR" | "TEPAT_WAKTU" | "TELAT" | "PULANG_AWAL" | "ALPHA" | "OTHER";
+type ClassifiedStatus =
+  | "HADIR"
+  | "TEPAT_WAKTU"
+  | "TELAT"
+  | "PULANG_AWAL"
+  | "ALPHA"
+  | "OTHER";
 
 const isNonZeroTime = (raw?: string | null): boolean => {
   if (!raw) return false;
@@ -377,6 +424,25 @@ export default function UserDashboard() {
   // RAW dari API (tanpa filter tanggal)
   const [attendanceRaw, setAttendanceRaw] = useState<AttendanceRecord[]>([]);
 
+  // Pengangkutan dan Harvesting
+  const [harvestingStats, setHarvestingStats] = useState<HarvestingStats>({
+    total: 0,
+    totalOutput: 0,
+    approved: 0,
+    planned: 0,
+  });
+  const [pengangkutanStats, setPengangkutanStats] = useState<PengangkutanStats>(
+    {
+      total: 0,
+      approved: 0,
+      planned: 0,
+      completed: 0,
+      totalOutput: 0,
+    }
+  );
+  const [loadingHarvesting, setLoadingHarvesting] = useState(false);
+  const [loadingPengangkutan, setLoadingPengangkutan] = useState(false);
+
   const [timeframe, setTimeframe] = useState<Timeframe>("monthly");
 
   const [loading, setLoading] = useState(false);
@@ -397,6 +463,14 @@ export default function UserDashboard() {
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // combine userProfile fields into a single stable dependency key
+  const userProfileKey = useMemo(() => {
+    return `${userProfile?.fcba || ""}|${userProfile?.afdeling || ""}|${
+      userProfile?.section || ""
+    }`;
+    // we intentionally depend on the individual fields below to recompute when any changes
+  }, [userProfile?.fcba, userProfile?.afdeling, userProfile?.section]);
 
   /* ===== Bootstrap user dari cookies + /api/user/profile ===== */
   useEffect(() => {
@@ -541,11 +615,15 @@ export default function UserDashboard() {
   }, [triplets, userLevel]);
 
   const afdelingOptions: Option[] = useMemo(() => {
+    // Always include an option to select all afdeling (empty value means no afdeling filter)
     if (!filterFcba || filterFcba === "ALL") {
       const uniq = Array.from(
         new Set(triplets.map((t) => t.sectionname).filter(Boolean))
       ).sort();
-      return uniq.map((v) => ({ value: v, label: v }));
+      return [
+        { value: "", label: "Semua Afdeling" },
+        ...uniq.map((v) => ({ value: v, label: v })),
+      ];
     }
     const uniq = Array.from(
       new Set(
@@ -555,7 +633,10 @@ export default function UserDashboard() {
           .filter(Boolean)
       )
     ).sort();
-    return uniq.map((v) => ({ value: v, label: v }));
+    return [
+      { value: "", label: "Semua Afdeling" },
+      ...uniq.map((v) => ({ value: v, label: v })),
+    ];
   }, [triplets, filterFcba]);
 
   /* ===== Fetch Attendance (TANPA filter tanggal) ===== */
@@ -640,6 +721,223 @@ export default function UserDashboard() {
     filterFcba,
     filterAfdeling,
     userLevel,
+    userProfileKey,
+    userProfile?.fcba,
+    userProfile?.afdeling,
+    userProfile?.section,
+  ]);
+
+  /* ===== Fetch Harvesting Data (sesuai filter & timeframe) ===== */
+  useEffect(() => {
+    const fetchHarvesting = async () => {
+      try {
+        setLoadingHarvesting(true);
+        const { from, to } = getDateRange(timeframe);
+        const p = new URLSearchParams();
+        p.set("tanggal", from);
+        p.set("tanggal_end", to);
+
+        const homeFcba =
+          userProfile?.fcba ||
+          readCookie("user_Fcba") ||
+          readCookie("user_FCBA") ||
+          readCookie("user_fcba") ||
+          "";
+        const homeAfdeling =
+          userProfile?.afdeling ||
+          userProfile?.section ||
+          readCookie("user_Section") ||
+          readCookie("user_SECTION") ||
+          readCookie("user_section") ||
+          readCookie("user_Afdeling") ||
+          readCookie("user_afdeling") ||
+          "";
+
+        if (userLevel === "ADM") {
+          if (filterFcba && filterFcba !== "ALL") {
+            p.set("fcba", filterFcba.trim());
+          }
+          if (filterAfdeling.trim()) {
+            p.set("afdeling", filterAfdeling.trim());
+          }
+        } else if (userLevel === "MGR") {
+          if (homeFcba) p.set("fcba", homeFcba.trim());
+          if (filterAfdeling.trim()) {
+            p.set("afdeling", filterAfdeling.trim());
+          }
+        } else if (userLevel === "AST") {
+          if (homeFcba) p.set("fcba", homeFcba.trim());
+          if (homeAfdeling) p.set("afdeling", homeAfdeling.trim());
+        }
+
+        const res = await fetch(`/api/harvest?${p.toString()}`, {
+          credentials: "include",
+        });
+
+        if (res.status === 404 || !res.ok) {
+          setHarvestingStats({
+            total: 0,
+            totalOutput: 0,
+            approved: 0,
+            planned: 0,
+          });
+          return;
+        }
+
+        const json: unknown = await res.json();
+        const rows = Array.isArray(json)
+          ? (json as HarvestingRecord[])
+          : json && typeof json === "object" && "data" in json
+          ? Array.isArray((json as Record<string, unknown>).data)
+            ? ((json as Record<string, unknown>).data as HarvestingRecord[])
+            : []
+          : [];
+
+        // Calculate stats
+        const stats: HarvestingStats = {
+          total: rows.length,
+          totalOutput: rows.reduce(
+            (sum, r) => sum + (parseInt(String(r.output || 0)) || 0),
+            0
+          ),
+          approved: rows.filter((r) => r.status_harvesting === "Approved")
+            .length,
+          planned: rows.filter((r) => r.status_harvesting === "Planned").length,
+        };
+        setHarvestingStats(stats);
+      } catch (e) {
+        console.error("Error fetching harvesting data:", e);
+      } finally {
+        setLoadingHarvesting(false);
+      }
+    };
+
+    fetchHarvesting();
+  }, [
+    timeframe,
+    filterFcba,
+    filterAfdeling,
+    userLevel,
+    userProfileKey,
+    userProfile?.fcba,
+    userProfile?.afdeling,
+    userProfile?.section,
+  ]);
+
+  /* ===== Fetch Pengangkutan Data (sesuai filter & timeframe) ===== */
+  useEffect(() => {
+    const fetchPengangkutan = async () => {
+      try {
+        setLoadingPengangkutan(true);
+        const { from, to } = getDateRange(timeframe);
+        const p = new URLSearchParams();
+        p.set("tanggal", from);
+        p.set("tanggal_end", to);
+
+        const homeFcba =
+          userProfile?.fcba ||
+          readCookie("user_Fcba") ||
+          readCookie("user_FCBA") ||
+          readCookie("user_fcba") ||
+          "";
+        const homeAfdeling =
+          userProfile?.afdeling ||
+          userProfile?.section ||
+          readCookie("user_Section") ||
+          readCookie("user_SECTION") ||
+          readCookie("user_section") ||
+          readCookie("user_Afdeling") ||
+          readCookie("user_afdeling") ||
+          "";
+
+        if (userLevel === "ADM") {
+          if (filterFcba && filterFcba !== "ALL") {
+            p.set("fcba", filterFcba.trim());
+          }
+          if (filterAfdeling.trim()) {
+            p.set("afdeling", filterAfdeling.trim());
+          }
+        } else if (userLevel === "MGR") {
+          if (homeFcba) p.set("fcba", homeFcba.trim());
+          if (filterAfdeling.trim()) {
+            p.set("afdeling", filterAfdeling.trim());
+          }
+        } else if (userLevel === "AST") {
+          if (homeFcba) p.set("fcba", homeFcba.trim());
+          if (homeAfdeling) p.set("afdeling", homeAfdeling.trim());
+        }
+
+        const res = await fetch(`/api/pengangkutans?${p.toString()}`, {
+          credentials: "include",
+        });
+
+        if (res.status === 404 || !res.ok) {
+          setPengangkutanStats({
+            total: 0,
+            approved: 0,
+            planned: 0,
+            completed: 0,
+          });
+          return;
+        }
+
+        const json: unknown = await res.json();
+        const rows = Array.isArray(json)
+          ? (json as PengangkutanRecord[])
+          : json && typeof json === "object" && "data" in json
+          ? Array.isArray((json as Record<string, unknown>).data)
+            ? ((json as Record<string, unknown>).data as PengangkutanRecord[])
+            : []
+          : [];
+
+        // Try to derive a JJG / totalOutput from common numeric fields if present
+        const totalOutput = rows.reduce((sum, r) => {
+          const rowObj = r as Record<string, unknown>;
+          const candidates = [
+            rowObj["output"],
+            rowObj["jjg"],
+            rowObj["jumlah"],
+            rowObj["quantity"],
+            rowObj["tonase"],
+            rowObj["berat"],
+          ];
+          for (const c of candidates) {
+            if (c === null || c === undefined || c === "") continue;
+            const s = String(c).replace(/[^0-9-]/g, "");
+            const n = parseInt(s, 10);
+            if (!Number.isNaN(n)) {
+              return sum + n;
+            }
+          }
+          return sum;
+        }, 0);
+
+        // Calculate stats
+        const stats: PengangkutanStats = {
+          total: rows.length,
+          approved: rows.filter((r) => r.status_pengangkutan === "Approved")
+            .length,
+          planned: rows.filter((r) => r.status_pengangkutan === "Planned")
+            .length,
+          completed: rows.filter((r) => r.status_pengangkutan === "Completed")
+            .length,
+          totalOutput: totalOutput,
+        };
+        setPengangkutanStats(stats);
+      } catch (e) {
+        console.error("Error fetching pengangkutan data:", e);
+      } finally {
+        setLoadingPengangkutan(false);
+      }
+    };
+
+    fetchPengangkutan();
+  }, [
+    timeframe,
+    filterFcba,
+    filterAfdeling,
+    userLevel,
+    userProfileKey,
     userProfile?.fcba,
     userProfile?.afdeling,
     userProfile?.section,
@@ -681,7 +979,13 @@ export default function UserDashboard() {
       }
     }
 
-    return { totalHadir, totalTepatWaktu, totalTelat, totalPulangAwal, totalAlpa };
+    return {
+      totalHadir,
+      totalTepatWaktu,
+      totalTelat,
+      totalPulangAwal,
+      totalAlpa,
+    };
   }, [filteredAttendance]);
 
   /* ===== Aggregasi berdasarkan Timeframe ===== */
@@ -720,6 +1024,7 @@ export default function UserDashboard() {
         summary = {
           ...keyObj,
           hadir: 0,
+          tepatWaktu: 0,
           telat: 0,
           pulangAwal: 0,
           alpa: 0,
@@ -727,8 +1032,11 @@ export default function UserDashboard() {
         map.set(key, summary);
       }
 
+      if (!summary) continue;
+
       const cls = classifyStatus(r);
       if (cls === "TEPAT_WAKTU") {
+        summary.tepatWaktu += 1;
         summary.hadir += 1; // Tepat waktu = hadir
       } else if (cls === "TELAT") {
         summary.telat += 1;
@@ -767,6 +1075,7 @@ export default function UserDashboard() {
           month,
           monthName: formatMonthID(year, month),
           hadir: 0,
+          tepatWaktu: 0,
           telat: 0,
           pulangAwal: 0,
           alpa: 0,
@@ -774,8 +1083,10 @@ export default function UserDashboard() {
         map.set(monthKey, summary);
       }
 
+      if (!summary) continue;
       const cls = classifyStatus(r);
       if (cls === "TEPAT_WAKTU") {
+        summary.tepatWaktu += 1;
         summary.hadir += 1;
       } else if (cls === "TELAT") {
         summary.telat += 1;
@@ -814,15 +1125,17 @@ export default function UserDashboard() {
         summary = {
           year,
           hadir: 0,
+          tepatWaktu: 0,
           telat: 0,
           pulangAwal: 0,
           alpa: 0,
         };
         map.set(year, summary);
       }
-
+      if (!summary) continue;
       const cls = classifyStatus(r);
       if (cls === "TEPAT_WAKTU") {
+        summary.tepatWaktu += 1;
         summary.hadir += 1;
       } else if (cls === "TELAT") {
         summary.telat += 1;
@@ -871,8 +1184,8 @@ export default function UserDashboard() {
     () => [
       { label: "Tepat Waktu", value: stats.totalTepatWaktu, color: "#10b981" },
       { label: "Telat", value: stats.totalTelat, color: "#f59e0b" },
-      { label: "Pulang Awal", value: stats.totalPulangAwal, color: "#3b82f6" },
-      { label: "Alpha", value: stats.totalAlpa, color: "#ef4444" },
+      { label: "Pulang Awal", value: stats.totalPulangAwal, color: "#ef4444" },
+      { label: "Alpha", value: stats.totalAlpa, color: "#000000" },
     ],
     [stats]
   );
@@ -886,6 +1199,7 @@ export default function UserDashboard() {
         .map((d) => ({
           label: formatDateID(d.date),
           hadir: d.hadir,
+          tepatWaktu: d.tepatWaktu,
           telat: d.telat,
           pulangAwal: d.pulangAwal,
           alpa: d.alpa,
@@ -897,6 +1211,7 @@ export default function UserDashboard() {
         .map((m) => ({
           label: m.monthName,
           hadir: m.hadir,
+          tepatWaktu: m.tepatWaktu,
           telat: m.telat,
           pulangAwal: m.pulangAwal,
           alpa: m.alpa,
@@ -908,6 +1223,7 @@ export default function UserDashboard() {
         .map((y) => ({
           label: formatYearID(y.year),
           hadir: y.hadir,
+          tepatWaktu: y.tepatWaktu,
           telat: y.telat,
           pulangAwal: y.pulangAwal,
           alpa: y.alpa,
@@ -916,14 +1232,18 @@ export default function UserDashboard() {
     return [];
   }, [timeframe, dailySummaries, monthlySummaries, yearlySummaries]);
 
+  // grandTotal is the sum of mutually-exclusive categories: TepatWaktu, Telat, PulangAwal, Alpa
   const grandTotal =
-    stats.totalHadir +
+    stats.totalTepatWaktu +
     stats.totalTelat +
     stats.totalPulangAwal +
     stats.totalAlpa;
 
   const pctHadir = grandTotal
     ? Math.round((stats.totalHadir / grandTotal) * 100)
+    : 0;
+  const pctTepatWaktu = grandTotal
+    ? Math.round((stats.totalTepatWaktu / grandTotal) * 100)
     : 0;
   const pctTelat = grandTotal
     ? Math.round((stats.totalTelat / grandTotal) * 100)
@@ -993,28 +1313,28 @@ export default function UserDashboard() {
     return (
       <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
         <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
-        <div className="animate-slideUp flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="h-8 bg-base-300 rounded w-64 animate-pulse mb-2" />
-            <div className="space-y-2">
-              <div className="h-6 bg-base-300 rounded w-48 animate-pulse" />
+          <div className="animate-slideUp flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="h-8 bg-base-300 rounded w-64 animate-pulse mb-2" />
+              <div className="space-y-2">
+                <div className="h-6 bg-base-300 rounded w-48 animate-pulse" />
+              </div>
             </div>
           </div>
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="card bg-base-100 shadow-md border border-base-300 animate-slideUp">
-            <div className="card-body">
-              <div className="h-6 bg-base-300 rounded w-48 animate-pulse mb-4" />
-              <div className="h-64 bg-base-300 rounded animate-pulse" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="card bg-base-100 shadow-md border border-base-300 animate-slideUp">
+              <div className="card-body">
+                <div className="h-6 bg-base-300 rounded w-48 animate-pulse mb-4" />
+                <div className="h-64 bg-base-300 rounded animate-pulse" />
+              </div>
+            </div>
+            <div className="card bg-base-100 shadow-md border border-base-300 animate-slideUp">
+              <div className="card-body">
+                <div className="h-6 bg-base-300 rounded w-48 animate-pulse mb-4" />
+                <div className="h-64 bg-base-300 rounded animate-pulse" />
+              </div>
             </div>
           </div>
-          <div className="card bg-base-100 shadow-md border border-base-300 animate-slideUp">
-            <div className="card-body">
-              <div className="h-6 bg-base-300 rounded w-48 animate-pulse mb-4" />
-              <div className="h-64 bg-base-300 rounded animate-pulse" />
-            </div>
-          </div>
-        </div>
         </div>
       </div>
     );
@@ -1023,497 +1343,616 @@ export default function UserDashboard() {
   return (
     <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
       <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="animate-slideUp flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-bold">
-            {loading && !userProfile ? (
-              <span className="h-8 bg-base-300 rounded w-64 inline-block animate-pulse" />
-            ) : (
-              <>Selamat Datang, {displayName}!</>
-            )}
-          </h1>
-          <div className="mt-2 text-sm text-base-content/70 space-y-1">
-            <div className="flex flex-wrap gap-2 items-center">
-              <span className="badge badge-primary badge-lg">
-                Level : {displayLevel}
-              </span>
-              <span className="badge badge-outline badge-lg">
-                FCBA :<span className="ml-1">{displayFcba}</span>
-              </span>
-              <span className="badge badge-outline badge-lg">
-                Afdeling :<span className="ml-1">{displayAfdeling}</span>
-              </span>
-              <span className="badge badge-outline badge-lg">
-                Gang :<span className="ml-1">{displayGang}</span>
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Timeframe Selector */}
-        <div className="flex flex-wrap gap-2 items-center">
-          <span className="text-xs uppercase tracking-wide text-base-content/60">
-            Periode Data:
-          </span>
-          {(["daily", "weekly", "monthly", "yearly"] as Timeframe[]).map(
-            (tf) => (
-              <button
-                key={tf}
-                type="button"
-                className={`btn btn-xs md:btn-sm ${
-                  timeframe === tf
-                    ? "btn-primary"
-                    : "btn-ghost border border-base-300"
-                }`}
-                onClick={() => setTimeframe(tf)}
-              >
-                {timeframeLabel(tf)}
-              </button>
-            )
-          )}
-        </div>
-      </div>
-
-      {/* Error */}
-      {error && (
-        <div className="alert alert-error animate-slideUp">
-          <span>{error}</span>
-        </div>
-      )}
-
-      {/* FILTER BAR */}
-      <div className="card bg-base-100 shadow-sm border border-base-300 animate-slideUp">
-        <div className="card-body py-3">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="card-title text-sm md:text-base">
-              🎯 Filter Data
-              <span className="text-xs font-normal text-base-content/60">
-                {" "}
-                (sesuai level & periode)
-              </span>
-            </h2>
-            <button
-              type="button"
-              className="btn btn-xs md:btn-sm btn-ghost"
-              onClick={() => setShowFilters((s) => !s)}
-            >
-              {showFilters ? "Sembunyikan Filter" : "Tampilkan Filter"}
-            </button>
-          </div>
-
-          {showFilters && (
-            <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
-              {userLevel === "ADM" && (
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold">FCBA</label>
-                  <SearchSelect
-                    options={fcbaOptions}
-                    value={filterFcba}
-                    onChange={(v) => {
-                      setFilterFcba(v);
-                      setFilterAfdeling("");
-                    }}
-                    placeholder="Pilih FCBA / ALL"
-                    small
-                  />
-                </div>
+        {/* Header */}
+        <div className="animate-slideUp flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold">
+              {loading && !userProfile ? (
+                <span className="h-8 bg-base-300 rounded w-64 inline-block animate-pulse" />
+              ) : (
+                <>Selamat Datang, {displayName}!</>
               )}
-
-              {(userLevel === "ADM" || userLevel === "MGR") && (
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold">Afdeling</label>
-                  <SearchSelect
-                    options={afdelingOptions}
-                    value={filterAfdeling}
-                    onChange={(v) => setFilterAfdeling(v)}
-                    placeholder="Pilih Afdeling (opsional)"
-                    small
-                    disabled={afdelingOptions.length === 0}
-                  />
-                </div>
-              )}
-
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold">Keterangan</label>
-                <p className="text-xs text-base-content/60">
-                  • <b>HADIR</b> = Semua kode kecuali MK dan P1 <br />
-                  • <b>TEPAT WAKTU</b> = Hadir tanpa telat & tanpa pulang awal <br />
-                  • <b>TELAT</b> = <code>total_late_time</code> lebih dari 0 <br />
-                  • <b>PULANG AWAL</b> = <code>go_home_early</code> lebih dari 0 <br />
-                  • <b>ALPHA</b> = P1 (izin) atau MK (mangkir)
-                </p>
+            </h1>
+            <div className="mt-2 text-sm text-base-content/70 space-y-1">
+              <div className="flex flex-wrap gap-2 items-center">
+                <span className="badge badge-primary badge-lg">
+                  Level : {displayLevel}
+                </span>
+                <span className="badge badge-outline badge-lg">
+                  FCBA :<span className="ml-1">{displayFcba}</span>
+                </span>
+                <span className="badge badge-outline badge-lg">
+                  Afdeling :<span className="ml-1">{displayAfdeling}</span>
+                </span>
+                <span className="badge badge-outline badge-lg">
+                  Gang :<span className="ml-1">{displayGang}</span>
+                </span>
               </div>
             </div>
-          )}
-        </div>
-      </div>
+          </div>
 
-      {/* Statistik Atas: Pie + Bar */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Pie */}
-        <div className="card bg-base-100 shadow-md border border-base-300 animate-slideUp">
-          <div className="card-body">
-            <h2 className="card-title text-sm md:text-lg">
-              🧭 Komposisi TEPAT WAKTU / TELAT / PULANG AWAL / ALPHA (
-              {timeframeLabel(timeframe)})
-            </h2>
-            {loading ? (
-              <div className="h-64 bg-base-300 rounded animate-pulse mt-4" />
-            ) : (
-              <SimplePieChart data={pieChartData} />
+          {/* Timeframe Selector */}
+          <div className="flex flex-wrap gap-2 items-center">
+            <span className="text-xs uppercase tracking-wide text-base-content/60">
+              Periode Data:
+            </span>
+            {(["daily", "weekly", "monthly", "yearly"] as Timeframe[]).map(
+              (tf) => (
+                <button
+                  key={tf}
+                  type="button"
+                  className={`btn btn-xs md:btn-sm ${
+                    timeframe === tf
+                      ? "btn-primary"
+                      : "btn-ghost border border-base-300"
+                  }`}
+                  onClick={() => setTimeframe(tf)}
+                >
+                  {timeframeLabel(tf)}
+                </button>
+              )
             )}
           </div>
         </div>
 
-        {/* Bar */}
+        {/* Error */}
+        {error && (
+          <div className="alert alert-error animate-slideUp">
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* FILTER BAR */}
+        <div className="card bg-base-100 shadow-sm border border-base-300 animate-slideUp">
+          <div className="card-body py-3">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="card-title text-sm md:text-base">
+                🎯 Filter Data
+                <span className="text-xs font-normal text-base-content/60">
+                  {" "}
+                  (sesuai level & periode)
+                </span>
+              </h2>
+              <button
+                type="button"
+                className="btn btn-xs md:btn-sm btn-ghost"
+                onClick={() => setShowFilters((s) => !s)}
+              >
+                {showFilters ? "Sembunyikan Filter" : "Tampilkan Filter"}
+              </button>
+            </div>
+
+            {showFilters && (
+              <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+                {userLevel === "ADM" && (
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold">FCBA</label>
+                    <SearchSelect
+                      options={fcbaOptions}
+                      value={filterFcba}
+                      onChange={(v) => {
+                        setFilterFcba(v);
+                        setFilterAfdeling("");
+                      }}
+                      placeholder="Pilih FCBA / ALL"
+                      small
+                    />
+                  </div>
+                )}
+
+                {(userLevel === "ADM" || userLevel === "MGR") && (
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold">Afdeling</label>
+                    <SearchSelect
+                      options={afdelingOptions}
+                      value={filterAfdeling}
+                      onChange={(v) => setFilterAfdeling(v)}
+                      placeholder="Pilih Afdeling (opsional)"
+                      small
+                      disabled={afdelingOptions.length === 0}
+                    />
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold">Keterangan</label>
+                  <p className="text-xs text-base-content/60">
+                    • <b>HADIR</b> = Semua kode kecuali MK dan P1 <br />•{" "}
+                    <b>TEPAT WAKTU</b> = Hadir tanpa telat & tanpa pulang awal{" "}
+                    <br />• <b>TELAT</b> = <code>total_late_time</code> lebih
+                    dari 0 <br />• <b>PULANG AWAL</b> ={" "}
+                    <code>go_home_early</code> lebih dari 0 <br />• <b>ALPHA</b>{" "}
+                    = P1 (izin) atau MK (mangkir)
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Pengangkutan & Harvesting Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-slideUp">
+          {/* Harvesting Card */}
+          <div className="card bg-base-100 shadow-md border border-base-300">
+            <div className="card-body">
+              <h2 className="card-title text-sm md:text-lg gap-2">
+                🌾 Harvesting ({timeframeLabel(timeframe)})
+              </h2>
+              {loadingHarvesting ? (
+                <div className="h-32 bg-base-300 rounded animate-pulse" />
+              ) : (
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="stat place-items-center p-3 bg-base-200 rounded">
+                    <div className="stat-title text-xs">Total</div>
+                    <div className="stat-value text-2xl font-bold">
+                      {harvestingStats.total}
+                    </div>
+                  </div>
+                  <div className="stat place-items-center p-3 bg-base-200 rounded">
+                    <div className="stat-title text-xs">Panen (JJG)</div>
+                    <div className="stat-value text-2xl font-bold">
+                      {harvestingStats.totalOutput.toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="stat place-items-center p-3 bg-success/20 rounded">
+                    <div className="stat-title text-xs">Approved</div>
+                    <div className="stat-value text-xl font-bold text-success">
+                      {harvestingStats.approved}
+                    </div>
+                  </div>
+                  <div className="stat place-items-center p-3 bg-info/20 rounded">
+                    <div className="stat-title text-xs">Planned</div>
+                    <div className="stat-value text-xl font-bold text-info">
+                      {harvestingStats.planned}
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className="card-actions justify-end mt-2">
+                <a href="/harvest" className="btn btn-sm btn-outline">
+                  Lihat Detail
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* Pengangkutan Card */}
+          <div className="card bg-base-100 shadow-md border border-base-300">
+            <div className="card-body">
+              <h2 className="card-title text-sm md:text-lg gap-2">
+                🚛 Pengangkutan ({timeframeLabel(timeframe)})
+              </h2>
+              {loadingPengangkutan ? (
+                <div className="h-32 bg-base-300 rounded animate-pulse" />
+              ) : (
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="stat place-items-center p-3 bg-base-200 rounded">
+                    <div className="stat-title text-xs">Total</div>
+                    <div className="stat-value text-2xl font-bold">
+                      {pengangkutanStats.total}
+                    </div>
+                  </div>
+                  <div className="stat place-items-center p-3 bg-base-200 rounded">
+                    <div className="stat-title text-xs">JJG</div>
+                    <div className="stat-value text-2xl font-bold text-primary">
+                      {pengangkutanStats.totalOutput &&
+                      pengangkutanStats.totalOutput > 0
+                        ? pengangkutanStats.totalOutput.toLocaleString()
+                        : pengangkutanStats.total}
+                    </div>
+                  </div>
+                  <div className="stat place-items-center p-3 bg-success/20 rounded">
+                    <div className="stat-title text-xs">Approved</div>
+                    <div className="stat-value text-xl font-bold text-success">
+                      {pengangkutanStats.approved}
+                    </div>
+                  </div>
+                  <div className="stat place-items-center p-3 bg-info/20 rounded">
+                    <div className="stat-title text-xs">Planned</div>
+                    <div className="stat-value text-xl font-bold text-info">
+                      {pengangkutanStats.planned}
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className="card-actions justify-end mt-2">
+                <a href="/pengangkutan" className="btn btn-sm btn-outline">
+                  Lihat Detail
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Statistik Atas: Pie + Bar */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Pie */}
+          <div className="card bg-base-100 shadow-md border border-base-300 animate-slideUp">
+            <div className="card-body">
+              <h2 className="card-title text-sm md:text-lg">
+                🧭 Komposisi TEPAT WAKTU / TELAT / PULANG AWAL / ALPHA (
+                {timeframeLabel(timeframe)})
+              </h2>
+              {loading ? (
+                <div className="h-64 bg-base-300 rounded animate-pulse mt-4" />
+              ) : (
+                <SimplePieChart data={pieChartData} />
+              )}
+            </div>
+          </div>
+
+          {/* Bar */}
+          <div className="card bg-base-100 shadow-md border border-base-300 animate-slideUp">
+            <div className="card-body">
+              <h2 className="card-title text-sm md:text-lg">
+                📊 Ringkasan Absensi ({timeframeLabel(timeframe)})
+              </h2>
+              <p className="text-xs text-base-content/60 mt-1">
+                Angka di bawah ini adalah <b>total frekuensi</b> untuk periode
+                yang dipilih, bukan jumlah karyawan unik.
+              </p>
+              {loading ? (
+                <div className="h-64 bg-base-300 rounded animate-pulse mt-4" />
+              ) : (
+                <SimpleBarChart data={barChartData} color="bg-primary" />
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Tren Absensi + Persentase */}
         <div className="card bg-base-100 shadow-md border border-base-300 animate-slideUp">
           <div className="card-body">
-            <h2 className="card-title text-sm md:text-lg">
-              📊 Ringkasan Absensi ({timeframeLabel(timeframe)})
-            </h2>
-            <p className="text-xs text-base-content/60 mt-1">
-              Angka di bawah ini adalah <b>total frekuensi</b> untuk periode
-              yang dipilih, bukan jumlah karyawan unik.
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
+              <h2 className="card-title text-sm md:text-lg">
+                📈 Tren Absensi ({getTrendLabel()})
+              </h2>
+              <div className="flex flex-wrap gap-2 text-xs">
+                <span className="badge badge-primary gap-1">
+                  Hadir (Total) {stats.totalHadir} ({pctHadir}%)
+                </span>
+                <span className="badge badge-success gap-1">
+                  Tepat Waktu {stats.totalTepatWaktu} ({pctTepatWaktu}%)
+                </span>
+                <span className="badge badge-warning gap-1">
+                  Telat {stats.totalTelat} ({pctTelat}%)
+                </span>
+                <span className="badge badge-error gap-1">
+                  Pulang Awal {stats.totalPulangAwal} ({pctPulangAwal}%)
+                </span>
+                <span className="badge badge-neutral gap-1">
+                  Alpha {stats.totalAlpa} ({pctAlpa}%)
+                </span>
+              </div>
+            </div>
+            {loading ? (
+              <div className="h-64 bg-base-300 rounded animate-pulse" />
+            ) : (
+              <SimpleLineChart data={lineChartData} />
+            )}
+          </div>
+        </div>
+
+        {/* Riwayat Absensi Detail */}
+        <div className="card bg-base-100 shadow-md border border-base-300 animate-slideUp">
+          <div className="card-body">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
+              <h2 className="card-title text-sm md:text-lg">
+                📋 Riwayat Absensi Detail
+              </h2>
+              <div className="flex flex-wrap gap-2 items-center">
+                <span className="text-xs text-base-content/60">
+                  Mode tampilan:
+                </span>
+                <button
+                  type="button"
+                  className={`btn btn-xs md:btn-sm ${
+                    detailMode === "perHari"
+                      ? "btn-primary"
+                      : "btn-ghost border border-base-300"
+                  }`}
+                  onClick={() => setDetailMode("perHari")}
+                >
+                  Per Hari (Rekap)
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-xs md:btn-sm ${
+                    detailMode === "perBaris"
+                      ? "btn-primary"
+                      : "btn-ghost border border-base-300"
+                  }`}
+                  onClick={() => setDetailMode("perBaris")}
+                >
+                  Per Baris (Detail)
+                </button>
+              </div>
+            </div>
+
+            <p className="text-xs text-base-content/60 mb-3">
+              Periode: <b>{timeframeLabel(timeframe)}</b> • Mode:{" "}
+              <b>{detailModeLabel}</b> • Data mengikuti pola level login:
+              {userLevel === "ADM" && " ADM melihat per FCBA & Afdeling."}
+              {userLevel === "MGR" &&
+                " MGR melihat per Afdeling dalam FCBA-nya."}
+              {userLevel === "AST" &&
+                " AST melihat data sesuai FCBA & Afdeling akun login."}
             </p>
+
             {loading ? (
-              <div className="h-64 bg-base-300 rounded animate-pulse mt-4" />
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="h-10 bg-base-300 rounded animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : filteredAttendance.length === 0 ? (
+              <div className="text-center py-8 text-base-content/60">
+                📭 Tidak ada data absensi pada periode & filter yang dipilih.
+              </div>
             ) : (
-              <SimpleBarChart data={barChartData} color="bg-primary" />
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Tren Absensi + Persentase */}
-      <div className="card bg-base-100 shadow-md border border-base-300 animate-slideUp">
-        <div className="card-body">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
-            <h2 className="card-title text-sm md:text-lg">
-              📈 Tren Absensi ({getTrendLabel()})
-            </h2>
-            <div className="flex flex-wrap gap-2 text-xs">
-              <span className="badge badge-success gap-1">
-                Hadir {stats.totalHadir} ({pctHadir}%)
-              </span>
-              <span className="badge badge-warning gap-1">
-                Telat {stats.totalTelat} ({pctTelat}%)
-              </span>
-              <span className="badge badge-info gap-1">
-                Pulang Awal {stats.totalPulangAwal} ({pctPulangAwal}%)
-              </span>
-              <span className="badge badge-error gap-1">
-                Alpha {stats.totalAlpa} ({pctAlpa}%)
-              </span>
-            </div>
-          </div>
-          {loading ? (
-            <div className="h-64 bg-base-300 rounded animate-pulse" />
-          ) : (
-            <SimpleLineChart data={lineChartData} />
-          )}
-        </div>
-      </div>
-
-      {/* Riwayat Absensi Detail */}
-      <div className="card bg-base-100 shadow-md border border-base-300 animate-slideUp">
-        <div className="card-body">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
-            <h2 className="card-title text-sm md:text-lg">
-              📋 Riwayat Absensi Detail
-            </h2>
-            <div className="flex flex-wrap gap-2 items-center">
-              <span className="text-xs text-base-content/60">
-                Mode tampilan:
-              </span>
-              <button
-                type="button"
-                className={`btn btn-xs md:btn-sm ${
-                  detailMode === "perHari"
-                    ? "btn-primary"
-                    : "btn-ghost border border-base-300"
-                }`}
-                onClick={() => setDetailMode("perHari")}
-              >
-                Per Hari (Rekap)
-              </button>
-              <button
-                type="button"
-                className={`btn btn-xs md:btn-sm ${
-                  detailMode === "perBaris"
-                    ? "btn-primary"
-                    : "btn-ghost border border-base-300"
-                }`}
-                onClick={() => setDetailMode("perBaris")}
-              >
-                Per Baris (Detail)
-              </button>
-            </div>
-          </div>
-
-          <p className="text-xs text-base-content/60 mb-3">
-            Periode: <b>{timeframeLabel(timeframe)}</b> • Mode:{" "}
-            <b>{detailModeLabel}</b> • Data mengikuti pola level login:
-            {userLevel === "ADM" && " ADM melihat per FCBA & Afdeling."}
-            {userLevel === "MGR" && " MGR melihat per Afdeling dalam FCBA-nya."}
-            {userLevel === "AST" &&
-              " AST melihat data sesuai FCBA & Afdeling akun login."}
-          </p>
-
-          {loading ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="h-10 bg-base-300 rounded animate-pulse"
-                />
-              ))}
-            </div>
-          ) : filteredAttendance.length === 0 ? (
-            <div className="text-center py-8 text-base-content/60">
-              📭 Tidak ada data absensi pada periode & filter yang dipilih.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              {/* MODE PER HARI (REKAP) */}
-              {detailMode === "perHari" && (
-                <table className="table table-sm w-full text-xs md:text-sm">
-                  <thead>
-                    <tr className="border-b border-base-300">
-                      <th>Tanggal</th>
-                      {userLevel === "ADM" && (
-                        <>
-                          <th>FCBA</th>
-                          <th>Afdeling</th>
-                        </>
-                      )}
-                      {userLevel === "MGR" && <th>Afdeling</th>}
-                      <th className="text-center">Hadir</th>
-                      <th className="text-center">Telat</th>
-                      <th className="text-center">Pulang Awal</th>
-                      <th className="text-center">Alpha</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dailySummaries.map((d, idx) => (
-                      <tr
-                        key={`${d.date}-${d.fcba ?? ""}-${
-                          d.afdeling ?? ""
-                        }-${idx}`}
-                        className="hover:bg-base-200"
-                      >
-                        <td className="whitespace-nowrap font-medium">
-                          {formatDateID(d.date)}
-                        </td>
+              <div className="overflow-x-auto">
+                {/* MODE PER HARI (REKAP) */}
+                {detailMode === "perHari" && (
+                  <table className="table table-sm w-full text-xs md:text-sm">
+                    <thead>
+                      <tr className="border-b border-base-300">
+                        <th>Tanggal</th>
                         {userLevel === "ADM" && (
                           <>
-                            <td>
-                              <span className="badge badge-ghost badge-sm font-mono">
-                                {d.fcba || "-"}
-                              </span>
-                            </td>
+                            <th>FCBA</th>
+                            <th>Afdeling</th>
+                          </>
+                        )}
+                        {userLevel === "MGR" && <th>Afdeling</th>}
+                        <th className="text-center">Hadir</th>
+                        <th className="text-center">Tepat Waktu</th>
+                        <th className="text-center">Telat</th>
+                        <th className="text-center">Pulang Awal</th>
+                        <th className="text-center">Alpha</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dailySummaries.map((d, idx) => (
+                        <tr
+                          key={`${d.date}-${d.fcba ?? ""}-${
+                            d.afdeling ?? ""
+                          }-${idx}`}
+                          className="hover:bg-base-200"
+                        >
+                          <td className="whitespace-nowrap font-medium">
+                            {formatDateID(d.date)}
+                          </td>
+                          {userLevel === "ADM" && (
+                            <>
+                              <td>
+                                <span className="badge badge-ghost badge-sm font-mono">
+                                  {d.fcba || "-"}
+                                </span>
+                              </td>
+                              <td>
+                                <span className="badge badge-ghost badge-sm font-mono">
+                                  {d.afdeling || "-"}
+                                </span>
+                              </td>
+                            </>
+                          )}
+                          {userLevel === "MGR" && (
                             <td>
                               <span className="badge badge-ghost badge-sm font-mono">
                                 {d.afdeling || "-"}
                               </span>
                             </td>
-                          </>
-                        )}
-                        {userLevel === "MGR" && (
-                          <td>
-                            <span className="badge badge-ghost badge-sm font-mono">
-                              {d.afdeling || "-"}
-                            </span>
-                          </td>
-                        )}
-                        <td className="text-center">
-                          <span className="badge badge-success badge-sm">
-                            {d.hadir}
-                          </span>
-                        </td>
-                        <td className="text-center">
-                          <span className="badge badge-warning badge-sm">
-                            {d.telat}
-                          </span>
-                        </td>
-                        <td className="text-center">
-                          <span className="badge badge-info badge-sm">
-                            {d.pulangAwal}
-                          </span>
-                        </td>
-                        <td className="text-center">
-                          <span className="badge badge-error badge-sm">
-                            {d.alpa}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-
-              {/* MODE PER BARIS (DETAIL) */}
-              {detailMode === "perBaris" && (
-                <table className="table table-sm w-full text-xs md:text-sm">
-                  <thead>
-                    <tr className="border-b border-base-300">
-                      <th>Tanggal</th>
-                      {userLevel === "ADM" && (
-                        <>
-                          <th>FCBA</th>
-                          <th>Afdeling</th>
-                          <th>Gang</th>
-                        </>
-                      )}
-                      {userLevel === "MGR" && (
-                        <>
-                          <th>Afdeling</th>
-                          <th>Gang</th>
-                        </>
-                      )}
-                      {userLevel === "AST" && (
-                        <>
-                          <th>FCBA</th>
-                          <th>Afdeling</th>
-                          <th>Gang</th>
-                        </>
-                      )}
-                      <th>Kode</th>
-                      <th>Status</th>
-                      <th className="text-center">Telat</th>
-                      <th className="text-center">Pulang Awal</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rowDetails.map((r, idx) => {
-                      const dateOnly = parseDateOnly(r.tanggal) || "-";
-                      const status = classifyStatus(r);
-
-                      // FIX DUPLICATE KEY: gabungkan id + index
-                      const keyBase =
-                        r.id !== undefined && r.id !== null
-                          ? String(r.id)
-                          : `${dateOnly}`;
-                      const rowKey = `${keyBase}-${idx}`;
-
-                      return (
-                        <tr key={rowKey} className="hover:bg-base-200">
-                          <td className="whitespace-nowrap">
-                            {dateOnly !== "-" ? formatDateID(dateOnly) : "-"}
-                          </td>
-
-                          {/* Kolom lokasi disesuaikan level */}
-                          {userLevel === "ADM" && (
-                            <>
-                              <td>
-                                <span className="badge badge-ghost badge-sm font-mono">
-                                  {r.fcba || "-"}
-                                </span>
-                              </td>
-                              <td>
-                                <span className="badge badge-ghost badge-sm font-mono">
-                                  {r.section || "-"}
-                                </span>
-                              </td>
-                              <td>
-                                <span className="badge badge-ghost badge-sm font-mono">
-                                  {r.gang || "-"}
-                                </span>
-                              </td>
-                            </>
                           )}
-
-                          {userLevel === "MGR" && (
-                            <>
-                              <td>
-                                <span className="badge badge-ghost badge-sm font-mono">
-                                  {r.section || "-"}
-                                </span>
-                              </td>
-                              <td>
-                                <span className="badge badge-ghost badge-sm font-mono">
-                                  {r.gang || "-"}
-                                </span>
-                              </td>
-                            </>
-                          )}
-
-                          {userLevel === "AST" && (
-                            <>
-                              <td>
-                                <span className="badge badge-ghost badge-sm font-mono">
-                                  {r.fcba || "-"}
-                                </span>
-                              </td>
-                              <td>
-                                <span className="badge badge-ghost badge-sm font-mono">
-                                  {r.section || "-"}
-                                </span>
-                              </td>
-                              <td>
-                                <span className="badge badge-ghost badge-sm font-mono">
-                                  {r.gang || "-"}
-                                </span>
-                              </td>
-                            </>
-                          )}
-
-                          <td>
-                            <span className="badge badge-outline badge-sm font-mono">
-                              {r.attendance || "-"}
-                            </span>
-                          </td>
-                          <td>
-                            {status === "HADIR" && (
-                              <span className="badge badge-success badge-sm">
-                                HADIR
-                              </span>
-                            )}
-                            {status === "TELAT" && (
-                              <span className="badge badge-warning badge-sm">
-                                TELAT
-                              </span>
-                            )}
-                            {status === "PULANG_AWAL" && (
-                              <span className="badge badge-info badge-sm">
-                                PULANG AWAL
-                              </span>
-                            )}
-                            {status === "ALPHA" && (
-                              <span className="badge badge-error badge-sm">
-                                ALPHA
-                              </span>
-                            )}
-                            {status === "OTHER" && (
-                              <span className="badge badge-ghost badge-sm">
-                                OTHER
-                              </span>
-                            )}
-                          </td>
                           <td className="text-center">
-                            <span className="badge badge-ghost badge-sm font-mono">
-                              {isNonZeroTime(r.total_late_time)
-                                ? r.total_late_time
-                                : "-"}
+                            <span className="badge badge-primary badge-sm">
+                              {d.hadir}
                             </span>
                           </td>
                           <td className="text-center">
-                            <span className="badge badge-ghost badge-sm font-mono">
-                              {isNonZeroTime(r.go_home_early)
-                                ? r.go_home_early
-                                : "-"}
+                            <span className="badge badge-success badge-sm">
+                              {d.tepatWaktu}
+                            </span>
+                          </td>
+                          <td className="text-center">
+                            <span className="badge badge-warning badge-sm">
+                              {d.telat}
+                            </span>
+                          </td>
+                          <td className="text-center">
+                            <span className="badge badge-error badge-sm">
+                              {d.pulangAwal}
+                            </span>
+                          </td>
+                          <td className="text-center">
+                            <span
+                              className="badge badge-sm"
+                              style={{ backgroundColor: "#000", color: "#fff" }}
+                            >
+                              {d.alpa}
                             </span>
                           </td>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          )}
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+
+                {/* MODE PER BARIS (DETAIL) */}
+                {detailMode === "perBaris" && (
+                  <table className="table table-sm w-full text-xs md:text-sm">
+                    <thead>
+                      <tr className="border-b border-base-300">
+                        <th>Tanggal</th>
+                        {userLevel === "ADM" && (
+                          <>
+                            <th>FCBA</th>
+                            <th>Afdeling</th>
+                            <th>Gang</th>
+                          </>
+                        )}
+                        {userLevel === "MGR" && (
+                          <>
+                            <th>Afdeling</th>
+                            <th>Gang</th>
+                          </>
+                        )}
+                        {userLevel === "AST" && (
+                          <>
+                            <th>FCBA</th>
+                            <th>Afdeling</th>
+                            <th>Gang</th>
+                          </>
+                        )}
+                        <th>Kode</th>
+                        <th>Status</th>
+                        <th className="text-center">Telat</th>
+                        <th className="text-center">Pulang Awal</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rowDetails.map((r, idx) => {
+                        const dateOnly = parseDateOnly(r.tanggal) || "-";
+                        const status = classifyStatus(r);
+
+                        // FIX DUPLICATE KEY: gabungkan id + index
+                        const keyBase =
+                          r.id !== undefined && r.id !== null
+                            ? String(r.id)
+                            : `${dateOnly}`;
+                        const rowKey = `${keyBase}-${idx}`;
+
+                        return (
+                          <tr key={rowKey} className="hover:bg-base-200">
+                            <td className="whitespace-nowrap">
+                              {dateOnly !== "-" ? formatDateID(dateOnly) : "-"}
+                            </td>
+
+                            {/* Kolom lokasi disesuaikan level */}
+                            {userLevel === "ADM" && (
+                              <>
+                                <td>
+                                  <span className="badge badge-ghost badge-sm font-mono">
+                                    {r.fcba || "-"}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span className="badge badge-ghost badge-sm font-mono">
+                                    {r.section || "-"}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span className="badge badge-ghost badge-sm font-mono">
+                                    {r.gang || "-"}
+                                  </span>
+                                </td>
+                              </>
+                            )}
+
+                            {userLevel === "MGR" && (
+                              <>
+                                <td>
+                                  <span className="badge badge-ghost badge-sm font-mono">
+                                    {r.section || "-"}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span className="badge badge-ghost badge-sm font-mono">
+                                    {r.gang || "-"}
+                                  </span>
+                                </td>
+                              </>
+                            )}
+
+                            {userLevel === "AST" && (
+                              <>
+                                <td>
+                                  <span className="badge badge-ghost badge-sm font-mono">
+                                    {r.fcba || "-"}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span className="badge badge-ghost badge-sm font-mono">
+                                    {r.section || "-"}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span className="badge badge-ghost badge-sm font-mono">
+                                    {r.gang || "-"}
+                                  </span>
+                                </td>
+                              </>
+                            )}
+
+                            <td>
+                              <span className="badge badge-outline badge-sm font-mono">
+                                {r.attendance || "-"}
+                              </span>
+                            </td>
+                            <td>
+                              {status === "TEPAT_WAKTU" && (
+                                <span className="badge badge-success badge-sm">
+                                  TEPAT WAKTU
+                                </span>
+                              )}
+                              {status === "HADIR" && (
+                                <span className="badge badge-primary badge-sm">
+                                  HADIR
+                                </span>
+                              )}
+                              {status === "TELAT" && (
+                                <span className="badge badge-warning badge-sm">
+                                  TELAT
+                                </span>
+                              )}
+                              {status === "PULANG_AWAL" && (
+                                <span className="badge badge-error badge-sm">
+                                  PULANG AWAL
+                                </span>
+                              )}
+                              {status === "ALPHA" && (
+                                <span
+                                  className="badge badge-sm"
+                                  style={{
+                                    backgroundColor: "#000",
+                                    color: "#fff",
+                                  }}
+                                >
+                                  ALPHA
+                                </span>
+                              )}
+                              {status === "OTHER" && (
+                                <span className="badge badge-ghost badge-sm">
+                                  OTHER
+                                </span>
+                              )}
+                            </td>
+                            <td className="text-center">
+                              <span className="badge badge-ghost badge-sm font-mono">
+                                {isNonZeroTime(r.total_late_time)
+                                  ? r.total_late_time
+                                  : "-"}
+                              </span>
+                            </td>
+                            <td className="text-center">
+                              <span className="badge badge-ghost badge-sm font-mono">
+                                {isNonZeroTime(r.go_home_early)
+                                  ? r.go_home_early
+                                  : "-"}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
       </div>
     </div>
   );

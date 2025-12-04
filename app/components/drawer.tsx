@@ -19,12 +19,14 @@ export const Drawer = () => {
   const [userLevel, setUserLevel] = useState<string>("");
   const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
   const [isHarvestOpen, setIsHarvestOpen] = useState(false);
+  const [isPengangkutanOpen, setIsPengangkutanOpen] = useState(false);
 
   useEffect(() => {
     // Buka dropdown hanya jika berada di halaman /attendance...
     // Tutup jika pindah ke halaman lain (misal Dashboard)
     setIsAttendanceOpen(pathname.startsWith("/attendance"));
     setIsHarvestOpen(pathname.startsWith("/harvest"));
+    setIsPengangkutanOpen(pathname.startsWith("/pengangkutan"));
   }, [pathname]);
 
   useEffect(() => {
@@ -88,7 +90,9 @@ export const Drawer = () => {
         <ul className="menu bg-base-200 text-base-content min-h-full w-80 p-4 gap-1">
           {/* Header/brand */}
           <li className="pointer-events-none mb-4">
-            <div className="flex flex-col items-center justify-center gap-3 py-4 bg-base-100 rounded-xl shadow-sm border border-base-300">              <div className="text-center">
+            <div className="flex flex-col items-center justify-center gap-3 py-4 bg-base-100 rounded-xl shadow-sm border border-base-300">
+              {" "}
+              <div className="text-center">
                 <span className="block font-bold text-lg leading-tight text-base-content">
                   Sentosa Kalimantan Jaya
                 </span>
@@ -205,6 +209,48 @@ export const Drawer = () => {
                   <Link
                     href="/harvest"
                     className={isActive("/harvest")}
+                    onClick={closeDrawer}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" />
+                    </svg>
+                    Data List
+                  </Link>
+                </li>
+              </ul>
+            </details>
+          </li>
+
+          {/* Dropdown Pengangkutan */}
+          <li>
+            <details
+              className="[&_summary::-webkit-details-marker]:hidden"
+              open={isPengangkutanOpen}
+              onToggle={(e) => setIsPengangkutanOpen(e.currentTarget.open)}
+            >
+              <summary className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M3 13h2v-2H3v2zm4 0h2v-2H7v2zM3 17h2v-2H3v2zm4 0h2v-2H7v2zM3 9h2V7H3v2zm4 0h2V7H7v2zM14 5v6l4-3-4-3zM12 20h8v-2h-8v2z" />
+                  </svg>
+                  <span>Pengangkutan</span>
+                </div>
+              </summary>
+              <ul className="menu menu-sm">
+                <li>
+                  <Link
+                    href="/pengangkutan"
+                    className={isActive("/pengangkutan")}
                     onClick={closeDrawer}
                   >
                     <svg

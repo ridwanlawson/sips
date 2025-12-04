@@ -38,11 +38,9 @@ export function SimpleBarChart({
                 className={`h-full ${color} transition-all duration-500 ease-out flex items-center justify-center`}
                 style={{ width: `${(item.value / max) * 100}%` }}
               >
-                {(item.value / max) * 100 > 15 && (
-                  <span className="text-xs font-semibold text-white">
-                    {Math.round((item.value / max) * 100)}%
-                  </span>
-                )}
+                <span className="text-xs font-semibold text-white">
+                  {Math.round((item.value / max) * 100)}%
+                </span>
               </div>
             </div>
           </div>
@@ -80,43 +78,43 @@ export function SimplePieChart({ data, title }: PieChartProps) {
   const slices = data.map((item) => {
     const percentage = (item.value / total) * 100;
     const angle = (percentage / 100) * 360;
-    
+
     // Add separation gap
     const startAngle = currentAngle + separation / 2;
     const endAngle = currentAngle + angle - separation / 2;
-    
+
     // Calculate path for donut slice
     const startRad = (startAngle * Math.PI) / 180;
     const endRad = (endAngle * Math.PI) / 180;
-    
+
     const x1 = center + radius * Math.cos(startRad);
     const y1 = center + radius * Math.sin(startRad);
     const x2 = center + radius * Math.cos(endRad);
     const y2 = center + radius * Math.sin(endRad);
-    
+
     const x3 = center + holeRadius * Math.cos(endRad);
     const y3 = center + holeRadius * Math.sin(endRad);
     const x4 = center + holeRadius * Math.cos(startRad);
     const y4 = center + holeRadius * Math.sin(startRad);
-    
+
     const largeArc = angle - separation > 180 ? 1 : 0;
-    
+
     const pathData = [
       `M ${x1} ${y1}`,
       `A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}`,
       `L ${x3} ${y3}`,
       `A ${holeRadius} ${holeRadius} 0 ${largeArc} 0 ${x4} ${y4}`,
-      'Z'
-    ].join(' ');
-    
+      "Z",
+    ].join(" ");
+
     currentAngle += angle;
-    
+
     return {
       path: pathData,
       color: item.color,
       label: item.label,
       value: item.value,
-      percentage: percentage.toFixed(1)
+      percentage: percentage.toFixed(1),
     };
   });
 
@@ -134,7 +132,7 @@ export function SimplePieChart({ data, title }: PieChartProps) {
                   fill={slice.color}
                   className="transition-all duration-300 hover:opacity-80"
                   style={{
-                    filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
+                    filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.1))",
                   }}
                 />
               </g>
@@ -189,6 +187,7 @@ export function SimplePieChart({ data, title }: PieChartProps) {
 interface LineChartData {
   label: string;
   hadir: number;
+  tepatWaktu: number;
   telat: number;
   pulangAwal: number;
   alpa: number;
@@ -217,10 +216,11 @@ export function SimpleLineChart({ data, title }: LineChartProps) {
             <tr>
               <th>Periode</th>
               <th className="text-center">Hadir</th>
+              <th className="text-center">Tepat Waktu</th>
               <th className="text-center">Telat</th>
               <th className="text-center">Pulang Awal</th>
               <th className="text-center">Alpa</th>
-              <th className="text-center">% Hadir</th>
+              <th className="text-center">% Tepat Waktu</th>
               <th className="text-center">% Telat</th>
               <th className="text-center">% Pulang Awal</th>
               <th className="text-center">% Alpa</th>
@@ -228,10 +228,11 @@ export function SimpleLineChart({ data, title }: LineChartProps) {
           </thead>
           <tbody>
             {data.map((item, idx) => {
+              // Use mutually-exclusive categories for percentage: tepatWaktu + telat + pulangAwal + alpa
               const total =
-                item.hadir + item.telat + item.pulangAwal + item.alpa || 1;
+                item.tepatWaktu + item.telat + item.pulangAwal + item.alpa || 1;
 
-              const pHadir = ((item.hadir / total) * 100).toFixed(1);
+              const pTepat = ((item.tepatWaktu / total) * 100).toFixed(1);
               const pTelat = ((item.telat / total) * 100).toFixed(1);
               const pPulangAwal = ((item.pulangAwal / total) * 100).toFixed(1);
               const pAlpa = ((item.alpa / total) * 100).toFixed(1);
@@ -241,8 +242,14 @@ export function SimpleLineChart({ data, title }: LineChartProps) {
                   <td className="font-medium">{item.label}</td>
 
                   <td className="text-center">
-                    <span className="badge badge-success badge-sm">
+                    <span className="badge badge-primary badge-sm">
                       {item.hadir}
+                    </span>
+                  </td>
+
+                  <td className="text-center">
+                    <span className="badge badge-success badge-sm">
+                      {item.tepatWaktu}
                     </span>
                   </td>
 
@@ -253,18 +260,21 @@ export function SimpleLineChart({ data, title }: LineChartProps) {
                   </td>
 
                   <td className="text-center">
-                    <span className="badge badge-info badge-sm">
+                    <span className="badge badge-error badge-sm">
                       {item.pulangAwal}
                     </span>
                   </td>
 
                   <td className="text-center">
-                    <span className="badge badge-error badge-sm">
+                    <span
+                      className="badge badge-sm"
+                      style={{ backgroundColor: "#000", color: "#fff" }}
+                    >
                       {item.alpa}
                     </span>
                   </td>
 
-                  <td className="text-center">{pHadir}%</td>
+                  <td className="text-center">{pTepat}%</td>
                   <td className="text-center">{pTelat}%</td>
                   <td className="text-center">{pPulangAwal}%</td>
                   <td className="text-center">{pAlpa}%</td>

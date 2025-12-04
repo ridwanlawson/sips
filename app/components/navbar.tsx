@@ -118,8 +118,21 @@ export default function Navbar() {
               </a>
             </li>
             <li>
-              <a target="_blank" href="https://sipsmobile.web.app/" className="justify-between">
+              <a
+                target="_blank"
+                href="https://sipsmobile.web.app/"
+                className="justify-between"
+              >
                 SIPS Mobile <span className="badge">Download</span>
+              </a>
+            </li>
+            <li>
+              <a
+                target="_blank"
+                href="https://skj.my.id/"
+                className="justify-between"
+              >
+                SIPS <span className="badge">Kunjungi</span>
               </a>
             </li>
             <li>

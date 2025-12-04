@@ -1683,15 +1683,28 @@ export default function Attendance() {
               rel="noopener noreferrer"
               title="Buka foto"
             >
-              <img
+              {/*
+                Changed: use next/image instead of raw <img> to address the linter/optimizaton warning.
+                - width/height set to match original w-10 h-10 (40x40)
+                - onError sets placeholder
+                - unoptimized used to avoid requiring remoteDomains config
+              */}
+              <Image
                 src={getProxiedImageUrl(r.images)}
                 alt="foto"
-                className="rounded-lg ring-1 ring-base-300 object-cover w-10 h-10 bg-base-200"
+                width={40}
+                height={40}
+                className="rounded-lg ring-1 ring-base-300 object-cover bg-base-200"
                 loading="lazy"
                 onError={(e) => {
-                  e.currentTarget.onerror = null;
-                  e.currentTarget.src = PLACEHOLDER_IMAGE;
+                  // fallback to placeholder on error
+                  const img = e?.currentTarget as HTMLImageElement | null;
+                  if (img) {
+                    img.onerror = null;
+                    img.src = PLACEHOLDER_IMAGE;
+                  }
                 }}
+                unoptimized
               />
             </a>
           ) : (
@@ -1739,782 +1752,803 @@ export default function Attendance() {
   return (
     <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
       <div className="p-4 sm:p-6 max-w-screen-2xl mx-auto w-full overflow-x-hidden">
-      {/* Toast */}
-      <div className="toast toast-top right-4 z-50">
-        {alert && (
-          <div
-            className={`alert ${
-              alert.type === "success" ? "alert-success" : "alert-error"
-            }`}
+        {/* Toast */}
+        <div className="toast toast-top right-4 z-50">
+          {alert && (
+            <div
+              className={`alert ${
+                alert.type === "success" ? "alert-success" : "alert-error"
+              }`}
+            >
+              <div>
+                <span className="font-semibold">
+                  {alert.type === "success" ? "Berhasil" : "Gagal"}
+                </span>
+                <span className="ml-2 whitespace-pre-line">{alert.msg}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Header */}
+        <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start">
+          <h1
+            className="text-2xl sm:text-3xl font-bold min-w-0 truncate"
+            title="Halaman pengelolaan Attendance (Absensi)"
           >
-            <div>
-              <span className="font-semibold">
-                {alert.type === "success" ? "Berhasil" : "Gagal"}
-              </span>
-              <span className="ml-2 whitespace-pre-line">{alert.msg}</span>
+            Attendance (Absensi)
+          </h1>
+          <div className="flex justify-start sm:justify-end gap-2 flex-wrap w-full">
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={() => setShowFilters((s) => !s)}
+              title="Tampilkan / sembunyikan filter lanjutan"
+            >
+              {showFilters ? "Sembunyikan Filter" : "Tampilkan Filter"}
+            </button>
+            <button
+              className="btn btn-sm"
+              onClick={() => fetchList()}
+              title="Refresh data absensi"
+            >
+              Refresh
+            </button>
+            {canAddOrEdit && (
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={onAddClick}
+                title="Tambah data absensi baru (hanya ADM & AST)"
+              >
+                + Tambah Absensi
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Quick Search */}
+        <div className="mb-3 flex justify-end gap-2">
+          <input
+            className="input input-bordered w-full md:w-96"
+            placeholder="Cari apapun (karyawan, fcba, mandor, device, lokasi...)"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            title="Pencarian cepat di semua kolom penting"
+          />
+        </div>
+
+        {/* Filter Bar */}
+        {showFilters && (
+          <div className="bg-base-100 p-4 rounded-xl shadow-sm mb-4 border border-base-200">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              {/* Tanggal Awal */}
+              <input
+                type="date"
+                className="input input-bordered w-full"
+                placeholder="Tanggal Awal"
+                value={filters.tanggal ?? ""}
+                onChange={(e) =>
+                  setFilters((s) => ({ ...s, tanggal: e.target.value }))
+                }
+                title="Filter tanggal awal absensi"
+              />
+              {/* Tanggal Akhir */}
+              <input
+                type="date"
+                className="input input-bordered w-full"
+                placeholder="Tanggal Akhir"
+                value={filters.tanggal_end ?? ""}
+                onChange={(e) =>
+                  setFilters((s) => ({ ...s, tanggal_end: e.target.value }))
+                }
+                title="Filter tanggal akhir absensi"
+              />
+              <input
+                className="input input-bordered w-full"
+                placeholder="Kode Karyawan"
+                value={filters.kode_karyawan ?? ""}
+                onChange={(e) =>
+                  setFilters((s) => ({ ...s, kode_karyawan: e.target.value }))
+                }
+                title="Filter berdasarkan kode karyawan"
+              />
+              <input
+                className="input input-bordered w-full"
+                placeholder="Mandor"
+                value={filters.kode_karyawan_mandor ?? ""}
+                onChange={(e) =>
+                  setFilters((s) => ({
+                    ...s,
+                    kode_karyawan_mandor: e.target.value,
+                  }))
+                }
+                title="Filter berdasarkan kode mandor"
+              />
+              <input
+                className="input input-bordered w-full"
+                placeholder="FCBA"
+                value={filters.fcba ?? ""}
+                onChange={(e) =>
+                  setFilters((s) => ({ ...s, fcba: e.target.value }))
+                }
+                title="Filter berdasarkan FCBA"
+              />
+              <input
+                className="input input-bordered w-full"
+                placeholder="Afdeling"
+                value={filters.afdeling ?? ""}
+                onChange={(e) =>
+                  setFilters((s) => ({ ...s, afdeling: e.target.value }))
+                }
+                title="Filter berdasarkan Afdeling / Section"
+              />
+              <input
+                className="input input-bordered w-full"
+                placeholder="Gang"
+                value={filters.gang ?? ""}
+                onChange={(e) =>
+                  setFilters((s) => ({ ...s, gang: e.target.value }))
+                }
+                title="Filter berdasarkan kode Gang"
+              />
+              <select
+                className="select select-bordered w-full"
+                value={filters.attendance ?? ""}
+                onChange={(e) =>
+                  setFilters((s) => ({ ...s, attendance: e.target.value }))
+                }
+                title="Filter berdasarkan kode attendance"
+              >
+                <option value="">Attendance</option>
+                {["KJ", "MK", "WH", "WS", "ML", "P1", "KB", "OT"].map((v) => (
+                  <option key={`att-${v}`} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="select select-bordered w-full"
+                value={filters.attendance_type ?? ""}
+                onChange={(e) =>
+                  setFilters((s) => ({ ...s, attendance_type: e.target.value }))
+                }
+                title="Filter berdasarkan jenis attendance"
+              >
+                <option value="">Type</option>
+                <option value="REGULAR">REGULAR</option>
+                <option value="ASSISTENSI">ASSISTENSI</option>
+              </select>
+              <select
+                className="select select-bordered w-full"
+                value={filters.status_attendance ?? ""}
+                onChange={(e) =>
+                  setFilters((s) => ({
+                    ...s,
+                    status_attendance: e.target.value,
+                  }))
+                }
+                title="Filter berdasarkan status attendance"
+              >
+                <option value="">Status</option>
+                <option value="Approved">Approved</option>
+                <option value="Planned">Planned</option>
+                <option value="Reject">Reject</option>
+              </select>
+              <input
+                className="input input-bordered w-full"
+                placeholder="FCBA Tujuan"
+                value={filters.fcba_destination ?? ""}
+                onChange={(e) =>
+                  setFilters((s) => ({
+                    ...s,
+                    fcba_destination: e.target.value,
+                  }))
+                }
+                title="Filter berdasarkan FCBA tujuan"
+              />
+            </div>
+
+            <div className="flex justify-start gap-2 pt-3 border-t border-base-200">
+              <button
+                className="btn btn-outline"
+                onClick={() => fetchList()}
+                title="Terapkan filter"
+              >
+                Terapkan Filter
+              </button>
+              <button
+                className="btn"
+                onClick={() => {
+                  const resetFilters: Filters = {
+                    tanggal: "",
+                    tanggal_end: "",
+                    kode_karyawan_mandor: "",
+                    kode_karyawan: "",
+                    fcba: "",
+                    afdeling: "",
+                    gang: "",
+                    attendance: "",
+                    attendance_type: "",
+                    status_attendance: "",
+                    fcba_destination: "",
+                  };
+                  setFilters(resetFilters);
+                  // pass resetFilters as override so fetchList uses cleared filters immediately
+                  fetchList(resetFilters);
+                }}
+                title="Reset semua filter"
+              >
+                Reset
+              </button>
             </div>
           </div>
         )}
-      </div>
 
-      {/* Header */}
-      <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start">
-        <h1
-          className="text-2xl sm:text-3xl font-bold min-w-0 truncate"
-          title="Halaman pengelolaan Attendance (Absensi)"
-        >
-          Attendance (Absensi)
-        </h1>
-        <div className="flex justify-start sm:justify-end gap-2 flex-wrap w-full">
-          <button
-            className="btn btn-outline btn-sm"
-            onClick={() => setShowFilters((s) => !s)}
-            title="Tampilkan / sembunyikan filter lanjutan"
-          >
-            {showFilters ? "Sembunyikan Filter" : "Tampilkan Filter"}
-          </button>
-          <button
-            className="btn btn-sm"
-            onClick={() => fetchList()}
-            title="Refresh data absensi"
-          >
-            Refresh
-          </button>
-          {canAddOrEdit && (
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={onAddClick}
-              title="Tambah data absensi baru (hanya ADM & AST)"
-            >
-              + Tambah Absensi
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Quick Search */}
-      <div className="mb-3 flex justify-end gap-2">
-        <input
-          className="input input-bordered w-full md:w-96"
-          placeholder="Cari apapun (karyawan, fcba, mandor, device, lokasi...)"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          title="Pencarian cepat di semua kolom penting"
-        />
-      </div>
-
-      {/* Filter Bar */}
-      {showFilters && (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-4">
-          {/* Tanggal Awal */}
-          <input
-            type="date"
-            className="input input-bordered w-full"
-            placeholder="Tanggal Awal"
-            value={filters.tanggal ?? ""}
-            onChange={(e) =>
-              setFilters((s) => ({ ...s, tanggal: e.target.value }))
-            }
-            title="Filter tanggal awal absensi"
-          />
-          {/* Tanggal Akhir */}
-          <input
-            type="date"
-            className="input input-bordered w-full"
-            placeholder="Tanggal Akhir"
-            value={filters.tanggal_end ?? ""}
-            onChange={(e) =>
-              setFilters((s) => ({ ...s, tanggal_end: e.target.value }))
-            }
-            title="Filter tanggal akhir absensi"
-          />
-          <input
-            className="input input-bordered w-full"
-            placeholder="Kode Karyawan"
-            value={filters.kode_karyawan ?? ""}
-            onChange={(e) =>
-              setFilters((s) => ({ ...s, kode_karyawan: e.target.value }))
-            }
-            title="Filter berdasarkan kode karyawan"
-          />
-          <input
-            className="input input-bordered w-full"
-            placeholder="Mandor"
-            value={filters.kode_karyawan_mandor ?? ""}
-            onChange={(e) =>
-              setFilters((s) => ({
-                ...s,
-                kode_karyawan_mandor: e.target.value,
-              }))
-            }
-            title="Filter berdasarkan kode mandor"
-          />
-          <input
-            className="input input-bordered w-full"
-            placeholder="FCBA"
-            value={filters.fcba ?? ""}
-            onChange={(e) =>
-              setFilters((s) => ({ ...s, fcba: e.target.value }))
-            }
-            title="Filter berdasarkan FCBA"
-          />
-          <input
-            className="input input-bordered w-full"
-            placeholder="Afdeling"
-            value={filters.afdeling ?? ""}
-            onChange={(e) =>
-              setFilters((s) => ({ ...s, afdeling: e.target.value }))
-            }
-            title="Filter berdasarkan Afdeling / Section"
-          />
-          <input
-            className="input input-bordered w-full"
-            placeholder="Gang"
-            value={filters.gang ?? ""}
-            onChange={(e) =>
-              setFilters((s) => ({ ...s, gang: e.target.value }))
-            }
-            title="Filter berdasarkan kode Gang"
-          />
-          <select
-            className="select select-bordered w-full"
-            value={filters.attendance ?? ""}
-            onChange={(e) =>
-              setFilters((s) => ({ ...s, attendance: e.target.value }))
-            }
-            title="Filter berdasarkan kode attendance"
-          >
-            <option value="">Attendance</option>
-            {["KJ", "MK", "WH", "WS", "ML", "P1", "KB", "OT"].map((v) => (
-              <option key={`att-${v}`} value={v}>
-                {v}
-              </option>
-            ))}
-          </select>
-          <select
-            className="select select-bordered w-full"
-            value={filters.attendance_type ?? ""}
-            onChange={(e) =>
-              setFilters((s) => ({ ...s, attendance_type: e.target.value }))
-            }
-            title="Filter berdasarkan jenis attendance"
-          >
-            <option value="">Type</option>
-            <option value="REGULAR">REGULAR</option>
-            <option value="ASSISTENSI">ASSISTENSI</option>
-          </select>
-          <select
-            className="select select-bordered w-full"
-            value={filters.status_attendance ?? ""}
-            onChange={(e) =>
-              setFilters((s) => ({ ...s, status_attendance: e.target.value }))
-            }
-            title="Filter berdasarkan status attendance"
-          >
-            <option value="">Status</option>
-            <option value="Approved">Approved</option>
-            <option value="Planned">Planned</option>
-            <option value="Reject">Reject</option>
-          </select>
-          <input
-            className="input input-bordered w-full"
-            placeholder="FCBA Tujuan"
-            value={filters.fcba_destination ?? ""}
-            onChange={(e) =>
-              setFilters((s) => ({ ...s, fcba_destination: e.target.value }))
-            }
-            title="Filter berdasarkan FCBA tujuan"
-          />
-          <div className="col-span-2 flex gap-2">
-            <button
-              className="btn btn-outline"
-              onClick={() => fetchList()}
-              title="Terapkan filter"
-            >
-              Terapkan Filter
-            </button>
-            <button
-              className="btn"
-              onClick={() => {
-                setFilters({
-                  tanggal: "",
-                  tanggal_end: "",
-                  kode_karyawan_mandor: "",
-                  kode_karyawan: "",
-                  fcba: "",
-                  afdeling: "",
-                  gang: "",
-                  attendance: "",
-                  status_attendance: "",
-                  attendance_type: "",
-                  fcba_destination: "",
-                });
-                // override {} → tidak kirim tanggal → semua tanggal
-                fetchList({});
-              }}
-              title="Reset semua filter"
-            >
-              Reset
-            </button>
+        {/* DataTable */}
+        <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100">
+          <div className="min-w-[900px] md:min-w-0">
+            <DataTable
+              keyField="_rowKey"
+              columns={columns}
+              data={filtered}
+              progressPending={loading}
+              pagination
+              paginationPerPage={10}
+              paginationRowsPerPageOptions={[10, 30, 100, 500]}
+              dense
+              highlightOnHover
+              fixedHeader
+              fixedHeaderScrollHeight="520px"
+              persistTableHead
+              responsive
+              noDataComponent={
+                <div className="py-8 text-base-content/70">Tidak ada data.</div>
+              }
+            />
           </div>
         </div>
-      )}
 
-      {/* DataTable */}
-      <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100">
-        <div className="min-w-[900px] md:min-w-0">
-          <DataTable
-            keyField="_rowKey"
-            columns={columns}
-            data={filtered}
-            progressPending={loading}
-            pagination
-            paginationPerPage={10}
-            paginationRowsPerPageOptions={[10, 30, 100, 500]}
-            dense
-            highlightOnHover
-            fixedHeader
-            fixedHeaderScrollHeight="520px"
-            persistTableHead
-            responsive
-            noDataComponent={
-              <div className="py-8 text-base-content/70">Tidak ada data.</div>
-            }
-          />
-        </div>
-      </div>
-
-      {/* MODAL ADD/EDIT */}
-      {open && (
-        <div className="modal modal-open">
-          <div className="modal-box max-w-5xl relative">
-            <button
-              type="button"
-              className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
-              onClick={() => setOpen(false)}
-              aria-label="Close"
-              title="Tutup"
-            >
-              ✕
-            </button>
-            <h3 className="font-bold text-xl mb-3">
-              {isEditing ? "Edit Data Absensi" : "Tambah Absensi"}
-            </h3>
-            {detailLoading && (
-              <div className="absolute inset-0 bg-base-100/70 backdrop-blur-sm flex items-center justify-center rounded-2xl z-10">
-                <div className="flex items-center gap-3">
-                  <span className="loading loading-spinner loading-lg" />
-                  <span>Memuat detail...</span>
+        {/* MODAL ADD/EDIT */}
+        {open && (
+          <div className="modal modal-open">
+            <div className="modal-box max-w-5xl relative">
+              <button
+                type="button"
+                className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+                onClick={() => setOpen(false)}
+                aria-label="Close"
+                title="Tutup"
+              >
+                ✕
+              </button>
+              <h3 className="font-bold text-xl mb-3">
+                {isEditing ? "Edit Data Absensi" : "Tambah Absensi"}
+              </h3>
+              {detailLoading && (
+                <div className="absolute inset-0 bg-base-100/70 backdrop-blur-sm flex items-center justify-center rounded-2xl z-10">
+                  <div className="flex items-center gap-3">
+                    <span className="loading loading-spinner loading-lg" />
+                    <span>Memuat detail...</span>
+                  </div>
                 </div>
-              </div>
-            )}
-            <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-1">
-              {/* Tanggal */}
-              <fieldset className="fieldset col-span-12 md:col-span-3">
-                <legend className="fieldset-legend">Tanggal *</legend>
-                <input
-                  type="date"
-                  className="input input-bordered w-full"
-                  value={form.tanggal ?? ""}
-                  onChange={(e) =>
-                    setForm((s) => ({ ...s, tanggal: e.target.value }))
-                  }
-                  required
-                  disabled={disableUnlessAllowed(false)}
-                  title="Tanggal absensi"
-                />
-              </fieldset>
+              )}
+              <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-1">
+                {/* Tanggal */}
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">Tanggal *</legend>
+                  <input
+                    type="date"
+                    className="input input-bordered w-full"
+                    value={form.tanggal ?? ""}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, tanggal: e.target.value }))
+                    }
+                    required
+                    disabled={disableUnlessAllowed(false)}
+                    title="Tanggal absensi"
+                  />
+                </fieldset>
 
-              {/* Type */}
-              <fieldset className="fieldset col-span-12 md:col-span-3">
-                <legend className="fieldset-legend">Attendance Type *</legend>
-                <SearchSelect
-                  options={[
-                    { value: "REGULAR", label: "REGULAR" },
-                    { value: "ASSISTENSI", label: "ASSISTENSI" },
-                  ]}
-                  value={form.attendance_type}
-                  onChange={(v) =>
-                    setForm((s) => ({
-                      ...s,
-                      attendance_type: v as FormState["attendance_type"],
-                    }))
-                  }
-                  disabled={disableUnlessAllowed(false)}
-                />
-              </fieldset>
-
-              {/* FCBA */}
-              <fieldset className="fieldset col-span-12 md:col-span-3">
-                <legend className="fieldset-legend">
-                  {userLevel === "ADM" ? "FCBA" : "FCBA (akun)"}
-                </legend>
-                {userLevel === "ADM" ? (
+                {/* Type */}
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">Attendance Type *</legend>
                   <SearchSelect
-                    options={fcbaOptions}
-                    value={selFcba}
-                    onChange={(v) => {
-                      setSelFcba(v);
-                      setSelSection("");
-                      setSelGang("");
+                    options={[
+                      { value: "REGULAR", label: "REGULAR" },
+                      { value: "ASSISTENSI", label: "ASSISTENSI" },
+                    ]}
+                    value={form.attendance_type}
+                    onChange={(v) =>
                       setForm((s) => ({
                         ...s,
-                        fcba: v,
-                        section: "",
-                        gang: "",
-                        kode_karyawan: "",
-                        pengancakan: "",
-                      }));
-                    }}
-                    placeholder="Pilih FCBA"
+                        attendance_type: v as FormState["attendance_type"],
+                      }))
+                    }
+                    disabled={disableUnlessAllowed(false)}
+                  />
+                </fieldset>
+
+                {/* FCBA */}
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">
+                    {userLevel === "ADM" ? "FCBA" : "FCBA (akun)"}
+                  </legend>
+                  {userLevel === "ADM" ? (
+                    <SearchSelect
+                      options={fcbaOptions}
+                      value={selFcba}
+                      onChange={(v) => {
+                        setSelFcba(v);
+                        setSelSection("");
+                        setSelGang("");
+                        setForm((s) => ({
+                          ...s,
+                          fcba: v,
+                          section: "",
+                          gang: "",
+                          kode_karyawan: "",
+                          pengancakan: "",
+                        }));
+                      }}
+                      placeholder="Pilih FCBA"
+                      small
+                      disabled={disableUnlessAllowed(false)}
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      className="input input-bordered w-full"
+                      value={homeFcba ?? ""}
+                      readOnly
+                      disabled
+                    />
+                  )}
+                </fieldset>
+
+                {/* FCBA Dest */}
+                {form.attendance_type === "ASSISTENSI" && (
+                  <fieldset className="fieldset col-span-12 md:col-span-3">
+                    <legend className="fieldset-legend">
+                      FCBA Destination *
+                    </legend>
+                    <SearchSelect
+                      options={fcbaOptions.filter(
+                        (o) =>
+                          o.value &&
+                          (!currentFcbaForForm ||
+                            o.value !== currentFcbaForForm)
+                      )}
+                      value={destFcba ?? ""}
+                      onChange={onChangeDestFcba}
+                      placeholder={
+                        currentFcbaForForm
+                          ? "Pilih FCBA tujuan"
+                          : "Pilih FCBA dulu"
+                      }
+                      disabled={
+                        !currentFcbaForForm || disableUnlessAllowed(false)
+                      }
+                    />
+                  </fieldset>
+                )}
+
+                {/* Mandor */}
+                <fieldset className="fieldset col-span-12 md:col-span-4">
+                  <legend className="fieldset-legend">Mandor (opsional)</legend>
+                  <SearchSelect
+                    options={mandorOptions}
+                    value={form.kode_karyawan_mandor ?? ""}
+                    onChange={(v) =>
+                      setForm((s) => ({ ...s, kode_karyawan_mandor: v }))
+                    }
+                    placeholder="Pilih Mandor"
                     small
                     disabled={disableUnlessAllowed(false)}
                   />
-                ) : (
-                  <input
-                    type="text"
-                    className="input input-bordered w-full"
-                    value={homeFcba ?? ""}
-                    readOnly
-                    disabled
-                  />
-                )}
-              </fieldset>
+                </fieldset>
 
-              {/* FCBA Dest */}
-              {form.attendance_type === "ASSISTENSI" && (
-                <fieldset className="fieldset col-span-12 md:col-span-3">
+                {/* Section / Gang / Karyawan */}
+                <fieldset className="fieldset col-span-12 md:col-span-4">
                   <legend className="fieldset-legend">
-                    FCBA Destination *
+                    Afdeling (Section)
                   </legend>
                   <SearchSelect
-                    options={fcbaOptions.filter(
-                      (o) =>
-                        o.value &&
-                        (!currentFcbaForForm || o.value !== currentFcbaForForm)
-                    )}
-                    value={destFcba ?? ""}
-                    onChange={onChangeDestFcba}
+                    options={sectionOptions}
+                    value={selSection ?? ""}
+                    onChange={onChangeSection}
                     placeholder={
-                      currentFcbaForForm
-                        ? "Pilih FCBA tujuan"
+                      selFcba
+                        ? userLevel === "AST"
+                          ? homeSection || "Afdeling terkunci"
+                          : "Pilih Afdeling"
                         : "Pilih FCBA dulu"
                     }
                     disabled={
-                      !currentFcbaForForm || disableUnlessAllowed(false)
+                      !selFcba ||
+                      disableUnlessAllowed(false) ||
+                      userLevel === "AST"
                     }
+                    small
                   />
                 </fieldset>
-              )}
 
-              {/* Mandor */}
-              <fieldset className="fieldset col-span-12 md:col-span-4">
-                <legend className="fieldset-legend">Mandor (opsional)</legend>
-                <SearchSelect
-                  options={mandorOptions}
-                  value={form.kode_karyawan_mandor ?? ""}
-                  onChange={(v) =>
-                    setForm((s) => ({ ...s, kode_karyawan_mandor: v }))
-                  }
-                  placeholder="Pilih Mandor"
-                  small
-                  disabled={disableUnlessAllowed(false)}
-                />
-              </fieldset>
+                <fieldset className="fieldset col-span-12 md:col-span-4">
+                  <legend className="fieldset-legend">Gang</legend>
+                  <SearchSelect
+                    options={gangOptions}
+                    value={selGang ?? ""}
+                    onChange={onChangeGang}
+                    placeholder={
+                      selSection ? "Pilih Gang" : "Pilih Afdeling dulu"
+                    }
+                    disabled={!selSection || disableUnlessAllowed(false)}
+                    small
+                  />
+                </fieldset>
 
-              {/* Section / Gang / Karyawan */}
-              <fieldset className="fieldset col-span-12 md:col-span-4">
-                <legend className="fieldset-legend">Afdeling (Section)</legend>
-                <SearchSelect
-                  options={sectionOptions}
-                  value={selSection ?? ""}
-                  onChange={onChangeSection}
-                  placeholder={
-                    selFcba
-                      ? userLevel === "AST"
-                        ? homeSection || "Afdeling terkunci"
-                        : "Pilih Afdeling"
-                      : "Pilih FCBA dulu"
-                  }
-                  disabled={
-                    !selFcba ||
-                    disableUnlessAllowed(false) ||
-                    userLevel === "AST"
-                  }
-                  small
-                />
-              </fieldset>
+                <fieldset className="fieldset  col-span-12 md:col-span-6">
+                  <legend className="fieldset-legend">Karyawan *</legend>
+                  <SearchSelect
+                    options={employeeOptions}
+                    value={form.kode_karyawan ?? ""}
+                    onChange={onChangeEmployee}
+                    placeholder={selGang ? "Pilih Karyawan" : "Pilih Gang dulu"}
+                    disabled={!selGang || disableUnlessAllowed(false)}
+                  />
+                </fieldset>
 
-              <fieldset className="fieldset col-span-12 md:col-span-4">
-                <legend className="fieldset-legend">Gang</legend>
-                <SearchSelect
-                  options={gangOptions}
-                  value={selGang ?? ""}
-                  onChange={onChangeGang}
-                  placeholder={
-                    selSection ? "Pilih Gang" : "Pilih Afdeling dulu"
-                  }
-                  disabled={!selSection || disableUnlessAllowed(false)}
-                  small
-                />
-              </fieldset>
-
-              <fieldset className="fieldset  col-span-12 md:col-span-6">
-                <legend className="fieldset-legend">Karyawan *</legend>
-                <SearchSelect
-                  options={employeeOptions}
-                  value={form.kode_karyawan ?? ""}
-                  onChange={onChangeEmployee}
-                  placeholder={selGang ? "Pilih Karyawan" : "Pilih Gang dulu"}
-                  disabled={!selGang || disableUnlessAllowed(false)}
-                />
-              </fieldset>
-
-              {/* Attendance */}
-              <fieldset className="fieldset col-span-12 md:col-span-3">
-                <legend className="fieldset-legend">Attendance *</legend>
-                <SearchSelect
-                  options={["KJ", "MK", "WH", "WS", "ML", "P1", "KB", "OT"].map(
-                    (v) => ({
+                {/* Attendance */}
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">Attendance *</legend>
+                  <SearchSelect
+                    options={[
+                      "KJ",
+                      "MK",
+                      "WH",
+                      "WS",
+                      "ML",
+                      "P1",
+                      "KB",
+                      "OT",
+                    ].map((v) => ({
                       value: v,
                       label: v,
-                    })
-                  )}
-                  value={form.attendance ?? "KJ"}
-                  onChange={(v) =>
-                    setForm((s) => ({
-                      ...s,
-                      attendance: v as FormState["attendance"],
-                    }))
-                  }
-                  small
-                  disabled={disableUnlessAllowed(false)}
-                />
-              </fieldset>
+                    }))}
+                    value={form.attendance ?? "KJ"}
+                    onChange={(v) =>
+                      setForm((s) => ({
+                        ...s,
+                        attendance: v as FormState["attendance"],
+                      }))
+                    }
+                    small
+                    disabled={disableUnlessAllowed(false)}
+                  />
+                </fieldset>
 
-              {/* Pengancakan */}
-              <fieldset className="fieldset col-span-12 md:col-span-3">
-                <legend className="fieldset-legend">
-                  Pengancakan (No Ancak)
-                </legend>
-                <SearchSelect
-                  options={pengancakanOptions}
-                  value={form.pengancakan ?? ""}
-                  onChange={(v) => setForm((s) => ({ ...s, pengancakan: v }))}
-                  placeholder={
-                    selGang ? "Pilih Pengancakan" : "Pilih Gang/Karyawan dulu"
-                  }
-                  disabled={!selGang || disableUnlessAllowed(false)}
-                  small
-                />
-              </fieldset>
+                {/* Pengancakan */}
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">
+                    Pengancakan (No Ancak)
+                  </legend>
+                  <SearchSelect
+                    options={pengancakanOptions}
+                    value={form.pengancakan ?? ""}
+                    onChange={(v) => setForm((s) => ({ ...s, pengancakan: v }))}
+                    placeholder={
+                      selGang ? "Pilih Pengancakan" : "Pilih Gang/Karyawan dulu"
+                    }
+                    disabled={!selGang || disableUnlessAllowed(false)}
+                    small
+                  />
+                </fieldset>
 
-              {/* Time & Location */}
-              <fieldset className="fieldset col-span-12 md:col-span-3">
-                <legend className="fieldset-legend">Time In (HH:MM) *</legend>
-                <input
-                  type="time"
-                  className="input input-bordered w-full"
-                  value={form.time_in ?? ""}
-                  onChange={(e) =>
-                    setForm((s) => ({ ...s, time_in: e.target.value }))
-                  }
-                  required
-                  disabled={disableUnlessAllowed(false)}
-                />
-                <p className="text-xs mt-1 opacity-70">
-                  Default 06:00. Jika di atas 06:00, kolom Late otomatis terisi.
-                </p>
-              </fieldset>
-
-              <fieldset className="fieldset col-span-12 md:col-span-3">
-                <legend className="fieldset-legend">Time Out (HH:MM)</legend>
-                <input
-                  type="time"
-                  className="input input-bordered w-full"
-                  value={form.time_out ?? ""}
-                  onChange={(e) =>
-                    setForm((s) => ({ ...s, time_out: e.target.value }))
-                  }
-                  disabled={disableUnlessAllowed(false)}
-                />
-                <p className="text-xs mt-1 opacity-70">
-                  Default 14:00. Jika sebelum 14:00, kolom Go Home Early
-                  otomatis terisi.
-                </p>
-              </fieldset>
-
-              <fieldset className="fieldset col-span-12 md:col-span-3">
-                <legend className="fieldset-legend">Location In *</legend>
-                <div className="flex gap-2">
+                {/* Time & Location */}
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">Time In (HH:MM) *</legend>
                   <input
-                    type="text"
+                    type="time"
                     className="input input-bordered w-full"
-                    value={form.location_in ?? ""}
+                    value={form.time_in ?? ""}
                     onChange={(e) =>
-                      setForm((s) => ({ ...s, location_in: e.target.value }))
+                      setForm((s) => ({ ...s, time_in: e.target.value }))
                     }
                     required
                     disabled={disableUnlessAllowed(false)}
                   />
-                  <button
-                    type="button"
-                    className={`btn btn-square ${
-                      locLoading === "in" ? "btn-disabled" : ""
-                    }`}
-                    onClick={() => handleGetLocation("in")}
-                    disabled={
-                      disableUnlessAllowed(false) || locLoading !== null
-                    }
-                    title="Ambil lokasi otomatis dari GPS"
-                  >
-                    {locLoading === "in" ? (
-                      <span className="loading loading-spinner loading-xs" />
-                    ) : (
-                      "📍"
-                    )}
-                  </button>
-                </div>
-                {form.location_in && (
-                  <div className="mt-1">
-                    <a
-                      className="link link-primary text-sm"
-                      href={buildMapUrl(form.location_in)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Buka di Google Maps
-                    </a>
-                  </div>
-                )}
-              </fieldset>
-
-              <fieldset className="fieldset col-span-12 md:col-span-3">
-                <legend className="fieldset-legend">Location Out</legend>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    className="input input-bordered w-full"
-                    value={form.location_out ?? ""}
-                    onChange={(e) =>
-                      setForm((s) => ({ ...s, location_out: e.target.value }))
-                    }
-                    disabled={disableUnlessAllowed(false)}
-                  />
-                  <button
-                    type="button"
-                    className={`btn btn-square ${
-                      locLoading === "out" ? "btn-disabled" : ""
-                    }`}
-                    onClick={() => handleGetLocation("out")}
-                    disabled={
-                      disableUnlessAllowed(false) || locLoading !== null
-                    }
-                    title="Ambil lokasi otomatis dari GPS"
-                  >
-                    {locLoading === "out" ? (
-                      <span className="loading loading-spinner loading-xs" />
-                    ) : (
-                      "📍"
-                    )}
-                  </button>
-                </div>
-                {form.location_out && (
-                  <div className="mt-1">
-                    <a
-                      className="link link-primary text-sm"
-                      href={buildMapUrl(form.location_out)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Buka di Google Maps
-                    </a>
-                  </div>
-                )}
-              </fieldset>
-
-              {/* Lain-lain */}
-              <fieldset className="fieldset col-span-6 md:col-span-2">
-                <legend className="fieldset-legend">Total Late (H:MM)</legend>
-                <input
-                  type="text"
-                  className="input input-bordered input-sm w-full text-center pointer-events-none select-none"
-                  value={form.total_late_time ?? ""}
-                  readOnly
-                  tabIndex={-1}
-                />
-              </fieldset>
-
-              <fieldset className="fieldset col-span-6 md:col-span-2">
-                <legend className="fieldset-legend">
-                  Go Home Early (H:MM)
-                </legend>
-                <input
-                  type="text"
-                  className="input input-bordered input-sm w-full text-center pointer-events-none select-none"
-                  value={form.go_home_early ?? ""}
-                  readOnly
-                  tabIndex={-1}
-                />
-              </fieldset>
-
-              {/* Mandays/HK */}
-              <fieldset className="fieldset col-span-12 md:col-span-2">
-                <legend className="fieldset-legend">HK (otomatis)</legend>
-                <input
-                  type="text"
-                  className="input input-bordered input-sm w-full text-center"
-                  value={form.mandays}
-                  readOnly
-                />
-              </fieldset>
-
-              <fieldset className="fieldset col-span-12 md:col-span-3">
-                <legend className="fieldset-legend">
-                  MAC Address (pseudo)
-                </legend>
-                <input
-                  type="text"
-                  className="input input-bordered w-full"
-                  value={form.mac_address ?? ""}
-                  readOnly
-                />
-              </fieldset>
-
-              {/* Device */}
-              <fieldset className="fieldset col-span-12 md:col-span-3">
-                <legend className="fieldset-legend">ID Device (auto)</legend>
-                <input
-                  type="text"
-                  className="input input-bordered w-full"
-                  value={form.id_device ?? ""}
-                  readOnly
-                />
-              </fieldset>
-
-              {/* Exception Case */}
-              <fieldset className="fieldset col-span-12 md:col-span-6">
-                <legend className="fieldset-legend">
-                  Exception Case
-                  {!isEditing || !initialHasException ? " *" : ""}
-                </legend>
-                <textarea
-                  className="textarea textarea-bordered min-h-24 w-full"
-                  value={form.exception_case ?? ""}
-                  onChange={(e) =>
-                    setForm((s) => ({ ...s, exception_case: e.target.value }))
-                  }
-                  required={!isEditing || !initialHasException}
-                />
-              </fieldset>
-
-              {/* BA EXCA PDF */}
-              <fieldset className="fieldset col-span-12 md:col-span-6">
-                <legend className="fieldset-legend">
-                  No BA EXCA (PDF)
-                  {!isEditing || !initialHasBaExca ? " *" : ""}
-                </legend>
-                <input
-                  ref={pdfRef}
-                  type="file"
-                  accept="application/pdf"
-                  className="file-input file-input-bordered w-full"
-                  onChange={(e) =>
-                    setForm((s) => ({
-                      ...s,
-                      no_ba_exca_file: e.target.files?.[0],
-                    }))
-                  }
-                  required={!isEditing || !initialHasBaExca}
-                />
-                {form.no_ba_exca && (
-                  <div className="mt-1">
-                    <a
-                      className="link link-primary text-sm"
-                      href={form.no_ba_exca}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Lihat BA EXCA saat ini (PDF)
-                    </a>
-                  </div>
-                )}
-                <p className="text-xs mt-1 opacity-70">
-                  Disimpan di folder yang sama dengan foto (images).
-                </p>
-              </fieldset>
-
-              {/* Upload Foto & Preview */}
-              <div className="col-span-12">
-                <fieldset className="fieldset">
-                  <legend className="fieldset-legend">Lampiran Foto</legend>
-                  <input
-                    ref={imgRef}
-                    type="file"
-                    accept="image/*"
-                    className="file-input file-input-bordered w-full"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      setForm((s) => ({ ...s, images: f }));
-                      onChangeImage(f);
-                    }}
-                    disabled={disableUnlessAllowed(false)}
-                  />
+                  <p className="text-xs mt-1 opacity-70">
+                    Default 06:00. Jika di atas 06:00, kolom Late otomatis
+                    terisi.
+                  </p>
                 </fieldset>
-                {preview && (
-                  <div className="mt-2 relative h-48 w-full">
-                    {preview.startsWith("blob:") ? (
-                      <Image
-                        src={preview}
-                        alt="preview"
-                        fill
-                        className="object-contain rounded-xl ring-1 ring-inset ring-black/10"
-                      />
-                    ) : (
+
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">Time Out (HH:MM)</legend>
+                  <input
+                    type="time"
+                    className="input input-bordered w-full"
+                    value={form.time_out ?? ""}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, time_out: e.target.value }))
+                    }
+                    disabled={disableUnlessAllowed(false)}
+                  />
+                  <p className="text-xs mt-1 opacity-70">
+                    Default 14:00. Jika sebelum 14:00, kolom Go Home Early
+                    otomatis terisi.
+                  </p>
+                </fieldset>
+
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">Location In *</legend>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      className="input input-bordered w-full"
+                      value={form.location_in ?? ""}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, location_in: e.target.value }))
+                      }
+                      required
+                      disabled={disableUnlessAllowed(false)}
+                    />
+                    <button
+                      type="button"
+                      className={`btn btn-square ${
+                        locLoading === "in" ? "btn-disabled" : ""
+                      }`}
+                      onClick={() => handleGetLocation("in")}
+                      disabled={
+                        disableUnlessAllowed(false) || locLoading !== null
+                      }
+                      title="Ambil lokasi otomatis dari GPS"
+                    >
+                      {locLoading === "in" ? (
+                        <span className="loading loading-spinner loading-xs" />
+                      ) : (
+                        "📍"
+                      )}
+                    </button>
+                  </div>
+                  {form.location_in && (
+                    <div className="mt-1">
                       <a
-                        href={preview}
+                        className="link link-primary text-sm"
+                        href={buildMapUrl(form.location_in)}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
+                        Buka di Google Maps
+                      </a>
+                    </div>
+                  )}
+                </fieldset>
+
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">Location Out</legend>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      className="input input-bordered w-full"
+                      value={form.location_out ?? ""}
+                      onChange={(e) =>
+                        setForm((s) => ({ ...s, location_out: e.target.value }))
+                      }
+                      disabled={disableUnlessAllowed(false)}
+                    />
+                    <button
+                      type="button"
+                      className={`btn btn-square ${
+                        locLoading === "out" ? "btn-disabled" : ""
+                      }`}
+                      onClick={() => handleGetLocation("out")}
+                      disabled={
+                        disableUnlessAllowed(false) || locLoading !== null
+                      }
+                      title="Ambil lokasi otomatis dari GPS"
+                    >
+                      {locLoading === "out" ? (
+                        <span className="loading loading-spinner loading-xs" />
+                      ) : (
+                        "📍"
+                      )}
+                    </button>
+                  </div>
+                  {form.location_out && (
+                    <div className="mt-1">
+                      <a
+                        className="link link-primary text-sm"
+                        href={buildMapUrl(form.location_out)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Buka di Google Maps
+                      </a>
+                    </div>
+                  )}
+                </fieldset>
+
+                {/* Lain-lain */}
+                <fieldset className="fieldset col-span-6 md:col-span-2">
+                  <legend className="fieldset-legend">Total Late (H:MM)</legend>
+                  <input
+                    type="text"
+                    className="input input-bordered input-sm w-full text-center pointer-events-none select-none"
+                    value={form.total_late_time ?? ""}
+                    readOnly
+                    tabIndex={-1}
+                  />
+                </fieldset>
+
+                <fieldset className="fieldset col-span-6 md:col-span-2">
+                  <legend className="fieldset-legend">
+                    Go Home Early (H:MM)
+                  </legend>
+                  <input
+                    type="text"
+                    className="input input-bordered input-sm w-full text-center pointer-events-none select-none"
+                    value={form.go_home_early ?? ""}
+                    readOnly
+                    tabIndex={-1}
+                  />
+                </fieldset>
+
+                {/* Mandays/HK */}
+                <fieldset className="fieldset col-span-12 md:col-span-2">
+                  <legend className="fieldset-legend">HK (otomatis)</legend>
+                  <input
+                    type="text"
+                    className="input input-bordered input-sm w-full text-center"
+                    value={form.mandays}
+                    readOnly
+                  />
+                </fieldset>
+
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">
+                    MAC Address (pseudo)
+                  </legend>
+                  <input
+                    type="text"
+                    className="input input-bordered w-full"
+                    value={form.mac_address ?? ""}
+                    readOnly
+                  />
+                </fieldset>
+
+                {/* Device */}
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">ID Device (auto)</legend>
+                  <input
+                    type="text"
+                    className="input input-bordered w-full"
+                    value={form.id_device ?? ""}
+                    readOnly
+                  />
+                </fieldset>
+
+                {/* Exception Case */}
+                <fieldset className="fieldset col-span-12 md:col-span-6">
+                  <legend className="fieldset-legend">
+                    Exception Case
+                    {!isEditing || !initialHasException ? " *" : ""}
+                  </legend>
+                  <textarea
+                    className="textarea textarea-bordered min-h-24 w-full"
+                    value={form.exception_case ?? ""}
+                    onChange={(e) =>
+                      setForm((s) => ({ ...s, exception_case: e.target.value }))
+                    }
+                    required={!isEditing || !initialHasException}
+                  />
+                </fieldset>
+
+                {/* BA EXCA PDF */}
+                <fieldset className="fieldset col-span-12 md:col-span-6">
+                  <legend className="fieldset-legend">
+                    No BA EXCA (PDF)
+                    {!isEditing || !initialHasBaExca ? " *" : ""}
+                  </legend>
+                  <input
+                    ref={pdfRef}
+                    type="file"
+                    accept="application/pdf"
+                    className="file-input file-input-bordered w-full"
+                    onChange={(e) =>
+                      setForm((s) => ({
+                        ...s,
+                        no_ba_exca_file: e.target.files?.[0],
+                      }))
+                    }
+                    required={!isEditing || !initialHasBaExca}
+                  />
+                  {form.no_ba_exca && (
+                    <div className="mt-1">
+                      <a
+                        className="link link-primary text-sm"
+                        href={form.no_ba_exca}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Lihat BA EXCA saat ini (PDF)
+                      </a>
+                    </div>
+                  )}
+                  <p className="text-xs mt-1 opacity-70">
+                    Disimpan di folder yang sama dengan foto (images).
+                  </p>
+                </fieldset>
+
+                {/* Upload Foto & Preview */}
+                <div className="col-span-12">
+                  <fieldset className="fieldset">
+                    <legend className="fieldset-legend">Lampiran Foto</legend>
+                    <input
+                      ref={imgRef}
+                      type="file"
+                      accept="image/*"
+                      className="file-input file-input-bordered w-full"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        setForm((s) => ({ ...s, images: f }));
+                        onChangeImage(f);
+                      }}
+                      disabled={disableUnlessAllowed(false)}
+                    />
+                  </fieldset>
+                  {preview && (
+                    <div className="mt-2 relative h-48 w-full">
+                      {preview.startsWith("blob:") ? (
                         <Image
                           src={preview}
                           alt="preview"
                           fill
                           className="object-contain rounded-xl ring-1 ring-inset ring-black/10"
                         />
-                      </a>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="modal-action col-span-12">
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={() => setOpen(false)}
-                >
-                  Batal
-                </button>
-                <button
-                  className={`btn btn-primary ${
-                    submitting ? "btn-disabled" : ""
-                  }`}
-                  disabled={submitting}
-                >
-                  {submitting ? (
-                    <span className="loading loading-spinner" />
-                  ) : isEditing ? (
-                    "Update"
-                  ) : (
-                    "Simpan"
+                      ) : (
+                        <a
+                          href={preview}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Image
+                            src={preview}
+                            alt="preview"
+                            fill
+                            className="object-contain rounded-xl ring-1 ring-inset ring-black/10"
+                          />
+                        </a>
+                      )}
+                    </div>
                   )}
-                </button>
-              </div>
-            </form>
+                </div>
+
+                <div className="modal-action col-span-12">
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => setOpen(false)}
+                  >
+                    Batal
+                  </button>
+                  <button
+                    className={`btn btn-primary ${
+                      submitting ? "btn-disabled" : ""
+                    }`}
+                    disabled={submitting}
+                  >
+                    {submitting ? (
+                      <span className="loading loading-spinner" />
+                    ) : isEditing ? (
+                      "Update"
+                    ) : (
+                      "Simpan"
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
       </div>
     </div>
   );

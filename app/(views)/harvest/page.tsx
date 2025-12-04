@@ -152,40 +152,47 @@ export default function HarvestPage() {
     }
   }, [userLevel, homeFcba, homeSection]);
 
-  const fetchData = useCallback(async (overrideFilters?: Filters) => {
-    setLoading(true);
-    try {
-      const currentFilters = overrideFilters || filters;
-      const p = new URLSearchParams();
-      if (currentFilters.tanggal) p.set("tanggal", currentFilters.tanggal!);
-      if (currentFilters.tanggal_end) p.set("tanggal_end", currentFilters.tanggal_end!);
-      if (currentFilters.nodokumen) p.set("nodokumen", currentFilters.nodokumen!);
-      if (currentFilters.kode_karyawan) p.set("kode_karyawan", currentFilters.kode_karyawan!);
-      if (currentFilters.fcba) p.set("fcba", currentFilters.fcba!);
-      if (currentFilters.afdeling) p.set("afdeling", currentFilters.afdeling!);
-      if (currentFilters.tph) p.set("tph", currentFilters.tph!);
+  const fetchData = useCallback(
+    async (overrideFilters?: Filters) => {
+      setLoading(true);
+      try {
+        const currentFilters = overrideFilters || filters;
+        const p = new URLSearchParams();
+        if (currentFilters.tanggal) p.set("tanggal", currentFilters.tanggal!);
+        if (currentFilters.tanggal_end)
+          p.set("tanggal_end", currentFilters.tanggal_end!);
+        if (currentFilters.nodokumen)
+          p.set("nodokumen", currentFilters.nodokumen!);
+        if (currentFilters.kode_karyawan)
+          p.set("kode_karyawan", currentFilters.kode_karyawan!);
+        if (currentFilters.fcba) p.set("fcba", currentFilters.fcba!);
+        if (currentFilters.afdeling)
+          p.set("afdeling", currentFilters.afdeling!);
+        if (currentFilters.tph) p.set("tph", currentFilters.tph!);
 
-      const res = await fetch(`/api/harvest?${p.toString()}`);
+        const res = await fetch(`/api/harvest?${p.toString()}`);
 
-      if (res.status === 404) {
-        setItems([]);
+        if (res.status === 404) {
+          setItems([]);
+          setLoading(false);
+          return;
+        }
+
+        const json = await res.json();
+        if (json.ok) {
+          setItems(json.data || []);
+        } else {
+          showAlert(json.error || "Gagal mengambil data", "error");
+        }
+      } catch (e) {
+        console.error(e);
+        showAlert("Terjadi kesalahan jaringan", "error");
+      } finally {
         setLoading(false);
-        return;
       }
-
-      const json = await res.json();
-      if (json.ok) {
-        setItems(json.data || []);
-      } else {
-        showAlert(json.error || "Gagal mengambil data", "error");
-      }
-    } catch (e) {
-      console.error(e);
-      showAlert("Terjadi kesalahan jaringan", "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [filters, showAlert]);
+    },
+    [filters, showAlert]
+  );
 
   useEffect(() => {
     fetchData();
@@ -225,20 +232,20 @@ export default function HarvestPage() {
       sortable: true,
     },
     {
-      name: "No Dokumen",
+      name: <span title="Nomor dokumen panen">No Dokumen</span>,
       selector: (row) => row.nodokumen,
       sortable: true,
       width: "200px",
     },
     {
-      name: "Tanggal",
+      name: <span title="Tanggal panen (DD-MM-YYYY)">Tanggal</span>,
       selector: (row) => row.tanggal,
       format: (row) => formatDateDMY(row.tanggal),
       sortable: true,
       width: "120px",
     },
     {
-      name: "Karyawan",
+      name: <span title="Nama dan kode karyawan">Karyawan</span>,
       selector: (row) => row.nama_karyawan || row.kode_karyawan,
       sortable: true,
       width: "200px",
@@ -250,94 +257,94 @@ export default function HarvestPage() {
       ),
     },
     {
-      name: "FCBA",
+      name: <span title="FCBA asal (kebun/estate)">FCBA</span>,
       selector: (row) => row.fcba,
       sortable: true,
       width: "80px",
     },
     {
-      name: "Afd",
+      name: <span title="Afdeling / Section">Afd</span>,
       selector: (row) => row.afdeling,
       sortable: true,
       width: "80px",
     },
     {
-      name: "TPH",
+      name: <span title="TPH (Tempat Pembuangan Hasil)">TPH</span>,
       selector: (row) => row.tph,
       sortable: true,
       width: "100px",
     },
     {
-      name: "Field Code",
+      name: <span title="Field code">Field Code</span>,
       selector: (row) => row.fieldcode,
       sortable: true,
       width: "120px",
     },
     {
-      name: "Output",
+      name: <span title="Output (jumlah buah yang dihasilkan)">Output</span>,
       selector: (row) => row.output,
       sortable: true,
       style: { justifyContent: "end" },
       width: "100px",
     },
     {
-      name: "Mentah",
+      name: <span title="Jumlah buah mentah">Mentah</span>,
       selector: (row) => row.mentah,
       sortable: true,
       style: { justifyContent: "end" },
       width: "100px",
     },
     {
-      name: "Overripe",
+      name: <span title="Jumlah buah overripe">Overripe</span>,
       selector: (row) => row.overripe,
       sortable: true,
       style: { justifyContent: "end" },
       width: "100px",
     },
     {
-      name: "Busuk",
+      name: <span title="Jumlah buah busuk kategori 1">Busuk</span>,
       selector: (row) => row.busuk,
       sortable: true,
       style: { justifyContent: "end" },
       width: "100px",
     },
     {
-      name: "Busuk 2",
+      name: <span title="Jumlah buah busuk kategori 2">Busuk 2</span>,
       selector: (row) => row.busuk2,
       sortable: true,
       style: { justifyContent: "end" },
       width: "100px",
     },
     {
-      name: "Buah Kecil",
+      name: <span title="Jumlah buah kecil">Buah Kecil</span>,
       selector: (row) => row.buahkecil,
       sortable: true,
       style: { justifyContent: "end" },
       width: "100px",
     },
     {
-      name: "Brondol",
+      name: <span title="Jumlah brondol">Brondol</span>,
       selector: (row) => row.brondol,
       sortable: true,
       style: { justifyContent: "end" },
       width: "100px",
     },
     {
-      name: "Alas Brondol",
+      name: <span title="Alas brondol (berat)">Alas Brondol</span>,
       selector: (row) => row.alasbrondol,
       sortable: true,
       style: { justifyContent: "end" },
       width: "120px",
     },
     {
-      name: "Tangkai Pjg",
+      name: <span title="Jumlah tangkai panjang">Tangkai Pjg</span>,
       selector: (row) => row.tangkai_panjang,
       sortable: true,
       style: { justifyContent: "end" },
       width: "120px",
     },
     {
-      name: "Status",
+      name: <span title="Status panen (Planned/Approved/...)">Status</span>,
       selector: (row) => row.status_harvesting,
       sortable: true,
       width: "120px",
@@ -352,13 +359,13 @@ export default function HarvestPage() {
       ),
     },
     {
-      name: "Card ID",
+      name: <span title="ID kartu karyawan (jika ada)">Card ID</span>,
       selector: (row) => row.card_id,
       sortable: true,
       width: "150px",
     },
     {
-      name: "Device ID",
+      name: <span title="ID perangkat yang merekam panen">Device ID</span>,
       selector: (row) => row.id_device,
       sortable: true,
       width: "200px",
@@ -496,7 +503,7 @@ export default function HarvestPage() {
                 }
               />
             </div>
-            
+
             <div className="flex justify-start gap-2 pt-3 border-t border-base-200">
               <button
                 className="btn btn-outline"
