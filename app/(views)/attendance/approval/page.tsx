@@ -679,8 +679,6 @@ export default function AttendanceApproval() {
               rel="noopener noreferrer"
               title="Buka foto"
             >
-// @ts-ignore
-                // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={getProxiedImageUrl(r.images)}
                 alt="foto"
