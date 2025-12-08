@@ -243,7 +243,7 @@ export const Drawer = () => {
                   >
                     <path d="M3 13h2v-2H3v2zm4 0h2v-2H7v2zM3 17h2v-2H3v2zm4 0h2v-2H7v2zM3 9h2V7H3v2zm4 0h2V7H7v2zM14 5v6l4-3-4-3zM12 20h8v-2h-8v2z" />
                   </svg>
-                  <span>Pengangkutan</span>
+                  <span>Transport</span>
                 </div>
               </summary>
               <ul className="menu menu-sm">
