@@ -7,7 +7,7 @@ import React, {
   useState,
   forwardRef,
 } from "react";
-import Image from "next/image";
+
 import DataTable, { TableColumn } from "react-data-table-component";
 import { logoutAndRedirect } from "@/utils/authHelper";
 import { getProxiedImageUrl, PLACEHOLDER_IMAGE } from "@/utils/imageHelper";
@@ -679,6 +679,8 @@ export default function AttendanceApproval() {
               rel="noopener noreferrer"
               title="Buka foto"
             >
+// @ts-ignore
+                // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={getProxiedImageUrl(r.images)}
                 alt="foto"
