@@ -348,7 +348,7 @@ export default function PengangkutanPage() {
       width: "100px",
     },
     {
-      name: <span title="TPH (Tempat Pembuangan Hasil)">TPH</span>,
+      name: <span title="TPH (Tempat Penampungan Hasil)">TPH</span>,
       selector: (r) => r.tph || "-",
       sortable: true,
       width: "80px",
@@ -364,28 +364,28 @@ export default function PengangkutanPage() {
       selector: (r) => r.totaljanjang || "-",
       sortable: true,
       width: "120px",
-      style: { justifyContent: "end" },
+      style: { justifyContent: "center" },
     },
     {
       name: "Output",
       selector: (r) => r.output || "-",
       sortable: true,
       width: "100px",
-      style: { justifyContent: "end" },
+      style: { justifyContent: "center" },
     },
     {
-      name: "Janjang Normal",
+      name: <span title="Janjang Normal">Janjang Normal</span>,
       selector: (r) => r.janjangnormal || "-",
       sortable: true,
       width: "120px",
-      style: { justifyContent: "end" },
+      style: { justifyContent: "center" },
     },
     {
-      name: "Brondolan",
+      name: <span title="Brondolan">Brondolan</span>,
       selector: (r) => r.brondolan || "-",
       sortable: true,
       width: "100px",
-      style: { justifyContent: "end" },
+      style: { justifyContent: "center" },
     },
     {
       name: (
