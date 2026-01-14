@@ -47,6 +47,19 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // Restrict access to attendance upload page to MGR only
+  if (pathname.startsWith("/attendance/upload")) {
+    const levelRaw =
+      request.cookies.get("user_Level")?.value ||
+      request.cookies.get("user_level")?.value ||
+      request.cookies.get("user_LEVEL")?.value ||
+      "";
+    const level = String(levelRaw).toUpperCase();
+    if (level !== "MGR") {
+      return NextResponse.redirect(new URL("/dashboard", origin));
+    }
+  }
+
   return NextResponse.next();
 }
 

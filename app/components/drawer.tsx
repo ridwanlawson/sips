@@ -161,23 +161,43 @@ export const Drawer = () => {
                   </Link>
                 </li>
                 {(userLevel === "ADM" || userLevel === "MGR") && (
-                  <li>
-                    <Link
-                      href="/attendance/approval"
-                      className={isActive("/attendance/approval")}
-                      onClick={closeDrawer}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
+                  <>
+                    <li>
+                      <Link
+                        href="/attendance/approval"
+                        className={isActive("/attendance/approval")}
+                        onClick={closeDrawer}
                       >
-                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
-                      </svg>
-                      Approval
-                    </Link>
-                  </li>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                        >
+                          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
+                        </svg>
+                        Approval
+                      </Link>
+                    </li>
+                    <li>
+                      <Link
+                        href="/attendance/upload"
+                        className={isActive("/attendance/upload")}
+                        onClick={closeDrawer}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                        >
+                          <path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2z" />
+                          <path d="M11 3L5.5 8.5l1.42 1.41L11 5.83V15h2V5.83l4.08 4.08L18.5 8.5 12 3z" />
+                        </svg>
+                        Upload
+                      </Link>
+                    </li>
+                  </>
                 )}
               </ul>
             </details>
