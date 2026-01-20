@@ -120,6 +120,7 @@ export default function AttendanceUploadPage() {
     }));
 
     // Auto execute search on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     fetchData(initialParams);
   }, []);
 
@@ -204,7 +205,7 @@ export default function AttendanceUploadPage() {
     const BATCH_SIZE = 100;
     const totalRecords = data.length;
     let successCount = 0;
-    let failMessages: string[] = [];
+    const failMessages: string[] = [];
 
     try {
       // Helper to format payload item
@@ -291,7 +292,7 @@ export default function AttendanceUploadPage() {
         };
 
         try {
-          const response = await insertAttendanceData(recordsToSubmit as any);
+          const response = await insertAttendanceData(recordsToSubmit as { data: Record<string, unknown>[] });
           if (response.success) {
             successCount += batch.length;
           } else {
@@ -314,7 +315,7 @@ export default function AttendanceUploadPage() {
                    };
                    
                    setSubmitProgress(`Retrying batch ${currentBatchNum} (Item ${j+1}/${batch.length})...`);
-                   const singleResp = await insertAttendanceData(singlePayload as any);
+                   const singleResp = await insertAttendanceData(singlePayload as { data: Record<string, unknown>[] });
                    
                    if (singleResp.success) {
                        successCount++;
@@ -690,7 +691,7 @@ export default function AttendanceUploadPage() {
               ></path>
             </svg>
             <div>
-              <p className="font-medium">Tidak ada hasil untuk "{searchTerm}"</p>
+              <p className="font-medium">Tidak ada hasil untuk &quot;{searchTerm}&quot;</p>
               <p className="text-sm opacity-75">
                 Coba gunakan kata kunci yang berbeda atau{" "}
                 <button
