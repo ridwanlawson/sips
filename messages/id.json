@@ -1,0 +1,23 @@
+{
+  "Navbar": {
+    "dashboard": "Dashboard",
+    "attendance": "Absensi",
+    "harvest": "Panen",
+    "pengangkutan": "Pengangkutan",
+    "changePassword": "Ganti Password",
+    "logout": "Keluar",
+    "signingOut": "Sedang keluar...",
+    "download": "Unduh",
+    "visit": "Kunjungi",
+    "pengguna": "Pengguna",
+    "list": "Daftar Data",
+    "approval": "Persetujuan",
+    "upload": "Unggah",
+    "transport": "Pengangkutan"
+  },
+  "Auth": {
+    "login": "Masuk",
+    "username": "Nama Pengguna",
+    "password": "Kata Sandi"
+  }
+}

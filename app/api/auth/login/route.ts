@@ -46,21 +46,30 @@ export async function POST(request: Request) {
     const base = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
+      sameSite: 'strict' as const,
+      path: '/',
+    };
+
+    // Base cookie utk client-side info (client-readable)
+    const clientBase = {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict' as const,
       path: '/',
     };
 
     // ====== 1) Set cookie auth & info user (server-only) ======
     res.cookies.set('auth_token', String(token), base);
     res.cookies.set('log_id', String(userId), base);
-    res.cookies.set('user_Kode', String(userKode));
-    res.cookies.set('user_Fcba', String(userFcba));
-    res.cookies.set('user_Afdeling', String(userAfdeling));
-    res.cookies.set('user_Gang', String(userGang));
-    res.cookies.set('user_FullName', String(userFullName));
-    res.cookies.set('user_Level', String(userLevel));
-    res.cookies.set('user_Position', String(userPosition));
-    res.cookies.set('user_Photo', String(userPhoto));
+    
+    if (userKode) res.cookies.set('user_Kode', String(userKode), clientBase);
+    if (userFcba) res.cookies.set('user_Fcba', String(userFcba), clientBase);
+    if (userAfdeling) res.cookies.set('user_Afdeling', String(userAfdeling), clientBase);
+    if (userGang) res.cookies.set('user_Gang', String(userGang), clientBase);
+    if (userFullName) res.cookies.set('user_FullName', String(userFullName), clientBase);
+    if (userLevel) res.cookies.set('user_Level', String(userLevel), clientBase);
+    if (userPosition) res.cookies.set('user_Position', String(userPosition), clientBase);
+    if (userPhoto) res.cookies.set('user_Photo', String(userPhoto), clientBase);
 
     // ====== 2) Ambil daftar karyawan utk opsi distinct (client-readable) ======
     try {
@@ -96,7 +105,7 @@ export async function POST(request: Request) {
         const clientCookieBase = {
           httpOnly: false,
           secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax' as const,
+          sameSite: 'strict' as const,
           path: '/',
           maxAge: 60 * 60 * 24 * 7, // 7 hari
         };

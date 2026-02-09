@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import DataTable, { TableColumn } from "react-data-table-component";
+import toast from "react-hot-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import * as XLSX from "xlsx";
+import { SkeletonTable } from "@/app/components/skeletons";
 
 /* =========================
    T Y P E S
@@ -464,8 +468,9 @@ const extractSingleData = <T,>(payload: unknown): T | null => {
    M A I N
 ========================= */
 export default function Attendance() {
-  const [items, setItems] = useState<Absensi[]>([]);
-  const [loading, setLoading] = useState(false);
+  const queryClient = useQueryClient();
+  const [q, setQ] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
 
   const [filters, setFilters] = useState<Filters>(() => {
     const today = getTodayISO();
@@ -484,8 +489,164 @@ export default function Attendance() {
     };
   });
 
-  const [q, setQ] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
+  // Master data / cascading
+  const [triplets, setTriplets] = useState<Triplet[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [selFcba, setSelFcba] = useState<string>("");
+  const [selSection, setSelSection] = useState<string>("");
+  const [selGang, setSelGang] = useState<string>("");
+  const [homeFcba, setHomeFcba] = useState<string>("");
+  const [homeSection, setHomeSection] = useState<string>("");
+  const [userLevel, setUserLevel] = useState<"ADM" | "MGR" | "AST" | "OTHER">(
+    "OTHER"
+  );
+  const [destFcba, setDestFcba] = useState<string>("");
+
+  // Query for attendance list
+  const { data: items = [], isLoading: loading, error: queryError } = useQuery({
+    queryKey: ["attendance", filters, userLevel, homeFcba, homeSection],
+    queryFn: async () => {
+      const base = filters;
+      let start = (base.tanggal ?? "").trim();
+      let end = (base.tanggal_end ?? "").trim();
+
+      if (start && !end) end = start;
+      else if (!start && end) start = end;
+
+      if (start && end && end < start) {
+        const tmp = start;
+        start = end;
+        end = tmp;
+      }
+
+      const isAnyDateFilled = !!(start || end);
+      const isRange = !!(start && end && start !== end);
+
+      const f: Filters = { ...base };
+      if (userLevel === "MGR" || userLevel === "AST") {
+        if (homeFcba) f.fcba = homeFcba;
+      }
+      if (userLevel === "AST" && homeSection) {
+        f.afdeling = homeSection;
+      }
+
+      delete f.tanggal;
+      delete f.tanggal_end;
+
+      if (isAnyDateFilled && !isRange) {
+        f.tanggal = start;
+      }
+
+      const params = new URLSearchParams();
+      Object.entries(f).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== "") {
+          params.append(k, v as string);
+        }
+      });
+
+      const res = await fetch(
+        `/api/attendance${params.toString() ? `?${params}` : ""}`,
+        { credentials: "include" }
+      );
+
+      if (!res.ok) {
+        if (res.status === 404) return [];
+        if (res.status === 401) {
+          await logoutAndRedirect();
+          return [];
+        }
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const json: any = await res.json();
+      const raw = extractArrayData<Absensi>(json);
+
+      let filteredByDate = raw;
+      if (start && end) {
+        filteredByDate = raw.filter((row) => {
+          const dateOnly = (row.tanggal || "").split(" ")[0];
+          if (!dateOnly) return false;
+          return dateOnly >= start! && dateOnly <= end!;
+        });
+      }
+
+      const byId = new Map<string, Absensi>();
+      for (const row of filteredByDate)
+        if (row?.id && !byId.has(row.id)) byId.set(row.id, row);
+      const dataRaw = Array.from(byId.values());
+
+      const seen = new Set<string>();
+      return dataRaw.map((it, idx) => {
+        const candidate = [
+          it.id || "",
+          it.kode_karyawan || "",
+          (it.tanggal || "").split(" ")[0],
+          String(idx),
+        ].join("|");
+        let key = candidate;
+        while (seen.has(key)) key = `${key}_`;
+        seen.add(key);
+        return { ...it, _rowKey: key };
+      });
+    },
+    enabled: !!homeFcba || userLevel === "ADM", // Wait until bootstrap is done
+  });
+
+  // Mutations
+  const mutation = useMutation({
+    mutationFn: async ({ url, method, body }: { url: string; method: string; body: FormData }) => {
+      const res = await fetch(url, {
+        method,
+        body,
+        credentials: "include",
+      });
+      if (res.status === 401) {
+        await logoutAndRedirect();
+        throw new Error("Unauthorized");
+      }
+      const json: any = await res.json();
+      if (!res.ok || !json.ok) {
+        throw new Error(json.message || json.error || "Operation failed");
+      }
+      return json;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["attendance"] });
+      setOpen(false);
+      setForm((s) => ({
+        ...initialForm,
+        id_device: s.id_device,
+        mac_address: s.mac_address,
+      }));
+      setPreview("");
+      if (imgRef.current) imgRef.current.value = "";
+      if (pdfRef.current) pdfRef.current.value = "";
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/attendance/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const json: any = await res.json();
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error || "Gagal hapus");
+      }
+      return id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["attendance"] });
+      toast.success("Data berhasil dihapus 🗑️");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    }
+  });
 
   // modal
   const [open, setOpen] = useState(false);
@@ -510,47 +671,13 @@ export default function Attendance() {
   const [preview, setPreview] = useState<string>("");
   const imgRef = useRef<HTMLInputElement | null>(null);
   const pdfRef = useRef<HTMLInputElement | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  // flag aturan Exception / BA EXCA saat edit
-  const [initialHasException, setInitialHasException] = useState(false);
-  const [initialHasBaExca, setInitialHasBaExca] = useState(false);
-
-  // toast
-  const [alert, setAlert] = useState<{
-    type: "success" | "error";
-    msg: string;
-  } | null>(null);
-  const showAlert = useCallback(
-    (msg: string, type: "success" | "error" = "success") => {
-      setAlert({ msg, type });
-      setTimeout(() => setAlert(null), 4000);
-    },
-    []
-  );
-
-  // Master data / cascading
-  const [triplets, setTriplets] = useState<Triplet[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [selFcba, setSelFcba] = useState<string>("");
-  const [selSection, setSelSection] = useState<string>("");
-  const [selGang, setSelGang] = useState<string>("");
-  const [homeFcba, setHomeFcba] = useState<string>("");
-  const [homeSection, setHomeSection] = useState<string>("");
-  const [userLevel, setUserLevel] = useState<"ADM" | "MGR" | "AST" | "OTHER">(
-    "OTHER"
-  );
-  const [destFcba, setDestFcba] = useState<string>("");
 
   // loading ambil lokasi (in/out)
   const [locLoading, setLocLoading] = useState<"in" | "out" | null>(null);
 
   const handleGetLocation = (target: "in" | "out") => {
     if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
-      showAlert(
-        "Browser tidak mendukung GPS / geolocation. Isi manual saja.",
-        "error"
-      );
+      toast.error("Browser tidak mendukung GPS / geolocation. Isi manual saja.");
       return;
     }
 
@@ -571,11 +698,10 @@ export default function Attendance() {
       },
       (err) => {
         console.error("Geolocation error:", err);
-        showAlert(
+        toast.error(
           err.code === err.PERMISSION_DENIED
             ? "Izin lokasi ditolak. Aktifkan izin lokasi di browser."
-            : "Gagal mengambil lokasi. Coba lagi.",
-          "error"
+            : "Gagal mengambil lokasi. Coba lagi."
         );
         setLocLoading(null);
       },
@@ -859,150 +985,10 @@ export default function Attendance() {
     return homeFcba || selFcba || "";
   }, [userLevel, selFcba, homeFcba]);
 
-  /* ===== LIST (dengan filter rentang tanggal di frontend) ===== */
-  const fetchList = useCallback(
-    async (override?: Filters) => {
-      setLoading(true);
-      try {
-        const base = override ?? filters;
-
-        // Ambil raw string tanggal
-        let start = (base.tanggal ?? "").trim();
-        let end = (base.tanggal_end ?? "").trim();
-
-        // Jika hanya salah satu diisi → samakan (range 1 hari)
-        if (start && !end) {
-          end = start;
-        } else if (!start && end) {
-          start = end;
-        }
-
-        // Kalau keduanya ada & end < start → tukar
-        if (start && end && end < start) {
-          const tmp = start;
-          start = end;
-          end = tmp;
-        }
-
-        const isAnyDateFilled = !!(start || end);
-        const isRange = !!(start && end && start !== end);
-
-        // Filter yang akan DIKIRIM ke API
-        const f: Filters = { ...base };
-
-        // Scope sesuai level
-        if (userLevel === "MGR" || userLevel === "AST") {
-          if (homeFcba) f.fcba = homeFcba;
-        }
-        if (userLevel === "AST" && homeSection) {
-          f.afdeling = homeSection;
-        }
-
-        // Bersihkan tanggal dulu
-        delete f.tanggal;
-        delete f.tanggal_end;
-
-        if (!isAnyDateFilled) {
-          // tidak kirim tanggal → backend bebas kirim semua tanggal
-        } else if (!isRange) {
-          // 1 hari saja → kirim sebagai tanggal tunggal
-          f.tanggal = start;
-        } else {
-          // Range beneran → JANGAN kirim tanggal ke API
-          // nanti di-filter di FE pakai start-end
-        }
-
-        // Build query string (tanpa tanggal_end)
-        const params = new URLSearchParams();
-        Object.entries(f).forEach(([k, v]) => {
-          if (v !== undefined && v !== null && v !== "") {
-            params.append(k, v as string);
-          }
-        });
-
-        const res = await fetch(
-          `/api/attendance${params.toString() ? `?${params}` : ""}`,
-          { credentials: "include" }
-        );
-
-        // ⬇⬇⬇ PERUBAHAN PENTING DI SINI
-        if (!res.ok) {
-          // Kalau 404 → anggap data kosong, jangan tampilkan error
-          if (res.status === 404) {
-            setItems([]); // kosongkan tabel
-            setLoading(false); // stop loading
-            return; // keluar tanpa throw → tidak masuk catch
-          }
-          // Status lain (500, 401, dll) → tetap dianggap error
-          if (res.status === 401) {
-            await logoutAndRedirect();
-            return;
-          }
-          throw new Error(`HTTP ${res.status}`);
-        }
-        // ⬆⬆⬆ SAMPAI SINI
-
-        const json: unknown = await res.json();
-
-        const raw = extractArrayData<Absensi>(json);
-
-        // ===== FILTER RENTANG TANGGAL DI FRONTEND =====
-        let filteredByDate = raw;
-        if (start && end) {
-          filteredByDate = raw.filter((row) => {
-            const dateOnly = (row.tanggal || "").split(" ")[0]; // "YYYY-MM-DD"
-            if (!dateOnly) return false;
-            return dateOnly >= start! && dateOnly <= end!;
-          });
-        }
-
-        // Hilangkan duplikat by ID
-        const byId = new Map<string, Absensi>();
-        for (const row of filteredByDate)
-          if (row?.id && !byId.has(row.id)) byId.set(row.id, row);
-        const dataRaw = Array.from(byId.values());
-
-        // Tambahkan _rowKey unik
-        const seen = new Set<string>();
-        const data = dataRaw.map((it, idx) => {
-          const candidate = [
-            it.id || "",
-            it.kode_karyawan || "",
-            (it.tanggal || "").split(" ")[0],
-            String(idx),
-          ].join("|");
-          let key = candidate;
-          while (seen.has(key)) key = `${key}_`;
-          seen.add(key);
-          return { ...it, _rowKey: key };
-        });
-
-        setItems(data);
-      } catch (e) {
-        // HANYA masuk ke sini kalau benar-benar error (bukan karena data kosong)
-        console.error(e);
-        showAlert("Gagal memuat data", "error");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [filters, showAlert, userLevel, homeFcba, homeSection]
-  );
-
-  const didRunInitial = useRef(false);
-  useEffect(() => {
-    if (didRunInitial.current) return;
-    didRunInitial.current = true;
-    fetchList();
-  }, [fetchList]);
-
   /* ===== Defaults untuk ADD ===== */
   const setDefaultsForAdd = () => {
     const today = getTodayISO();
     const { deviceId, pseudoMac } = getOrCreateDeviceIds();
-
-    setInitialHasBaExca(false);
-    setInitialHasException(false);
 
     setForm({
       ...initialForm,
@@ -1110,11 +1096,9 @@ export default function Attendance() {
   /* ===== SUBMIT ===== */
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (submitting) return;
-    setSubmitting(true);
-    try {
-      const fd = new FormData();
+    if (mutation.isPending) return;
 
+    try {
       if (!form.tanggal) throw new Error("Tanggal wajib diisi");
       if (!form.time_in) throw new Error("Time In wajib diisi");
       if (!form.location_in) throw new Error("Location In wajib diisi");
@@ -1134,8 +1118,8 @@ export default function Attendance() {
       const hasUploadedPdf = form.no_ba_exca_file instanceof File;
       const hasExistingPdf = !!form.no_ba_exca;
 
-      const exceptionRequired = !isEditing || !initialHasException;
-      const baExcaRequired = !isEditing || !initialHasBaExca;
+      const exceptionRequired = !isEditing;
+      const baExcaRequired = !isEditing;
 
       if (exceptionRequired && !hasException) {
         throw new Error("Exception Case wajib diisi.");
@@ -1150,6 +1134,7 @@ export default function Attendance() {
         ? combineToApiString(form.tanggal, form.time_out)
         : "";
 
+      const fd = new FormData();
       fd.append("tanggal", form.tanggal);
       fd.append("kode_karyawan", form.kode_karyawan);
       fd.append("attendance", form.attendance);
@@ -1197,94 +1182,27 @@ export default function Attendance() {
       const url =
         isEditing && form.id ? `/api/attendance/${form.id}` : `/api/attendance`;
 
-      const res = await fetch(url, {
-        method,
-        body: fd,
-        credentials: "include",
+      mutation.mutate({ url, method, body: fd }, {
+        onSuccess: () => {
+          toast.success(
+            isEditing
+              ? "Data berhasil diperbarui ✅"
+              : "Data berhasil ditambahkan ✅"
+          );
+        }
       });
-
-      if (res.status === 401) {
-        await logoutAndRedirect();
-        return;
-      }
-
-      const json: unknown = await res.json();
-
-      if (
-        !isObject(json) ||
-        !("ok" in json) ||
-        (json as { ok: unknown }).ok !== true
-      ) {
-        const errMsg =
-          (isObject(json) &&
-            ("message" in json || "error" in json) &&
-            String(
-              (json as Record<string, unknown>).message ??
-                (json as Record<string, unknown>).error
-            )) ||
-          "Gagal menyimpan data";
-        throw new Error(errMsg);
-      }
-
-      showAlert(
-        isEditing
-          ? "Data berhasil diperbarui ✅"
-          : "Data berhasil ditambahkan ✅"
-      );
-      await fetchList();
-      setForm((s) => ({
-        ...initialForm,
-        id_device: s.id_device,
-        mac_address: s.mac_address,
-      }));
-      setDestFcba("");
-      setSelFcba(userLevel === "ADM" ? homeFcba || "" : homeFcba || "");
-      setSelSection(userLevel === "AST" ? homeSection || "" : "");
-      setSelGang("");
-      if (imgRef.current) imgRef.current.value = "";
-      if (pdfRef.current) pdfRef.current.value = "";
-      setPreview("");
-      setOpen(false);
     } catch (e) {
       const message =
         e instanceof Error ? e.message : "Terjadi kesalahan saat menyimpan";
-      showAlert(message, "error");
-    } finally {
-      setSubmitting(false);
+      toast.error(message);
     }
   };
 
   /* ===== DELETE ===== */
-  const handleDelete = useCallback(
-    async (id: string) => {
-      if (!confirm("Yakin ingin menghapus data ini?")) return;
-      try {
-        const res = await fetch(`/api/attendance/${id}`, {
-          method: "DELETE",
-          credentials: "include",
-        });
-        const json: unknown = await res.json();
-        if (
-          !isObject(json) ||
-          !("ok" in json) ||
-          (json as { ok: unknown }).ok !== true
-        )
-          throw new Error(
-            (isObject(json) &&
-              String(
-                (json as Record<string, unknown>).error || "Gagal hapus"
-              )) ||
-              "Gagal hapus"
-          );
-        setItems((prev) => prev.filter((i) => i.id !== id));
-        showAlert("Data berhasil dihapus 🗑️");
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : "Gagal menghapus data";
-        showAlert(msg, "error");
-      }
-    },
-    [showAlert]
-  );
+  const handleDelete = (id: string) => {
+    if (!confirm("Yakin ingin menghapus data ini?")) return;
+    deleteMutation.mutate(id);
+  };
 
   /* ===== DETAIL ===== */
   const handleDetail = useCallback(
@@ -1309,9 +1227,6 @@ export default function Attendance() {
 
         const existingException = (d.exception_case || "").trim();
         const existingBaExca = (d.no_ba_exca || "").trim();
-
-        setInitialHasException(existingException.length > 0);
-        setInitialHasBaExca(existingBaExca.length > 0);
 
         const filled: FormState = {
           id: d.id,
@@ -1351,12 +1266,12 @@ export default function Attendance() {
         setPreview(d.images || "");
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Gagal memuat detail";
-        showAlert(msg, "error");
+        toast.error(msg);
       } finally {
         setDetailLoading(false);
       }
     },
-    [showAlert, homeFcba, homeSection]
+    [homeFcba, homeSection]
   );
 
   /* ===== PREVIEW FOTO ===== */
@@ -1716,6 +1631,38 @@ export default function Attendance() {
     [handleDetail, handleDelete, empLabelMap, userLevel]
   );
 
+  /* ===== EXPORT EXCEL ===== */
+  const handleExport = () => {
+    if (filtered.length === 0) {
+      toast.error("Tidak ada data untuk diekspor");
+      return;
+    }
+
+    const dataToExport = filtered.map((r, idx) => ({
+      No: idx + 1,
+      Tanggal: (r.tanggal || "").split(" ")[0],
+      Nama: r.namakaryawan || "-",
+      Kode: r.kode_karyawan || "-",
+      Mandor: r.kode_karyawan_mandor || "-",
+      FCBA: r.fcba || "-",
+      Section: r.section || "-",
+      Gang: r.gang || "-",
+      Type: r.attendance_type || "-",
+      Attendance: r.attendance || "-",
+      Masuk: r.time_in ? r.time_in.split(" ")[1]?.slice(0, 5) || r.time_in : "-",
+      Pulang: r.time_out ? r.time_out.split(" ")[1]?.slice(0, 5) || r.time_out : "-",
+      Late: r.total_late_time || "-",
+      "Home Early": r.go_home_early || "-",
+      HK: r.mandays != null ? String(r.mandays) : "-",
+      Status: r.status_attendance || "-",
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Attendance");
+    XLSX.writeFile(wb, `Attendance_${filters.tanggal}_${filters.tanggal_end}.xlsx`);
+  };
+
   /* ===== Quick search lokal ===== */
   const filtered = useMemo(() => {
     if (!q.trim()) return items;
@@ -1752,24 +1699,6 @@ export default function Attendance() {
   return (
     <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
       <div className="p-4 sm:p-6 max-w-screen-2xl mx-auto w-full overflow-x-hidden">
-        {/* Toast */}
-        <div className="toast toast-top right-4 z-50">
-          {alert && (
-            <div
-              className={`alert ${
-                alert.type === "success" ? "alert-success" : "alert-error"
-              }`}
-            >
-              <div>
-                <span className="font-semibold">
-                  {alert.type === "success" ? "Berhasil" : "Gagal"}
-                </span>
-                <span className="ml-2 whitespace-pre-line">{alert.msg}</span>
-              </div>
-            </div>
-          )}
-        </div>
-
         {/* Header */}
         <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start">
           <h1
@@ -1788,10 +1717,17 @@ export default function Attendance() {
             </button>
             <button
               className="btn btn-sm"
-              onClick={() => fetchList()}
+              onClick={() => queryClient.invalidateQueries({ queryKey: ["attendance"] })}
               title="Refresh data absensi"
             >
               Refresh
+            </button>
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={handleExport}
+              title="Ekspor data yang difilter ke Excel"
+            >
+              📤 Export
             </button>
             {canAddOrEdit && (
               <button
@@ -1950,7 +1886,7 @@ export default function Attendance() {
             <div className="flex justify-start gap-2 pt-3 border-t border-base-200">
               <button
                 className="btn btn-outline"
-                onClick={() => fetchList()}
+                onClick={() => queryClient.invalidateQueries({ queryKey: ["attendance"] })}
                 title="Terapkan filter"
               >
                 Terapkan Filter
@@ -1972,8 +1908,6 @@ export default function Attendance() {
                     fcba_destination: "",
                   };
                   setFilters(resetFilters);
-                  // pass resetFilters as override so fetchList uses cleared filters immediately
-                  fetchList(resetFilters);
                 }}
                 title="Reset semua filter"
               >
@@ -1986,24 +1920,30 @@ export default function Attendance() {
         {/* DataTable */}
         <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100">
           <div className="min-w-[900px] md:min-w-0">
-            <DataTable
-              keyField="_rowKey"
-              columns={columns}
-              data={filtered}
-              progressPending={loading}
-              pagination
-              paginationPerPage={10}
-              paginationRowsPerPageOptions={[10, 30, 100, 500]}
-              dense
-              highlightOnHover
-              fixedHeader
-              fixedHeaderScrollHeight="520px"
-              persistTableHead
-              responsive
-              noDataComponent={
-                <div className="py-8 text-base-content/70">Tidak ada data.</div>
-              }
-            />
+            {loading ? (
+              <div className="p-8">
+                <SkeletonTable rows={10} />
+              </div>
+            ) : (
+              <DataTable
+                keyField="_rowKey"
+                columns={columns}
+                data={filtered}
+                progressPending={loading}
+                pagination
+                paginationPerPage={10}
+                paginationRowsPerPageOptions={[10, 30, 100, 500]}
+                dense
+                highlightOnHover
+                fixedHeader
+                fixedHeaderScrollHeight="520px"
+                persistTableHead
+                responsive
+                noDataComponent={
+                  <div className="py-8 text-base-content/70">Tidak ada data.</div>
+                }
+              />
+            )}
           </div>
         </div>
 
@@ -2430,7 +2370,7 @@ export default function Attendance() {
                 <fieldset className="fieldset col-span-12 md:col-span-6">
                   <legend className="fieldset-legend">
                     Exception Case
-                    {!isEditing || !initialHasException ? " *" : ""}
+                    {!isEditing ? " *" : ""}
                   </legend>
                   <textarea
                     className="textarea textarea-bordered min-h-24 w-full"
@@ -2438,7 +2378,7 @@ export default function Attendance() {
                     onChange={(e) =>
                       setForm((s) => ({ ...s, exception_case: e.target.value }))
                     }
-                    required={!isEditing || !initialHasException}
+                    required={!isEditing}
                   />
                 </fieldset>
 
@@ -2446,7 +2386,7 @@ export default function Attendance() {
                 <fieldset className="fieldset col-span-12 md:col-span-6">
                   <legend className="fieldset-legend">
                     No BA EXCA (PDF)
-                    {!isEditing || !initialHasBaExca ? " *" : ""}
+                    {!isEditing ? " *" : ""}
                   </legend>
                   <input
                     ref={pdfRef}
@@ -2459,7 +2399,7 @@ export default function Attendance() {
                         no_ba_exca_file: e.target.files?.[0],
                       }))
                     }
-                    required={!isEditing || !initialHasBaExca}
+                    required={!isEditing}
                   />
                   {form.no_ba_exca && (
                     <div className="mt-1">
@@ -2532,11 +2472,11 @@ export default function Attendance() {
                   </button>
                   <button
                     className={`btn btn-primary ${
-                      submitting ? "btn-disabled" : ""
+                      mutation.isPending ? "btn-disabled" : ""
                     }`}
-                    disabled={submitting}
+                    disabled={mutation.isPending}
                   >
-                    {submitting ? (
+                    {mutation.isPending ? (
                       <span className="loading loading-spinner" />
                     ) : isEditing ? (
                       "Update"

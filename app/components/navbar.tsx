@@ -6,38 +6,31 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Drawer } from "./drawer";
 import { Theme } from "./theme";
+import { LanguageSwitcher } from "./language-switcher";
 import { toTitleCase } from "@/utils/textManipulation";
 import { getProxiedImageUrl } from "@/utils/imageHelper";
-
-/** Ambil nilai cookie by name (handle URL-encoded value juga) */
-function getCookie(name: string) {
-  if (typeof document === "undefined") return null;
-  const part = document.cookie
-    .split("; ")
-    .find((row) => row.startsWith(`${name}=`));
-  if (!part) return null;
-  const value = part.split("=")[1] ?? "";
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
-  }
-}
+import { useTranslations } from 'next-intl';
+import { cookieStore } from "@/utils/cookieStore";
 
 export default function Navbar() {
+  const t = useTranslations('Navbar');
   const router = useRouter();
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [fullNameDisplay, setFullNameDisplay] = useState<string | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
-    const photoCookie = getCookie("user_Photo");
-    const fullNameCookie = getCookie("user_FullName");
-    const fcbaCookie = getCookie("user_Fcba");
+    const userInfo = cookieStore.getAllUserInfo();
+    const photoCookie = userInfo.photo;
+    const fullNameCookie = userInfo.fullName;
+    const fcbaCookie = userInfo.fcba;
 
     // bersihkan spasi
     const name = (fullNameCookie ?? "").trim();
     const fcba = (fcbaCookie ?? "").trim();
+    
+    // Avoid "null" or "undefined" strings from cookie
+    const photo = photoCookie && photoCookie !== "null" && photoCookie !== "undefined" ? photoCookie.trim() : null;
 
     // rakit tampilan: "Nama (FCBA)" hanya kalau datanya ada
     const parts: string[] = [];
@@ -45,7 +38,7 @@ export default function Navbar() {
     if (fcba) parts.push(`(${fcba.toUpperCase()})`);
     const display = parts.join(" ").trim();
 
-    setPhotoUrl(photoCookie && photoCookie.trim() !== "" ? photoCookie : null);
+    setPhotoUrl(photo || null);
     setFullNameDisplay(display || null);
   }, []);
 
@@ -86,7 +79,8 @@ export default function Navbar() {
         />
       </div>
 
-      <div className="navbar-end mr-2 gap-1">
+      <div className="navbar-end mr-2 gap-4">
+        <LanguageSwitcher />
         <div className="dropdown dropdown-end">
           <div
             tabIndex={0}
@@ -114,7 +108,7 @@ export default function Navbar() {
           >
             <li>
               <a>
-                <b>{fullNameDisplay ?? "Pengguna"}</b>
+                <b>{fullNameDisplay ?? t('pengguna')}</b>
               </a>
             </li>
             <li>
@@ -123,7 +117,7 @@ export default function Navbar() {
                 href="https://sipsmobile.web.app/"
                 className="justify-between"
               >
-                SIPS Mobile <span className="badge">Download</span>
+                SIPS Mobile <span className="badge">{t('download')}</span>
               </a>
             </li>
             <li>
@@ -132,29 +126,30 @@ export default function Navbar() {
                 href="https://skj.my.id/"
                 className="justify-between"
               >
-                SIPS <span className="badge">Kunjungi</span>
+                SIPS <span className="badge">{t('visit')}</span>
               </a>
             </li>
             <li>
               <Theme />
             </li>
             <li>
-              <Link href="/change-password">Change Password</Link>
+              <Link href="/change-password">{t('changePassword')}</Link>
             </li>
             <li>
-              <a
+              <button
                 onClick={handleLogout}
-                className={isLoggingOut ? "opacity-50 cursor-not-allowed" : ""}
+                className={`w-full text-left ${isLoggingOut ? "opacity-50 cursor-not-allowed" : ""}`}
+                disabled={isLoggingOut}
               >
                 {isLoggingOut ? (
                   <span className="flex items-center gap-2">
                     <span className="loading loading-spinner loading-xs" />
-                    Logout
+                    {t('logout')}
                   </span>
                 ) : (
-                  "Logout"
+                  t('logout')
                 )}
-              </a>
+              </button>
             </li>
           </ul>
         </div>
@@ -165,7 +160,7 @@ export default function Navbar() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
           <div className="flex flex-col items-center gap-4">
             <span className="loading loading-spinner loading-lg text-primary" />
-            <p className="text-white font-medium">Signing out...</p>
+            <p className="text-white font-medium">{t('signingOut')}</p>
           </div>
         </div>
       )}

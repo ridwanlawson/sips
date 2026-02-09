@@ -93,7 +93,7 @@ export default function HarvestPage() {
   const [q, setQ] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [userLevel, setUserLevel] = useState<"ADM" | "MGR" | "AST" | "OTHER">(
-    "OTHER"
+    "OTHER",
   );
   const [homeFcba, setHomeFcba] = useState<string>("");
   const [homeSection, setHomeSection] = useState<string>("");
@@ -108,7 +108,7 @@ export default function HarvestPage() {
       setAlert({ msg, type });
       setTimeout(() => setAlert(null), 4000);
     },
-    []
+    [],
   );
 
   // Initialize User Level & Defaults
@@ -191,7 +191,7 @@ export default function HarvestPage() {
         setLoading(false);
       }
     },
-    [filters, showAlert]
+    [filters, showAlert],
   );
 
   useEffect(() => {
@@ -217,7 +217,7 @@ export default function HarvestPage() {
           it.id_device,
         ]
           .filter(Boolean)
-          .some((v) => String(v).toLowerCase().includes(s))
+          .some((v) => String(v).toLowerCase().includes(s)),
       );
     }
     // Add index

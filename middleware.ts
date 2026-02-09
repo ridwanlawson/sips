@@ -8,14 +8,22 @@ export function middleware(request: NextRequest) {
   const { pathname, origin } = request.nextUrl;
   const isPublic = PUBLIC_PATHS.has(pathname);
 
+  // Initialize response
+  let response = NextResponse.next();
+
+  // Set default locale if not present
+  if (!request.cookies.has("NEXT_LOCALE")) {
+    response.cookies.set("NEXT_LOCALE", "en");
+  }
+
   // Skip untuk file statis & _next
   if (pathname.startsWith("/_next") || pathname.startsWith("/assets") || pathname.match(/\.(png|jpg|svg|css|js|ico|txt)$/)) {
-    return NextResponse.next();
+    return response;
   }
 
   // (opsional) Skip untuk API auth routes
   if (pathname.startsWith("/api/auth")) {
-    return NextResponse.next();
+    return response;
   }
 
   const token = request.cookies.get("auth_token")?.value;
@@ -24,43 +32,53 @@ export function middleware(request: NextRequest) {
   if (!isPublic && !token) {
     const url = new URL("/", origin);
     url.searchParams.set("redirect", pathname); // opsional: simpan tujuan
-    return NextResponse.redirect(url);
+    const redirectRes = NextResponse.redirect(url);
+    if (!request.cookies.has("NEXT_LOCALE")) {
+      redirectRes.cookies.set("NEXT_LOCALE", "en");
+    }
+    return redirectRes;
   }
 
   // Sudah login & sedang di halaman public -> lempar ke dashboard
   if (isPublic && token) {
-    return NextResponse.redirect(new URL("/dashboard", origin));
+    const redirectRes = NextResponse.redirect(new URL("/dashboard", origin));
+    if (!request.cookies.has("NEXT_LOCALE")) {
+      redirectRes.cookies.set("NEXT_LOCALE", "en");
+    }
+    return redirectRes;
   }
 
-  // Restrict access to attendance approval page to ADM and MGR only (server-side)
-  // This prevents users without proper level from loading the page URL directly.
+  // Server-side role-based access control
+  const levelRaw =
+    request.cookies.get("user_Level")?.value ||
+    request.cookies.get("user_level")?.value ||
+    request.cookies.get("user_LEVEL")?.value ||
+    "";
+  const level = String(levelRaw).toUpperCase();
+
+  // Restrict access to attendance approval page to ADM and MGR only
   if (pathname.startsWith("/attendance/approval")) {
-    const levelRaw =
-      request.cookies.get("user_Level")?.value ||
-      request.cookies.get("user_level")?.value ||
-      request.cookies.get("user_LEVEL")?.value ||
-      "";
-    const level = String(levelRaw).toUpperCase();
     if (level !== "ADM" && level !== "MGR") {
-      // Redirect to a safer page (dashboard) for unauthorized users
-      return NextResponse.redirect(new URL("/dashboard", origin));
+      const redirectRes = NextResponse.redirect(new URL("/dashboard", origin));
+      if (!request.cookies.has("NEXT_LOCALE")) {
+        redirectRes.cookies.set("NEXT_LOCALE", "en");
+      }
+      return redirectRes;
     }
   }
 
   // Restrict access to attendance upload page to MGR only
   if (pathname.startsWith("/attendance/upload")) {
-    const levelRaw =
-      request.cookies.get("user_Level")?.value ||
-      request.cookies.get("user_level")?.value ||
-      request.cookies.get("user_LEVEL")?.value ||
-      "";
-    const level = String(levelRaw).toUpperCase();
     if (level !== "MGR") {
-      return NextResponse.redirect(new URL("/dashboard", origin));
+      const redirectRes = NextResponse.redirect(new URL("/dashboard", origin));
+      if (!request.cookies.has("NEXT_LOCALE")) {
+        redirectRes.cookies.set("NEXT_LOCALE", "en");
+      }
+      return redirectRes;
     }
   }
 
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {

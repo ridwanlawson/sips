@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import {
     buildFilteredUrl,
     getTokenFromCookie,
@@ -8,6 +9,14 @@ export const dynamic = "force-dynamic"; // no cache
 export const runtime = "nodejs";
 
 const HARVEST_BASE = "http://dev.skj.my.id:82/api/apps/panens";
+
+const querySchema = z.object({
+    tanggal: z.string().optional(),
+    tanggal_end: z.string().optional(),
+    fcba: z.string().optional(),
+    afdeling: z.string().optional(),
+    status_harvesting: z.string().optional(),
+}).passthrough();
 
 // --- type guards ---
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -29,6 +38,16 @@ export async function GET(req: NextRequest) {
     }
 
     // Clone searchParams supaya bisa dimodifikasi
+    const rawParams = Object.fromEntries(req.nextUrl.searchParams.entries());
+    const validated = querySchema.safeParse(rawParams);
+    
+    if (!validated.success) {
+        return NextResponse.json(
+            { ok: false, error: "Invalid query parameters", details: validated.error.format() },
+            { status: 400 }
+        );
+    }
+
     const sp = new URLSearchParams(req.nextUrl.searchParams.toString());
 
     // ==== BACA DATA DARI COOKIE UNTUK LEVEL, FCBA, AFDELING ====
@@ -88,7 +107,7 @@ export async function GET(req: NextRequest) {
             data = text ? JSON.parse(text) : null;
         } catch {
             return NextResponse.json(
-                { ok: false, error: "Invalid response format", debug_response: text },
+                { ok: false, error: "Invalid response format" },
                 { status: 502 }
             );
         }
@@ -99,7 +118,7 @@ export async function GET(req: NextRequest) {
                     ? data.message
                     : "Fetch failed";
             return NextResponse.json(
-                { ok: false, error: message, debug_response: data },
+                { ok: false, error: message },
                 { status: upstream.status }
             );
         }

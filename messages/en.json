@@ -1,0 +1,23 @@
+{
+  "Navbar": {
+    "dashboard": "Dashboard",
+    "attendance": "Attendance",
+    "harvest": "Harvest",
+    "pengangkutan": "Transportation",
+    "changePassword": "Change Password",
+    "logout": "Logout",
+    "signingOut": "Signing out...",
+    "download": "Download",
+    "visit": "Visit",
+    "pengguna": "User",
+    "list": "Data List",
+    "approval": "Approval",
+    "upload": "Upload",
+    "transport": "Transportation"
+  },
+  "Auth": {
+    "login": "Login",
+    "username": "Username",
+    "password": "Password"
+  }
+}

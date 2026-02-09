@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { toast } from "react-hot-toast";
 import {
   SimpleBarChart,
   SimplePieChart,
   SimpleLineChart,
 } from "@/app/components/dashboard-chart";
 import { logoutAndRedirect } from "@/utils/authHelper";
+import { SkeletonCard, SkeletonTable, SkeletonChart } from "@/app/components/skeletons";
 
 /* =========================
    T Y P E S
@@ -421,34 +424,8 @@ export default function UserDashboard() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userLevel, setUserLevel] = useState<UserLevel>("OTHER");
 
-  // RAW dari API (tanpa filter tanggal)
-  const [attendanceRaw, setAttendanceRaw] = useState<AttendanceRecord[]>([]);
-
-  // Pengangkutan dan Harvesting
-  const [harvestingStats, setHarvestingStats] = useState<HarvestingStats>({
-    total: 0,
-    totalOutput: 0,
-    approved: 0,
-    planned: 0,
-  });
-  const [pengangkutanStats, setPengangkutanStats] = useState<PengangkutanStats>(
-    {
-      total: 0,
-      approved: 0,
-      planned: 0,
-      completed: 0,
-      totalOutput: 0,
-    }
-  );
-  const [loadingHarvesting, setLoadingHarvesting] = useState(false);
-  const [loadingPengangkutan, setLoadingPengangkutan] = useState(false);
-
   const [timeframe, setTimeframe] = useState<Timeframe>("monthly");
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const [triplets, setTriplets] = useState<Triplet[]>([]);
   const [filterFcba, setFilterFcba] = useState<string>("ALL");
   const [filterAfdeling, setFilterAfdeling] = useState<string>("");
 
@@ -469,10 +446,203 @@ export default function UserDashboard() {
     return `${userProfile?.fcba || ""}|${userProfile?.afdeling || ""}|${
       userProfile?.section || ""
     }`;
-    // we intentionally depend on the individual fields below to recompute when any changes
   }, [userProfile?.fcba, userProfile?.afdeling, userProfile?.section]);
 
-  /* ===== Bootstrap user dari cookies + /api/user/profile ===== */
+  /* ===== Queries ===== */
+
+  // 1. Triplets Query
+  const { data: triplets = [] } = useQuery({
+    queryKey: ["triplets"],
+    queryFn: async () => {
+      // Cek cookie dulu
+      const ckTrip = readCookie("opt_triplets");
+      if (ckTrip) {
+        try {
+          const arr = JSON.parse(ckTrip) as Triplet[];
+          if (Array.isArray(arr) && arr.length > 0) return arr;
+        } catch { /* ignore */ }
+      }
+      
+      const res = await fetch("/api/karyawans", { credentials: "include" });
+      if (!res.ok) return [];
+      const json = await res.json();
+      return extractTriplets(json);
+    },
+    enabled: isClient,
+    staleTime: 1000 * 60 * 30, // 30 mins
+  });
+
+  // 2. User Profile Query
+  const { data: profileData } = useQuery<UserProfile | null>({
+    queryKey: ["userProfile"],
+    queryFn: async () => {
+      const res = await fetch("/api/user/profile", {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        credentials: "include",
+      });
+      if (!res.ok) return null;
+      const json: any = await res.json();
+      if (json.ok && json.data) {
+        const inner = json.data.data ? json.data.data : json.data;
+        return inner as UserProfile;
+      }
+      return null;
+    },
+    enabled: isClient,
+  });
+
+  useEffect(() => {
+    if (profileData) {
+      setUserProfile((prev) => ({ ...(prev || {}), ...profileData }));
+      const lvl2 = (profileData.level || "").toUpperCase();
+      if (lvl2 === "ADM" || lvl2 === "MGR" || lvl2 === "AST") {
+        setUserLevel(lvl2 as UserLevel);
+        if (lvl2 === "ADM") {
+          setFilterFcba("ALL");
+        } else if (lvl2 === "MGR") {
+          setFilterFcba(profileData.fcba || "");
+        } else if (lvl2 === "AST") {
+          setFilterFcba(profileData.fcba || "");
+          setFilterAfdeling(profileData.afdeling || profileData.section || "");
+        }
+      }
+    }
+  }, [profileData]);
+
+  // 3. Attendance Query
+  const { data: attendanceRaw = [], isLoading: loading, error: attendanceError } = useQuery({
+    queryKey: ["attendance", filterFcba, filterAfdeling, userLevel, userProfileKey],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+
+      const homeFcba = userProfile?.fcba || readCookie("user_Fcba") || "";
+      const homeAfdeling = userProfile?.afdeling || userProfile?.section || readCookie("user_Section") || "";
+
+      if (userLevel === "ADM") {
+        if (filterFcba && filterFcba !== "ALL") params.set("fcba", filterFcba.trim());
+        if (filterAfdeling.trim()) params.set("afdeling", filterAfdeling.trim());
+      } else if (userLevel === "MGR") {
+        if (homeFcba) params.set("fcba", homeFcba.trim());
+        if (filterAfdeling.trim()) params.set("afdeling", filterAfdeling.trim());
+      } else if (userLevel === "AST") {
+        if (homeFcba) params.set("fcba", homeFcba.trim());
+        if (homeAfdeling) params.set("afdeling", homeAfdeling.trim());
+      }
+
+      const res = await fetch(`/api/attendance${params.toString() ? `?${params}` : ""}`, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        if (res.status === 404) return [];
+        if (res.status === 401) {
+          await logoutAndRedirect();
+          return [];
+        }
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const json: unknown = await res.json();
+      return extractAttendanceArray(json);
+    },
+    enabled: isClient,
+  });
+
+  // 4. Harvesting Query
+  const { data: harvestingStats = { total: 0, totalOutput: 0, approved: 0, planned: 0 }, isLoading: loadingHarvesting } = useQuery({
+    queryKey: ["harvesting", timeframe, filterFcba, filterAfdeling, userLevel, userProfileKey],
+    queryFn: async () => {
+      const { from, to } = getDateRange(timeframe);
+      const p = new URLSearchParams();
+      p.set("tanggal", from);
+      p.set("tanggal_end", to);
+
+      const homeFcba = userProfile?.fcba || readCookie("user_Fcba") || "";
+      const homeAfdeling = userProfile?.afdeling || userProfile?.section || readCookie("user_Section") || "";
+
+      if (userLevel === "ADM") {
+        if (filterFcba && filterFcba !== "ALL") p.set("fcba", filterFcba.trim());
+        if (filterAfdeling.trim()) p.set("afdeling", filterAfdeling.trim());
+      } else if (userLevel === "MGR") {
+        if (homeFcba) p.set("fcba", homeFcba.trim());
+        if (filterAfdeling.trim()) p.set("afdeling", filterAfdeling.trim());
+      } else if (userLevel === "AST") {
+        if (homeFcba) p.set("fcba", homeFcba.trim());
+        if (homeAfdeling) p.set("afdeling", homeAfdeling.trim());
+      }
+
+      const res = await fetch(`/api/harvest?${p.toString()}`, { credentials: "include" });
+      if (res.status === 404 || !res.ok) return { total: 0, totalOutput: 0, approved: 0, planned: 0 };
+
+      const json: any = await res.json();
+      const rows = Array.isArray(json) ? json : (json && json.data && Array.isArray(json.data) ? json.data : []);
+
+      return {
+        total: rows.length,
+        totalOutput: rows.reduce((sum: number, r: any) => sum + (parseInt(String(r.output || 0)) || 0), 0),
+        approved: rows.filter((r: any) => r.status_harvesting === "Approved").length,
+        planned: rows.filter((r: any) => r.status_harvesting === "Planned").length,
+      };
+    },
+    enabled: isClient,
+  });
+
+  // 5. Pengangkutan Query
+  const { data: pengangkutanStats = { total: 0, approved: 0, planned: 0, completed: 0, totalOutput: 0 }, isLoading: loadingPengangkutan } = useQuery({
+    queryKey: ["pengangkutans", timeframe, filterFcba, filterAfdeling, userLevel, userProfileKey],
+    queryFn: async () => {
+      const { from, to } = getDateRange(timeframe);
+      const p = new URLSearchParams();
+      p.set("tanggal", from);
+      p.set("tanggal_end", to);
+
+      const homeFcba = userProfile?.fcba || readCookie("user_Fcba") || "";
+      const homeAfdeling = userProfile?.afdeling || userProfile?.section || readCookie("user_Section") || "";
+
+      if (userLevel === "ADM") {
+        if (filterFcba && filterFcba !== "ALL") p.set("fcba", filterFcba.trim());
+        if (filterAfdeling.trim()) p.set("afdeling", filterAfdeling.trim());
+      } else if (userLevel === "MGR") {
+        if (homeFcba) p.set("fcba", homeFcba.trim());
+        if (filterAfdeling.trim()) p.set("afdeling", filterAfdeling.trim());
+      } else if (userLevel === "AST") {
+        if (homeFcba) p.set("fcba", homeFcba.trim());
+        if (homeAfdeling) p.set("afdeling", homeAfdeling.trim());
+      }
+
+      const res = await fetch(`/api/pengangkutans?${p.toString()}`, { credentials: "include" });
+      if (res.status === 404 || !res.ok) return { total: 0, approved: 0, planned: 0, completed: 0, totalOutput: 0 };
+
+      const json: any = await res.json();
+      const rows = Array.isArray(json) ? json : (json && json.data && Array.isArray(json.data) ? json.data : []);
+
+      const totalOutput = rows.reduce((sum: number, r: any) => {
+        const candidates = [r.output, r.jjg, r.jumlah, r.quantity, r.tonase, r.berat];
+        for (const c of candidates) {
+          if (c === null || c === undefined || c === "") continue;
+          const n = parseInt(String(c).replace(/[^0-9-]/g, ""), 10);
+          if (!Number.isNaN(n)) return sum + n;
+        }
+        return sum;
+      }, 0);
+
+      return {
+        total: rows.length,
+        approved: rows.filter((r: any) => r.status_pengangkutan === "Approved").length,
+        planned: rows.filter((r: any) => r.status_pengangkutan === "Planned").length,
+        completed: rows.filter((r: any) => r.status_pengangkutan === "Completed").length,
+        totalOutput,
+      };
+    },
+    enabled: isClient,
+  });
+
+  const error = attendanceError ? "Gagal memuat data dashboard" : null;
+
+  /* ===== Bootstrap user dari cookies ===== */
   useEffect(() => {
     const cookieFullname =
       readCookie("user_FullName") ||
@@ -529,76 +699,6 @@ export default function UserDashboard() {
       setFilterFcba(cookieFcba || "");
       setFilterAfdeling(cookieSection || "");
     }
-
-    // Ambil triplets dari cookie kalau ada
-    const ckTrip = readCookie("opt_triplets");
-    if (ckTrip) {
-      try {
-        const arr = JSON.parse(ckTrip) as Triplet[];
-        if (Array.isArray(arr) && arr.length > 0) {
-          setTriplets(arr);
-        }
-      } catch {
-        // ignore
-      }
-    }
-
-    // Fetch profile untuk pelengkap (opsional)
-    (async () => {
-      try {
-        const res = await fetch("/api/user/profile", {
-          method: "GET",
-          headers: { Accept: "application/json" },
-          credentials: "include",
-        });
-        const json: unknown = await res.json();
-        if (res.ok && isRecord(json) && json.ok === true && "data" in json) {
-          const dRaw = (json as { data: unknown }).data;
-          const inner =
-            isRecord(dRaw) && "data" in dRaw && isRecord(dRaw.data)
-              ? (dRaw as { data: UserProfile }).data
-              : (dRaw as UserProfile);
-
-          setUserProfile((prev) => ({
-            ...(prev || {}),
-            ...inner,
-          }));
-
-          const lvl2 = (inner.level || "").toUpperCase();
-          if (lvl2 === "ADM" || lvl2 === "MGR" || lvl2 === "AST") {
-            setUserLevel(lvl2);
-            if (lvl2 === "ADM") {
-              setFilterFcba("ALL");
-            } else if (lvl2 === "MGR") {
-              setFilterFcba(inner.fcba || cookieFcba || "");
-            } else if (lvl2 === "AST") {
-              setFilterFcba(inner.fcba || cookieFcba || "");
-              setFilterAfdeling(
-                inner.afdeling || inner.section || cookieSection || ""
-              );
-            }
-          }
-        }
-      } catch {
-        // abaikan error kecil
-      }
-    })();
-
-    // Kalau triplets belum ada → coba ambil dari /api/karyawans
-    if (!ckTrip) {
-      (async () => {
-        try {
-          const res = await fetch("/api/karyawans", {
-            credentials: "include",
-          });
-          const json: unknown = await res.json();
-          const t = extractTriplets(json);
-          if (t.length > 0) setTriplets(t);
-        } catch {
-          // ignore
-        }
-      })();
-    }
   }, []);
 
   /* ===== Options FCBA & Afdeling (chain) ===== */
@@ -639,309 +739,11 @@ export default function UserDashboard() {
     ];
   }, [triplets, filterFcba]);
 
-  /* ===== Fetch Attendance (TANPA filter tanggal) ===== */
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  /* ===== Options FCBA & Afdeling (chain) ===== */
 
-        const params = new URLSearchParams();
+  /* ===== Options FCBA & Afdeling (chain) ===== */
 
-        const homeFcba =
-          userProfile?.fcba ||
-          readCookie("user_Fcba") ||
-          readCookie("user_FCBA") ||
-          readCookie("user_fcba") ||
-          "";
-        const homeAfdeling =
-          userProfile?.afdeling ||
-          userProfile?.section ||
-          readCookie("user_Section") ||
-          readCookie("user_SECTION") ||
-          readCookie("user_section") ||
-          readCookie("user_Afdeling") ||
-          readCookie("user_afdeling") ||
-          "";
-
-        if (userLevel === "ADM") {
-          if (filterFcba && filterFcba !== "ALL") {
-            params.set("fcba", filterFcba.trim());
-          }
-          if (filterAfdeling.trim()) {
-            params.set("afdeling", filterAfdeling.trim());
-          }
-        } else if (userLevel === "MGR") {
-          if (homeFcba) params.set("fcba", homeFcba.trim());
-          if (filterAfdeling.trim()) {
-            params.set("afdeling", filterAfdeling.trim());
-          }
-        } else if (userLevel === "AST") {
-          if (homeFcba) params.set("fcba", homeFcba.trim());
-          if (homeAfdeling) params.set("afdeling", homeAfdeling.trim());
-        } else {
-          // OTHER → tidak kirim fcba/afdeling (lihat semuanya)
-        }
-
-        const res = await fetch(
-          `/api/attendance${params.toString() ? `?${params}` : ""}`,
-          {
-            method: "GET",
-            headers: { Accept: "application/json" },
-            credentials: "include",
-          }
-        );
-
-        if (!res.ok) {
-          if (res.status === 404) {
-            setAttendanceRaw([]);
-            return;
-          }
-          if (res.status === 401) {
-            await logoutAndRedirect();
-            return;
-          }
-          throw new Error(`HTTP ${res.status}`);
-        }
-
-        const json: unknown = await res.json();
-        const rows = extractAttendanceArray(json);
-
-        setAttendanceRaw(rows);
-      } catch (e) {
-        console.error("Error fetching dashboard data:", e);
-        setError("Gagal memuat data dashboard");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [
-    filterFcba,
-    filterAfdeling,
-    userLevel,
-    userProfileKey,
-    userProfile?.fcba,
-    userProfile?.afdeling,
-    userProfile?.section,
-  ]);
-
-  /* ===== Fetch Harvesting Data (sesuai filter & timeframe) ===== */
-  useEffect(() => {
-    const fetchHarvesting = async () => {
-      try {
-        setLoadingHarvesting(true);
-        const { from, to } = getDateRange(timeframe);
-        const p = new URLSearchParams();
-        p.set("tanggal", from);
-        p.set("tanggal_end", to);
-
-        const homeFcba =
-          userProfile?.fcba ||
-          readCookie("user_Fcba") ||
-          readCookie("user_FCBA") ||
-          readCookie("user_fcba") ||
-          "";
-        const homeAfdeling =
-          userProfile?.afdeling ||
-          userProfile?.section ||
-          readCookie("user_Section") ||
-          readCookie("user_SECTION") ||
-          readCookie("user_section") ||
-          readCookie("user_Afdeling") ||
-          readCookie("user_afdeling") ||
-          "";
-
-        if (userLevel === "ADM") {
-          if (filterFcba && filterFcba !== "ALL") {
-            p.set("fcba", filterFcba.trim());
-          }
-          if (filterAfdeling.trim()) {
-            p.set("afdeling", filterAfdeling.trim());
-          }
-        } else if (userLevel === "MGR") {
-          if (homeFcba) p.set("fcba", homeFcba.trim());
-          if (filterAfdeling.trim()) {
-            p.set("afdeling", filterAfdeling.trim());
-          }
-        } else if (userLevel === "AST") {
-          if (homeFcba) p.set("fcba", homeFcba.trim());
-          if (homeAfdeling) p.set("afdeling", homeAfdeling.trim());
-        }
-
-        const res = await fetch(`/api/harvest?${p.toString()}`, {
-          credentials: "include",
-        });
-
-        if (res.status === 404 || !res.ok) {
-          setHarvestingStats({
-            total: 0,
-            totalOutput: 0,
-            approved: 0,
-            planned: 0,
-          });
-          return;
-        }
-
-        const json: unknown = await res.json();
-        const rows = Array.isArray(json)
-          ? (json as HarvestingRecord[])
-          : json && typeof json === "object" && "data" in json
-          ? Array.isArray((json as Record<string, unknown>).data)
-            ? ((json as Record<string, unknown>).data as HarvestingRecord[])
-            : []
-          : [];
-
-        // Calculate stats
-        const stats: HarvestingStats = {
-          total: rows.length,
-          totalOutput: rows.reduce(
-            (sum, r) => sum + (parseInt(String(r.output || 0)) || 0),
-            0
-          ),
-          approved: rows.filter((r) => r.status_harvesting === "Approved")
-            .length,
-          planned: rows.filter((r) => r.status_harvesting === "Planned").length,
-        };
-        setHarvestingStats(stats);
-      } catch (e) {
-        console.error("Error fetching harvesting data:", e);
-      } finally {
-        setLoadingHarvesting(false);
-      }
-    };
-
-    fetchHarvesting();
-  }, [
-    timeframe,
-    filterFcba,
-    filterAfdeling,
-    userLevel,
-    userProfileKey,
-    userProfile?.fcba,
-    userProfile?.afdeling,
-    userProfile?.section,
-  ]);
-
-  /* ===== Fetch Pengangkutan Data (sesuai filter & timeframe) ===== */
-  useEffect(() => {
-    const fetchPengangkutan = async () => {
-      try {
-        setLoadingPengangkutan(true);
-        const { from, to } = getDateRange(timeframe);
-        const p = new URLSearchParams();
-        p.set("tanggal", from);
-        p.set("tanggal_end", to);
-
-        const homeFcba =
-          userProfile?.fcba ||
-          readCookie("user_Fcba") ||
-          readCookie("user_FCBA") ||
-          readCookie("user_fcba") ||
-          "";
-        const homeAfdeling =
-          userProfile?.afdeling ||
-          userProfile?.section ||
-          readCookie("user_Section") ||
-          readCookie("user_SECTION") ||
-          readCookie("user_section") ||
-          readCookie("user_Afdeling") ||
-          readCookie("user_afdeling") ||
-          "";
-
-        if (userLevel === "ADM") {
-          if (filterFcba && filterFcba !== "ALL") {
-            p.set("fcba", filterFcba.trim());
-          }
-          if (filterAfdeling.trim()) {
-            p.set("afdeling", filterAfdeling.trim());
-          }
-        } else if (userLevel === "MGR") {
-          if (homeFcba) p.set("fcba", homeFcba.trim());
-          if (filterAfdeling.trim()) {
-            p.set("afdeling", filterAfdeling.trim());
-          }
-        } else if (userLevel === "AST") {
-          if (homeFcba) p.set("fcba", homeFcba.trim());
-          if (homeAfdeling) p.set("afdeling", homeAfdeling.trim());
-        }
-
-        const res = await fetch(`/api/pengangkutans?${p.toString()}`, {
-          credentials: "include",
-        });
-
-        if (res.status === 404 || !res.ok) {
-          setPengangkutanStats({
-            total: 0,
-            approved: 0,
-            planned: 0,
-            completed: 0,
-          });
-          return;
-        }
-
-        const json: unknown = await res.json();
-        const rows = Array.isArray(json)
-          ? (json as PengangkutanRecord[])
-          : json && typeof json === "object" && "data" in json
-          ? Array.isArray((json as Record<string, unknown>).data)
-            ? ((json as Record<string, unknown>).data as PengangkutanRecord[])
-            : []
-          : [];
-
-        // Try to derive a JJG / totalOutput from common numeric fields if present
-        const totalOutput = rows.reduce((sum, r) => {
-          const rowObj = r as Record<string, unknown>;
-          const candidates = [
-            rowObj["output"],
-            rowObj["jjg"],
-            rowObj["jumlah"],
-            rowObj["quantity"],
-            rowObj["tonase"],
-            rowObj["berat"],
-          ];
-          for (const c of candidates) {
-            if (c === null || c === undefined || c === "") continue;
-            const s = String(c).replace(/[^0-9-]/g, "");
-            const n = parseInt(s, 10);
-            if (!Number.isNaN(n)) {
-              return sum + n;
-            }
-          }
-          return sum;
-        }, 0);
-
-        // Calculate stats
-        const stats: PengangkutanStats = {
-          total: rows.length,
-          approved: rows.filter((r) => r.status_pengangkutan === "Approved")
-            .length,
-          planned: rows.filter((r) => r.status_pengangkutan === "Planned")
-            .length,
-          completed: rows.filter((r) => r.status_pengangkutan === "Completed")
-            .length,
-          totalOutput: totalOutput,
-        };
-        setPengangkutanStats(stats);
-      } catch (e) {
-        console.error("Error fetching pengangkutan data:", e);
-      } finally {
-        setLoadingPengangkutan(false);
-      }
-    };
-
-    fetchPengangkutan();
-  }, [
-    timeframe,
-    filterFcba,
-    filterAfdeling,
-    userLevel,
-    userProfileKey,
-    userProfile?.fcba,
-    userProfile?.afdeling,
-    userProfile?.section,
-  ]);
+  /* ===== Options FCBA & Afdeling (chain) ===== */
 
   /* ===== Filter berdasarkan Timeframe (FRONTEND) ===== */
   const filteredAttendance: AttendanceRecord[] = useMemo(() => {
@@ -1308,33 +1110,26 @@ export default function UserDashboard() {
      R E N D E R
   ========================== */
 
-  // Tampilkan loading skeleton sampai client-side rendering siap
   if (!isClient) {
     return (
       <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
         <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
-          <div className="animate-slideUp flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="h-8 bg-base-300 rounded w-64 animate-pulse mb-2" />
-              <div className="space-y-2">
-                <div className="h-6 bg-base-300 rounded w-48 animate-pulse" />
-              </div>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-2">
+              <div className="h-10 bg-base-300 rounded w-64 animate-pulse" />
+              <div className="h-6 bg-base-300 rounded w-48 animate-pulse" />
             </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <SkeletonCard />
+            <SkeletonCard />
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="card bg-base-100 shadow-md border border-base-300 animate-slideUp">
-              <div className="card-body">
-                <div className="h-6 bg-base-300 rounded w-48 animate-pulse mb-4" />
-                <div className="h-64 bg-base-300 rounded animate-pulse" />
-              </div>
-            </div>
-            <div className="card bg-base-100 shadow-md border border-base-300 animate-slideUp">
-              <div className="card-body">
-                <div className="h-6 bg-base-300 rounded w-48 animate-pulse mb-4" />
-                <div className="h-64 bg-base-300 rounded animate-pulse" />
-              </div>
-            </div>
+            <SkeletonChart />
+            <SkeletonChart />
           </div>
+          <SkeletonChart />
+          <SkeletonTable rows={5} />
         </div>
       </div>
     );
@@ -1479,7 +1274,10 @@ export default function UserDashboard() {
                 🌾 Harvesting ({timeframeLabel(timeframe)})
               </h2>
               {loadingHarvesting ? (
-                <div className="h-32 bg-base-300 rounded animate-pulse" />
+                <div className="grid grid-cols-2 gap-2">
+                  <SkeletonCard />
+                  <SkeletonCard />
+                </div>
               ) : (
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="stat place-items-center p-3 bg-base-200 rounded">
@@ -1523,7 +1321,10 @@ export default function UserDashboard() {
                 🚛 Pengangkutan ({timeframeLabel(timeframe)})
               </h2>
               {loadingPengangkutan ? (
-                <div className="h-32 bg-base-300 rounded animate-pulse" />
+                <div className="grid grid-cols-2 gap-2">
+                  <SkeletonCard />
+                  <SkeletonCard />
+                </div>
               ) : (
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="stat place-items-center p-3 bg-base-200 rounded">
@@ -1574,7 +1375,7 @@ export default function UserDashboard() {
                 {timeframeLabel(timeframe)})
               </h2>
               {loading ? (
-                <div className="h-64 bg-base-300 rounded animate-pulse mt-4" />
+                <SkeletonChart />
               ) : (
                 <SimplePieChart data={pieChartData} />
               )}
@@ -1592,7 +1393,7 @@ export default function UserDashboard() {
                 yang dipilih, bukan jumlah karyawan unik.
               </p>
               {loading ? (
-                <div className="h-64 bg-base-300 rounded animate-pulse mt-4" />
+                <SkeletonChart />
               ) : (
                 <SimpleBarChart data={barChartData} color="bg-primary" />
               )}
@@ -1626,7 +1427,7 @@ export default function UserDashboard() {
               </div>
             </div>
             {loading ? (
-              <div className="h-64 bg-base-300 rounded animate-pulse" />
+              <SkeletonChart />
             ) : (
               <SimpleLineChart data={lineChartData} />
             )}
@@ -1680,14 +1481,7 @@ export default function UserDashboard() {
             </p>
 
             {loading ? (
-              <div className="space-y-2">
-                {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="h-10 bg-base-300 rounded animate-pulse"
-                  />
-                ))}
-              </div>
+              <SkeletonTable rows={5} />
             ) : filteredAttendance.length === 0 ? (
               <div className="text-center py-8 text-base-content/60">
                 📭 Tidak ada data absensi pada periode & filter yang dipilih.

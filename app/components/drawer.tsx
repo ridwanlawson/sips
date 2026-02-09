@@ -4,8 +4,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRef, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 
 export const Drawer = () => {
+  const t = useTranslations("Navbar");
   const pathname = usePathname();
   const drawerRef = useRef<HTMLInputElement>(null);
 
@@ -118,7 +120,7 @@ export const Drawer = () => {
               >
                 <path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-6v-6H10v6H4a1 1 0 0 1-1-1v-10.5z" />
               </svg>
-              Dashboard
+              {t("dashboard")}
             </Link>
           </li>
 
@@ -139,7 +141,7 @@ export const Drawer = () => {
                   >
                     <path d="M6 2a1 1 0 0 0-1 1v1H3v2h18V4h-2V3a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v1H10V3a1 1 0 0 0-1-1H6zM3 9v11a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9H3zm5 3h8v2H8v-2z" />
                   </svg>
-                  <span>Attendance</span>
+                  <span>{t("attendance")}</span>
                 </div>
               </summary>
               <ul className="menu menu-sm">
@@ -157,7 +159,7 @@ export const Drawer = () => {
                     >
                       <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" />
                     </svg>
-                    Data List
+                    {t("list")}
                   </Link>
                 </li>
                 {(userLevel === "ADM" || userLevel === "MGR") && (
@@ -176,7 +178,7 @@ export const Drawer = () => {
                         >
                           <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
                         </svg>
-                        Approval
+                        {t("approval")}
                       </Link>
                     </li>
                     <li>
@@ -194,7 +196,7 @@ export const Drawer = () => {
                           <path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2z" />
                           <path d="M11 3L5.5 8.5l1.42 1.41L11 5.83V15h2V5.83l4.08 4.08L18.5 8.5 12 3z" />
                         </svg>
-                        Upload
+                        {t("upload")}
                       </Link>
                     </li>
                   </>
@@ -221,7 +223,7 @@ export const Drawer = () => {
                     <path d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM11 6h2v6h-2V6zm0 8h2v2h-2v-2z" />
                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
                   </svg>
-                  <span>Harvest</span>
+                  <span>{t("harvest")}</span>
                 </div>
               </summary>
               <ul className="menu menu-sm">
@@ -239,9 +241,29 @@ export const Drawer = () => {
                     >
                       <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" />
                     </svg>
-                    Data List
+                    {t("list")}
                   </Link>
                 </li>
+                {(userLevel === "ADM" || userLevel === "MGR") && (
+                  <li>
+                    <Link
+                      href="/harvest/upload"
+                      className={isActive("/harvest/upload")}
+                      onClick={closeDrawer}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2z" />
+                        <path d="M11 3L5.5 8.5l1.42 1.41L11 5.83V15h2V5.83l4.08 4.08L18.5 8.5 12 3z" />
+                      </svg>
+                      {t("upload")}
+                    </Link>
+                  </li>
+                )}
               </ul>
             </details>
           </li>
@@ -263,7 +285,7 @@ export const Drawer = () => {
                   >
                     <path d="M3 13h2v-2H3v2zm4 0h2v-2H7v2zM3 17h2v-2H3v2zm4 0h2v-2H7v2zM3 9h2V7H3v2zm4 0h2V7H7v2zM14 5v6l4-3-4-3zM12 20h8v-2h-8v2z" />
                   </svg>
-                  <span>Transport</span>
+                  <span>{t("transport")}</span>
                 </div>
               </summary>
               <ul className="menu menu-sm">
@@ -281,7 +303,7 @@ export const Drawer = () => {
                     >
                       <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" />
                     </svg>
-                    Data List
+                    {t("list")}
                   </Link>
                 </li>
               </ul>

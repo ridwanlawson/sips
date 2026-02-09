@@ -1,7 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "./components/theme-provider";
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale, getMessages } from 'next-intl/server';
+import Providers from "./components/providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,24 +19,45 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "SiPS Mobile Web",
   description: "Aplikasi SiPS Mobile Web oleh PT Sentosa Kalimantan Jaya",
+  manifest: "/manifest.json",
   icons: {
     icon: "/logo.svg",
     apple: "/logo.svg",
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "SiPS Mobile",
+  },
 };
 
-export default function RootLayout({
+export const viewport: Viewport = {
+  themeColor: "#000000",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="en" data-theme="light">
+    <html lang={locale} data-theme="light">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ThemeProvider />
-        {children}
+        <NextIntlClientProvider messages={messages}>
+          <Providers>
+            <ThemeProvider />
+            {children}
+          </Providers>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

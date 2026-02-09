@@ -1,10 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getTokenFromCookie } from "@/utils/absensiProxy";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const PENGANGKUTAN_BASE = "http://dev.skj.my.id:82/api/apps/pengangkutans";
+
+const querySchema = z.object({
+  nopengangkutan: z.string().optional(),
+  nodokumen: z.string().optional(),
+  tanggal: z.string().optional(),
+  tanggal_end: z.string().optional(),
+  fcba: z.string().optional(),
+  afdeling: z.string().optional(),
+  status_pengangkutan: z.string().optional(),
+}).passthrough();
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null;
@@ -18,6 +29,16 @@ export async function GET(req: NextRequest) {
   const token = await getTokenFromCookie();
   if (!token) {
     return NextResponse.json({ ok: false, error: "Unauthenticated" }, { status: 401 });
+  }
+
+  const rawParams = Object.fromEntries(req.nextUrl.searchParams.entries());
+  const validated = querySchema.safeParse(rawParams);
+
+  if (!validated.success) {
+    return NextResponse.json(
+      { ok: false, error: "Invalid query parameters", details: validated.error.format() },
+      { status: 400 }
+    );
   }
 
   const sp = new URLSearchParams(req.nextUrl.searchParams.toString());
@@ -86,12 +107,12 @@ export async function GET(req: NextRequest) {
     try {
       data = text ? JSON.parse(text) : null;
     } catch {
-      return NextResponse.json({ ok: false, error: "Invalid response format", debug_response: text }, { status: 502 });
+      return NextResponse.json({ ok: false, error: "Invalid response format" }, { status: 502 });
     }
 
     if (!upstream.ok) {
       const message = isRecord(data) && typeof data.message === "string" ? data.message : "Fetch failed";
-      return NextResponse.json({ ok: false, error: message, debug_response: data }, { status: upstream.status });
+      return NextResponse.json({ ok: false, error: message }, { status: upstream.status });
     }
 
     if (isSuccessArrayData(data)) {
