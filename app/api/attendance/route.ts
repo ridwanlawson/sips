@@ -106,7 +106,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Normalize and validate response data
-    let dataList: any[] = [];
+    let dataList: unknown[] = [];
     if (rawData && typeof rawData === 'object') {
       if ('data' in rawData && Array.isArray(rawData.data)) {
         dataList = rawData.data;

@@ -153,7 +153,7 @@ const buildMapUrl = (loc: string) => {
     return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
   }
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-    s
+    s,
   )}`;
 };
 
@@ -202,23 +202,23 @@ const getReadableDevice = () => {
   const os = /Windows/i.test(ua)
     ? "Windows"
     : /Android/i.test(ua)
-    ? "Android"
-    : /iPhone|iPad|iPod/i.test(ua)
-    ? "iOS"
-    : /Mac OS X/i.test(ua)
-    ? "macOS"
-    : /Linux/i.test(ua)
-    ? "Linux"
-    : "Unknown";
+      ? "Android"
+      : /iPhone|iPad|iPod/i.test(ua)
+        ? "iOS"
+        : /Mac OS X/i.test(ua)
+          ? "macOS"
+          : /Linux/i.test(ua)
+            ? "Linux"
+            : "Unknown";
   const browser = /Edg\//i.test(ua)
     ? "Edge"
     : /Chrome\//i.test(ua)
-    ? "Chrome"
-    : /Firefox\//i.test(ua)
-    ? "Firefox"
-    : /Safari\//i.test(ua)
-    ? "Safari"
-    : "Browser";
+      ? "Chrome"
+      : /Firefox\//i.test(ua)
+        ? "Firefox"
+        : /Safari\//i.test(ua)
+          ? "Safari"
+          : "Browser";
   return `${os} • ${browser}`;
 };
 
@@ -304,7 +304,7 @@ const normalizeHM = (input: string) => {
     const M = num % 100;
     return `${String(H).padStart(2, "0")}:${String(Math.min(59, M)).padStart(
       2,
-      "0"
+      "0",
     )}`;
   }
   return s;
@@ -341,7 +341,7 @@ const SearchSelect: React.FC<{
     const s = q.toLowerCase();
     return options.filter(
       (o) =>
-        o.label.toLowerCase().includes(s) || o.value.toLowerCase().includes(s)
+        o.label.toLowerCase().includes(s) || o.value.toLowerCase().includes(s),
     );
   }, [q, options]);
 
@@ -498,12 +498,16 @@ export default function Attendance() {
   const [homeFcba, setHomeFcba] = useState<string>("");
   const [homeSection, setHomeSection] = useState<string>("");
   const [userLevel, setUserLevel] = useState<"ADM" | "MGR" | "AST" | "OTHER">(
-    "OTHER"
+    "OTHER",
   );
   const [destFcba, setDestFcba] = useState<string>("");
 
   // Query for attendance list
-  const { data: items = [], isLoading: loading, error: queryError } = useQuery({
+  const {
+    data: items = [],
+    isLoading: loading,
+    error: queryError,
+  } = useQuery({
     queryKey: ["attendance", filters, userLevel, homeFcba, homeSection],
     queryFn: async () => {
       const base = filters;
@@ -546,7 +550,7 @@ export default function Attendance() {
 
       const res = await fetch(
         `/api/attendance${params.toString() ? `?${params}` : ""}`,
-        { credentials: "include" }
+        { credentials: "include" },
       );
 
       if (!res.ok) {
@@ -558,7 +562,7 @@ export default function Attendance() {
         throw new Error(`HTTP ${res.status}`);
       }
 
-      const json: any = await res.json();
+      const json: Record<string, unknown> = await res.json();
       const raw = extractArrayData<Absensi>(json);
 
       let filteredByDate = raw;
@@ -594,7 +598,15 @@ export default function Attendance() {
 
   // Mutations
   const mutation = useMutation({
-    mutationFn: async ({ url, method, body }: { url: string; method: string; body: FormData }) => {
+    mutationFn: async ({
+      url,
+      method,
+      body,
+    }: {
+      url: string;
+      method: string;
+      body: FormData;
+    }) => {
       const res = await fetch(url, {
         method,
         body,
@@ -604,9 +616,15 @@ export default function Attendance() {
         await logoutAndRedirect();
         throw new Error("Unauthorized");
       }
-      const json: any = await res.json();
+      const json: Record<string, unknown> = await res.json();
       if (!res.ok || !json.ok) {
-        throw new Error(json.message || json.error || "Operation failed");
+        const errorMsg =
+          typeof json.message === "string"
+            ? json.message
+            : typeof json.error === "string"
+              ? json.error
+              : "Operation failed";
+        throw new Error(errorMsg);
       }
       return json;
     },
@@ -624,7 +642,7 @@ export default function Attendance() {
     },
     onError: (error: Error) => {
       toast.error(error.message);
-    }
+    },
   });
 
   const deleteMutation = useMutation({
@@ -633,9 +651,11 @@ export default function Attendance() {
         method: "DELETE",
         credentials: "include",
       });
-      const json: any = await res.json();
+      const json: Record<string, unknown> = await res.json();
       if (!res.ok || !json.ok) {
-        throw new Error(json.error || "Gagal hapus");
+        const errorMsg =
+          typeof json.error === "string" ? json.error : "Gagal hapus";
+        throw new Error(errorMsg);
       }
       return id;
     },
@@ -645,7 +665,7 @@ export default function Attendance() {
     },
     onError: (error: Error) => {
       toast.error(error.message);
-    }
+    },
   });
 
   // modal
@@ -677,7 +697,9 @@ export default function Attendance() {
 
   const handleGetLocation = (target: "in" | "out") => {
     if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
-      toast.error("Browser tidak mendukung GPS / geolocation. Isi manual saja.");
+      toast.error(
+        "Browser tidak mendukung GPS / geolocation. Isi manual saja.",
+      );
       return;
     }
 
@@ -691,7 +713,7 @@ export default function Attendance() {
         setForm((s) =>
           target === "in"
             ? { ...s, location_in: value }
-            : { ...s, location_out: value }
+            : { ...s, location_out: value },
         );
 
         setLocLoading(null);
@@ -701,7 +723,7 @@ export default function Attendance() {
         toast.error(
           err.code === err.PERMISSION_DENIED
             ? "Izin lokasi ditolak. Aktifkan izin lokasi di browser."
-            : "Gagal mengambil lokasi. Coba lagi."
+            : "Gagal mengambil lokasi. Coba lagi.",
         );
         setLocLoading(null);
       },
@@ -709,7 +731,7 @@ export default function Attendance() {
         enableHighAccuracy: true,
         timeout: 15000,
         maximumAge: 0,
-      }
+      },
     );
   };
 
@@ -844,7 +866,7 @@ export default function Attendance() {
       Array.from(new Set(triplets.map((t) => t.fcba).filter(Boolean)))
         .sort()
         .map((v) => ({ value: v, label: v })),
-    [triplets]
+    [triplets],
   );
 
   const sectionOptions: Option[] = useMemo(() => {
@@ -854,8 +876,8 @@ export default function Attendance() {
         triplets
           .filter((t) => t.fcba === selFcba)
           .map((t) => t.sectionname)
-          .filter(Boolean)
-      )
+          .filter(Boolean),
+      ),
     )
       .sort()
       .map((v) => ({ value: v, label: v }));
@@ -868,8 +890,8 @@ export default function Attendance() {
         triplets
           .filter((t) => t.fcba === selFcba && t.sectionname === selSection)
           .map((t) => t.gangcode)
-          .filter(Boolean)
-      )
+          .filter(Boolean),
+      ),
     )
       .sort()
       .map((v) => ({ value: v, label: v }));
@@ -881,7 +903,7 @@ export default function Attendance() {
       (e) =>
         (e.fcba || "") === selFcba &&
         (e.sectionname || "") === selSection &&
-        (e.gangcode || "") === selGang
+        (e.gangcode || "") === selGang,
     );
     const set = new Set<string>();
     for (const e of pool) {
@@ -899,7 +921,7 @@ export default function Attendance() {
       (e) =>
         (e.fcba || "") === selFcba &&
         (e.sectionname || "") === selSection &&
-        (e.gangcode || "") === selGang
+        (e.gangcode || "") === selGang,
     );
     const map = new Map<string, string>();
     for (const e of pool) {
@@ -909,7 +931,7 @@ export default function Attendance() {
       if (!map.has(value)) map.set(value, label);
     }
     return Array.from(map, ([value, label]) => ({ value, label })).sort(
-      (a, b) => a.label.localeCompare(b.label)
+      (a, b) => a.label.localeCompare(b.label),
     );
   }, [employees, selFcba, selSection, selGang]);
 
@@ -926,7 +948,7 @@ export default function Attendance() {
       const fc = homeFcba || "";
       const sec = homeSection || "";
       pool = employees.filter(
-        (e) => (e.fcba || "") === fc && (!sec || (e.sectionname || "") === sec)
+        (e) => (e.fcba || "") === fc && (!sec || (e.sectionname || "") === sec),
       );
     } else {
       const fc = homeFcba || selFcba || "";
@@ -941,7 +963,7 @@ export default function Attendance() {
       if (!map.has(value)) map.set(value, label);
     }
     return Array.from(map, ([value, label]) => ({ value, label })).sort(
-      (a, b) => a.label.localeCompare(b.label)
+      (a, b) => a.label.localeCompare(b.label),
     );
   }, [employees, selFcba, homeFcba, homeSection, userLevel]);
 
@@ -1158,7 +1180,7 @@ export default function Attendance() {
       const { deviceId, pseudoMac } = getOrCreateDeviceIds();
       fd.append(
         "id_device",
-        form.id_device || `${getReadableDevice()} • ${deviceId}`
+        form.id_device || `${getReadableDevice()} • ${deviceId}`,
       );
       fd.append("mac_address", form.mac_address || pseudoMac);
 
@@ -1182,15 +1204,18 @@ export default function Attendance() {
       const url =
         isEditing && form.id ? `/api/attendance/${form.id}` : `/api/attendance`;
 
-      mutation.mutate({ url, method, body: fd }, {
-        onSuccess: () => {
-          toast.success(
-            isEditing
-              ? "Data berhasil diperbarui ✅"
-              : "Data berhasil ditambahkan ✅"
-          );
-        }
-      });
+      mutation.mutate(
+        { url, method, body: fd },
+        {
+          onSuccess: () => {
+            toast.success(
+              isEditing
+                ? "Data berhasil diperbarui ✅"
+                : "Data berhasil ditambahkan ✅",
+            );
+          },
+        },
+      );
     } catch (e) {
       const message =
         e instanceof Error ? e.message : "Terjadi kesalahan saat menyimpan";
@@ -1222,8 +1247,8 @@ export default function Attendance() {
           dt && dt.includes(" ")
             ? (dt.split(" ")[1] ?? "").slice(0, 5)
             : dt
-            ? dt.slice(11, 16)
-            : "";
+              ? dt.slice(11, 16)
+              : "";
 
         const existingException = (d.exception_case || "").trim();
         const existingBaExca = (d.no_ba_exca || "").trim();
@@ -1271,7 +1296,7 @@ export default function Attendance() {
         setDetailLoading(false);
       }
     },
-    [homeFcba, homeSection]
+    [homeFcba, homeSection],
   );
 
   /* ===== PREVIEW FOTO ===== */
@@ -1294,7 +1319,7 @@ export default function Attendance() {
   const sortByLabel = (
     a: Absensi,
     b: Absensi,
-    getLabel: (r: Absensi) => string
+    getLabel: (r: Absensi) => string,
   ) =>
     getLabel(a).localeCompare(getLabel(b), undefined, { sensitivity: "base" });
 
@@ -1360,8 +1385,8 @@ export default function Attendance() {
               (r.status_attendance || "").toLowerCase() === "planned"
                 ? "badge-warning"
                 : (r.status_attendance || "").toLowerCase() === "approved"
-                ? "badge-success"
-                : "badge-ghost"
+                  ? "badge-success"
+                  : "badge-ghost"
             }`}
           >
             {r.status_attendance ?? "-"}
@@ -1393,7 +1418,7 @@ export default function Attendance() {
           sortByLabel(
             a,
             b,
-            (r) => `${r.namakaryawan || ""} ${r.kode_karyawan || ""}`
+            (r) => `${r.namakaryawan || ""} ${r.kode_karyawan || ""}`,
           ),
         cell: (r) => (
           <div className="min-w-0">
@@ -1628,7 +1653,7 @@ export default function Attendance() {
         ignoreRowClick: true,
       },
     ],
-    [handleDetail, handleDelete, empLabelMap, userLevel]
+    [handleDetail, handleDelete, empLabelMap, userLevel],
   );
 
   /* ===== EXPORT EXCEL ===== */
@@ -1649,8 +1674,12 @@ export default function Attendance() {
       Gang: r.gang || "-",
       Type: r.attendance_type || "-",
       Attendance: r.attendance || "-",
-      Masuk: r.time_in ? r.time_in.split(" ")[1]?.slice(0, 5) || r.time_in : "-",
-      Pulang: r.time_out ? r.time_out.split(" ")[1]?.slice(0, 5) || r.time_out : "-",
+      Masuk: r.time_in
+        ? r.time_in.split(" ")[1]?.slice(0, 5) || r.time_in
+        : "-",
+      Pulang: r.time_out
+        ? r.time_out.split(" ")[1]?.slice(0, 5) || r.time_out
+        : "-",
       Late: r.total_late_time || "-",
       "Home Early": r.go_home_early || "-",
       HK: r.mandays != null ? String(r.mandays) : "-",
@@ -1660,7 +1689,10 @@ export default function Attendance() {
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Attendance");
-    XLSX.writeFile(wb, `Attendance_${filters.tanggal}_${filters.tanggal_end}.xlsx`);
+    XLSX.writeFile(
+      wb,
+      `Attendance_${filters.tanggal}_${filters.tanggal_end}.xlsx`,
+    );
   };
 
   /* ===== Quick search lokal ===== */
@@ -1687,7 +1719,7 @@ export default function Attendance() {
         it.mandays,
       ]
         .filter(Boolean)
-        .some((v) => String(v).toLowerCase().includes(s))
+        .some((v) => String(v).toLowerCase().includes(s)),
     );
   }, [q, items]);
 
@@ -1717,7 +1749,9 @@ export default function Attendance() {
             </button>
             <button
               className="btn btn-sm"
-              onClick={() => queryClient.invalidateQueries({ queryKey: ["attendance"] })}
+              onClick={() =>
+                queryClient.invalidateQueries({ queryKey: ["attendance"] })
+              }
               title="Refresh data absensi"
             >
               Refresh
@@ -1886,7 +1920,9 @@ export default function Attendance() {
             <div className="flex justify-start gap-2 pt-3 border-t border-base-200">
               <button
                 className="btn btn-outline"
-                onClick={() => queryClient.invalidateQueries({ queryKey: ["attendance"] })}
+                onClick={() =>
+                  queryClient.invalidateQueries({ queryKey: ["attendance"] })
+                }
                 title="Terapkan filter"
               >
                 Terapkan Filter
@@ -1940,7 +1976,9 @@ export default function Attendance() {
                 persistTableHead
                 responsive
                 noDataComponent={
-                  <div className="py-8 text-base-content/70">Tidak ada data.</div>
+                  <div className="py-8 text-base-content/70">
+                    Tidak ada data.
+                  </div>
                 }
               />
             )}
@@ -2055,7 +2093,7 @@ export default function Attendance() {
                         (o) =>
                           o.value &&
                           (!currentFcbaForForm ||
-                            o.value !== currentFcbaForForm)
+                            o.value !== currentFcbaForForm),
                       )}
                       value={destFcba ?? ""}
                       onChange={onChangeDestFcba}

@@ -2,14 +2,17 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { toast } from "react-hot-toast";
 import {
   SimpleBarChart,
   SimplePieChart,
   SimpleLineChart,
 } from "@/app/components/dashboard-chart";
 import { logoutAndRedirect } from "@/utils/authHelper";
-import { SkeletonCard, SkeletonTable, SkeletonChart } from "@/app/components/skeletons";
+import {
+  SkeletonCard,
+  SkeletonTable,
+  SkeletonChart,
+} from "@/app/components/skeletons";
 
 /* =========================
    T Y P E S
@@ -68,21 +71,12 @@ interface PengangkutanRecord {
   type_pengangkutan?: string;
   fcba?: string;
   afdeling?: string;
-}
-
-interface HarvestingStats {
-  total: number;
-  totalOutput: number;
-  approved: number;
-  planned: number;
-}
-
-interface PengangkutanStats {
-  total: number;
-  approved: number;
-  planned: number;
-  completed: number;
-  totalOutput?: number;
+  output?: string | number;
+  jjg?: string | number;
+  jumlah?: string | number;
+  quantity?: string | number;
+  tonase?: string | number;
+  berat?: string | number;
 }
 
 type Timeframe = "daily" | "weekly" | "monthly" | "yearly";
@@ -316,7 +310,7 @@ const SearchSelect: React.FC<{
     const s = q.toLowerCase();
     return options.filter(
       (o) =>
-        o.label.toLowerCase().includes(s) || o.value.toLowerCase().includes(s)
+        o.label.toLowerCase().includes(s) || o.value.toLowerCase().includes(s),
     );
   }, [q, options]);
 
@@ -460,9 +454,11 @@ export default function UserDashboard() {
         try {
           const arr = JSON.parse(ckTrip) as Triplet[];
           if (Array.isArray(arr) && arr.length > 0) return arr;
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
-      
+
       const res = await fetch("/api/karyawans", { credentials: "include" });
       if (!res.ok) return [];
       const json = await res.json();
@@ -482,9 +478,10 @@ export default function UserDashboard() {
         credentials: "include",
       });
       if (!res.ok) return null;
-      const json: any = await res.json();
-      if (json.ok && json.data) {
-        const inner = json.data.data ? json.data.data : json.data;
+      const json: Record<string, unknown> = await res.json();
+      if (json.ok && typeof json.data === "object" && json.data !== null) {
+        const data = json.data as Record<string, unknown>;
+        const inner = data.data ? data.data : data;
         return inner as UserProfile;
       }
       return null;
@@ -511,30 +508,50 @@ export default function UserDashboard() {
   }, [profileData]);
 
   // 3. Attendance Query
-  const { data: attendanceRaw = [], isLoading: loading, error: attendanceError } = useQuery({
-    queryKey: ["attendance", filterFcba, filterAfdeling, userLevel, userProfileKey],
+  const {
+    data: attendanceRaw = [],
+    isLoading: loading,
+    error: attendanceError,
+  } = useQuery({
+    queryKey: [
+      "attendance",
+      filterFcba,
+      filterAfdeling,
+      userLevel,
+      userProfileKey,
+    ],
     queryFn: async () => {
       const params = new URLSearchParams();
 
       const homeFcba = userProfile?.fcba || readCookie("user_Fcba") || "";
-      const homeAfdeling = userProfile?.afdeling || userProfile?.section || readCookie("user_Section") || "";
+      const homeAfdeling =
+        userProfile?.afdeling ||
+        userProfile?.section ||
+        readCookie("user_Section") ||
+        "";
 
       if (userLevel === "ADM") {
-        if (filterFcba && filterFcba !== "ALL") params.set("fcba", filterFcba.trim());
-        if (filterAfdeling.trim()) params.set("afdeling", filterAfdeling.trim());
+        if (filterFcba && filterFcba !== "ALL")
+          params.set("fcba", filterFcba.trim());
+        if (filterAfdeling.trim())
+          params.set("afdeling", filterAfdeling.trim());
       } else if (userLevel === "MGR") {
         if (homeFcba) params.set("fcba", homeFcba.trim());
-        if (filterAfdeling.trim()) params.set("afdeling", filterAfdeling.trim());
+        if (filterAfdeling.trim())
+          params.set("afdeling", filterAfdeling.trim());
       } else if (userLevel === "AST") {
         if (homeFcba) params.set("fcba", homeFcba.trim());
         if (homeAfdeling) params.set("afdeling", homeAfdeling.trim());
       }
 
-      const res = await fetch(`/api/attendance${params.toString() ? `?${params}` : ""}`, {
-        method: "GET",
-        headers: { Accept: "application/json" },
-        credentials: "include",
-      });
+      const res = await fetch(
+        `/api/attendance${params.toString() ? `?${params}` : ""}`,
+        {
+          method: "GET",
+          headers: { Accept: "application/json" },
+          credentials: "include",
+        },
+      );
 
       if (!res.ok) {
         if (res.status === 404) return [];
@@ -552,8 +569,23 @@ export default function UserDashboard() {
   });
 
   // 4. Harvesting Query
-  const { data: harvestingStats = { total: 0, totalOutput: 0, approved: 0, planned: 0 }, isLoading: loadingHarvesting } = useQuery({
-    queryKey: ["harvesting", timeframe, filterFcba, filterAfdeling, userLevel, userProfileKey],
+  const {
+    data: harvestingStats = {
+      total: 0,
+      totalOutput: 0,
+      approved: 0,
+      planned: 0,
+    },
+    isLoading: loadingHarvesting,
+  } = useQuery({
+    queryKey: [
+      "harvesting",
+      timeframe,
+      filterFcba,
+      filterAfdeling,
+      userLevel,
+      userProfileKey,
+    ],
     queryFn: async () => {
       const { from, to } = getDateRange(timeframe);
       const p = new URLSearchParams();
@@ -561,10 +593,15 @@ export default function UserDashboard() {
       p.set("tanggal_end", to);
 
       const homeFcba = userProfile?.fcba || readCookie("user_Fcba") || "";
-      const homeAfdeling = userProfile?.afdeling || userProfile?.section || readCookie("user_Section") || "";
+      const homeAfdeling =
+        userProfile?.afdeling ||
+        userProfile?.section ||
+        readCookie("user_Section") ||
+        "";
 
       if (userLevel === "ADM") {
-        if (filterFcba && filterFcba !== "ALL") p.set("fcba", filterFcba.trim());
+        if (filterFcba && filterFcba !== "ALL")
+          p.set("fcba", filterFcba.trim());
         if (filterAfdeling.trim()) p.set("afdeling", filterAfdeling.trim());
       } else if (userLevel === "MGR") {
         if (homeFcba) p.set("fcba", homeFcba.trim());
@@ -574,25 +611,63 @@ export default function UserDashboard() {
         if (homeAfdeling) p.set("afdeling", homeAfdeling.trim());
       }
 
-      const res = await fetch(`/api/harvest?${p.toString()}`, { credentials: "include" });
-      if (res.status === 404 || !res.ok) return { total: 0, totalOutput: 0, approved: 0, planned: 0 };
+      const res = await fetch(`/api/harvest?${p.toString()}`, {
+        credentials: "include",
+      });
+      if (res.status === 404 || !res.ok)
+        return { total: 0, totalOutput: 0, approved: 0, planned: 0 };
 
-      const json: any = await res.json();
-      const rows = Array.isArray(json) ? json : (json && json.data && Array.isArray(json.data) ? json.data : []);
+      const json: Record<string, unknown> = await res.json();
+      let rows: unknown[] = [];
+      if (Array.isArray(json)) {
+        rows = json;
+      } else if (
+        json &&
+        typeof json === "object" &&
+        "data" in json &&
+        Array.isArray((json as Record<string, unknown>).data)
+      ) {
+        rows = (json as Record<string, unknown>).data as unknown[];
+      }
+      const harvestRows = rows as HarvestingRecord[];
 
       return {
-        total: rows.length,
-        totalOutput: rows.reduce((sum: number, r: any) => sum + (parseInt(String(r.output || 0)) || 0), 0),
-        approved: rows.filter((r: any) => r.status_harvesting === "Approved").length,
-        planned: rows.filter((r: any) => r.status_harvesting === "Planned").length,
+        total: harvestRows.length,
+        totalOutput: harvestRows.reduce(
+          (sum: number, r: HarvestingRecord) =>
+            sum + (parseInt(String(r.output || 0)) || 0),
+          0,
+        ),
+        approved: harvestRows.filter(
+          (r: HarvestingRecord) => r.status_harvesting === "Approved",
+        ).length,
+        planned: harvestRows.filter(
+          (r: HarvestingRecord) => r.status_harvesting === "Planned",
+        ).length,
       };
     },
     enabled: isClient,
   });
 
   // 5. Pengangkutan Query
-  const { data: pengangkutanStats = { total: 0, approved: 0, planned: 0, completed: 0, totalOutput: 0 }, isLoading: loadingPengangkutan } = useQuery({
-    queryKey: ["pengangkutans", timeframe, filterFcba, filterAfdeling, userLevel, userProfileKey],
+  const {
+    data: pengangkutanStats = {
+      total: 0,
+      approved: 0,
+      planned: 0,
+      completed: 0,
+      totalOutput: 0,
+    },
+    isLoading: loadingPengangkutan,
+  } = useQuery({
+    queryKey: [
+      "pengangkutans",
+      timeframe,
+      filterFcba,
+      filterAfdeling,
+      userLevel,
+      userProfileKey,
+    ],
     queryFn: async () => {
       const { from, to } = getDateRange(timeframe);
       const p = new URLSearchParams();
@@ -600,10 +675,15 @@ export default function UserDashboard() {
       p.set("tanggal_end", to);
 
       const homeFcba = userProfile?.fcba || readCookie("user_Fcba") || "";
-      const homeAfdeling = userProfile?.afdeling || userProfile?.section || readCookie("user_Section") || "";
+      const homeAfdeling =
+        userProfile?.afdeling ||
+        userProfile?.section ||
+        readCookie("user_Section") ||
+        "";
 
       if (userLevel === "ADM") {
-        if (filterFcba && filterFcba !== "ALL") p.set("fcba", filterFcba.trim());
+        if (filterFcba && filterFcba !== "ALL")
+          p.set("fcba", filterFcba.trim());
         if (filterAfdeling.trim()) p.set("afdeling", filterAfdeling.trim());
       } else if (userLevel === "MGR") {
         if (homeFcba) p.set("fcba", homeFcba.trim());
@@ -613,27 +693,63 @@ export default function UserDashboard() {
         if (homeAfdeling) p.set("afdeling", homeAfdeling.trim());
       }
 
-      const res = await fetch(`/api/pengangkutans?${p.toString()}`, { credentials: "include" });
-      if (res.status === 404 || !res.ok) return { total: 0, approved: 0, planned: 0, completed: 0, totalOutput: 0 };
+      const res = await fetch(`/api/pengangkutans?${p.toString()}`, {
+        credentials: "include",
+      });
+      if (res.status === 404 || !res.ok)
+        return {
+          total: 0,
+          approved: 0,
+          planned: 0,
+          completed: 0,
+          totalOutput: 0,
+        };
 
-      const json: any = await res.json();
-      const rows = Array.isArray(json) ? json : (json && json.data && Array.isArray(json.data) ? json.data : []);
+      const json: Record<string, unknown> = await res.json();
+      let rows: unknown[] = [];
+      if (Array.isArray(json)) {
+        rows = json;
+      } else if (
+        json &&
+        typeof json === "object" &&
+        "data" in json &&
+        Array.isArray((json as Record<string, unknown>).data)
+      ) {
+        rows = (json as Record<string, unknown>).data as unknown[];
+      }
+      const pengangkutanRows = rows as PengangkutanRecord[];
 
-      const totalOutput = rows.reduce((sum: number, r: any) => {
-        const candidates = [r.output, r.jjg, r.jumlah, r.quantity, r.tonase, r.berat];
-        for (const c of candidates) {
-          if (c === null || c === undefined || c === "") continue;
-          const n = parseInt(String(c).replace(/[^0-9-]/g, ""), 10);
-          if (!Number.isNaN(n)) return sum + n;
-        }
-        return sum;
-      }, 0);
+      const totalOutput = pengangkutanRows.reduce(
+        (sum: number, r: PengangkutanRecord) => {
+          const candidates = [
+            r.output,
+            r.jjg,
+            r.jumlah,
+            r.quantity,
+            r.tonase,
+            r.berat,
+          ];
+          for (const c of candidates) {
+            if (c === null || c === undefined || c === "") continue;
+            const n = parseInt(String(c).replace(/[^0-9-]/g, ""), 10);
+            if (!Number.isNaN(n)) return sum + n;
+          }
+          return sum;
+        },
+        0,
+      );
 
       return {
-        total: rows.length,
-        approved: rows.filter((r: any) => r.status_pengangkutan === "Approved").length,
-        planned: rows.filter((r: any) => r.status_pengangkutan === "Planned").length,
-        completed: rows.filter((r: any) => r.status_pengangkutan === "Completed").length,
+        total: pengangkutanRows.length,
+        approved: pengangkutanRows.filter(
+          (r: PengangkutanRecord) => r.status_pengangkutan === "Approved",
+        ).length,
+        planned: pengangkutanRows.filter(
+          (r: PengangkutanRecord) => r.status_pengangkutan === "Planned",
+        ).length,
+        completed: pengangkutanRows.filter(
+          (r: PengangkutanRecord) => r.status_pengangkutan === "Completed",
+        ).length,
         totalOutput,
       };
     },
@@ -704,7 +820,7 @@ export default function UserDashboard() {
   /* ===== Options FCBA & Afdeling (chain) ===== */
   const fcbaOptions: Option[] = useMemo(() => {
     const uniq = Array.from(
-      new Set(triplets.map((t) => t.fcba).filter(Boolean))
+      new Set(triplets.map((t) => t.fcba).filter(Boolean)),
     ).sort();
 
     const base = uniq.map((v) => ({ value: v, label: v }));
@@ -718,7 +834,7 @@ export default function UserDashboard() {
     // Always include an option to select all afdeling (empty value means no afdeling filter)
     if (!filterFcba || filterFcba === "ALL") {
       const uniq = Array.from(
-        new Set(triplets.map((t) => t.sectionname).filter(Boolean))
+        new Set(triplets.map((t) => t.sectionname).filter(Boolean)),
       ).sort();
       return [
         { value: "", label: "Semua Afdeling" },
@@ -730,8 +846,8 @@ export default function UserDashboard() {
         triplets
           .filter((t) => t.fcba === filterFcba)
           .map((t) => t.sectionname)
-          .filter(Boolean)
-      )
+          .filter(Boolean),
+      ),
     ).sort();
     return [
       { value: "", label: "Semua Afdeling" },
@@ -979,7 +1095,7 @@ export default function UserDashboard() {
       { label: "Pulang Awal", value: stats.totalPulangAwal },
       { label: "Alpha", value: stats.totalAlpa },
     ],
-    [stats]
+    [stats],
   );
 
   const pieChartData = useMemo(
@@ -989,7 +1105,7 @@ export default function UserDashboard() {
       { label: "Pulang Awal", value: stats.totalPulangAwal, color: "#ef4444" },
       { label: "Alpha", value: stats.totalAlpa, color: "#000000" },
     ],
-    [stats]
+    [stats],
   );
 
   // 🔥 Data untuk Line Chart berdasarkan timeframe (sekarang sudah ada Pulang Awal)
@@ -1064,7 +1180,7 @@ export default function UserDashboard() {
       userProfile?.fullname ||
         readCookie("user_FullName") ||
         userProfile?.username ||
-        ""
+        "",
     ) || "User";
 
   const displayLevel = (userProfile?.level || "").toUpperCase() || userLevel;
@@ -1185,7 +1301,7 @@ export default function UserDashboard() {
                 >
                   {timeframeLabel(tf)}
                 </button>
-              )
+              ),
             )}
           </div>
         </div>

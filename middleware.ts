@@ -9,7 +9,7 @@ export function middleware(request: NextRequest) {
   const isPublic = PUBLIC_PATHS.has(pathname);
 
   // Initialize response
-  let response = NextResponse.next();
+  const response = NextResponse.next();
 
   // Set default locale if not present
   if (!request.cookies.has("NEXT_LOCALE")) {
