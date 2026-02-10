@@ -9,11 +9,11 @@ import { Theme } from "./theme";
 import { LanguageSwitcher } from "./language-switcher";
 import { toTitleCase } from "@/utils/textManipulation";
 import { getProxiedImageUrl } from "@/utils/imageHelper";
-import { useTranslations } from 'next-intl';
+import { useTranslations } from "next-intl";
 import { cookieStore } from "@/utils/cookieStore";
 
 export default function Navbar() {
-  const t = useTranslations('Navbar');
+  const t = useTranslations("Navbar");
   const router = useRouter();
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [fullNameDisplay, setFullNameDisplay] = useState<string | null>(null);
@@ -28,9 +28,12 @@ export default function Navbar() {
     // bersihkan spasi
     const name = (fullNameCookie ?? "").trim();
     const fcba = (fcbaCookie ?? "").trim();
-    
+
     // Avoid "null" or "undefined" strings from cookie
-    const photo = photoCookie && photoCookie !== "null" && photoCookie !== "undefined" ? photoCookie.trim() : null;
+    const photo =
+      photoCookie && photoCookie !== "null" && photoCookie !== "undefined"
+        ? photoCookie.trim()
+        : null;
 
     // rakit tampilan: "Nama (FCBA)" hanya kalau datanya ada
     const parts: string[] = [];
@@ -108,16 +111,16 @@ export default function Navbar() {
           >
             <li>
               <a>
-                <b>{fullNameDisplay ?? t('pengguna')}</b>
+                <b>{fullNameDisplay ?? t("pengguna")}</b>
               </a>
             </li>
             <li>
               <a
                 target="_blank"
-                href="https://sipsmobile.web.app/"
+                href="https://1drv.ms/f/c/28ba560db3725beb/IgCchLt-YjVKQbL4WeU_F67zASiTPoSNT1YlDl1SqUG6P2c?e=mqt2ta"
                 className="justify-between"
               >
-                SIPS Mobile <span className="badge">{t('download')}</span>
+                SIPS Mobile <span className="badge">{t("download")}</span>
               </a>
             </li>
             <li>
@@ -126,14 +129,14 @@ export default function Navbar() {
                 href="https://skj.my.id/"
                 className="justify-between"
               >
-                SIPS <span className="badge">{t('visit')}</span>
+                SIPS <span className="badge">{t("visit")}</span>
               </a>
             </li>
             <li>
               <Theme />
             </li>
             <li>
-              <Link href="/change-password">{t('changePassword')}</Link>
+              <Link href="/change-password">{t("changePassword")}</Link>
             </li>
             <li>
               <button
@@ -144,10 +147,10 @@ export default function Navbar() {
                 {isLoggingOut ? (
                   <span className="flex items-center gap-2">
                     <span className="loading loading-spinner loading-xs" />
-                    {t('logout')}
+                    {t("logout")}
                   </span>
                 ) : (
-                  t('logout')
+                  t("logout")
                 )}
               </button>
             </li>
@@ -160,7 +163,7 @@ export default function Navbar() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
           <div className="flex flex-col items-center gap-4">
             <span className="loading loading-spinner loading-lg text-primary" />
-            <p className="text-white font-medium">{t('signingOut')}</p>
+            <p className="text-white font-medium">{t("signingOut")}</p>
           </div>
         </div>
       )}
