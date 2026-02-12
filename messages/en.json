@@ -3,6 +3,7 @@
     "dashboard": "Dashboard",
     "attendance": "Attendance",
     "harvest": "Harvest",
+    "harvestingQuality": "Harvesting Quality",
     "pengangkutan": "Transportation",
     "changePassword": "Change Password",
     "logout": "Logout",

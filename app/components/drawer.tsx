@@ -21,6 +21,7 @@ export const Drawer = () => {
   const [userLevel, setUserLevel] = useState<string>("");
   const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
   const [isHarvestOpen, setIsHarvestOpen] = useState(false);
+  const [isHarvestingQualityOpen, setIsHarvestingQualityOpen] = useState(false);
   const [isPengangkutanOpen, setIsPengangkutanOpen] = useState(false);
 
   useEffect(() => {
@@ -28,6 +29,7 @@ export const Drawer = () => {
     // Tutup jika pindah ke halaman lain (misal Dashboard)
     setIsAttendanceOpen(pathname.startsWith("/attendance"));
     setIsHarvestOpen(pathname.startsWith("/harvest"));
+    setIsHarvestingQualityOpen(pathname.startsWith("/harvesting-quality"));
     setIsPengangkutanOpen(pathname.startsWith("/pengangkutan"));
   }, [pathname]);
 
@@ -249,6 +251,51 @@ export const Drawer = () => {
                     <Link
                       href="/harvest/upload"
                       className={isActive("/harvest/upload")}
+                      onClick={closeDrawer}
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-4 w-4"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2z" />
+                        <path d="M11 3L5.5 8.5l1.42 1.41L11 5.83V15h2V5.83l4.08 4.08L18.5 8.5 12 3z" />
+                      </svg>
+                      {t("upload")}
+                    </Link>
+                  </li>
+                )}
+              </ul>
+            </details>
+          </li>
+
+          {/* Dropdown Harvesting Quality */}
+          <li>
+            <details
+              className="[&_summary::-webkit-details-marker]:hidden"
+              open={isHarvestingQualityOpen}
+              onToggle={(e) => setIsHarvestingQualityOpen(e.currentTarget.open)}
+            >
+              <summary className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                  </svg>
+                  <span>{t("harvestingQuality")}</span>
+                </div>
+              </summary>
+              <ul className="menu menu-sm">
+                {(userLevel === "ADM" || userLevel === "MGR") && (
+                  <li>
+                    <Link
+                      href="/harvesting-quality/upload"
+                      className={isActive("/harvesting-quality/upload")}
                       onClick={closeDrawer}
                     >
                       <svg

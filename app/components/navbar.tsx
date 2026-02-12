@@ -82,7 +82,7 @@ export default function Navbar() {
         />
       </div>
 
-      <div className="navbar-end mr-2 gap-4">
+      <div className="navbar-end gap-2">
         <LanguageSwitcher />
         <div className="dropdown dropdown-end">
           <div
@@ -107,7 +107,7 @@ export default function Navbar() {
 
           <ul
             tabIndex={0}
-            className="menu menu-sm dropdown-content bg-base-100 rounded-box z-10 mt-3 w-52 p-2 shadow"
+            className="menu menu-sm dropdown-content bg-base-100 rounded-box z-50 mt-3 w-52 p-2 shadow"
           >
             <li>
               <a>

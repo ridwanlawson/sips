@@ -19,8 +19,12 @@ export const LanguageSwitcher = () => {
   };
 
   return (
-    <div className="dropdown dropdown-bottom">
-      <div tabIndex={0} role="button" className="flex items-center gap-2">
+    <div className="dropdown dropdown-end">
+      <div
+        tabIndex={0}
+        role="button"
+        className="flex items-center gap-2 px-2 py-1"
+      >
         <span className="uppercase font-medium text-xs">{locale}</span>
         <svg
           width="12px"
@@ -34,7 +38,7 @@ export const LanguageSwitcher = () => {
       </div>
       <ul
         tabIndex={0}
-        className="dropdown-content bg-base-300 rounded-box z-[1] w-32 p-2 shadow-2xl mt-4"
+        className="dropdown-content bg-base-300 rounded-box z-[1] w-32 p-2 shadow-2xl"
       >
         <li>
           <button
