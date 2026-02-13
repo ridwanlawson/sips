@@ -253,164 +253,197 @@ export default function HarvestingQualityUploadPage() {
     };
   }, [filteredDataWithKey]);
 
-  // Cell dengan Tooltip component
-  const CellWithTooltip = ({
-    value,
-    maxLength = 30,
-  }: {
-    value: string | number | undefined | null;
-    maxLength?: number;
-  }) => {
-    const displayValue = value ? String(value) : "-";
-    const needsTooltip = displayValue.length > maxLength;
-
-    return (
-      <div
-        title={needsTooltip ? displayValue : ""}
-        style={{ cursor: needsTooltip ? "help" : "default" }}
-      >
-        {needsTooltip
-          ? `${displayValue.substring(0, maxLength)}...`
-          : displayValue}
-      </div>
-    );
-  };
-
-  // Define columns untuk DataTable - SEMUA FIELD dari API
-  const columns: TableColumn<HarvestingQualityUploadData>[] = useMemo(() => {
-    if (data.length === 0) {
-      return [];
-    }
-
-    // Get all unique keys from data
-    const allKeys = new Set<string>();
-    data.forEach((item) => {
-      Object.keys(item).forEach((key) => {
-        if (key !== "_rowKey") allKeys.add(key);
-      });
-    });
-
-    // Priority fields to show first
-    const priorityFields = [
-      "#",
-      "empcode",
-      "fddate",
-      "fieldcode",
-      "documentno",
-      "under_ripe",
-      "overripe",
-      "abnormal",
-      "long_stalk",
-      "eaten_by_rat",
-      "unharvest_ffb",
-      "uncollect_lf_circle",
-      "uncollect_lf_piece",
-      "unarrange_ffb",
-      "unprune_frond",
-      "qe_1_pelepah_tidak_disusun",
-      "qe_2_buah_matahari",
-      "qe_3_buah_busuk",
-      "qe_4_buah_mentah_diperam",
-      "qe_5_over_pruning",
-      "qe_6_brondolan_tidak_dialas",
-      "qe_7_brondolan_kotor_sampah",
-      "qe_8_buah_dibelah",
-      "qe_9",
-      "qe_10",
-      "qe_11_buah_mentah_a1",
-      "qe_12_buah_tinggal_s",
-      "qe_13_b_ggng_pjg_t_dipotong",
-      "qe_14",
-      "qe_15",
-      "qe_16_buah_mentah_kerani",
-      "qe_17_buah_mentah_mandor",
-      "fcba",
-      "lasttime",
-    ];
-
-    // Sorted unique keys
-    const sortedKeys = [
-      "#",
-      ...priorityFields.filter((k) => k !== "#" && allKeys.has(k)),
-      ...Array.from(allKeys).filter(
-        (k) => !priorityFields.includes(k) && k !== "_rowKey",
-      ),
-    ];
-
-    // Generate columns
-    const generatedColumns: TableColumn<HarvestingQualityUploadData>[] =
-      sortedKeys.map((key) => {
-        if (key === "#") {
-          return {
-            name: "#",
-            width: "50px",
-            cell: (_row, idx) => <span>{idx + 1}</span>,
-            ignoreRowClick: true,
-          };
-        }
-
-        // Check if numeric field
-        const isNumeric =
-          allKeys.has(key) &&
-          (key.toLowerCase().includes("ripe") ||
-            key.toLowerCase().includes("stalk") ||
-            key.toLowerCase().includes("rat") ||
-            key.toLowerCase().includes("ffb") ||
-            key.toLowerCase().includes("uncollect") ||
-            key.toLowerCase().includes("unarrange") ||
-            key.toLowerCase().includes("unprune") ||
-            key.startsWith("qe_"));
-
-        // Check if date field
-        const isDate = key.toLowerCase().includes("date");
-
-        return {
-          name: key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, " "),
-          selector: (row): string | number => {
-            const val = (row as unknown as Record<string, unknown>)[key];
-            if (isDate && val) {
-              try {
-                return new Date(val as string).toLocaleDateString("id-ID");
-              } catch {
-                return String(val);
-              }
-            }
-            return String(val || "-");
-          },
-          sortable: true,
-          width: "140px",
-          wrap: true,
-          cell: (row) => {
-            const val = (row as unknown as Record<string, unknown>)[key];
-
-            if (isDate && val) {
-              try {
-                const dateStr = new Date(val as string).toLocaleDateString(
-                  "id-ID",
-                );
-                return <CellWithTooltip value={dateStr} maxLength={20} />;
-              } catch {
-                return <CellWithTooltip value={String(val)} maxLength={20} />;
-              }
-            }
-
-            if (isNumeric && val !== undefined && val !== null) {
-              return (
-                <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                  {Number(val).toLocaleString("id-ID")}
-                </div>
-              );
-            }
-
-            return (
-              <CellWithTooltip value={String(val) || "-"} maxLength={25} />
-            );
-          },
-        };
-      });
-
-    return generatedColumns;
-  }, [data]);
+  // Define columns untuk DataTable
+  const columns: TableColumn<HarvestingQualityUploadData>[] = useMemo(
+    () => [
+      {
+        name: "#",
+        width: "50px",
+        cell: (_row, idx) => <span>{idx + 1}</span>,
+        ignoreRowClick: true,
+      },
+      {
+        name: "Employee Code",
+        selector: (row) => row.empcode || "-",
+        sortable: true,
+        width: "140px",
+      },
+      {
+        name: "FD Date",
+        selector: (row) => {
+          try {
+            return row.fddate
+              ? new Date(row.fddate).toLocaleDateString("id-ID")
+              : "-";
+          } catch {
+            return row.fddate || "-";
+          }
+        },
+        sortable: true,
+        width: "120px",
+      },
+      {
+        name: "Field Code",
+        selector: (row) => row.fieldcode || "-",
+        sortable: true,
+        width: "110px",
+      },
+      {
+        name: "Document No",
+        selector: (row) => row.documentno || "-",
+        sortable: true,
+        width: "120px",
+      },
+      {
+        name: "Under Ripe",
+        selector: (row) => {
+          const val = Number(row.under_ripe) || 0;
+          return val.toLocaleString("id-ID");
+        },
+        sortable: true,
+        width: "110px",
+      },
+      {
+        name: "Overripe",
+        selector: (row) => {
+          const val = Number(row.overripe) || 0;
+          return val.toLocaleString("id-ID");
+        },
+        sortable: true,
+        width: "110px",
+      },
+      {
+        name: "Abnormal",
+        selector: (row) => {
+          const val = Number(row.abnormal) || 0;
+          return val.toLocaleString("id-ID");
+        },
+        sortable: true,
+        width: "110px",
+      },
+      {
+        name: "Long Stalk",
+        selector: (row) => {
+          const val = Number(row.long_stalk) || 0;
+          return val.toLocaleString("id-ID");
+        },
+        sortable: true,
+        width: "110px",
+      },
+      {
+        name: "Eaten by Rat",
+        selector: (row) => {
+          const val = Number(row.eaten_by_rat) || 0;
+          return val.toLocaleString("id-ID");
+        },
+        sortable: true,
+        width: "120px",
+      },
+      {
+        name: "Unharvest FFB",
+        selector: (row) => {
+          const val = Number(row.unharvest_ffb) || 0;
+          return val.toLocaleString("id-ID");
+        },
+        sortable: true,
+        width: "120px",
+      },
+      {
+        name: "Uncollect LF Circle",
+        selector: (row) => {
+          const val = Number(row.uncollect_lf_circle) || 0;
+          return val.toLocaleString("id-ID");
+        },
+        sortable: true,
+        width: "140px",
+      },
+      {
+        name: "Uncollect LF Piece",
+        selector: (row) => {
+          const val = Number(row.uncollect_lf_piece) || 0;
+          return val.toLocaleString("id-ID");
+        },
+        sortable: true,
+        width: "135px",
+      },
+      {
+        name: "Unarrange FFB",
+        selector: (row) => {
+          const val = Number(row.unarrange_ffb) || 0;
+          return val.toLocaleString("id-ID");
+        },
+        sortable: true,
+        width: "125px",
+      },
+      {
+        name: "Unprune Frond",
+        selector: (row) => {
+          const val = Number(row.unprune_frond) || 0;
+          return val.toLocaleString("id-ID");
+        },
+        sortable: true,
+        width: "125px",
+      },
+      {
+        name: "QE 1 - Pelepah",
+        selector: (row) => {
+          const val = Number(row.qe_1_pelepah_tidak_disusun) || 0;
+          return val.toLocaleString("id-ID");
+        },
+        sortable: true,
+        width: "125px",
+      },
+      {
+        name: "QE 2 - Buah Matahari",
+        selector: (row) => {
+          const val = Number(row.qe_2_buah_matahari) || 0;
+          return val.toLocaleString("id-ID");
+        },
+        sortable: true,
+        width: "140px",
+      },
+      {
+        name: "QE 3 - Buah Busuk",
+        selector: (row) => {
+          const val = Number(row.qe_3_buah_busuk) || 0;
+          return val.toLocaleString("id-ID");
+        },
+        sortable: true,
+        width: "125px",
+      },
+      {
+        name: "QE 4 - Mentah Diperam",
+        selector: (row) => {
+          const val = Number(row.qe_4_buah_mentah_diperam) || 0;
+          return val.toLocaleString("id-ID");
+        },
+        sortable: true,
+        width: "145px",
+      },
+      {
+        name: "QE 5 - Over Pruning",
+        selector: (row) => {
+          const val = Number(row.qe_5_over_pruning) || 0;
+          return val.toLocaleString("id-ID");
+        },
+        sortable: true,
+        width: "135px",
+      },
+      {
+        name: "FCBA",
+        selector: (row) => row.fcba || "-",
+        sortable: true,
+        width: "100px",
+      },
+      {
+        name: "Last Update",
+        selector: (row) => row.lastupdate || "-",
+        sortable: true,
+        width: "150px",
+      },
+    ],
+    [],
+  );
 
   const handleSubmitHarvestingQuality = async () => {
     if (data.length === 0) {
@@ -982,13 +1015,13 @@ export default function HarvestingQualityUploadPage() {
 
         {/* Data Table */}
         {data.length > 0 && (
-          <div className="rounded-lg border border-base-200 shadow-sm bg-base-100 w-full">
-            {loading ? (
-              <div className="p-8">
-                <SkeletonTable rows={10} />
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
+          <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100">
+            <div className="min-w-[900px] md:min-w-0">
+              {loading ? (
+                <div className="p-8">
+                  <SkeletonTable rows={10} />
+                </div>
+              ) : (
                 <DataTable
                   keyField="_rowKey"
                   columns={columns}
@@ -1002,55 +1035,15 @@ export default function HarvestingQualityUploadPage() {
                   fixedHeader
                   fixedHeaderScrollHeight="520px"
                   persistTableHead
-                  responsive={false}
-                  customStyles={{
-                    table: {
-                      style: {
-                        width: "100%",
-                        minWidth: "max-content",
-                      },
-                    },
-                    headRow: {
-                      style: {
-                        backgroundColor: "#1F2937",
-                        color: "#fff",
-                        fontWeight: "600",
-                        fontSize: "0.875rem",
-                        padding: "8px 0",
-                        minHeight: "40px",
-                      },
-                    },
-                    rows: {
-                      style: {
-                        fontSize: "0.875rem",
-                        minHeight: "40px",
-                        padding: "0",
-                        verticalAlign: "middle",
-                      },
-                    },
-                    cells: {
-                      style: {
-                        padding: "8px 12px",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      },
-                    },
-                    pagination: {
-                      style: {
-                        backgroundColor: "transparent",
-                        minHeight: "48px",
-                      },
-                    },
-                  }}
+                  responsive
                   noDataComponent={
                     <div className="py-8 text-base-content/70">
                       Tidak ada data.
                     </div>
                   }
                 />
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
       </div>

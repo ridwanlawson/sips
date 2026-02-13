@@ -274,156 +274,148 @@ export default function HarvestingUploadPage() {
     };
   }, [filteredDataWithKey]);
 
-  // Cell dengan Tooltip component
-  const CellWithTooltip = ({
-    value,
-    maxLength = 30,
-  }: {
-    value: string | number | undefined | null;
-    maxLength?: number;
-  }) => {
-    const displayValue = value ? String(value) : "-";
-    const needsTooltip = displayValue.length > maxLength;
-
-    return (
-      <div
-        title={needsTooltip ? displayValue : ""}
-        style={{ cursor: needsTooltip ? "help" : "default" }}
-      >
-        {needsTooltip
-          ? `${displayValue.substring(0, maxLength)}...`
-          : displayValue}
-      </div>
-    );
-  };
-
-  // Define columns untuk DataTable - SEMUA FIELD dari API
-  const columns: TableColumn<HarvestingUploadData>[] = useMemo(() => {
-    if (data.length === 0) {
-      return [];
-    }
-
-    // Get all unique keys from data
-    const allKeys = new Set<string>();
-    data.forEach((item) => {
-      Object.keys(item).forEach((key) => {
-        if (key !== "_rowKey") allKeys.add(key);
-      });
-    });
-
-    // Priority fields to show first
-    const priorityFields = [
-      "#",
-      "nospb",
-      "chitno",
-      "fieldcode",
-      "receptiondate",
-      "harvestdate",
-      "vehicle",
-      "driver",
-      "mill",
-      "cropcode",
-      "productcode",
-      "own",
-      "transporttype",
-      "bunch",
-      "bunch_estateweight",
-      "mill_weight_bruto",
-      "mill_weight_netto",
-      "pressemester_abw",
-      "bjr_chit",
-      "fcba",
-      "keterangan",
-      "lasttime",
-    ];
-
-    // Sorted unique keys
-    const sortedKeys = [
-      "#",
-      ...priorityFields.filter((k) => k !== "#" && allKeys.has(k)),
-      ...Array.from(allKeys).filter(
-        (k) => !priorityFields.includes(k) && k !== "_rowKey",
-      ),
-    ];
-
-    // Generate columns
-    const generatedColumns: TableColumn<HarvestingUploadData>[] =
-      sortedKeys.map((key) => {
-        if (key === "#") {
-          return {
-            name: "#",
-            width: "50px",
-            cell: (_row, idx) => <span>{idx + 1}</span>,
-            ignoreRowClick: true,
-          };
-        }
-
-        // Check if numeric field
-        const isNumeric =
-          data.some((item) => {
-            const itemVal = (item as unknown as Record<string, unknown>)[key];
-            return (
-              itemVal !== undefined &&
-              itemVal !== null &&
-              !isNaN(Number(itemVal))
-            );
-          }) &&
-          (key.toLowerCase().includes("weight") ||
-            key.toLowerCase().includes("bunch") ||
-            key.toLowerCase().includes("kg") ||
-            key === "bjr_chit" ||
-            key === "pressemester_abw");
-
-        // Check if date field
-        const isDate = key.toLowerCase().includes("date");
-
-        return {
-          name: key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, " "),
-          selector: (row): string | number => {
-            const val = (row as unknown as Record<string, unknown>)[key];
-            if (isDate && val) {
-              try {
-                return new Date(val as string).toLocaleDateString("id-ID");
-              } catch {
-                return String(val);
-              }
-            }
-            return String(val || "-");
-          },
-          sortable: true,
-          width: "140px",
-          wrap: true,
-          cell: (row) => {
-            const val = (row as unknown as Record<string, unknown>)[key];
-
-            if (isDate && val) {
-              try {
-                const dateStr = new Date(val as string).toLocaleDateString(
-                  "id-ID",
-                );
-                return <CellWithTooltip value={dateStr} maxLength={20} />;
-              } catch {
-                return <CellWithTooltip value={String(val)} maxLength={20} />;
-              }
-            }
-
-            if (isNumeric && val !== undefined && val !== null) {
-              return (
-                <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                  {Number(val).toLocaleString("id-ID")}
-                </div>
-              );
-            }
-
-            return (
-              <CellWithTooltip value={String(val) || "-"} maxLength={25} />
-            );
-          },
-        };
-      });
-
-    return generatedColumns;
-  }, [data]);
+  // Define columns untuk DataTable
+  const columns: TableColumn<HarvestingUploadData>[] = useMemo(
+    () => [
+      {
+        name: "#",
+        width: "50px",
+        cell: (_row, idx) => <span>{idx + 1}</span>,
+        ignoreRowClick: true,
+      },
+      {
+        name: "No SPB",
+        selector: (row) => row.nospb || "-",
+        sortable: true,
+        width: "110px",
+      },
+      {
+        name: "Chit No",
+        selector: (row) => row.chitno || "-",
+        sortable: true,
+        width: "120px",
+      },
+      {
+        name: "Field Code",
+        selector: (row) => row.fieldcode || "-",
+        sortable: true,
+        width: "110px",
+      },
+      {
+        name: "Reception Date",
+        selector: (row) => {
+          try {
+            return row.receptiondate
+              ? new Date(row.receptiondate).toLocaleDateString("id-ID")
+              : "-";
+          } catch {
+            return row.receptiondate || "-";
+          }
+        },
+        sortable: true,
+        width: "130px",
+      },
+      {
+        name: "Harvest Date",
+        selector: (row) => {
+          try {
+            return row.harvestdate
+              ? new Date(row.harvestdate).toLocaleDateString("id-ID")
+              : "-";
+          } catch {
+            return row.harvestdate || "-";
+          }
+        },
+        sortable: true,
+        width: "130px",
+      },
+      {
+        name: "Vehicle",
+        selector: (row) => row.vehicle || "-",
+        sortable: true,
+        width: "110px",
+      },
+      {
+        name: "Driver",
+        selector: (row) => row.driver || "-",
+        sortable: true,
+        width: "110px",
+      },
+      {
+        name: "Mill",
+        selector: (row) => row.mill || "-",
+        sortable: true,
+        width: "100px",
+      },
+      {
+        name: "Crop Code",
+        selector: (row) => row.cropcode || "-",
+        sortable: true,
+        width: "110px",
+      },
+      {
+        name: "Product Code",
+        selector: (row) => row.productcode || "-",
+        sortable: true,
+        width: "120px",
+      },
+      {
+        name: "Bunch",
+        selector: (row) => {
+          const val = Number(row.bunch) || 0;
+          return val.toLocaleString("id-ID");
+        },
+        sortable: true,
+        width: "100px",
+      },
+      {
+        name: "Estate Weight (kg)",
+        selector: (row) => {
+          const val = Number(row.bunch_estateweight) || 0;
+          return val.toLocaleString("id-ID");
+        },
+        sortable: true,
+        width: "140px",
+      },
+      {
+        name: "Mill Weight Bruto",
+        selector: (row) => {
+          const val = Number(row.mill_weight_bruto) || 0;
+          return val.toLocaleString("id-ID");
+        },
+        sortable: true,
+        width: "140px",
+      },
+      {
+        name: "Mill Weight Netto",
+        selector: (row) => {
+          const val = Number(row.mill_weight_netto) || 0;
+          return val.toLocaleString("id-ID");
+        },
+        sortable: true,
+        width: "140px",
+      },
+      {
+        name: "FCBA",
+        selector: (row) => row.fcba || "-",
+        sortable: true,
+        width: "100px",
+      },
+      {
+        name: "Keterangan",
+        selector: (row) => row.keterangan || "-",
+        sortable: true,
+        width: "150px",
+      },
+      {
+        name: "Last Update",
+        selector: (row) => row.lastupdate || "-",
+        sortable: true,
+        width: "150px",
+      },
+    ],
+    [],
+  );
 
   const handleSubmitHarvesting = async () => {
     if (data.length === 0) {
@@ -604,11 +596,11 @@ export default function HarvestingUploadPage() {
         setData([]);
       } else {
         let msg = `⚠️ Selesai dengan catatan.\nBerhasil: ${successCount}\nGagal: ${totalRecords - successCount}`;
-        
+
         if (successList.length > 0) {
           msg += `\n\nSuccessful SPBs:\n${successList.join(", ")}`;
         }
-        
+
         if (failMessages.length > 0) {
           msg += `
 
@@ -617,7 +609,7 @@ Failed:\n${failMessages.slice(0, 10).join("\n")}`;
             msg += `\n...dan ${failMessages.length - 10} lainnya`;
           }
         }
-        
+
         alert(msg);
 
         if (successCount > 0) {
@@ -1015,13 +1007,13 @@ Failed:\n${failMessages.slice(0, 10).join("\n")}`;
 
         {/* Data Table */}
         {data.length > 0 && (
-          <div className="rounded-lg border border-base-200 shadow-sm bg-base-100 w-full">
-            {loading ? (
-              <div className="p-8">
-                <SkeletonTable rows={10} />
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
+          <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100">
+            <div className="min-w-[900px] md:min-w-0">
+              {loading ? (
+                <div className="p-8">
+                  <SkeletonTable rows={10} />
+                </div>
+              ) : (
                 <DataTable
                   keyField="_rowKey"
                   columns={columns}
@@ -1035,55 +1027,15 @@ Failed:\n${failMessages.slice(0, 10).join("\n")}`;
                   fixedHeader
                   fixedHeaderScrollHeight="520px"
                   persistTableHead
-                  responsive={false}
-                  customStyles={{
-                    table: {
-                      style: {
-                        width: "100%",
-                        minWidth: "max-content",
-                      },
-                    },
-                    headRow: {
-                      style: {
-                        backgroundColor: "#1F2937",
-                        color: "#fff",
-                        fontWeight: "600",
-                        fontSize: "0.875rem",
-                        padding: "8px 0",
-                        minHeight: "40px",
-                      },
-                    },
-                    rows: {
-                      style: {
-                        fontSize: "0.875rem",
-                        minHeight: "40px",
-                        padding: "0",
-                        verticalAlign: "middle",
-                      },
-                    },
-                    cells: {
-                      style: {
-                        padding: "8px 12px",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      },
-                    },
-                    pagination: {
-                      style: {
-                        backgroundColor: "transparent",
-                        minHeight: "48px",
-                      },
-                    },
-                  }}
+                  responsive
                   noDataComponent={
                     <div className="py-8 text-base-content/70">
                       Tidak ada data.
                     </div>
                   }
                 />
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
       </div>
