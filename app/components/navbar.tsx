@@ -117,7 +117,7 @@ export default function Navbar() {
             <li>
               <a
                 target="_blank"
-                href="https://1drv.ms/u/c/28ba560db3725beb/IQABcbl557fdQK10vqsrQ481AYTzfMn_XBFi18EuQ040d1c?e=IcjotA"
+                href="https://1drv.ms/f/c/28ba560db3725beb/IgCchLt-YjVKQbL4WeU_F67zASiTPoSNT1YlDl1SqUG6P2c?e=OzHELo"
                 className="justify-between"
               >
                 SIPS Mobile <span className="badge">{t("download")}</span>
