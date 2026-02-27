@@ -38,7 +38,7 @@ export default function Home() {
         duration: 10 + Math.random() * 10,
         delay: Math.random() * 8,
         size: 4 + Math.random() * 6,
-      }))
+      })),
     );
   }, []);
 
@@ -47,7 +47,7 @@ export default function Home() {
     if (!isLoading) return;
     const interval = setInterval(
       () => setTipIndex((prev) => (prev + 1) % LOADING_TIPS.length),
-      2200
+      2200,
     );
     return () => clearInterval(interval);
   }, [isLoading]);
@@ -73,7 +73,7 @@ export default function Home() {
       } else {
         setError(
           data.message ||
-            "Login gagal. Silakan periksa kembali kredensial Anda."
+            "Login gagal. Silakan periksa kembali kredensial Anda.",
         );
         setIsLoading(false);
       }
@@ -147,7 +147,11 @@ export default function Home() {
             <span>Realtime • Terintegrasi • Multi-Device</span>
           </div>
 
-          <div className="mt-4 inline-flex items-center gap-3 rounded-2xl bg-base-100/80 px-3 py-2 shadow-md animate-bounce">
+          <a
+            target="_blank"
+            href="https://1drv.ms/f/c/28ba560db3725beb/IgCchLt-YjVKQbL4WeU_F67zASiTPoSNT1YlDl1SqUG6P2c?e=OzHELo"
+            className="mt-4 inline-flex items-center gap-3 rounded-2xl bg-base-100/80 px-3 py-2 shadow-md animate-bounce"
+          >
             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -160,10 +164,10 @@ export default function Home() {
             </div>
             <div className="text-[0.7rem] leading-snug">
               <p className="font-semibold text-base-content">
-                Pastikan Data SiPS Mobile sudah diupload!
+                Download SIPS Mobile Now!
               </p>
             </div>
-          </div>
+          </a>
         </section>
 
         {/* Login Card */}
