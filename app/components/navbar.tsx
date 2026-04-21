@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Drawer } from "./drawer";
 import { Theme } from "./theme";
@@ -11,13 +11,27 @@ import { toTitleCase } from "@/utils/textManipulation";
 import { getProxiedImageUrl } from "@/utils/imageHelper";
 import { useTranslations } from "next-intl";
 import { cookieStore } from "@/utils/cookieStore";
+import toast from "react-hot-toast";
 
 export default function Navbar() {
   const t = useTranslations("Navbar");
   const router = useRouter();
+  const pathname = usePathname();
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [fullNameDisplay, setFullNameDisplay] = useState<string | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isNavigating, setIsNavigating] = useState<string | null>(null);
+  const [isCheckingDownload, setIsCheckingDownload] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    // Reset loading state saat halaman selesai diload (pathname berubah)
+    setIsNavigating(null);
+  }, [pathname]);
 
   useEffect(() => {
     const userInfo = cookieStore.getAllUserInfo();
@@ -63,6 +77,49 @@ export default function Navbar() {
     } catch (error) {
       setIsLoggingOut(false);
       console.error("Logout failed:", error);
+    }
+  };
+
+  // Handle navigation dengan loading pada menu yang diklik
+  const handleNavigate = (href: string) => {
+    if (pathname === href) return;
+    setIsNavigating(href);
+    router.push(href);
+  };
+
+  // Handle download - call API to check for updates
+  const handleDownload = async () => {
+    setIsCheckingDownload(true);
+    try {
+      const token =
+        cookieStore.getCookie("auth_token") ||
+        cookieStore.getCookie("token") ||
+        cookieStore.getCookie("access_token") ||
+        "";
+
+      const response = await fetch("http://dev.skj.my.id:82/api/app-update/check", {
+        method: "POST",
+        headers: {
+          Authorization: token ? `Bearer ${token}` : "",
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ platform: "android" }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.download_url) {
+        // Open download URL in new tab
+        window.open(data.download_url, "_blank");
+      } else {
+        toast.error(data.message || "Gagal mendapatkan link download");
+      }
+    } catch (error) {
+      console.error("Download check error:", error);
+      toast.error("Terjadi kesalahan saat memeriksa update");
+    } finally {
+      setIsCheckingDownload(false);
     }
   };
 
@@ -115,13 +172,28 @@ export default function Navbar() {
               </a>
             </li>
             <li>
-              <a
-                target="_blank"
-                href="https://1drv.ms/f/c/28ba560db3725beb/IgCchLt-YjVKQbL4WeU_F67zASiTPoSNT1YlDl1SqUG6P2c?e=OzHELo"
-                className="justify-between"
-              >
-                SIPS Mobile <span className="badge">{t("download")}</span>
-              </a>
+              {mounted ? (
+                <button
+                  onClick={handleDownload}
+                  className={`w-full text-left justify-between flex items-center ${isCheckingDownload ? "opacity-50 cursor-not-allowed" : ""}`}
+                  disabled={isCheckingDownload}
+                >
+                  <span>SIPS Mobile</span>
+                  {isCheckingDownload ? (
+                    <span className="loading loading-spinner loading-xs" />
+                  ) : (
+                    <span className="badge">{t("download")}</span>
+                  )}
+                </button>
+              ) : (
+                <a
+                  href="#"
+                  className="justify-between"
+                  onClick={(e) => e.preventDefault()}
+                >
+                  SIPS Mobile <span className="badge">{t("download")}</span>
+                </a>
+              )}
             </li>
             <li>
               <a
@@ -136,7 +208,13 @@ export default function Navbar() {
               <Theme />
             </li>
             <li>
-              <Link href="/change-password">{t("changePassword")}</Link>
+              <button
+                onClick={() => handleNavigate("/change-password")}
+                className="w-full text-left"
+                disabled={!!isNavigating}
+              >
+                {t("changePassword")}
+              </button>
             </li>
             <li>
               <button
@@ -157,6 +235,13 @@ export default function Navbar() {
           </ul>
         </div>
       </div>
+
+      {/* Progress Bar */}
+      {isNavigating && (
+        <div className="fixed top-0 left-0 right-0 z-[9999]">
+          <div className="h-3 bg-primary animate-pulse shadow-md"></div>
+        </div>
+      )}
 
       {/* Global logout overlay */}
       {isLoggingOut && (

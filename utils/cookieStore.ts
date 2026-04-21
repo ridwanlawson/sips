@@ -27,6 +27,7 @@ const getInconsistentCookie = (variants: string[]): string => {
 };
 
 export const cookieStore = {
+  getCookie: (name: string): string => getCookie(name),
   getFullName: () => getInconsistentCookie(["user_FullName", "user_fullname", "user_Name", "user_name"]),
   getLevel: () => getInconsistentCookie(["user_Level", "user_LEVEL", "user_level"]).toUpperCase(),
   getFcba: () => getInconsistentCookie(["user_Fcba", "user_FCBA", "user_fcba"]),
@@ -41,7 +42,7 @@ export const cookieStore = {
     expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
     document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires.toUTCString()};path=/;SameSite=Strict`;
   },
-  
+
   getAllUserInfo: (): UserInfo => ({
     fullName: cookieStore.getFullName(),
     level: cookieStore.getLevel(),

@@ -67,9 +67,20 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Restrict access to attendance upload page to MGR only
-  if (pathname.startsWith("/attendance/upload")) {
-    if (level !== "MGR") {
+  // Restrict access to upload pages to ADM and MGR only
+  if (pathname.startsWith("/attendance/upload") || pathname.startsWith("/harvest/upload") || pathname.startsWith("/harvesting-quality/upload")) {
+    if (level !== "ADM" && level !== "MGR") {
+      const redirectRes = NextResponse.redirect(new URL("/dashboard", origin));
+      if (!request.cookies.has("NEXT_LOCALE")) {
+        redirectRes.cookies.set("NEXT_LOCALE", "en");
+      }
+      return redirectRes;
+    }
+  }
+
+  // Restrict access to APK upload page to ADM only
+  if (pathname.startsWith("/apk-upload")) {
+    if (level !== "ADM") {
       const redirectRes = NextResponse.redirect(new URL("/dashboard", origin));
       if (!request.cookies.has("NEXT_LOCALE")) {
         redirectRes.cookies.set("NEXT_LOCALE", "en");

@@ -7,10 +7,17 @@ const withNextIntl = createNextIntlPlugin();
 const withPWA = withPWAInit({
   dest: "public",
   disable: process.env.NODE_ENV === "development",
+  register: true,
 });
 
 const nextConfig: NextConfig = {
   images: {
+    localPatterns: [
+      {
+        pathname: '/api/image-proxy',
+        search: 'url',
+      },
+    ],
     remotePatterns: [
       {
         protocol: "https",
@@ -30,6 +37,15 @@ const nextConfig: NextConfig = {
         pathname: "/**",
       },
     ],
+  },
+  // Optimize CSS loading to prevent unused preload warnings
+  experimental: {
+    optimizeCss: true,
+    optimizePackageImports: ['react-data-table-component'],
+  },
+  // Disable CSS preload warnings
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
   },
   // hapus: optimizeFonts, swcMinify, assetPrefix undefined
 };

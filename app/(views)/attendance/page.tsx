@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { BusinessUnit } from "../../../utils/businessUnitService";
+import { fetchBusinessUnits } from "../../../utils/businessUnitService";
 import Image from "next/image";
 import DataTable, { TableColumn } from "react-data-table-component";
 import toast from "react-hot-toast";
@@ -491,7 +493,6 @@ export default function Attendance() {
 
   // Master data / cascading
   const [triplets, setTriplets] = useState<Triplet[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
   const [selFcba, setSelFcba] = useState<string>("");
   const [selSection, setSelSection] = useState<string>("");
   const [selGang, setSelGang] = useState<string>("");
@@ -501,6 +502,7 @@ export default function Attendance() {
     "OTHER",
   );
   const [destFcba, setDestFcba] = useState<string>("");
+  const [optFcba, setOptFcba] = useState<string[]>([]);
 
   // Query for attendance list
   const {
@@ -595,6 +597,20 @@ export default function Attendance() {
     },
     enabled: !!homeFcba || userLevel === "ADM", // Wait until bootstrap is done
   });
+
+  // show toast if query produces error so the variable is referenced
+  useEffect(() => {
+    if (queryError) {
+      // react-query error can be string or Error
+      const msg =
+        typeof queryError === "string"
+          ? queryError
+          : queryError instanceof Error
+            ? queryError.message
+            : "Terjadi kesalahan saat mengambil data";
+      toast.error(msg);
+    }
+  }, [queryError]);
 
   // Mutations
   const mutation = useMutation({
@@ -745,7 +761,7 @@ export default function Attendance() {
     }));
   }, []);
 
-  /* ===== Bootstrap cookies + master data ===== */
+  /* ===== Bootstrap cookies (synchronous only) ===== */
   useEffect(() => {
     const ckHome =
       readCookie("user_Fcba") ||
@@ -786,55 +802,109 @@ export default function Attendance() {
       }
     }
 
-    (async () => {
+    const ckOptFcba = readCookie("opt_fcba");
+    if (ckOptFcba) {
       try {
-        const r = await fetch("/api/karyawans", { credentials: "include" });
-        const j: unknown = await r.json();
-
-        const rowsRaw = extractArrayData<EmployeesApiRow>(j);
-
-        if (!ckTrip) {
-          const map = new Map<string, Triplet>();
-          for (const it of rowsRaw) {
-            const fcba = String(it.fcba ?? "").trim();
-            const sectionname = String(it.sectionname ?? "").trim();
-            const gangcode = String(it.gangcode ?? "").trim();
-            if (!fcba && !sectionname && !gangcode) continue;
-            const key = `${fcba}|${sectionname}|${gangcode}`;
-            if (!map.has(key)) map.set(key, { fcba, sectionname, gangcode });
-          }
-          setTriplets(Array.from(map.values()));
-        }
-
-        const mapEmp = new Map<string, Employee>();
-        for (const it of rowsRaw) {
-          const fccode = String(it.fccode ?? "").trim();
-          if (!fccode) continue;
-          if (!mapEmp.has(fccode)) {
-            const noancakValue =
-              (it as { noancak?: unknown }).noancak ??
-              (it as { NOANCAK?: unknown }).NOANCAK;
-            const noancak =
-              typeof noancakValue === "string"
-                ? noancakValue.trim()
-                : undefined;
-
-            mapEmp.set(fccode, {
-              fccode,
-              fullname: typeof it.fcname === "string" ? it.fcname : undefined,
-              fcba: String(it.fcba ?? "").trim(),
-              sectionname: String(it.sectionname ?? "").trim(),
-              gangcode: String(it.gangcode ?? "").trim(),
-              noancak,
-            });
-          }
-        }
-        setEmployees(Array.from(mapEmp.values()));
-      } catch (e) {
-        console.warn("fetch /api/karyawans gagal:", e);
+        const arr = JSON.parse(ckOptFcba) as string[];
+        if (Array.isArray(arr)) setOptFcba(arr);
+      } catch {
+        // ignore
       }
-    })();
+    }
   }, []);
+
+  /* ===== Parallel data fetching with useQuery ===== */
+
+  // Business units query - runs in parallel
+  const { data: businessUnits = [], isLoading: isLoadingBU } = useQuery({
+    queryKey: ["businessUnits"],
+    queryFn: async () => {
+      try {
+        const bu = await fetchBusinessUnits();
+        localStorage.setItem("business_units", JSON.stringify(bu));
+        return bu;
+      } catch (err) {
+        console.warn("failed to fetch business units:", err);
+        const cached = localStorage.getItem("business_units");
+        if (cached) {
+          try {
+            return JSON.parse(cached) as BusinessUnit[];
+          } catch {
+            return [];
+          }
+        }
+        return [];
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Employees query - runs in parallel, depends on cookies only
+  const { data: employees = [], isLoading: isLoadingEmp } = useQuery({
+    queryKey: ["employees", userLevel, homeFcba, homeSection],
+    queryFn: async () => {
+      let apiUrl = "/api/karyawans";
+      const params = new URLSearchParams();
+
+      if (userLevel === "AST") {
+        if (homeFcba) params.append("fcba", homeFcba);
+        if (homeSection) params.append("sectionname", homeSection);
+      } else if (userLevel === "ADM") {
+        if (homeFcba) params.append("fcba", homeFcba);
+      }
+
+      if (params.toString()) {
+        apiUrl += `?${params.toString()}`;
+      }
+
+      const r = await fetch(apiUrl, { credentials: "include" });
+      const j: unknown = await r.json();
+      const rowsRaw = extractArrayData<EmployeesApiRow>(j);
+
+      // Build triplets from employees if no cookie
+      const ckTrip = readCookie("opt_triplets");
+      if (!ckTrip && rowsRaw.length > 0) {
+        const map = new Map<string, Triplet>();
+        for (const it of rowsRaw) {
+          const fcba = String(it.fcba ?? "").trim();
+          const sectionname = String(it.sectionname ?? "").trim();
+          const gangcode = String(it.gangcode ?? "").trim();
+          if (!fcba && !sectionname && !gangcode) continue;
+          const key = `${fcba}|${sectionname}|${gangcode}`;
+          if (!map.has(key)) map.set(key, { fcba, sectionname, gangcode });
+        }
+        setTriplets(Array.from(map.values()));
+      }
+
+      // Build employees map
+      const mapEmp = new Map<string, Employee>();
+      for (const it of rowsRaw) {
+        const fccode = String(it.fccode ?? "").trim();
+        if (!fccode) continue;
+        if (!mapEmp.has(fccode)) {
+          const noancakValue =
+            (it as { noancak?: unknown }).noancak ??
+            (it as { NOANCAK?: unknown }).NOANCAK;
+          const noancak =
+            typeof noancakValue === "string"
+              ? noancakValue.trim()
+              : undefined;
+
+          mapEmp.set(fccode, {
+            fccode,
+            fullname: typeof it.fcname === "string" ? it.fcname : undefined,
+            fcba: String(it.fcba ?? "").trim(),
+            sectionname: String(it.sectionname ?? "").trim(),
+            gangcode: String(it.gangcode ?? "").trim(),
+            noancak,
+          });
+        }
+      }
+      return Array.from(mapEmp.values());
+    },
+    enabled: !!homeFcba || userLevel === "ADM",
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
   /* ===== Attendance-type: reset cascade dari FCBA akun ===== */
   useEffect(() => {
@@ -861,47 +931,73 @@ export default function Attendance() {
   }, [form.attendance_type, homeFcba, homeSection, userLevel, isEditing]);
 
   /* ===== Options ===== */
-  const fcbaOptions = useMemo(
-    () =>
-      Array.from(new Set(triplets.map((t) => t.fcba).filter(Boolean)))
-        .sort()
-        .map((v) => ({ value: v, label: v })),
-    [triplets],
-  );
+  const fcbaOptions = useMemo(() => {
+    // prefer list from businessUnits API if available
+    if (businessUnits && businessUnits.length) {
+      return businessUnits
+        .map((b) => ({
+          value: b.fccode,
+          label: b.fcname ? `${b.fccode} - ${b.fcname}` : b.fccode,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+    }
+    return Array.from(new Set(triplets.map((t) => t.fcba).filter(Boolean)))
+      .sort()
+      .map((v) => ({ value: v, label: v }));
+  }, [triplets, businessUnits]);
 
   const sectionOptions: Option[] = useMemo(() => {
     if (!selFcba) return [];
+    // Match by fcba field in triplets (triplets use fcba name, not fccode)
+    // Need to handle both cases: selFcba being fccode or fcba name
     return Array.from(
       new Set(
         triplets
-          .filter((t) => t.fcba === selFcba)
+          .filter((t) => {
+            // Direct match with fcba field
+            if (t.fcba === selFcba) return true;
+            // Also try to match by extracting fcba from business units if selFcba is fccode
+            const buMatch = Array.isArray(businessUnits) ? businessUnits.find((b) => b.fccode === selFcba) : undefined;
+            if (buMatch && t.fcba === buMatch.fcname) return true;
+            return false;
+          })
           .map((t) => t.sectionname)
           .filter(Boolean),
       ),
     )
       .sort()
       .map((v) => ({ value: v, label: v }));
-  }, [triplets, selFcba]);
+  }, [triplets, selFcba, businessUnits]);
 
   const gangOptions: Option[] = useMemo(() => {
     if (!selFcba || !selSection) return [];
+    // Get the actual fcba name for matching triplets
+    let fcbaName = selFcba;
+    const buMatch = Array.isArray(businessUnits) ? businessUnits.find((b) => b.fccode === selFcba) : undefined;
+    if (buMatch) fcbaName = buMatch.fcname || selFcba;
+
     return Array.from(
       new Set(
         triplets
-          .filter((t) => t.fcba === selFcba && t.sectionname === selSection)
+          .filter((t) => t.fcba === fcbaName && t.sectionname === selSection)
           .map((t) => t.gangcode)
           .filter(Boolean),
       ),
     )
       .sort()
       .map((v) => ({ value: v, label: v }));
-  }, [triplets, selFcba, selSection]);
+  }, [triplets, selFcba, selSection, businessUnits]);
 
   const pengancakanOptions: Option[] = useMemo(() => {
     if (!selFcba || !selSection || !selGang) return [];
+    // Get the actual fcba name for matching employees
+    let fcbaName = selFcba;
+    const buMatch = Array.isArray(businessUnits) ? businessUnits.find((b) => b.fccode === selFcba) : undefined;
+    if (buMatch) fcbaName = buMatch.fcname || selFcba;
+
     const pool = employees.filter(
       (e) =>
-        (e.fcba || "") === selFcba &&
+        (e.fcba || "") === fcbaName &&
         (e.sectionname || "") === selSection &&
         (e.gangcode || "") === selGang,
     );
@@ -913,13 +1009,18 @@ export default function Attendance() {
     return Array.from(set)
       .sort()
       .map((v) => ({ value: v, label: v }));
-  }, [employees, selFcba, selSection, selGang]);
+  }, [employees, selFcba, selSection, selGang, businessUnits]);
 
   const employeeOptions: Option[] = useMemo(() => {
     if (!selFcba || !selSection || !selGang) return [];
+    // Get the actual fcba name for matching employees
+    let fcbaName = selFcba;
+    const buMatch = Array.isArray(businessUnits) ? businessUnits.find((b) => b.fccode === selFcba) : undefined;
+    if (buMatch) fcbaName = buMatch.fcname || selFcba;
+
     const pool = employees.filter(
       (e) =>
-        (e.fcba || "") === selFcba &&
+        (e.fcba || "") === fcbaName &&
         (e.sectionname || "") === selSection &&
         (e.gangcode || "") === selGang,
     );
@@ -933,26 +1034,127 @@ export default function Attendance() {
     return Array.from(map, ([value, label]) => ({ value, label })).sort(
       (a, b) => a.label.localeCompare(b.label),
     );
-  }, [employees, selFcba, selSection, selGang]);
+  }, [employees, selFcba, selSection, selGang, businessUnits]);
+
+  // Convert homeFcba (which might be fcname or fccode) to actual fccode for proper filtering
+  const homeFcbaCode = useMemo(() => {
+    if (!homeFcba || !Array.isArray(businessUnits) || !businessUnits.length)
+      return homeFcba;
+    // Check if homeFcba is already a fccode in businessUnits
+    const match = businessUnits.find((b) => b.fccode === homeFcba);
+    if (match) return homeFcba;
+    // Otherwise, try to match by fcname
+    const matchByName = businessUnits.find(
+      (b) => b.fcname?.toLowerCase() === homeFcba.toLowerCase(),
+    );
+    const result = matchByName?.fccode || homeFcba;
+    // console.log("[homeFcbaCode] Convert:", {
+    //   homeFcba,
+    //   businessUnitsCount: businessUnits.length,
+    //   matchFound: !!matchByName,
+    //   result,
+    // });
+    return result;
+  }, [homeFcba, businessUnits]);
+
+  const currentFcbaForForm = useMemo(() => {
+    const result =
+      userLevel === "ADM"
+        ? selFcba || homeFcbaCode || ""
+        : homeFcbaCode || selFcba || "";
+    // console.log("[currentFcbaForForm]", {
+    //   userLevel,
+    //   selFcba,
+    //   homeFcbaCode,
+    //   result,
+    // });
+    return result;
+  }, [userLevel, selFcba, homeFcbaCode]);
+
+  // destination select options should include every FCBA except the user's current one
+  const destOptions = useMemo(() => {
+    // Use opt_fcba from cookie as primary source
+    if (optFcba && optFcba.length > 0) {
+      const filtered = optFcba
+        .filter((fcba) => !currentFcbaForForm || fcba !== currentFcbaForForm)
+        .map((fcba) => ({
+          value: fcba,
+          label: fcba,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+
+      // console.log("[destOptions] From opt_fcba:", {
+      //   optFcbaCount: optFcba.length,
+      //   currentFcbaForForm,
+      //   filteredCount: filtered.length,
+      //   filtered,
+      // });
+      return filtered;
+    }
+
+    // Fallback to businessUnits if opt_fcba not available
+    if (businessUnits && businessUnits.length > 0) {
+      const filtered = businessUnits
+        .filter((bu) => !currentFcbaForForm || bu.fccode !== currentFcbaForForm)
+        .map((bu) => ({
+          value: bu.fccode,
+          label: bu.fcname ? `${bu.fccode} - ${bu.fcname}` : bu.fccode,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+
+      // console.log("[destOptions] From businessUnits:", {
+      //   businessUnitCount: businessUnits.length,
+      //   currentFcbaForForm,
+      //   filteredCount: filtered.length,
+      //   filtered,
+      // });
+      return filtered;
+    }
+
+    // Fallback to fcbaOptions if business units not available
+    const fallback = fcbaOptions.filter(
+      (o) => !currentFcbaForForm || o.value !== currentFcbaForForm,
+    );
+    // console.log("[destOptions] Fallback to fcbaOptions:", {
+    //   fcbaOptionsCount: fcbaOptions.length,
+    //   currentFcbaForForm,
+    //   fallbackCount: fallback.length,
+    //   fallback,
+    // });
+    return fallback;
+  }, [optFcba, fcbaOptions, businessUnits, currentFcbaForForm]);
 
   const mandorOptions: Option[] = useMemo(() => {
     let pool: Employee[] = [];
+    let fcbaName = "";
 
     if (userLevel === "ADM") {
-      const fc = selFcba || homeFcba || "";
-      pool = employees.filter((e) => (e.fcba || "") === fc);
+      const fc = selFcba || homeFcbaCode || "";
+      // Convert fccode to fcba name if needed
+      if (fc) {
+        const buMatch = Array.isArray(businessUnits) ? businessUnits.find((b) => b.fccode === fc) : undefined;
+        fcbaName = buMatch ? buMatch.fcname || fc : fc;
+      }
+      pool = employees.filter((e) => (e.fcba || "") === fcbaName);
     } else if (userLevel === "MGR") {
-      const fc = homeFcba || "";
-      pool = employees.filter((e) => (e.fcba || "") === fc);
+      fcbaName = homeFcba || "";
+      pool = employees.filter((e) => (e.fcba || "") === fcbaName);
     } else if (userLevel === "AST") {
-      const fc = homeFcba || "";
+      fcbaName = homeFcba || "";
       const sec = homeSection || "";
       pool = employees.filter(
-        (e) => (e.fcba || "") === fc && (!sec || (e.sectionname || "") === sec),
+        (e) =>
+          (e.fcba || "") === fcbaName &&
+          (!sec || (e.sectionname || "") === sec),
       );
     } else {
-      const fc = homeFcba || selFcba || "";
-      pool = employees.filter((e) => (e.fcba || "") === fc);
+      const fc = homeFcbaCode || selFcba || "";
+      // Convert fccode to fcba name if needed
+      if (fc) {
+        const buMatch = Array.isArray(businessUnits) ? businessUnits.find((b) => b.fccode === fc) : undefined;
+        fcbaName = buMatch ? buMatch.fcname || fc : fc;
+      }
+      pool = employees.filter((e) => (e.fcba || "") === fcbaName);
     }
 
     const map = new Map<string, string>();
@@ -965,7 +1167,15 @@ export default function Attendance() {
     return Array.from(map, ([value, label]) => ({ value, label })).sort(
       (a, b) => a.label.localeCompare(b.label),
     );
-  }, [employees, selFcba, homeFcba, homeSection, userLevel]);
+  }, [
+    employees,
+    selFcba,
+    homeFcbaCode,
+    homeFcba,
+    homeSection,
+    userLevel,
+    businessUnits,
+  ]);
 
   const empLabelMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -1000,13 +1210,6 @@ export default function Attendance() {
 
   const onChangeDestFcba = (v: string) => setDestFcba(v);
 
-  const currentFcbaForForm = useMemo(() => {
-    if (userLevel === "ADM") {
-      return selFcba || homeFcba || "";
-    }
-    return homeFcba || selFcba || "";
-  }, [userLevel, selFcba, homeFcba]);
-
   /* ===== Defaults untuk ADD ===== */
   const setDefaultsForAdd = () => {
     const today = getTodayISO();
@@ -1021,7 +1224,7 @@ export default function Attendance() {
       mac_address: pseudoMac,
       attendance_type: "REGULAR",
       mandays: "1",
-      fcba: userLevel === "ADM" ? homeFcba || "" : homeFcba || "",
+      fcba: userLevel === "ADM" ? homeFcbaCode || "" : homeFcbaCode || "",
       section: userLevel === "AST" ? homeSection || "" : "",
     });
   };
@@ -1031,7 +1234,7 @@ export default function Attendance() {
     setIsEditing(false);
     setPreview("");
     setDestFcba("");
-    setSelFcba(userLevel === "ADM" ? homeFcba || "" : homeFcba || "");
+    setSelFcba(userLevel === "ADM" ? homeFcbaCode || "" : homeFcbaCode || "");
     setSelSection(userLevel === "AST" ? homeSection || "" : "");
     setSelGang("");
     setOpen(true);
@@ -1187,6 +1390,16 @@ export default function Attendance() {
       if (form.attendance_type === "ASSISTENSI") {
         if (!destFcba)
           throw new Error("FCBA Destination wajib diisi untuk ASSISTENSI");
+        if (destFcba === currentFcbaForForm)
+          throw new Error("FCBA Destination tidak boleh sama dengan FCBA akun");
+
+        // Validate that the destination FCBA exists in opt_fcba or business units
+        const destExistsInOptFcba = optFcba.length > 0 && optFcba.includes(destFcba);
+        const destExistsInBu = Array.isArray(businessUnits) && businessUnits.some((bu) => bu.fccode === destFcba);
+        if (!destExistsInOptFcba && !destExistsInBu) {
+          throw new Error("FCBA Destination tidak valid");
+        }
+
         fd.append("fcba_destination", destFcba);
       }
 
@@ -1224,10 +1437,14 @@ export default function Attendance() {
   };
 
   /* ===== DELETE ===== */
-  const handleDelete = (id: string) => {
-    if (!confirm("Yakin ingin menghapus data ini?")) return;
-    deleteMutation.mutate(id);
-  };
+  // wrap in useCallback so memoized columns don't re-create on every render
+  const handleDelete = useCallback(
+    (id: string) => {
+      if (!confirm("Yakin ingin menghapus data ini?")) return;
+      deleteMutation.mutate(id);
+    },
+    [deleteMutation],
+  );
 
   /* ===== DETAIL ===== */
   const handleDetail = useCallback(
@@ -1283,7 +1500,7 @@ export default function Attendance() {
         };
         setForm(() => filled);
 
-        setSelFcba(d.fcba || homeFcba || "");
+        setSelFcba(d.fcba || homeFcbaCode || "");
         setSelSection(d.section || homeSection || "");
         setSelGang(d.gang || "");
 
@@ -1296,7 +1513,7 @@ export default function Attendance() {
         setDetailLoading(false);
       }
     },
-    [homeFcba, homeSection],
+    [homeFcbaCode, homeSection],
   );
 
   /* ===== PREVIEW FOTO ===== */
@@ -1328,7 +1545,7 @@ export default function Attendance() {
       {
         name: <span title="Aksi edit/hapus data absensi">Aksi</span>,
         width: "120px",
-        cell: (row) => {
+        cell: (row: Absensi) => {
           const status = (row.status_attendance || "").toLowerCase();
           const isPlanned = status === "planned";
           const canEditRole = userLevel === "ADM" || userLevel === "AST";
@@ -1615,7 +1832,7 @@ export default function Attendance() {
       {
         name: <span title="Foto pendukung absensi (bila ada)">Foto</span>,
         width: "90px",
-        cell: (r) =>
+        cell: (r: Absensi) =>
           r.images ? (
             <a
               href={getProxiedImageUrl(r.images)}
@@ -1624,28 +1841,29 @@ export default function Attendance() {
               title="Buka foto"
             >
               {/*
-                Changed: use next/image instead of raw <img> to address the linter/optimizaton warning.
-                - width/height set to match original w-10 h-10 (40x40)
-                - onError sets placeholder
-                - unoptimized used to avoid requiring remoteDomains config
+                Changed: use container with fixed size and Image fill to avoid aspect ratio warnings.
+                - Container is 40x40 with rounded corners and ring
+                - Image fills container with object-cover for cropping
+                - Maintains aspect ratio by cropping instead of distorting
               */}
-              <Image
-                src={getProxiedImageUrl(r.images)}
-                alt="foto"
-                width={40}
-                height={40}
-                className="rounded-lg ring-1 ring-base-300 object-cover bg-base-200"
-                loading="lazy"
-                onError={(e) => {
-                  // fallback to placeholder on error
-                  const img = e?.currentTarget as HTMLImageElement | null;
-                  if (img) {
-                    img.onerror = null;
-                    img.src = PLACEHOLDER_IMAGE;
-                  }
-                }}
-                unoptimized
-              />
+              <div className="relative w-10 h-10 rounded-lg ring-1 ring-base-300 bg-base-200 overflow-hidden">
+                <Image
+                  src={getProxiedImageUrl(r.images)}
+                  alt="foto"
+                  fill
+                  className="object-cover"
+                  loading="lazy"
+                  onError={(e) => {
+                    // fallback to placeholder on error
+                    const img = e?.currentTarget as HTMLImageElement | null;
+                    if (img) {
+                      img.onerror = null;
+                      img.src = PLACEHOLDER_IMAGE;
+                    }
+                  }}
+                  unoptimized
+                />
+              </div>
             </a>
           ) : (
             "-"
@@ -1748,13 +1966,21 @@ export default function Attendance() {
               {showFilters ? "Sembunyikan Filter" : "Tampilkan Filter"}
             </button>
             <button
-              className="btn btn-sm"
+              className={`btn btn-sm ${loading ? "btn-disabled" : ""}`}
               onClick={() =>
                 queryClient.invalidateQueries({ queryKey: ["attendance"] })
               }
+              disabled={loading}
               title="Refresh data absensi"
             >
-              Refresh
+              {loading ? (
+                <>
+                  <span className="loading loading-spinner loading-xs" />
+                  Memuat...
+                </>
+              ) : (
+                "Refresh"
+              )}
             </button>
             <button
               className="btn btn-outline btn-sm"
@@ -1919,16 +2145,24 @@ export default function Attendance() {
 
             <div className="flex justify-start gap-2 pt-3 border-t border-base-200">
               <button
-                className="btn btn-outline"
+                className={`btn btn-outline ${loading ? "btn-disabled" : ""}`}
                 onClick={() =>
                   queryClient.invalidateQueries({ queryKey: ["attendance"] })
                 }
+                disabled={loading}
                 title="Terapkan filter"
               >
-                Terapkan Filter
+                {loading ? (
+                  <>
+                    <span className="loading loading-spinner loading-xs" />
+                    Memuat...
+                  </>
+                ) : (
+                  "Terapkan Filter"
+                )}
               </button>
               <button
-                className="btn"
+                className={`btn ${loading ? "btn-disabled" : ""}`}
                 onClick={() => {
                   const resetFilters: Filters = {
                     tanggal: "",
@@ -1945,9 +2179,17 @@ export default function Attendance() {
                   };
                   setFilters(resetFilters);
                 }}
+                disabled={loading}
                 title="Reset semua filter"
               >
-                Reset
+                {loading ? (
+                  <>
+                    <span className="loading loading-spinner loading-xs" />
+                    Memuat...
+                  </>
+                ) : (
+                  "Reset"
+                )}
               </button>
             </div>
           </div>
@@ -2067,9 +2309,9 @@ export default function Attendance() {
                           pengancakan: "",
                         }));
                       }}
-                      placeholder="Pilih FCBA"
+                      placeholder={isLoadingBU ? "Memuat FCBA..." : "Pilih FCBA"}
                       small
-                      disabled={disableUnlessAllowed(false)}
+                      disabled={disableUnlessAllowed(false) || isLoadingBU}
                     />
                   ) : (
                     <input
@@ -2089,21 +2331,18 @@ export default function Attendance() {
                       FCBA Destination *
                     </legend>
                     <SearchSelect
-                      options={fcbaOptions.filter(
-                        (o) =>
-                          o.value &&
-                          (!currentFcbaForForm ||
-                            o.value !== currentFcbaForForm),
-                      )}
+                      options={destOptions}
                       value={destFcba ?? ""}
                       onChange={onChangeDestFcba}
                       placeholder={
-                        currentFcbaForForm
-                          ? "Pilih FCBA tujuan"
-                          : "Pilih FCBA dulu"
+                        isLoadingBU
+                          ? "Memuat..."
+                          : currentFcbaForForm
+                            ? "Pilih FCBA tujuan"
+                            : "Pilih FCBA dulu"
                       }
                       disabled={
-                        !currentFcbaForForm || disableUnlessAllowed(false)
+                        !currentFcbaForForm || disableUnlessAllowed(false) || isLoadingBU
                       }
                     />
                   </fieldset>
@@ -2118,9 +2357,9 @@ export default function Attendance() {
                     onChange={(v) =>
                       setForm((s) => ({ ...s, kode_karyawan_mandor: v }))
                     }
-                    placeholder="Pilih Mandor"
+                    placeholder={isLoadingEmp ? "Memuat Mandor..." : "Pilih Mandor"}
                     small
-                    disabled={disableUnlessAllowed(false)}
+                    disabled={disableUnlessAllowed(false) || isLoadingEmp}
                   />
                 </fieldset>
 
@@ -2134,16 +2373,19 @@ export default function Attendance() {
                     value={selSection ?? ""}
                     onChange={onChangeSection}
                     placeholder={
-                      selFcba
-                        ? userLevel === "AST"
-                          ? homeSection || "Afdeling terkunci"
-                          : "Pilih Afdeling"
-                        : "Pilih FCBA dulu"
+                      isLoadingEmp
+                        ? "Memuat..."
+                        : selFcba
+                          ? userLevel === "AST"
+                            ? homeSection || "Afdeling terkunci"
+                            : "Pilih Afdeling"
+                          : "Pilih FCBA dulu"
                     }
                     disabled={
                       !selFcba ||
                       disableUnlessAllowed(false) ||
-                      userLevel === "AST"
+                      userLevel === "AST" ||
+                      isLoadingEmp
                     }
                     small
                   />
@@ -2156,9 +2398,13 @@ export default function Attendance() {
                     value={selGang ?? ""}
                     onChange={onChangeGang}
                     placeholder={
-                      selSection ? "Pilih Gang" : "Pilih Afdeling dulu"
+                      isLoadingEmp
+                        ? "Memuat..."
+                        : selSection
+                          ? "Pilih Gang"
+                          : "Pilih Afdeling dulu"
                     }
-                    disabled={!selSection || disableUnlessAllowed(false)}
+                    disabled={!selSection || disableUnlessAllowed(false) || isLoadingEmp}
                     small
                   />
                 </fieldset>
@@ -2169,8 +2415,8 @@ export default function Attendance() {
                     options={employeeOptions}
                     value={form.kode_karyawan ?? ""}
                     onChange={onChangeEmployee}
-                    placeholder={selGang ? "Pilih Karyawan" : "Pilih Gang dulu"}
-                    disabled={!selGang || disableUnlessAllowed(false)}
+                    placeholder={isLoadingEmp ? "Memuat Karyawan..." : selGang ? "Pilih Karyawan" : "Pilih Gang dulu"}
+                    disabled={!selGang || disableUnlessAllowed(false) || isLoadingEmp}
                   />
                 </fieldset>
 
@@ -2213,9 +2459,13 @@ export default function Attendance() {
                     value={form.pengancakan ?? ""}
                     onChange={(v) => setForm((s) => ({ ...s, pengancakan: v }))}
                     placeholder={
-                      selGang ? "Pilih Pengancakan" : "Pilih Gang/Karyawan dulu"
+                      isLoadingEmp
+                        ? "Memuat..."
+                        : selGang
+                          ? "Pilih Pengancakan"
+                          : "Pilih Gang/Karyawan dulu"
                     }
-                    disabled={!selGang || disableUnlessAllowed(false)}
+                    disabled={!selGang || disableUnlessAllowed(false) || isLoadingEmp}
                     small
                   />
                 </fieldset>

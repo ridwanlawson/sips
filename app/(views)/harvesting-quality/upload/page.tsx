@@ -100,7 +100,7 @@ export default function HarvestingQualityUploadPage() {
       const queryString = queryParams.toString();
       const url = `/api/harvesting-quality/upload${queryString ? "?" + queryString : ""}`;
 
-      console.log("Fetching harvesting quality data from:", url);
+      // console.log("Fetching harvesting quality data from:", url);
 
       const response = await fetch(url);
       const result = await response.json();
@@ -108,8 +108,8 @@ export default function HarvestingQualityUploadPage() {
       if (result.success) {
         if (result.data && result.data.length > 0) {
           // TANPA DEDUPLICATION - Tampilkan SEMUA data dari API
-          console.log(`✓ Total records from API: ${result.data.length}`);
-          console.log("Sample data fields:", result.data[0]);
+          // console.log(`✓ Total records from API: ${result.data.length}`);
+          // console.log("Sample data fields:", result.data[0]);
 
           setData(result.data);
         }
@@ -677,13 +677,14 @@ export default function HarvestingQualityUploadPage() {
     }
   };
 
-  if (initCheck && !isMgr) {
+  if (initCheck && !isMgr && !isAdmin) {
     return (
       <div className="min-h-screen bg-base-100 p-6 flex items-center justify-center">
         <div className="text-center max-w-lg">
           <h1 className="text-3xl font-bold text-error mb-4">Akses Ditolak</h1>
           <p className="text-base-content/70 mb-6">
-            Halaman ini hanya dapat diakses oleh user dengan level <b>MGR</b>.
+            Halaman ini hanya dapat diakses oleh user dengan level <b>MGR</b>{" "}
+            atau <b>ADM</b>.
           </p>
           <a href="/dashboard" className="btn btn-primary">
             Kembali ke Dashboard

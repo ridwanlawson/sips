@@ -23,12 +23,17 @@ type Harvest = {
   busuk2: string;
   buahkecil: string;
   brondol: string;
+  parteno: string;
+  parteno50plus: string;
   alasbrondol: string;
   tangkai_panjang: string;
   images: string;
   id_device: string;
   status_harvesting: string;
   card_id: string;
+  location: string;
+  exception_case: string;
+  no_ba_exca: string;
 };
 
 type Filters = Partial<{
@@ -330,18 +335,32 @@ export default function HarvestPage() {
       width: "100px",
     },
     {
+      name: <span title="Parte No Kurang dari 50%">Parte No &lt; 50%</span>,
+      selector: (row) => row.parteno,
+      sortable: true,
+      style: { justifyContent: "end" },
+      width: "100px",
+    },
+    {
+      name: <span title="Parte No Lebih dari 50%">Parte No &gt; 50%</span>,
+      selector: (row) => row.parteno50plus,
+      sortable: true,
+      style: { justifyContent: "end" },
+      width: "100px",
+    },
+    {
       name: <span title="Alas brondol (berat)">Alas Brondol</span>,
       selector: (row) => row.alasbrondol,
       sortable: true,
       style: { justifyContent: "end" },
-      width: "120px",
+      width: "100px",
     },
     {
       name: <span title="Jumlah tangkai panjang">Tangkai Pjg</span>,
       selector: (row) => row.tangkai_panjang,
       sortable: true,
       style: { justifyContent: "end" },
-      width: "120px",
+      width: "100px",
     },
     {
       name: <span title="Status panen (Planned/Approved/...)">Status</span>,
@@ -367,6 +386,24 @@ export default function HarvestPage() {
     {
       name: <span title="ID perangkat yang merekam panen">Device ID</span>,
       selector: (row) => row.id_device,
+      sortable: true,
+      width: "200px",
+    },
+    {
+      name: <span title="Lokasi Pemanen">Location</span>,
+      selector: (row) => row.location,
+      sortable: true,
+      width: "200px",
+    },
+    {
+      name: <span title="Lokasi Pemanen">Exception Case</span>,
+      selector: (row) => row.exception_case,
+      sortable: true,
+      width: "200px",
+    },
+    {
+      name: <span title="Lokasi Pemanen">Location</span>,
+      selector: (row) => row.location,
       sortable: true,
       width: "200px",
     },
