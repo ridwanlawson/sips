@@ -189,16 +189,10 @@ export default function ApkUploadPage() {
     uploadFormData.append("platform", formData.platform);
     uploadFormData.append("version", formData.version);
     uploadFormData.append("file", selectedFile);
-    // Only append force_update if true (optional field)
-    if (formData.force_update) {
-      uploadFormData.append("force_update", "true");
-    }
-    if (formData.min_version.trim()) {
-      uploadFormData.append("min_version", formData.min_version);
-    }
-    if (formData.changelog.trim()) {
-      uploadFormData.append("changelog", formData.changelog);
-    }
+    // Send force_update as "1" for true, empty string for false (backend expects this)
+    uploadFormData.append("force_update", formData.force_update ? "1" : "");
+    uploadFormData.append("min_version", formData.min_version.trim());
+    uploadFormData.append("changelog", formData.changelog.trim());
 
     console.log("📤 FormData prepared:", {
       platform: formData.platform,
@@ -353,9 +347,11 @@ export default function ApkUploadPage() {
       xhrRef.current = null;
     });
 
+    // Upload via Next.js proxy (token handled server-side)
     xhr.open("POST", "/api/apk-upload");
     xhr.setRequestHeader("Accept", "application/json");
     // Do NOT set Content-Type — browser sets it with correct multipart boundary
+    xhr.withCredentials = true; // Send cookies to Next.js
     xhr.send(uploadFormData);
   };
 

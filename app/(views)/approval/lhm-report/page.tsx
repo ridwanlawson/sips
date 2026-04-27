@@ -203,7 +203,7 @@ export default function LhmReport() {
         }}
         className="no-print"
       >
-        <div className="tooltip tooltip-left tooltip-open">
+        <div className="tooltip tooltip-left">
           <div className="tooltip-content">
             <div className="animate-bounce text-orange-400 -rotate-9 text-xl font-black">
               Print Now!
