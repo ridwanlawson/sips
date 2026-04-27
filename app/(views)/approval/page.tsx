@@ -226,39 +226,47 @@ export default function Approval() {
         { credentials: "include" },
       );
 
-      if (!res.ok) {
-        if (res.status === 401) {
-          await logoutAndRedirect();
-          return;
-        }
-        throw new Error(`HTTP ${res.status}`);
+      if (res.status === 401) {
+        await logoutAndRedirect();
+        return;
       }
 
       const json = await res.json();
 
+      if (!res.ok) {
+        const msg = json.message || `HTTP ${res.status}`;
+        setError(msg);
+        setItems([]);
+        return;
+      }
+
       if (json.success && Array.isArray(json.data)) {
-        const seen = new Set<string>();
-        const data = json.data.map((it: LhmData, idx: number) => {
-          const candidate = [
-            it.employeecode || "",
-            it.kemandoran || "",
-            (it.fddate || "").split(" ")[0],
-            it.blok || "",
-            it.fcba || "",
-            it.afdeling || "",
-            String(idx),
-          ].join("|");
-          let key = candidate;
-          while (seen.has(key)) key = `${key}_`;
-          seen.add(key);
-          return { ...it, _rowKey: key };
-        });
-        setItems(data);
+        if (json.data.length === 0) {
+          // Data kosong, tampilkan message dari API
+          setError(json.message || "Data tidak ditemukan.");
+          setItems([]);
+        } else {
+          const seen = new Set<string>();
+          const data = json.data.map((it: LhmData, idx: number) => {
+            const candidate = [
+              it.employeecode || "",
+              it.kemandoran || "",
+              (it.fddate || "").split(" ")[0],
+              it.blok || "",
+              it.fcba || "",
+              it.afdeling || "",
+              String(idx),
+            ].join("|");
+            let key = candidate;
+            while (seen.has(key)) key = `${key}_`;
+            seen.add(key);
+            return { ...it, _rowKey: key };
+          });
+          setItems(data);
+        }
       } else {
         const msg = json.message || "Gagal mengambil data";
-        if (!msg.toLowerCase().includes("tidak ditemukan")) {
-          setError(msg);
-        }
+        setError(msg);
         setItems([]);
       }
     } catch (err) {
