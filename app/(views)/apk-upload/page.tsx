@@ -176,10 +176,28 @@ export default function ApkUploadPage() {
     setUploading(true);
     setUploadStatus("uploading");
     setUploadProgress(0);
-    setUploadMessage("⏳ Mempersiapkan upload...");
+    setUploadMessage("⏳ Mengambil token...");
     setUploadResult(null);
     setUploadSpeed("");
     setUploadEta("");
+
+    // Step 1: Get token from server first
+    let token: string;
+    try {
+      const tokenRes = await fetch("/api/auth/token");
+      const tokenData = await tokenRes.json();
+      if (!tokenData.success) {
+        throw new Error("Token tidak ditemukan");
+      }
+      token = tokenData.token;
+    } catch (err) {
+      setUploading(false);
+      setUploadStatus("error");
+      setUploadMessage("❌ Gagal mengambil token autentikasi. Silakan login ulang.");
+      return;
+    }
+
+    setUploadMessage("⏳ Mempersiapkan upload...");
 
     startTimeRef.current = Date.now();
     lastLoadedRef.current = 0;
@@ -205,9 +223,6 @@ export default function ApkUploadPage() {
     // Use XMLHttpRequest for real-time progress tracking
     const xhr = new XMLHttpRequest();
     xhrRef.current = xhr;
-
-    // Include credentials (cookies) for auth_token
-    xhr.withCredentials = true;
 
     xhr.upload.addEventListener("progress", (event) => {
       if (event.lengthComputable) {
@@ -347,11 +362,14 @@ export default function ApkUploadPage() {
       xhrRef.current = null;
     });
 
-    // Upload via Next.js proxy (token handled server-side)
-    xhr.open("POST", "/api/apk-upload");
+    // Upload directly to Laravel API (bypass Vercel 4.5MB limit)
+    const LARAVEL_API_URL = "http://dev.skj.my.id:82/api/app/apk";
+
+    xhr.open("POST", LARAVEL_API_URL);
     xhr.setRequestHeader("Accept", "application/json");
+    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
     // Do NOT set Content-Type — browser sets it with correct multipart boundary
-    xhr.withCredentials = true; // Send cookies to Next.js
+    xhr.withCredentials = false; // CORS direct to Laravel
     xhr.send(uploadFormData);
   };
 
