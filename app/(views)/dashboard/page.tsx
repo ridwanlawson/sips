@@ -614,6 +614,10 @@ export default function UserDashboard() {
       const res = await fetch(`/api/harvest?${p.toString()}`, {
         credentials: "include",
       });
+      if (res.status === 401) {
+        await logoutAndRedirect();
+        return { total: 0, totalOutput: 0, approved: 0, planned: 0 };
+      }
       if (res.status === 404 || !res.ok)
         return { total: 0, totalOutput: 0, approved: 0, planned: 0 };
 
@@ -696,6 +700,16 @@ export default function UserDashboard() {
       const res = await fetch(`/api/pengangkutans?${p.toString()}`, {
         credentials: "include",
       });
+      if (res.status === 401) {
+        await logoutAndRedirect();
+        return {
+          total: 0,
+          approved: 0,
+          planned: 0,
+          completed: 0,
+          totalOutput: 0,
+        };
+      }
       if (res.status === 404 || !res.ok)
         return {
           total: 0,

@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import DataTable, { TableColumn } from "react-data-table-component";
 import { getProxiedImageUrl, PLACEHOLDER_IMAGE } from "@/utils/imageHelper";
+import { logoutAndRedirect } from "@/utils/authHelper";
 
 /* =========================
    T Y P E S
@@ -156,10 +157,10 @@ export default function PengangkutanPage() {
       levelRaw === "ADM"
         ? "ADM"
         : levelRaw === "MGR"
-        ? "MGR"
-        : levelRaw === "AST"
-        ? "AST"
-        : "OTHER";
+          ? "MGR"
+          : levelRaw === "AST"
+            ? "AST"
+            : "OTHER";
     setUserLevel(resolvedLevel);
   }, []);
 
@@ -202,11 +203,18 @@ export default function PengangkutanPage() {
           p.set("status_pengangkutan", current.status_pengangkutan as string);
         if (current.flag) p.set("flag", current.flag as string);
 
-        const res = await fetch(`/api/pengangkutans?${p.toString()}`);
+        const res = await fetch(`/api/pengangkutans?${p.toString()}`, {
+          credentials: "include",
+        });
 
         if (res.status === 404) {
           setItems([]);
           setLoading(false);
+          return;
+        }
+
+        if (res.status === 401) {
+          await logoutAndRedirect();
           return;
         }
 
@@ -396,9 +404,8 @@ export default function PengangkutanPage() {
       width: "120px",
       cell: (r) => (
         <span
-          className={`badge ${
-            r.status_pengangkutan === "Planned" ? "badge-info" : "badge-ghost"
-          }`}
+          className={`badge ${r.status_pengangkutan === "Planned" ? "badge-info" : "badge-ghost"
+            }`}
         >
           {r.status_pengangkutan}
         </span>
@@ -444,9 +451,8 @@ export default function PengangkutanPage() {
         <div className="toast toast-top right-4 z-50">
           {alert && (
             <div
-              className={`alert ${
-                alert.type === "success" ? "alert-success" : "alert-error"
-              }`}
+              className={`alert ${alert.type === "success" ? "alert-success" : "alert-error"
+                }`}
             >
               <div>
                 <span className="font-semibold">

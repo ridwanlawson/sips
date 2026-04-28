@@ -14,8 +14,7 @@ const nextConfig: NextConfig = {
   images: {
     localPatterns: [
       {
-        pathname: '/api/image-proxy',
-        search: 'url',
+        pathname: '/api/image-proxy/**',
       },
     ],
     remotePatterns: [
@@ -29,6 +28,12 @@ const nextConfig: NextConfig = {
         hostname: 'dev.skj.my.id',
         port: '82',
         pathname: '/file/attendance_images/**',
+      },
+      {
+        protocol: 'http',
+        hostname: 'dev.skj.my.id',
+        port: '82',
+        pathname: '/file/harvesting_images/**',
       },
       {
         protocol: "http",

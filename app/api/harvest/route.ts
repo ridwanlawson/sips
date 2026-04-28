@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
     buildFilteredUrl,
     getTokenFromCookie,
+    safeJson,
 } from "@/utils/absensiProxy";
 
 export const dynamic = "force-dynamic"; // no cache
@@ -16,7 +17,45 @@ const querySchema = z.object({
     fcba: z.string().optional(),
     afdeling: z.string().optional(),
     status_harvesting: z.string().optional(),
+    kemandoran: z.string().optional(),
+    nodokumen: z.string().optional(),
+    kode_karyawan: z.string().optional(),
+    tph: z.string().optional(),
 }).passthrough();
+
+// POST: Create new harvest record
+export async function POST(req: NextRequest) {
+    const token = await getTokenFromCookie();
+    if (!token) {
+        return NextResponse.json({ ok: false, error: "Unauthenticated" }, { status: 401 });
+    }
+
+    try {
+        const incoming = await req.formData();
+
+        // Kirim langsung ke upstream
+        const upstream = await fetch(HARVEST_BASE, {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: "application/json",
+            },
+            body: incoming,
+        });
+
+        const data = await safeJson(upstream);
+        if (!upstream.ok) {
+            return NextResponse.json(
+                { ok: false, error: data?.message || "Create failed" },
+                { status: upstream.status }
+            );
+        }
+        return NextResponse.json({ ok: true, data });
+    } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : "Internal Server Error";
+        return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+    }
+}
 
 // --- type guards ---
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -40,7 +79,7 @@ export async function GET(req: NextRequest) {
     // Clone searchParams supaya bisa dimodifikasi
     const rawParams = Object.fromEntries(req.nextUrl.searchParams.entries());
     const validated = querySchema.safeParse(rawParams);
-    
+
     if (!validated.success) {
         return NextResponse.json(
             { ok: false, error: "Invalid query parameters", details: validated.error.format() },

@@ -139,45 +139,9 @@ type EmployeesApiRow = {
 ========================= */
 import { logoutAndRedirect } from "@/utils/authHelper";
 import { getProxiedImageUrl, PLACEHOLDER_IMAGE } from "@/utils/imageHelper";
-
-const readCookie = (name: string) => {
-  if (typeof document === "undefined") return null;
-  const m = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
-  return m ? decodeURIComponent(m.pop() as string) : null;
-};
-
-const buildMapUrl = (loc: string) => {
-  const s = (loc || "").trim();
-  const m = s.match(/^\s*(-?\d+(\.\d+)?)\s*,\s*(-?\d+(\.\d+)?)\s*$/);
-  if (m) {
-    const lat = m[1];
-    const lng = m[3];
-    return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-  }
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-    s,
-  )}`;
-};
-
-const getTodayISO = (): string => {
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-};
-
-const formatDateDMY = (raw: string | null | undefined): string => {
-  if (!raw) return "-";
-  const trimmed = raw.trim();
-  if (!trimmed) return "-";
-  const onlyDate = trimmed.split(" ")[0];
-  const parts = onlyDate.split("-");
-  if (parts.length !== 3) return trimmed;
-  const [y, m, d] = parts;
-  if (!y || !m || !d) return trimmed;
-  return `${d.padStart(2, "0")}-${m.padStart(2, "0")}-${y}`;
-};
+import { getTodayISO, formatDateDMY } from "@/utils/datetime";
+import { buildMapUrl } from "@/utils/mapHelper";
+import { cookieStore } from "@/utils/cookieStore";
 
 const LocationButton: React.FC<{ loc?: string | null; label?: string }> = ({
   loc,
@@ -667,6 +631,10 @@ export default function Attendance() {
         method: "DELETE",
         credentials: "include",
       });
+      if (res.status === 401) {
+        await logoutAndRedirect();
+        throw new Error("Unauthorized");
+      }
       const json: Record<string, unknown> = await res.json();
       if (!res.ok || !json.ok) {
         const errorMsg =
@@ -763,36 +731,17 @@ export default function Attendance() {
 
   /* ===== Bootstrap cookies (synchronous only) ===== */
   useEffect(() => {
-    const ckHome =
-      readCookie("user_Fcba") ||
-      readCookie("user_FCBA") ||
-      readCookie("user_fcba") ||
-      "";
-    setHomeFcba(ckHome);
+    setHomeFcba(cookieStore.getFcba());
+    setHomeSection(cookieStore.getSection());
 
-    const ckSection =
-      readCookie("user_Section") ||
-      readCookie("user_SECTION") ||
-      readCookie("user_section") ||
-      readCookie("user_Afdeling") ||
-      readCookie("user_afdeling") ||
-      "";
-    setHomeSection(ckSection);
-
-    const levelRaw =
-      (
-        readCookie("user_Level") ||
-        readCookie("user_LEVEL") ||
-        readCookie("user_level") ||
-        ""
-      ).toUpperCase() || "OTHER";
+    const levelRaw = cookieStore.getLevel();
     if (levelRaw === "ADM" || levelRaw === "MGR" || levelRaw === "AST") {
       setUserLevel(levelRaw);
     } else {
       setUserLevel("OTHER");
     }
 
-    const ckTrip = readCookie("opt_triplets");
+    const ckTrip = cookieStore.getCookie("opt_triplets");
     if (ckTrip) {
       try {
         const arr = JSON.parse(ckTrip) as Triplet[];
@@ -802,7 +751,7 @@ export default function Attendance() {
       }
     }
 
-    const ckOptFcba = readCookie("opt_fcba");
+    const ckOptFcba = cookieStore.getCookie("opt_fcba");
     if (ckOptFcba) {
       try {
         const arr = JSON.parse(ckOptFcba) as string[];
@@ -862,7 +811,7 @@ export default function Attendance() {
       const rowsRaw = extractArrayData<EmployeesApiRow>(j);
 
       // Build triplets from employees if no cookie
-      const ckTrip = readCookie("opt_triplets");
+      const ckTrip = cookieStore.getCookie("opt_triplets");
       if (!ckTrip && rowsRaw.length > 0) {
         const map = new Map<string, Triplet>();
         for (const it of rowsRaw) {

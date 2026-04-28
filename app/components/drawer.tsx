@@ -23,18 +23,18 @@ export const Drawer = () => {
   const [userLevel, setUserLevel] = useState<string>("");
   const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
   const [isHarvestOpen, setIsHarvestOpen] = useState(false);
-  const [isHarvestingQualityOpen, setIsHarvestingQualityOpen] = useState(false);
+  // const [isHarvestingQualityOpen, setIsHarvestingQualityOpen] = useState(false);
   const [isPengangkutanOpen, setIsPengangkutanOpen] = useState(false);
-  const [isApkUploadOpen, setIsApkUploadOpen] = useState(false);
+  // const [isApkUploadOpen, setIsApkUploadOpen] = useState(false);
 
   useEffect(() => {
     // Buka dropdown hanya jika berada di halaman /attendance...
     // Tutup jika pindah ke halaman lain (misal Dashboard)
     setIsAttendanceOpen(pathname.startsWith("/attendance"));
     setIsHarvestOpen(pathname.startsWith("/harvest"));
-    setIsHarvestingQualityOpen(pathname.startsWith("/harvesting-quality"));
+    // setIsHarvestingQualityOpen(pathname.startsWith("/harvesting-quality"));
     setIsPengangkutanOpen(pathname.startsWith("/pengangkutan"));
-    setIsApkUploadOpen(pathname.startsWith("/apk-upload"));
+    // setIsApkUploadOpen(pathname.startsWith("/apk-upload"));
     // Reset loading state saat halaman selesai diload
     setIsNavigating(null);
   }, [pathname]);
@@ -405,7 +405,7 @@ export const Drawer = () => {
             </li>
 
             {/* APK Upload - ADM Only */}
-            {userLevel === "ADM" && (
+            {/* {userLevel === "ADM" && (
               <li>
                 <Link
                   href="/apk-upload"
@@ -424,7 +424,7 @@ export const Drawer = () => {
                   Upload APK
                 </Link>
               </li>
-            )}
+            )} */}
           </ul>
         </div>
       </div>
