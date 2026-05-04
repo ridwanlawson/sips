@@ -9,7 +9,7 @@ import toast from "react-hot-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as XLSX from "xlsx";
 import { SkeletonTable } from "@/app/components/skeletons";
-
+import { centerHeaderStyle } from "@/utils/tableHelper";
 /* =========================
    T Y P E S
 ========================= */
@@ -34,6 +34,7 @@ type Absensi = {
   section?: string | null;
   gang?: string | null;
   fcba_destination?: string | null;
+  section_destination?: string | null;
   id_device?: string | null;
   mac_address?: string | null;
   images?: string | null;
@@ -64,6 +65,7 @@ type FormState = {
   section: string;
   gang: string;
   fcba_destination: string;
+  section_destination: string;
   id_device: string;
   mac_address: string;
   images: File | undefined;
@@ -92,6 +94,7 @@ const initialForm: FormState = {
   section: "",
   gang: "",
   fcba_destination: "",
+  section_destination: "",
   id_device: "",
   mac_address: "",
   images: undefined,
@@ -110,6 +113,7 @@ type Filters = Partial<{
   status_attendance: string;
   attendance_type: string;
   fcba_destination: string;
+  section_destination: string;
 }>;
 
 type Triplet = { fcba: string; sectionname: string; gangcode: string };
@@ -137,9 +141,9 @@ type EmployeesApiRow = {
 /* =========================
    U T I L S
 ========================= */
-import { logoutAndRedirect } from "@/utils/authHelper";
+import { isUnauthenticatedJson, logoutAndRedirect } from "@/utils/authHelper";
 import { getProxiedImageUrl, PLACEHOLDER_IMAGE } from "@/utils/imageHelper";
-import { getTodayISO, formatDateDMY } from "@/utils/datetime";
+import { getTodayISO, formatDateDMY, getYesterdayISO } from "@/utils/datetime";
 import { buildMapUrl } from "@/utils/mapHelper";
 import { cookieStore } from "@/utils/cookieStore";
 
@@ -439,9 +443,10 @@ export default function Attendance() {
   const [showFilters, setShowFilters] = useState(false);
 
   const [filters, setFilters] = useState<Filters>(() => {
+    const yesterday = getYesterdayISO();
     const today = getTodayISO();
     return {
-      tanggal: today,
+      tanggal: yesterday,
       tanggal_end: today,
       kode_karyawan_mandor: "",
       kode_karyawan: "",
@@ -452,6 +457,7 @@ export default function Attendance() {
       status_attendance: "",
       attendance_type: "",
       fcba_destination: "",
+      section_destination: "",
     };
   });
 
@@ -466,6 +472,7 @@ export default function Attendance() {
     "OTHER",
   );
   const [destFcba, setDestFcba] = useState<string>("");
+  const [destSection, setDestSection] = useState<string>("");
   const [optFcba, setOptFcba] = useState<string[]>([]);
 
   // Query for attendance list
@@ -529,6 +536,10 @@ export default function Attendance() {
       }
 
       const json: Record<string, unknown> = await res.json();
+      if (isUnauthenticatedJson(json)) {
+        await logoutAndRedirect();
+        return [];
+      }
       const raw = extractArrayData<Absensi>(json);
 
       let filteredByDate = raw;
@@ -597,6 +608,10 @@ export default function Attendance() {
         throw new Error("Unauthorized");
       }
       const json: Record<string, unknown> = await res.json();
+      if (isUnauthenticatedJson(json)) {
+        await logoutAndRedirect();
+        throw new Error("Unauthorized");
+      }
       if (!res.ok || !json.ok) {
         const errorMsg =
           typeof json.message === "string"
@@ -636,6 +651,10 @@ export default function Attendance() {
         throw new Error("Unauthorized");
       }
       const json: Record<string, unknown> = await res.json();
+      if (isUnauthenticatedJson(json)) {
+        await logoutAndRedirect();
+        throw new Error("Unauthorized");
+      }
       if (!res.ok || !json.ok) {
         const errorMsg =
           typeof json.error === "string" ? json.error : "Gagal hapus";
@@ -835,9 +854,7 @@ export default function Attendance() {
             (it as { noancak?: unknown }).noancak ??
             (it as { NOANCAK?: unknown }).NOANCAK;
           const noancak =
-            typeof noancakValue === "string"
-              ? noancakValue.trim()
-              : undefined;
+            typeof noancakValue === "string" ? noancakValue.trim() : undefined;
 
           mapEmp.set(fccode, {
             fccode,
@@ -906,7 +923,9 @@ export default function Attendance() {
             // Direct match with fcba field
             if (t.fcba === selFcba) return true;
             // Also try to match by extracting fcba from business units if selFcba is fccode
-            const buMatch = Array.isArray(businessUnits) ? businessUnits.find((b) => b.fccode === selFcba) : undefined;
+            const buMatch = Array.isArray(businessUnits)
+              ? businessUnits.find((b) => b.fccode === selFcba)
+              : undefined;
             if (buMatch && t.fcba === buMatch.fcname) return true;
             return false;
           })
@@ -922,7 +941,9 @@ export default function Attendance() {
     if (!selFcba || !selSection) return [];
     // Get the actual fcba name for matching triplets
     let fcbaName = selFcba;
-    const buMatch = Array.isArray(businessUnits) ? businessUnits.find((b) => b.fccode === selFcba) : undefined;
+    const buMatch = Array.isArray(businessUnits)
+      ? businessUnits.find((b) => b.fccode === selFcba)
+      : undefined;
     if (buMatch) fcbaName = buMatch.fcname || selFcba;
 
     return Array.from(
@@ -941,7 +962,9 @@ export default function Attendance() {
     if (!selFcba || !selSection || !selGang) return [];
     // Get the actual fcba name for matching employees
     let fcbaName = selFcba;
-    const buMatch = Array.isArray(businessUnits) ? businessUnits.find((b) => b.fccode === selFcba) : undefined;
+    const buMatch = Array.isArray(businessUnits)
+      ? businessUnits.find((b) => b.fccode === selFcba)
+      : undefined;
     if (buMatch) fcbaName = buMatch.fcname || selFcba;
 
     const pool = employees.filter(
@@ -964,7 +987,9 @@ export default function Attendance() {
     if (!selFcba || !selSection || !selGang) return [];
     // Get the actual fcba name for matching employees
     let fcbaName = selFcba;
-    const buMatch = Array.isArray(businessUnits) ? businessUnits.find((b) => b.fccode === selFcba) : undefined;
+    const buMatch = Array.isArray(businessUnits)
+      ? businessUnits.find((b) => b.fccode === selFcba)
+      : undefined;
     if (buMatch) fcbaName = buMatch.fcname || selFcba;
 
     const pool = employees.filter(
@@ -1081,7 +1106,9 @@ export default function Attendance() {
       const fc = selFcba || homeFcbaCode || "";
       // Convert fccode to fcba name if needed
       if (fc) {
-        const buMatch = Array.isArray(businessUnits) ? businessUnits.find((b) => b.fccode === fc) : undefined;
+        const buMatch = Array.isArray(businessUnits)
+          ? businessUnits.find((b) => b.fccode === fc)
+          : undefined;
         fcbaName = buMatch ? buMatch.fcname || fc : fc;
       }
       pool = employees.filter((e) => (e.fcba || "") === fcbaName);
@@ -1100,7 +1127,9 @@ export default function Attendance() {
       const fc = homeFcbaCode || selFcba || "";
       // Convert fccode to fcba name if needed
       if (fc) {
-        const buMatch = Array.isArray(businessUnits) ? businessUnits.find((b) => b.fccode === fc) : undefined;
+        const buMatch = Array.isArray(businessUnits)
+          ? businessUnits.find((b) => b.fccode === fc)
+          : undefined;
         fcbaName = buMatch ? buMatch.fcname || fc : fc;
       }
       pool = employees.filter((e) => (e.fcba || "") === fcbaName);
@@ -1158,6 +1187,7 @@ export default function Attendance() {
   };
 
   const onChangeDestFcba = (v: string) => setDestFcba(v);
+  const onChangeDestSection = (v: string) => setDestSection(v);
 
   /* ===== Defaults untuk ADD ===== */
   const setDefaultsForAdd = () => {
@@ -1183,6 +1213,7 @@ export default function Attendance() {
     setIsEditing(false);
     setPreview("");
     setDestFcba("");
+    setDestSection("");
     setSelFcba(userLevel === "ADM" ? homeFcbaCode || "" : homeFcbaCode || "");
     setSelSection(userLevel === "AST" ? homeSection || "" : "");
     setSelGang("");
@@ -1343,13 +1374,17 @@ export default function Attendance() {
           throw new Error("FCBA Destination tidak boleh sama dengan FCBA akun");
 
         // Validate that the destination FCBA exists in opt_fcba or business units
-        const destExistsInOptFcba = optFcba.length > 0 && optFcba.includes(destFcba);
-        const destExistsInBu = Array.isArray(businessUnits) && businessUnits.some((bu) => bu.fccode === destFcba);
+        const destExistsInOptFcba =
+          optFcba.length > 0 && optFcba.includes(destFcba);
+        const destExistsInBu =
+          Array.isArray(businessUnits) &&
+          businessUnits.some((bu) => bu.fccode === destFcba);
         if (!destExistsInOptFcba && !destExistsInBu) {
           throw new Error("FCBA Destination tidak valid");
         }
 
         fd.append("fcba_destination", destFcba);
+        fd.append("section_destination", destSection);
       }
 
       if (form.images instanceof File) fd.append("images", form.images);
@@ -1440,6 +1475,7 @@ export default function Attendance() {
           section: d.section || "",
           gang: d.gang || "",
           fcba_destination: d.fcba_destination || "",
+          section_destination: d.section_destination || "",
           id_device:
             d.id_device ||
             `${getReadableDevice()} • ${getOrCreateDeviceIds().deviceId}`,
@@ -1454,6 +1490,7 @@ export default function Attendance() {
         setSelGang(d.gang || "");
 
         setDestFcba(d.fcba_destination || "");
+        setDestSection(d.section_destination || "");
         setPreview(d.images || "");
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Gagal memuat detail";
@@ -1711,8 +1748,16 @@ export default function Attendance() {
         width: "90px",
       },
       {
-        name: <span title="FCBA tujuan (khusus ASSISTENSI)">Dest</span>,
+        name: <span title="FCBA tujuan (khusus ASSISTENSI)">FCBA Dest</span>,
         selector: (r) => r.fcba_destination || "-",
+        sortable: true,
+        width: "110px",
+      },
+      {
+        name: (
+          <span title="Afdeling tujuan (khusus ASSISTENSI)">Section Dest</span>
+        ),
+        selector: (r) => r.section_destination || "-",
         sortable: true,
         width: "110px",
       },
@@ -1873,6 +1918,7 @@ export default function Attendance() {
         it.kode_karyawan_mandor,
         it.fcba,
         it.fcba_destination,
+        it.section_destination,
         it.section,
         it.gang,
         it.attendance_type,
@@ -2090,6 +2136,18 @@ export default function Attendance() {
                 }
                 title="Filter berdasarkan FCBA tujuan"
               />
+              <input
+                className="input input-bordered w-full"
+                placeholder="Afdeling Tujuan"
+                value={filters.section_destination ?? ""}
+                onChange={(e) =>
+                  setFilters((s) => ({
+                    ...s,
+                    section_destination: e.target.value,
+                  }))
+                }
+                title="Filter berdasarkan Afdeling tujuan"
+              />
             </div>
 
             <div className="flex justify-start gap-2 pt-3 border-t border-base-200">
@@ -2125,6 +2183,7 @@ export default function Attendance() {
                     attendance_type: "",
                     status_attendance: "",
                     fcba_destination: "",
+                    section_destination: "",
                   };
                   setFilters(resetFilters);
                 }}
@@ -2158,7 +2217,8 @@ export default function Attendance() {
                 data={filtered}
                 progressPending={loading}
                 pagination
-                paginationPerPage={10}
+                customStyles={centerHeaderStyle}
+                paginationPerPage={100}
                 paginationRowsPerPageOptions={[10, 30, 100, 500]}
                 dense
                 highlightOnHover
@@ -2208,6 +2268,7 @@ export default function Attendance() {
                     type="date"
                     className="input input-bordered w-full"
                     value={form.tanggal ?? ""}
+                    max={getTodayISO()}
                     onChange={(e) =>
                       setForm((s) => ({ ...s, tanggal: e.target.value }))
                     }
@@ -2258,7 +2319,9 @@ export default function Attendance() {
                           pengancakan: "",
                         }));
                       }}
-                      placeholder={isLoadingBU ? "Memuat FCBA..." : "Pilih FCBA"}
+                      placeholder={
+                        isLoadingBU ? "Memuat FCBA..." : "Pilih FCBA"
+                      }
                       small
                       disabled={disableUnlessAllowed(false) || isLoadingBU}
                     />
@@ -2291,7 +2354,35 @@ export default function Attendance() {
                             : "Pilih FCBA dulu"
                       }
                       disabled={
-                        !currentFcbaForForm || disableUnlessAllowed(false) || isLoadingBU
+                        !currentFcbaForForm ||
+                        disableUnlessAllowed(false) ||
+                        isLoadingBU
+                      }
+                    />
+                  </fieldset>
+                )}
+
+                {/* Section Dest */}
+                {form.attendance_type === "ASSISTENSI" && (
+                  <fieldset className="fieldset col-span-12 md:col-span-3">
+                    <legend className="fieldset-legend">
+                      Section Destination *
+                    </legend>
+                    <SearchSelect
+                      options={destOptions}
+                      value={destSection ?? ""}
+                      onChange={onChangeDestSection}
+                      placeholder={
+                        isLoadingBU
+                          ? "Memuat..."
+                          : currentFcbaForForm
+                            ? "Pilih Section tujuan"
+                            : "Pilih Section dulu"
+                      }
+                      disabled={
+                        !currentFcbaForForm ||
+                        disableUnlessAllowed(false) ||
+                        isLoadingBU
                       }
                     />
                   </fieldset>
@@ -2306,7 +2397,9 @@ export default function Attendance() {
                     onChange={(v) =>
                       setForm((s) => ({ ...s, kode_karyawan_mandor: v }))
                     }
-                    placeholder={isLoadingEmp ? "Memuat Mandor..." : "Pilih Mandor"}
+                    placeholder={
+                      isLoadingEmp ? "Memuat Mandor..." : "Pilih Mandor"
+                    }
                     small
                     disabled={disableUnlessAllowed(false) || isLoadingEmp}
                   />
@@ -2353,7 +2446,9 @@ export default function Attendance() {
                           ? "Pilih Gang"
                           : "Pilih Afdeling dulu"
                     }
-                    disabled={!selSection || disableUnlessAllowed(false) || isLoadingEmp}
+                    disabled={
+                      !selSection || disableUnlessAllowed(false) || isLoadingEmp
+                    }
                     small
                   />
                 </fieldset>
@@ -2364,8 +2459,16 @@ export default function Attendance() {
                     options={employeeOptions}
                     value={form.kode_karyawan ?? ""}
                     onChange={onChangeEmployee}
-                    placeholder={isLoadingEmp ? "Memuat Karyawan..." : selGang ? "Pilih Karyawan" : "Pilih Gang dulu"}
-                    disabled={!selGang || disableUnlessAllowed(false) || isLoadingEmp}
+                    placeholder={
+                      isLoadingEmp
+                        ? "Memuat Karyawan..."
+                        : selGang
+                          ? "Pilih Karyawan"
+                          : "Pilih Gang dulu"
+                    }
+                    disabled={
+                      !selGang || disableUnlessAllowed(false) || isLoadingEmp
+                    }
                   />
                 </fieldset>
 
@@ -2414,7 +2517,9 @@ export default function Attendance() {
                           ? "Pilih Pengancakan"
                           : "Pilih Gang/Karyawan dulu"
                     }
-                    disabled={!selGang || disableUnlessAllowed(false) || isLoadingEmp}
+                    disabled={
+                      !selGang || disableUnlessAllowed(false) || isLoadingEmp
+                    }
                     small
                   />
                 </fieldset>
@@ -2622,7 +2727,7 @@ export default function Attendance() {
                 {/* BA EXCA PDF */}
                 <fieldset className="fieldset col-span-12 md:col-span-6">
                   <legend className="fieldset-legend">
-                    No BA EXCA (PDF)
+                    File BA ExCa (PDF)
                     {!isEditing ? " *" : ""}
                   </legend>
                   <input

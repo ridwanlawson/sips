@@ -7,7 +7,7 @@ import {
   SimplePieChart,
   SimpleLineChart,
 } from "@/app/components/dashboard-chart";
-import { logoutAndRedirect } from "@/utils/authHelper";
+import { isUnauthenticatedJson, logoutAndRedirect } from "@/utils/authHelper";
 import {
   SkeletonCard,
   SkeletonTable,
@@ -460,8 +460,17 @@ export default function UserDashboard() {
       }
 
       const res = await fetch("/api/karyawans", { credentials: "include" });
-      if (!res.ok) return [];
+      if (!res.ok) {
+        if (res.status === 401) {
+          await logoutAndRedirect();
+        }
+        return [];
+      }
       const json = await res.json();
+      if (isUnauthenticatedJson(json)) {
+        await logoutAndRedirect();
+        return [];
+      }
       return extractTriplets(json);
     },
     enabled: isClient,
@@ -477,8 +486,17 @@ export default function UserDashboard() {
         headers: { Accept: "application/json" },
         credentials: "include",
       });
-      if (!res.ok) return null;
+      if (!res.ok) {
+        if (res.status === 401) {
+          await logoutAndRedirect();
+        }
+        return null;
+      }
       const json: Record<string, unknown> = await res.json();
+      if (isUnauthenticatedJson(json)) {
+        await logoutAndRedirect();
+        return null;
+      }
       if (json.ok && typeof json.data === "object" && json.data !== null) {
         const data = json.data as Record<string, unknown>;
         const inner = data.data ? data.data : data;
@@ -563,6 +581,10 @@ export default function UserDashboard() {
       }
 
       const json: unknown = await res.json();
+      if (isUnauthenticatedJson(json)) {
+        await logoutAndRedirect();
+        return [];
+      }
       return extractAttendanceArray(json);
     },
     enabled: isClient,
@@ -622,6 +644,10 @@ export default function UserDashboard() {
         return { total: 0, totalOutput: 0, approved: 0, planned: 0 };
 
       const json: Record<string, unknown> = await res.json();
+      if (isUnauthenticatedJson(json)) {
+        await logoutAndRedirect();
+        return { total: 0, totalOutput: 0, approved: 0, planned: 0 };
+      }
       let rows: unknown[] = [];
       if (Array.isArray(json)) {
         rows = json;
@@ -720,6 +746,16 @@ export default function UserDashboard() {
         };
 
       const json: Record<string, unknown> = await res.json();
+      if (isUnauthenticatedJson(json)) {
+        await logoutAndRedirect();
+        return {
+          total: 0,
+          approved: 0,
+          planned: 0,
+          completed: 0,
+          totalOutput: 0,
+        };
+      }
       let rows: unknown[] = [];
       if (Array.isArray(json)) {
         rows = json;

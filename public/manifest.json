@@ -1,7 +1,7 @@
 {
   "name": "SiPS Mobile",
   "short_name": "SiPS",
-  "description": "Sistem Informasi Pengolahan Sawit Mobile",
+  "description": "SKJ Integrated Plantation System Mobile",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { cookieStore } from "@/utils/cookieStore";
+import toast from "react-hot-toast";
 
 const LOADING_TIPS = [
   "Pastikan username dan password sudah benar.",
@@ -23,9 +25,44 @@ export default function Home() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [savePassword, setSavePassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingDownload, setIsCheckingDownload] = useState(false);
   const [tipIndex, setTipIndex] = useState(0);
+  const searchParams = useSearchParams();
+
+  const redirectTo = searchParams.get("redirect") || "/dashboard";
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("sips_saved_login");
+    if (!saved) return;
+
+    try {
+      const parsed = JSON.parse(saved) as {
+        username?: string;
+        password?: string;
+      };
+
+      if (parsed.username) setUsername(parsed.username);
+      if (parsed.password) setPassword(parsed.password);
+      if (parsed.username || parsed.password) setSavePassword(true);
+    } catch {
+      window.localStorage.removeItem("sips_saved_login");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (savePassword) {
+      window.localStorage.setItem(
+        "sips_saved_login",
+        JSON.stringify({ username, password }),
+      );
+    } else {
+      window.localStorage.removeItem("sips_saved_login");
+    }
+  }, [savePassword, username, password]);
 
   // Generate fireflies sekali saja (random posisi/ukuran)
   const [fireflies, setFireflies] = useState<Firefly[]>([]);
@@ -52,6 +89,43 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [isLoading]);
 
+  const handleDownload = async () => {
+    setIsCheckingDownload(true);
+    try {
+      const token =
+        cookieStore.getCookie("auth_token") ||
+        cookieStore.getCookie("token") ||
+        cookieStore.getCookie("access_token") ||
+        "";
+
+      const response = await fetch(
+        "http://dev.skj.my.id:82/api/app-update/check",
+        {
+          method: "POST",
+          headers: {
+            Authorization: token ? `Bearer ${token}` : "",
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ platform: "android" }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (response.ok && data.download_url) {
+        window.open(data.download_url, "_blank");
+      } else {
+        toast.error(data.message || "Gagal mendapatkan link download");
+      }
+    } catch (error) {
+      console.error("Download check error:", error);
+      toast.error("Terjadi kesalahan saat memeriksa update");
+    } finally {
+      setIsCheckingDownload(false);
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -69,7 +143,7 @@ export default function Home() {
       const data = await response.json();
 
       if (response.ok) {
-        router.push("/dashboard");
+        router.push(redirectTo);
       } else {
         setError(
           data.message ||
@@ -147,10 +221,11 @@ export default function Home() {
             <span>Realtime • Terintegrasi • Multi-Device</span>
           </div>
 
-          <a
-            target="_blank"
-            href="https://1drv.ms/f/c/28ba560db3725beb/IgCchLt-YjVKQbL4WeU_F67zASiTPoSNT1YlDl1SqUG6P2c?e=OzHELo"
-            className="mt-4 inline-flex items-center gap-3 rounded-2xl bg-base-100/80 px-3 py-2 shadow-md animate-bounce"
+          <button
+            type="button"
+            onClick={handleDownload}
+            className={`mt-4 inline-flex items-center gap-3 rounded-2xl bg-base-100/80 px-3 py-2 shadow-md animate-bounce transition hover:bg-base-200 ${isCheckingDownload ? "opacity-60 cursor-not-allowed" : ""}`}
+            disabled={isCheckingDownload}
           >
             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
               <svg
@@ -167,7 +242,10 @@ export default function Home() {
                 Download SIPS Mobile Now!
               </p>
             </div>
-          </a>
+            {isCheckingDownload && (
+              <span className="loading loading-spinner loading-sm text-primary" />
+            )}
+          </button>
         </section>
 
         {/* Login Card */}
@@ -237,7 +315,7 @@ export default function Home() {
                   />
                 </svg>
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   className="grow bg-transparent outline-none"
                   placeholder="Password"
                   value={password}
@@ -246,6 +324,47 @@ export default function Home() {
                   required
                   minLength={8}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="btn btn-ghost btn-square btn-xs opacity-70 hover:text-primary"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 16 16"
+                      fill="currentColor"
+                      className="h-4 w-4"
+                    >
+                      <path d="M13.359 11.238C15.28 9.504 16 8 16 8s-3-5.5-8-5.5a7.027 7.027 0 0 0-3.646.98L3.468 3.538A8.08 8.08 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.827 8c-.058.087-.122.176-.195.268a13.134 13.134 0 0 1-1.66 2.043C11.88 11.332 10.12 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.173 8Z" />
+                      <path d="M10.477 11.085 8.4 9.008a2 2 0 1 1-2.83-2.83L4.914 4.78A4.978 4.978 0 0 0 3.5 8c0 2.12 1.168 3.879 2.457 5.168a13.133 13.133 0 0 0 2.043 1.66c.12.08.236.148.345.208l1.677-1.677a7.027 7.027 0 0 1-1.545-.274ZM8 6.5a1.5 1.5 0 0 0-1.356 2.121L8.879 9.15A1.5 1.5 0 0 0 8 6.5Z" />
+                    </svg>
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 16 16"
+                      fill="currentColor"
+                      className="h-4 w-4"
+                    >
+                      <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8ZM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.827 8c-.058.087-.122.176-.195.268a13.134 13.134 0 0 1-1.66 2.043C11.88 11.332 10.12 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.173 8Z" />
+                      <path d="M8 5.5A2.5 2.5 0 1 0 8 10.5a2.5 2.5 0 0 0 0-5Z" />
+                    </svg>
+                  )}
+                </button>
+              </label>
+
+              <label className="label cursor-pointer gap-2 px-1">
+                <input
+                  type="checkbox"
+                  className="checkbox checkbox-sm"
+                  checked={savePassword}
+                  onChange={(e) => setSavePassword(e.target.checked)}
+                  disabled={isLoading}
+                />
+                <span className="label-text text-sm">
+                  Save password for next login
+                </span>
               </label>
 
               {error && (

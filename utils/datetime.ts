@@ -10,6 +10,12 @@ export function getTodayISO(): string {
   return formatDateISO(now);
 }
 
+export function getYesterdayISO(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().split("T")[0];
+};
+
 export function formatDateISO(date: Date): string {
   const yyyy = date.getFullYear();
   const mm = String(date.getMonth() + 1).padStart(2, "0");

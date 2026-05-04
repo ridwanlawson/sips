@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import DataTable, { TableColumn } from "react-data-table-component";
 import { getProxiedImageUrl, PLACEHOLDER_IMAGE } from "@/utils/imageHelper";
-import { logoutAndRedirect } from "@/utils/authHelper";
+import { isUnauthenticatedJson, logoutAndRedirect } from "@/utils/authHelper";
 
 /* =========================
    T Y P E S
@@ -126,7 +126,7 @@ export default function PengangkutanPage() {
   const [q, setQ] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [userLevel, setUserLevel] = useState<"ADM" | "MGR" | "AST" | "OTHER">(
-    "OTHER"
+    "OTHER",
   );
   const [homeFcba, setHomeFcba] = useState<string>("");
   const [homeSection, setHomeSection] = useState<string>("");
@@ -219,6 +219,10 @@ export default function PengangkutanPage() {
         }
 
         const json = await res.json();
+        if (isUnauthenticatedJson(json)) {
+          await logoutAndRedirect();
+          return;
+        }
         // Example API returns { success: true, data: [...] }
         if (json && (json.success === true || json.ok === true)) {
           const data = json.data || json.rows || [];
@@ -226,7 +230,7 @@ export default function PengangkutanPage() {
         } else {
           showAlert(
             json.message || json.error || "Gagal mengambil data",
-            "error"
+            "error",
           );
         }
       } catch (e) {
@@ -236,7 +240,7 @@ export default function PengangkutanPage() {
         setLoading(false);
       }
     },
-    [filters]
+    [filters],
   );
 
   useEffect(() => {
@@ -264,7 +268,7 @@ export default function PengangkutanPage() {
           it.card_id,
         ]
           .filter(Boolean)
-          .some((v) => String(v).toLowerCase().includes(s))
+          .some((v) => String(v).toLowerCase().includes(s)),
       );
     }
     return res.map((item, index) => ({ ...item, _index: index + 1 }));
@@ -404,8 +408,9 @@ export default function PengangkutanPage() {
       width: "120px",
       cell: (r) => (
         <span
-          className={`badge ${r.status_pengangkutan === "Planned" ? "badge-info" : "badge-ghost"
-            }`}
+          className={`badge ${
+            r.status_pengangkutan === "Planned" ? "badge-info" : "badge-ghost"
+          }`}
         >
           {r.status_pengangkutan}
         </span>
@@ -451,8 +456,9 @@ export default function PengangkutanPage() {
         <div className="toast toast-top right-4 z-50">
           {alert && (
             <div
-              className={`alert ${alert.type === "success" ? "alert-success" : "alert-error"
-                }`}
+              className={`alert ${
+                alert.type === "success" ? "alert-success" : "alert-error"
+              }`}
             >
               <div>
                 <span className="font-semibold">

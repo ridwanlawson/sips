@@ -6,7 +6,9 @@ import DataTable, { TableColumn } from "react-data-table-component";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
 import { SkeletonTable } from "@/app/components/skeletons";
-import { logoutAndRedirect } from "@/utils/authHelper";
+import { isUnauthenticatedJson, logoutAndRedirect } from "@/utils/authHelper";
+import { getTodayISO, formatDateDMY, getYesterdayISO } from "@/utils/datetime";
+import { centerHeaderStyle } from "@/utils/tableHelper";
 
 /* =========================
    T Y P E S
@@ -105,31 +107,6 @@ const readCookie = (name: string) => {
   const m = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
   return m ? decodeURIComponent(m.pop() as string) : null;
 };
-const getYesterdayISO = (): string => {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return d.toISOString().split("T")[0];
-};
-
-const getTodayISO = (): string => {
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-};
-
-const formatDateDMY = (raw: string | null | undefined): string => {
-  if (!raw) return "-";
-  const trimmed = raw.trim();
-  if (!trimmed) return "-";
-  const onlyDate = trimmed.split(" ")[0];
-  const parts = onlyDate.split("-");
-  if (parts.length !== 3) return trimmed;
-  const [y, m, d] = parts;
-  if (!y || !m || !d) return trimmed;
-  return `${d.padStart(2, "0")}-${m.padStart(2, "0")}-${y}`;
-};
 
 /* =========================
    M A I N
@@ -185,15 +162,6 @@ export default function Approval() {
     }
   }, []);
 
-  const customStyles = {
-    headCells: {
-      style: {
-        justifyContent: "center", // ini bikin header center
-        textAlign: "center" as const,
-      },
-    },
-  };
-
   /* ===== Fetch LHM data ===== */
   const [items, setItems] = useState<LhmData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -232,6 +200,10 @@ export default function Approval() {
       }
 
       const json = await res.json();
+      if (isUnauthenticatedJson(json)) {
+        await logoutAndRedirect();
+        return;
+      }
 
       if (!res.ok) {
         const msg = json.message || `HTTP ${res.status}`;
@@ -1047,7 +1019,7 @@ export default function Approval() {
                 data={filtered}
                 progressPending={loading}
                 pagination
-                customStyles={customStyles}
+                customStyles={centerHeaderStyle}
                 paginationPerPage={100}
                 paginationRowsPerPageOptions={[10, 30, 100, 500]}
                 dense

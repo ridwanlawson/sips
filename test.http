@@ -1,7 +1,0 @@
-### Test POST Request
-POST http://172.16.5.179:5678/webhook-test/testing
-Content-Type: application/json
-
-{
-  "data": "value"
-}

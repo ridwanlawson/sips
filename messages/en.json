@@ -4,7 +4,7 @@
     "attendance": "Attendance",
     "harvest": "Harvest",
     "harvestingQuality": "Harvesting Quality",
-    "pengangkutan": "Transportation",
+    "pengangkutan": "Transport",
     "changePassword": "Change Password",
     "logout": "Logout",
     "signingOut": "Signing out...",
@@ -14,7 +14,7 @@
     "list": "Data List",
     "approval": "Approval",
     "upload": "Upload",
-    "transport": "Transportation"
+    "transport": "Transport"
   },
   "Auth": {
     "login": "Login",
