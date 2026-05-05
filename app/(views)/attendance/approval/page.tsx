@@ -8,7 +8,8 @@ import React, {
   forwardRef,
 } from "react";
 
-import DataTable, { TableColumn } from "react-data-table-component";
+import DataTable from "@/app/components/dynamic-data-table";
+import type { TableColumn } from "react-data-table-component";
 import { logoutAndRedirect } from "@/utils/authHelper";
 import { getProxiedImageUrl, PLACEHOLDER_IMAGE } from "@/utils/imageHelper";
 
@@ -95,7 +96,7 @@ const buildMapUrl = (loc: string) => {
     return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
   }
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-    s
+    s,
   )}`;
 };
 
@@ -167,7 +168,7 @@ export default function AttendanceApproval() {
       setAlert({ msg, type });
       setTimeout(() => setAlert(null), 4000);
     },
-    []
+    [],
   );
 
   const [userLevel, setUserLevel] = useState<UserLevel>("OTHER");
@@ -178,12 +179,12 @@ export default function AttendanceApproval() {
   const [selectedRows, setSelectedRows] = useState<Absensi[]>([]);
   const [clearSelectedToggle, setClearSelectedToggle] = useState(false);
   const [bulkStatus, setBulkStatus] = useState<"Approved" | "Reject" | null>(
-    null
+    null,
   );
 
   // map kode mandor -> "kode - nama"
   const [mandorLabelMap, setMandorLabelMap] = useState<Record<string, string>>(
-    {}
+    {},
   );
 
   /* ===== Bootstrap dari cookies (FCBA, Section, Level user) ===== */
@@ -371,7 +372,7 @@ export default function AttendanceApproval() {
             console.error(err);
             return { ok: false, error: "Fetch gagal", detail: err };
           }
-        })
+        }),
       );
 
       const total = results.length;
@@ -381,13 +382,13 @@ export default function AttendanceApproval() {
       if (sukses > 0) {
         showAlert(
           `Berhasil mengubah status ${sukses} data menjadi ${newStatus}.`,
-          "success"
+          "success",
         );
       }
       if (gagal > 0) {
         showAlert(
           `Beberapa data gagal diubah (${gagal} dari ${total}).`,
-          "error"
+          "error",
         );
       }
 
@@ -427,7 +428,7 @@ export default function AttendanceApproval() {
         it.status_attendance,
       ]
         .filter(Boolean)
-        .some((v) => String(v).toLowerCase().includes(s))
+        .some((v) => String(v).toLowerCase().includes(s)),
     );
   }, [q, items]);
 
@@ -449,10 +450,10 @@ export default function AttendanceApproval() {
             st === "planned"
               ? "badge-warning"
               : st === "approved"
-              ? "badge-success"
-              : st === "reject"
-              ? "badge-error"
-              : "badge-ghost";
+                ? "badge-success"
+                : st === "reject"
+                  ? "badge-error"
+                  : "badge-ghost";
           return (
             <span className={`badge ${badgeClass}`}>
               {r.status_attendance ?? "-"}
@@ -697,7 +698,7 @@ export default function AttendanceApproval() {
         ignoreRowClick: true,
       },
     ],
-    [mandorLabelMap]
+    [mandorLabelMap],
   );
 
   // 👇 cast sekali, tanpa `any`, supaya TypeScript & ESLint sama-sama aman
@@ -712,16 +713,16 @@ export default function AttendanceApproval() {
     return (
       <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
         <div className="p-6 max-w-screen-lg mx-auto">
-        <h2 className="text-2xl font-bold">Akses Ditolak</h2>
-        <p className="mt-2 text-base-content/80">
-          Halaman ini hanya dapat diakses oleh user dengan level <b>ADM</b> atau{" "}
-          <b>MGR</b>.
-        </p>
-        <div className="mt-4">
-          <a href="/dashboard" className="btn btn-primary btn-sm">
-            Kembali ke Dashboard
-          </a>
-        </div>
+          <h2 className="text-2xl font-bold">Akses Ditolak</h2>
+          <p className="mt-2 text-base-content/80">
+            Halaman ini hanya dapat diakses oleh user dengan level <b>ADM</b>{" "}
+            atau <b>MGR</b>.
+          </p>
+          <div className="mt-4">
+            <a href="/dashboard" className="btn btn-primary btn-sm">
+              Kembali ke Dashboard
+            </a>
+          </div>
         </div>
       </div>
     );
@@ -730,133 +731,133 @@ export default function AttendanceApproval() {
   return (
     <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
       <div className="p-4 sm:p-6 max-w-screen-2xl mx-auto w-full overflow-x-hidden">
-      {/* Toast */}
-      <div className="toast toast-top right-4 z-50">
-        {alert && (
-          <div
-            className={`alert ${
-              alert.type === "success" ? "alert-success" : "alert-error"
-            }`}
-          >
-            <div>
-              <span className="font-semibold">
-                {alert.type === "success" ? "Berhasil" : "Gagal"}
-              </span>
-              <span className="ml-2 whitespace-pre-line">{alert.msg}</span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Header */}
-      <div className="mb-4 flex flex-col sm:flex-row gap-2 items-start sm:items-center justify-between">
-        <div>
-          <h1
-            className="text-2xl sm:text-3xl font-bold min-w-0 truncate"
-            title="Halaman Approval Absensi"
-          >
-            Approval Absensi
-          </h1>
-          <p className="text-sm opacity-70">
-            Menampilkan hanya data absensi yang belum <b>Approved</b> dan belum{" "}
-            <b>Reject</b>.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-end">
-          <button
-            className="btn btn-outline btn-sm"
-            onClick={() => fetchList()}
-            title="Refresh data absensi pending"
-          >
-            Refresh
-          </button>
-        </div>
-      </div>
-
-      {/* Toolbar: Bulk action + Search */}
-      <div className="mb-3 flex flex-col md:flex-row gap-2 md:items-center md:justify-between">
-        <div className="flex flex-wrap gap-2">
-          <button
-            className="btn btn-success btn-sm"
-            disabled={!hasSelection || bulkStatus !== null}
-            onClick={() => handleBulkUpdate("Approved")}
-            title="Ubah status data terpilih menjadi Approved"
-          >
-            {bulkStatus === "Approved" ? (
-              <>
-                <span className="loading loading-spinner loading-xs" />
-                <span>Proses Approve...</span>
-              </>
-            ) : (
-              "Approve Terpilih"
-            )}
-          </button>
-          <button
-            className="btn btn-error btn-sm"
-            disabled={!hasSelection || bulkStatus !== null}
-            onClick={() => handleBulkUpdate("Reject")}
-            title="Ubah status data terpilih menjadi Reject"
-          >
-            {bulkStatus === "Reject" ? (
-              <>
-                <span className="loading loading-spinner loading-xs" />
-                <span>Proses Reject...</span>
-              </>
-            ) : (
-              "Reject Terpilih"
-            )}
-          </button>
-          <button
-            className="btn btn-sm"
-            disabled={!hasSelection || bulkStatus !== null}
-            onClick={() => {
-              setSelectedRows([]);
-              setClearSelectedToggle((prev) => !prev);
-            }}
-            title="Kosongkan pilihan (uncheck semua)"
-          >
-            Clear Centang
-          </button>
-        </div>
-
-        <input
-          className="input input-bordered w-full md:w-80"
-          placeholder="Cari (nama, kode, FCBA, mandor, lokasi...)"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          title="Pencarian cepat di data pending"
-        />
-      </div>
-
-      {/* DataTable */}
-      <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100">
-        <div className="min-w-[900px] md:min-w-0">
-          <DataTable
-            keyField="_rowKey"
-            columns={columns}
-            data={filteredItems}
-            progressPending={loading}
-            pagination
-            paginationPerPage={10}
-            paginationRowsPerPageOptions={[10, 30, 100, 500]}
-            dense
-            highlightOnHover
-            fixedHeader
-            fixedHeaderScrollHeight="520px"
-            persistTableHead
-            responsive
-            noDataComponent={
-              <div className="py-8 text-base-content/70">
-                Tidak ada data pending untuk di-approve / reject.
+        {/* Toast */}
+        <div className="toast toast-top right-4 z-50">
+          {alert && (
+            <div
+              className={`alert ${
+                alert.type === "success" ? "alert-success" : "alert-error"
+              }`}
+            >
+              <div>
+                <span className="font-semibold">
+                  {alert.type === "success" ? "Berhasil" : "Gagal"}
+                </span>
+                <span className="ml-2 whitespace-pre-line">{alert.msg}</span>
               </div>
-            }
-            selectableRows
-            selectableRowsComponent={checkboxComponent}
-            onSelectedRowsChange={handleRowSelectedChange}
-            clearSelectedRows={clearSelectedToggle}
+            </div>
+          )}
+        </div>
+
+        {/* Header */}
+        <div className="mb-4 flex flex-col sm:flex-row gap-2 items-start sm:items-center justify-between">
+          <div>
+            <h1
+              className="text-2xl sm:text-3xl font-bold min-w-0 truncate"
+              title="Halaman Approval Absensi"
+            >
+              Approval Absensi
+            </h1>
+            <p className="text-sm opacity-70">
+              Menampilkan hanya data absensi yang belum <b>Approved</b> dan
+              belum <b>Reject</b>.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-end">
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={() => fetchList()}
+              title="Refresh data absensi pending"
+            >
+              Refresh
+            </button>
+          </div>
+        </div>
+
+        {/* Toolbar: Bulk action + Search */}
+        <div className="mb-3 flex flex-col md:flex-row gap-2 md:items-center md:justify-between">
+          <div className="flex flex-wrap gap-2">
+            <button
+              className="btn btn-success btn-sm"
+              disabled={!hasSelection || bulkStatus !== null}
+              onClick={() => handleBulkUpdate("Approved")}
+              title="Ubah status data terpilih menjadi Approved"
+            >
+              {bulkStatus === "Approved" ? (
+                <>
+                  <span className="loading loading-spinner loading-xs" />
+                  <span>Proses Approve...</span>
+                </>
+              ) : (
+                "Approve Terpilih"
+              )}
+            </button>
+            <button
+              className="btn btn-error btn-sm"
+              disabled={!hasSelection || bulkStatus !== null}
+              onClick={() => handleBulkUpdate("Reject")}
+              title="Ubah status data terpilih menjadi Reject"
+            >
+              {bulkStatus === "Reject" ? (
+                <>
+                  <span className="loading loading-spinner loading-xs" />
+                  <span>Proses Reject...</span>
+                </>
+              ) : (
+                "Reject Terpilih"
+              )}
+            </button>
+            <button
+              className="btn btn-sm"
+              disabled={!hasSelection || bulkStatus !== null}
+              onClick={() => {
+                setSelectedRows([]);
+                setClearSelectedToggle((prev) => !prev);
+              }}
+              title="Kosongkan pilihan (uncheck semua)"
+            >
+              Clear Centang
+            </button>
+          </div>
+
+          <input
+            className="input input-bordered w-full md:w-80"
+            placeholder="Cari (nama, kode, FCBA, mandor, lokasi...)"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            title="Pencarian cepat di data pending"
           />
         </div>
-      </div>
+
+        {/* DataTable */}
+        <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100">
+          <div className="min-w-[900px] md:min-w-0">
+            <DataTable
+              keyField="_rowKey"
+              columns={columns}
+              data={filteredItems}
+              progressPending={loading}
+              pagination
+              paginationPerPage={10}
+              paginationRowsPerPageOptions={[10, 30, 100, 500]}
+              dense
+              highlightOnHover
+              fixedHeader
+              fixedHeaderScrollHeight="520px"
+              persistTableHead
+              responsive
+              noDataComponent={
+                <div className="py-8 text-base-content/70">
+                  Tidak ada data pending untuk di-approve / reject.
+                </div>
+              }
+              selectableRows
+              selectableRowsComponent={checkboxComponent}
+              onSelectedRowsChange={handleRowSelectedChange}
+              clearSelectedRows={clearSelectedToggle}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

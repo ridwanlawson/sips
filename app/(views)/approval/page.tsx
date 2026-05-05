@@ -2,9 +2,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import DataTable, { TableColumn } from "react-data-table-component";
+import DataTable from "@/app/components/dynamic-data-table";
+import type { TableColumn } from "react-data-table-component";
 import toast from "react-hot-toast";
-import * as XLSX from "xlsx";
 import { SkeletonTable } from "@/app/components/skeletons";
 import { isUnauthenticatedJson, logoutAndRedirect } from "@/utils/authHelper";
 import { getTodayISO, formatDateDMY, getYesterdayISO } from "@/utils/datetime";
@@ -165,7 +165,7 @@ export default function Approval() {
   /* ===== Fetch LHM data ===== */
   const [items, setItems] = useState<LhmData[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -389,7 +389,7 @@ export default function Approval() {
   };
 
   /* ===== Export Excel ===== */
-  const handleExport = () => {
+  const handleExport = async () => {
     if (filtered.length === 0) {
       toast.error("Tidak ada data untuk diekspor");
       return;
@@ -463,10 +463,11 @@ export default function Approval() {
       "Last Time": r.lasttime || "-",
     }));
 
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Approval LHM");
-    XLSX.writeFile(
+    const xlsx = await import("xlsx");
+    const ws = xlsx.utils.json_to_sheet(dataToExport);
+    const wb = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(wb, ws, "Approval LHM");
+    xlsx.writeFile(
       wb,
       `Approval_LHM_${filters.fddate}_${filters.fddate_end}.xlsx`,
     );

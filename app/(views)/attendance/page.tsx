@@ -4,10 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BusinessUnit } from "../../../utils/businessUnitService";
 import { fetchBusinessUnits } from "../../../utils/businessUnitService";
 import Image from "next/image";
-import DataTable, { TableColumn } from "react-data-table-component";
+import DataTable from "@/app/components/dynamic-data-table";
+import type { TableColumn } from "react-data-table-component";
 import toast from "react-hot-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import * as XLSX from "xlsx";
 import { SkeletonTable } from "@/app/components/skeletons";
 import { centerHeaderStyle } from "@/utils/tableHelper";
 /* =========================
@@ -1869,7 +1869,7 @@ export default function Attendance() {
   );
 
   /* ===== EXPORT EXCEL ===== */
-  const handleExport = () => {
+  const handleExport = async () => {
     if (filtered.length === 0) {
       toast.error("Tidak ada data untuk diekspor");
       return;
@@ -1898,10 +1898,11 @@ export default function Attendance() {
       Status: r.status_attendance || "-",
     }));
 
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Attendance");
-    XLSX.writeFile(
+    const xlsx = await import("xlsx");
+    const ws = xlsx.utils.json_to_sheet(dataToExport);
+    const wb = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(wb, ws, "Attendance");
+    xlsx.writeFile(
       wb,
       `Attendance_${filters.tanggal}_${filters.tanggal_end}.xlsx`,
     );

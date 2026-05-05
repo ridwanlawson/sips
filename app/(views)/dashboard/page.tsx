@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
   SimpleBarChart,
@@ -1431,8 +1432,8 @@ export default function UserDashboard() {
           </div>
         </div>
 
-        {/* Pengangkutan & Harvesting Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-slideUp">
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 animate-slideUp">
           {/* Harvesting Card */}
           <div className="card bg-base-100 shadow-md border border-base-300">
             <div className="card-body">
@@ -1473,9 +1474,9 @@ export default function UserDashboard() {
                 </div>
               )}
               <div className="card-actions justify-end mt-2">
-                <a href="/harvest" className="btn btn-sm btn-outline">
+                <Link href="/harvest" className="btn btn-sm btn-outline">
                   Lihat Detail
-                </a>
+                </Link>
               </div>
             </div>
           </div>
@@ -1523,9 +1524,56 @@ export default function UserDashboard() {
                 </div>
               )}
               <div className="card-actions justify-end mt-2">
-                <a href="/pengangkutan" className="btn btn-sm btn-outline">
+                <Link href="/pengangkutan" className="btn btn-sm btn-outline">
                   Lihat Detail
-                </a>
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Attendance Card */}
+          <div className="card bg-base-100 shadow-md border border-base-300">
+            <div className="card-body">
+              <h2 className="card-title text-sm md:text-lg gap-2">
+                👥 Absensi ({timeframeLabel(timeframe)})
+              </h2>
+              {loading ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <SkeletonCard />
+                  <SkeletonCard />
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="stat place-items-center p-3 bg-base-200 rounded">
+                    <div className="stat-title text-xs">Hadir</div>
+                    <div className="stat-value text-2xl font-bold">
+                      {stats.totalHadir}
+                    </div>
+                  </div>
+                  <div className="stat place-items-center p-3 bg-success/20 rounded">
+                    <div className="stat-title text-xs">Tepat Waktu</div>
+                    <div className="stat-value text-xl font-bold text-success">
+                      {stats.totalTepatWaktu}
+                    </div>
+                  </div>
+                  <div className="stat place-items-center p-3 bg-warning/20 rounded">
+                    <div className="stat-title text-xs">Telat</div>
+                    <div className="stat-value text-xl font-bold text-warning">
+                      {stats.totalTelat}
+                    </div>
+                  </div>
+                  <div className="stat place-items-center p-3 bg-error/20 rounded">
+                    <div className="stat-title text-xs">Pulang Awal</div>
+                    <div className="stat-value text-xl font-bold text-error">
+                      {stats.totalPulangAwal}
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className="card-actions justify-end mt-2">
+                <Link href="/attendance" className="btn btn-sm btn-outline">
+                  Lihat Detail
+                </Link>
               </div>
             </div>
           </div>

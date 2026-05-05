@@ -3,13 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BusinessUnit } from "../../../utils/businessUnitService";
 import { fetchBusinessUnits } from "../../../utils/businessUnitService";
-import DataTable, { TableColumn } from "react-data-table-component";
+import DataTable from "@/app/components/dynamic-data-table";
+import type { TableColumn } from "react-data-table-component";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SkeletonTable } from "@/app/components/skeletons";
 import { centerHeaderStyle } from "@/utils/tableHelper";
-import * as XLSX from "xlsx";
 import { isUnauthenticatedJson, logoutAndRedirect } from "@/utils/authHelper";
 
 /* =========================
@@ -426,6 +426,17 @@ const extractSingleData = <T,>(payload: unknown): T | null => {
   }
   return null;
 };
+
+const toNumber = (value: string | number | null | undefined): number => {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  if (!value) return 0;
+  const normalized = value.replace(",", ".").trim();
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const formatTotal = (value: number): string =>
+  value.toLocaleString("id-ID", { maximumFractionDigits: 2 });
 
 /* =========================
    M A I N
@@ -1396,8 +1407,57 @@ export default function HarvestPage() {
     return res;
   }, [q, items]);
 
+  const harvestTotals = useMemo(
+    () =>
+      filtered.reduce(
+        (acc, row) => ({
+          output: acc.output + toNumber(row.output),
+          mentah: acc.mentah + toNumber(row.mentah),
+          overripe: acc.overripe + toNumber(row.overripe),
+          busuk: acc.busuk + toNumber(row.busuk),
+          brondol: acc.brondol + toNumber(row.brondol),
+        }),
+        {
+          output: 0,
+          mentah: 0,
+          overripe: 0,
+          busuk: 0,
+          brondol: 0,
+        },
+      ),
+    [filtered],
+  );
+
+  const totalCards = [
+    {
+      label: "Output (JJG)",
+      value: harvestTotals.output,
+      className: "text-primary",
+    },
+    {
+      label: "Mentah",
+      value: harvestTotals.mentah,
+      className: "text-warning",
+    },
+    {
+      label: "Overripe",
+      value: harvestTotals.overripe,
+      className: "text-info",
+    },
+    {
+      label: "Busuk",
+      value: harvestTotals.busuk,
+      className: "text-error",
+    },
+    {
+      label: "Brondol",
+      value: harvestTotals.brondol,
+      className: "text-success",
+    },
+  ];
+
   /* ===== EXPORT EXCEL ===== */
-  const handleExport = () => {
+  const handleExport = async () => {
     if (filtered.length === 0) {
       toast.error("Tidak ada data untuk diekspor");
       return;
@@ -1429,10 +1489,11 @@ export default function HarvestPage() {
       Lokasi: r.location || "-",
     }));
 
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Harvesting");
-    XLSX.writeFile(
+    const xlsx = await import("xlsx");
+    const ws = xlsx.utils.json_to_sheet(dataToExport);
+    const wb = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(wb, ws, "Harvesting");
+    xlsx.writeFile(
       wb,
       `Harvesting_${filters.tanggal || "all"}_${filters.tanggal_end || "all"}.xlsx`,
     );
@@ -1764,6 +1825,23 @@ export default function HarvestPage() {
             onChange={(e) => setQ(e.target.value)}
             title="Pencarian cepat di semua kolom penting"
           />
+        </div>
+
+        {/* Totals */}
+        <div className="mb-4 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+          {totalCards.map((card) => (
+            <div
+              key={card.label}
+              className="stat bg-base-100 rounded-lg border border-base-200 shadow-sm p-3"
+            >
+              <div className="stat-title text-xs">{card.label}</div>
+              <div
+                className={`stat-value text-xl sm:text-2xl ${card.className}`}
+              >
+                {formatTotal(card.value)}
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* Filters */}

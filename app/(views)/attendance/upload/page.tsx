@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import DataTable, { TableColumn } from "react-data-table-component";
+import DataTable from "@/app/components/dynamic-data-table";
+import type { TableColumn } from "react-data-table-component";
 import {
   AttendanceUploadData,
   AttendanceUploadParams,
@@ -103,7 +104,12 @@ export default function AttendanceUploadPage() {
       readCookie("user_level") ||
       "";
     const level = String(levelRaw).toUpperCase();
-    console.log("[DEBUG] User level from cookie:", levelRaw, "→ parsed:", level);
+    console.log(
+      "[DEBUG] User level from cookie:",
+      levelRaw,
+      "→ parsed:",
+      level,
+    );
     setIsMgr(level === "MGR");
     setIsAdmin(level === "ADMIN" || level === "ADM");
     setInitCheck(true);
@@ -601,7 +607,8 @@ export default function AttendanceUploadPage() {
         <div className="text-center max-w-lg">
           <h1 className="text-3xl font-bold text-error mb-4">Akses Ditolak</h1>
           <p className="text-base-content/70 mb-6">
-            Halaman ini hanya dapat diakses oleh user dengan level <b>MGR</b> atau <b>ADM</b>.
+            Halaman ini hanya dapat diakses oleh user dengan level <b>MGR</b>{" "}
+            atau <b>ADM</b>.
           </p>
           <a href="/dashboard" className="btn btn-primary">
             Kembali ke Dashboard

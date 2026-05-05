@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import DataTable, { TableColumn } from "react-data-table-component";
+import DataTable from "@/app/components/dynamic-data-table";
+import type { TableColumn } from "react-data-table-component";
 import { SkeletonTable } from "@/app/components/skeletons";
 
 interface HarvestingUploadData {
@@ -633,7 +634,8 @@ Failed:\n${failMessages.slice(0, 10).join("\n")}`;
         <div className="text-center max-w-lg">
           <h1 className="text-3xl font-bold text-error mb-4">Akses Ditolak</h1>
           <p className="text-base-content/70 mb-6">
-            Halaman ini hanya dapat diakses oleh user dengan level <b>MGR</b> atau <b>ADM</b>.
+            Halaman ini hanya dapat diakses oleh user dengan level <b>MGR</b>{" "}
+            atau <b>ADM</b>.
           </p>
           <a href="/dashboard" className="btn btn-primary">
             Kembali ke Dashboard

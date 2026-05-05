@@ -2,7 +2,8 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import DataTable, { TableColumn } from "react-data-table-component";
+import DataTable from "@/app/components/dynamic-data-table";
+import type { TableColumn } from "react-data-table-component";
 import { getProxiedImageUrl, PLACEHOLDER_IMAGE } from "@/utils/imageHelper";
 import { isUnauthenticatedJson, logoutAndRedirect } from "@/utils/authHelper";
 

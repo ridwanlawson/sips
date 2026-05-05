@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import DataTable, { TableColumn } from "react-data-table-component";
+import DataTable from "@/app/components/dynamic-data-table";
+import type { TableColumn } from "react-data-table-component";
 import { SkeletonTable } from "@/app/components/skeletons";
 
 interface HarvestingQualityUploadData {

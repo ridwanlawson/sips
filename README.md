@@ -1,6 +1,6 @@
 # SIPS Mobile Web
 
-Aplikasi web berbasis Next.js untuk manajemen dan pelacakan absensi, panen, pengangkutan, dan data operasional dengan dashboard analitik dan monitoring status real-time untuk PT. SKJ (Sukses Karya Jaya).
+Aplikasi web berbasis Next.js untuk manajemen dan pelacakan absensi, panen, pengangkutan, dan data operasional dengan dashboard analitik dan monitoring status real-time.
 
 ## Gambaran Proyek
 
@@ -267,7 +267,7 @@ Buat file `.env.local` di root proyek (jika diperlukan):
 ```env
 # Tambahkan variabel lingkungan kustom di sini
 # Contoh:
-# NEXT_PUBLIC_API_BASE_URL=https://api.skj.my.id
+# NEXT_PUBLIC_API_BASE_URL=your API domain here
 ```
 
 ### Tailwind & DaisyUI
