@@ -13,14 +13,6 @@ export const Drawer = () => {
   const drawerRef = useRef<HTMLInputElement>(null);
   const [isNavigating, setIsNavigating] = useState<string | null>(null);
 
-  // Read cookie helper (client-side only)
-  const readCookie = (name: string) => {
-    if (typeof document === "undefined") return null;
-    const m = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
-    return m ? decodeURIComponent(m.pop() as string) : null;
-  };
-
-  const [userLevel, setUserLevel] = useState<string>("");
   const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
   const [isHarvestOpen, setIsHarvestOpen] = useState(false);
   // const [isHarvestingQualityOpen, setIsHarvestingQualityOpen] = useState(false);
@@ -38,15 +30,6 @@ export const Drawer = () => {
     // Reset loading state saat halaman selesai diload
     setIsNavigating(null);
   }, [pathname]);
-
-  useEffect(() => {
-    const levelRaw =
-      readCookie("user_Level") ||
-      readCookie("user_LEVEL") ||
-      readCookie("user_level") ||
-      "";
-    setUserLevel(String(levelRaw).toUpperCase());
-  }, []);
 
   // Tutup drawer
   const closeDrawer = () => {

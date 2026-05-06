@@ -190,7 +190,7 @@ export default function ApkUploadPage() {
         throw new Error("Token tidak ditemukan");
       }
       token = tokenData.token;
-    } catch (err) {
+    } catch {
       setUploading(false);
       setUploadStatus("error");
       setUploadMessage("❌ Gagal mengambil token autentikasi. Silakan login ulang.");
