@@ -1430,27 +1430,12 @@ export default function HarvestPage() {
 
   const totalCards = [
     {
-      label: "Output (JJG)",
+      label: "Total Janjang",
       value: harvestTotals.output,
       className: "text-primary",
     },
     {
-      label: "Mentah",
-      value: harvestTotals.mentah,
-      className: "text-warning",
-    },
-    {
-      label: "Overripe",
-      value: harvestTotals.overripe,
-      className: "text-info",
-    },
-    {
-      label: "Busuk",
-      value: harvestTotals.busuk,
-      className: "text-error",
-    },
-    {
-      label: "Brondol",
+      label: "Total Brondolan",
       value: harvestTotals.brondol,
       className: "text-success",
     },
@@ -1816,32 +1801,33 @@ export default function HarvestPage() {
           </div>
         </div>
 
-        {/* Quick Search */}
-        <div className="mb-3 flex justify-end gap-2">
-          <input
-            className="input input-bordered w-full md:w-96"
-            placeholder="Cari No Dokumen, Karyawan, FCBA, TPH..."
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            title="Pencarian cepat di semua kolom penting"
-          />
-        </div>
-
-        {/* Totals */}
-        <div className="mb-4 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
-          {totalCards.map((card) => (
-            <div
-              key={card.label}
-              className="stat bg-base-100 rounded-lg border border-base-200 shadow-sm p-3"
-            >
-              <div className="stat-title text-xs">{card.label}</div>
+        <div className="mb-4 flex items-center gap-3">
+          {/* TOTAL CARDS (di kiri) */}
+          <div className="flex gap-2">
+            {totalCards.map((card) => (
               <div
-                className={`stat-value text-xl sm:text-2xl ${card.className}`}
+                key={card.label}
+                className="bg-base-100 border border-base-200 rounded-lg px-3 py-2 shadow-sm whitespace-nowrap"
               >
-                {formatTotal(card.value)}
+                <div className="text-[10px] opacity-70 leading-none">
+                  {card.label}
+                </div>
+                <div className={`text-sm font-semibold ${card.className}`}>
+                  {formatTotal(card.value)}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+
+          {/* SEARCH (dorong ke kanan) */}
+          <div className="ml-auto w-full md:w-96">
+            <input
+              className="input input-bordered w-full"
+              placeholder="Cari No Dokumen, Karyawan, FCBA, TPH..."
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </div>
         </div>
 
         {/* Filters */}
