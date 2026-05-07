@@ -6,6 +6,7 @@ import {
   safeJson,
 } from "@/utils/absensiProxy";
 import { attendanceFilterSchema, attendanceApiResponseSchema } from "@/lib/validations/attendance";
+import { applyUserDataScope } from "@/utils/requestScope";
 
 export const dynamic = "force-dynamic"; // no cache
 export const runtime = "nodejs";
@@ -31,46 +32,8 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // Clone searchParams supaya bisa dimodifikasi
   const sp = new URLSearchParams(req.nextUrl.searchParams.toString());
-
-  // ==== BACA DATA DARI COOKIE UNTUK LEVEL, FCBA, AFDELING ====
-  const cookies = req.cookies;
-
-  const rawLevel =
-    cookies.get("user_Level")?.value ||
-    cookies.get("user_LEVEL")?.value ||
-    cookies.get("user_level")?.value ||
-    "";
-  const level = rawLevel.toUpperCase() as "ADM" | "MGR" | "AST" | string;
-
-  const homeFcba =
-    cookies.get("user_Fcba")?.value ||
-    cookies.get("user_FCBA")?.value ||
-    cookies.get("user_fcba")?.value ||
-    "";
-
-  const homeAfdeling =
-    cookies.get("user_Section")?.value ||
-    cookies.get("user_SECTION")?.value ||
-    cookies.get("user_section")?.value ||
-    cookies.get("user_Afdeling")?.value ||
-    cookies.get("user_afdeling")?.value ||
-    "";
-
-  // ==== ATURAN SCOPING DATA BERDASARKAN LEVEL ====
-  if (level === "MGR") {
-    if (homeFcba) {
-      sp.set("fcba", homeFcba);
-    }
-  } else if (level === "AST") {
-    if (homeFcba) {
-      sp.set("fcba", homeFcba);
-    }
-    if (homeAfdeling) {
-      sp.set("afdeling", homeAfdeling);
-    }
-  }
+  applyUserDataScope(req, sp, { gangParam: "gang" });
 
   // Build URL final ke API absensi upstream
   const upstreamUrl = buildFilteredUrl(ABSENSI_BASE, sp);

@@ -233,7 +233,7 @@ type FormState = {
   id_device: string;
   card_id: string;
   images: File | null;
-  no_ba_exca: File | null;
+  no_ba_exca: File | string | null;
 };
 
 const initialForm: FormState = {
@@ -281,7 +281,16 @@ type Filters = Partial<{
   kemandoran: string;
 }>;
 
-type UserLevel = "ADM" | "MGR" | "KSI" | "AST" | "OTHER";
+type UserLevel =
+  | "ADM"
+  | "MGR"
+  | "KSI"
+  | "MD1"
+  | "AST"
+  | "KRT"
+  | "KRP"
+  | "MDP"
+  | "OTHER";
 
 /* =========================
    U T I L S
@@ -464,6 +473,7 @@ export default function HarvestPage() {
   const [userLevel, setUserLevel] = useState<UserLevel>("OTHER");
   const [homeFcba, setHomeFcba] = useState<string>("");
   const [homeSection, setHomeSection] = useState<string>("");
+  const [homeGang, setHomeGang] = useState<string>("");
   const [userFcbaCookie, setUserFcbaCookie] = useState<string>("");
   const [userAfdelingCookie, setUserAfdelingCookie] = useState<string>("");
 
@@ -508,6 +518,7 @@ export default function HarvestPage() {
   useEffect(() => {
     setHomeFcba(cookieStore.getFcba());
     setHomeSection(cookieStore.getSection());
+    setHomeGang(cookieStore.getGang());
     setUserFcbaCookie(
       cookieStore.getCookie("user_Fcba") ||
         cookieStore.getCookie("user_fcba") ||
@@ -524,7 +535,11 @@ export default function HarvestPage() {
       levelRaw === "ADM" ||
       levelRaw === "MGR" ||
       levelRaw === "KSI" ||
-      levelRaw === "AST"
+      levelRaw === "MD1" ||
+      levelRaw === "AST" ||
+      levelRaw === "KRT" ||
+      levelRaw === "KRP" ||
+      levelRaw === "MDP"
     ) {
       setUserLevel(levelRaw as UserLevel);
     } else {
@@ -546,20 +561,34 @@ export default function HarvestPage() {
   useEffect(() => {
     // ADM: no defaults, can select any
     // MGR, KSI: can select afdeling, fcba locked to user_Fcba
-    // AST, OTHER: both locked to cookies
+    // MD1, AST, KRT: fcba + afdeling locked. KRP, MDP: plus kemandoran.
     if (userLevel === "ADM") {
       // ADM can select any, no defaults
     } else if (userLevel === "MGR" || userLevel === "KSI") {
       setFilters((f) => ({ ...f, fcba: userFcbaCookie || homeFcba }));
+    } else if (userLevel === "KRP" || userLevel === "MDP") {
+      setFilters((f) => ({
+        ...f,
+        fcba: userFcbaCookie || homeFcba,
+        afdeling: userAfdelingCookie || homeSection,
+        kemandoran: homeGang,
+      }));
     } else {
-      // AST or OTHER
+      // MD1, AST, KRT, or OTHER
       setFilters((f) => ({
         ...f,
         fcba: userFcbaCookie || homeFcba,
         afdeling: userAfdelingCookie || homeSection,
       }));
     }
-  }, [userLevel, homeFcba, homeSection, userFcbaCookie, userAfdelingCookie]);
+  }, [
+    userLevel,
+    homeFcba,
+    homeSection,
+    homeGang,
+    userFcbaCookie,
+    userAfdelingCookie,
+  ]);
 
   /* ===== Sync selFcba/selSection with user cookies ===== */
   useEffect(() => {
@@ -588,7 +617,7 @@ export default function HarvestPage() {
     isLoading: loading,
     error: queryError,
   } = useQuery({
-    queryKey: ["harvest", filters, userLevel, homeFcba, homeSection],
+    queryKey: ["harvest", filters, userLevel, homeFcba, homeSection, homeGang],
     queryFn: async () => {
       const p = new URLSearchParams();
       if (filters.tanggal) p.set("tanggal", filters.tanggal);
@@ -1072,22 +1101,27 @@ export default function HarvestPage() {
   });
 
   /* ===== Fetch detail for edit ===== */
-  const fetchDetail = async (id: string) => {
-    setDetailLoading(true);
-    try {
-      const res = await fetch(`/api/harvest/${id}`, { credentials: "include" });
-      if (res.status === 401) {
-        await logoutAndRedirect();
-        return;
-      }
-      if (!res.ok) throw new Error("Gagal mengambil detail");
-      const json = await res.json();
-      if (isUnauthenticatedJson(json)) {
-        await logoutAndRedirect();
-        return;
-      }
-      const data = extractSingleData<Harvest>(json);
-      if (data) {
+  const fetchDetail = useCallback(
+    async (id: string) => {
+      setIsEditing(true);
+      setDetailLoading(true);
+      setOpen(true);
+      try {
+        const res = await fetch(`/api/harvest/${id}`, {
+          credentials: "include",
+        });
+        if (res.status === 401) {
+          await logoutAndRedirect();
+          return;
+        }
+        const json = await res.json();
+        if (isUnauthenticatedJson(json)) {
+          await logoutAndRedirect();
+          return;
+        }
+        const data = extractSingleData<Harvest>(json);
+        if (!res.ok || !data) throw new Error("Gagal ambil data");
+
         setForm({
           id: data.id,
           nodokumen: data.nodokumen || "",
@@ -1117,27 +1151,27 @@ export default function HarvestPage() {
           kemandoran: data.kemandoran || "",
           exception_case: data.exception_case || "",
           location: data.location || "",
-          id_device: data.id_device || "",
+          id_device:
+            data.id_device ||
+            `${getReadableDevice()} • ${getOrCreateDeviceIds().deviceId}`,
           card_id: data.card_id || "",
           images: null,
-          no_ba_exca: null,
+          no_ba_exca: data.no_ba_exca || null,
         });
-        if (data.images) {
-          setPreview(getProxiedImageUrl(data.images));
-        }
-        // Set cascading selects for editing
+        setPreview(data.images ? getProxiedImageUrl(data.images) : "");
         setSelFcba(data.fcba || homeFcba || "");
         setSelSection(data.afdeling || homeSection || "");
         setSelGang(data.kemandoran || "");
-        setIsEditing(true);
-        setOpen(true);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Gagal memuat detail";
+        toast.error(msg);
+        setOpen(false);
+      } finally {
+        setDetailLoading(false);
       }
-    } catch {
-      toast.error("Gagal mengambil detail data");
-    } finally {
-      setDetailLoading(false);
-    }
-  };
+    },
+    [homeFcba, homeSection],
+  );
 
   /* ===== Computed options for cascading selects ===== */
   const fcbaOptions = useMemo(() => {
@@ -1350,6 +1384,7 @@ export default function HarvestPage() {
   /* ===== Form handlers ===== */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (mutation.isPending) return;
     if (!canModify) {
       toast.error("Anda tidak memiliki akses untuk melakukan perubahan");
       return;
@@ -1360,6 +1395,12 @@ export default function HarvestPage() {
       if (key === "images" && value instanceof File) {
         formData.append(key, value);
       } else if (key === "no_ba_exca" && value instanceof File) {
+        formData.append(key, value);
+      } else if (
+        key === "no_ba_exca" &&
+        isEditing &&
+        typeof value === "string"
+      ) {
         formData.append(key, value);
       } else if (value !== null && value !== undefined) {
         formData.append(key, String(value));
@@ -1373,15 +1414,13 @@ export default function HarvestPage() {
     mutation.mutate({ url, method, body: formData });
   };
 
-  const handleDelete = (id: string) => {
-    if (!canModify) {
-      toast.error("Anda tidak memiliki akses untuk menghapus data");
-      return;
-    }
-    if (confirm("Yakin ingin menghapus data ini?")) {
+  const handleDelete = useCallback(
+    (id: string) => {
+      if (!confirm("Yakin ingin menghapus data ini?")) return;
       deleteMutation.mutate(id);
-    }
-  };
+    },
+    [deleteMutation],
+  );
 
   /* ===== Quick search ===== */
   const filtered = useMemo(() => {
@@ -1486,33 +1525,46 @@ export default function HarvestPage() {
 
   /* ===== Columns ===== */
   const columns: TableColumn<Harvest>[] = [
-    ...(canModify
-      ? [
-          {
-            name: <span title="Aksi edit/hapus data panen">Aksi</span>,
-            width: "120px",
-            cell: (row: Harvest) => (
-              <div className="space-x-1 whitespace-nowrap overflow-visible">
-                <button
-                  className="btn btn-xs btn-outline"
-                  onClick={() => fetchDetail(row.id)}
-                  title="Edit"
-                >
-                  Edit
-                </button>
-                <button
-                  className="btn btn-xs btn-error"
-                  onClick={() => handleDelete(row.id)}
-                  title="Hapus"
-                >
-                  Hapus
-                </button>
-              </div>
-            ),
-            ignoreRowClick: true,
-          },
-        ]
-      : []),
+    {
+      name: <span title="Aksi edit/hapus data panen">Aksi</span>,
+      width: "120px",
+      cell: (row: Harvest) => {
+        const status = (row.status_harvesting || "").toLowerCase();
+        const isPlanned = status === "planned";
+        const canEditRole = canModify;
+        const canEdit = canEditRole && isPlanned;
+        const canDelete =
+          userLevel === "ADM" && status !== "approved" && status !== "";
+
+        return (
+          <div className="space-x-1 whitespace-nowrap overflow-visible">
+            {canEditRole && (
+              <button
+                className={`btn btn-xs ${
+                  canEdit ? "btn-outline" : "btn-disabled"
+                }`}
+                onClick={() => canEdit && fetchDetail(row.id)}
+                disabled={!canEdit}
+                title={canEdit ? "Edit" : "Hanya bisa edit saat Planned"}
+              >
+                Edit
+              </button>
+            )}
+
+            {canDelete && (
+              <button
+                className="btn btn-xs btn-error"
+                onClick={() => handleDelete(row.id)}
+                title="Hapus (hanya ADM & belum Approved)"
+              >
+                Hapus
+              </button>
+            )}
+          </div>
+        );
+      },
+      ignoreRowClick: true,
+    },
     {
       name: (
         <span title="Status persetujuan panen (Planned/Approved/dll)">

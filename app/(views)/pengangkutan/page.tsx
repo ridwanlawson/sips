@@ -64,6 +64,7 @@ type Filters = Partial<{
   tph: string;
   fieldcode: string;
   status_pengangkutan: string;
+  kemandoran: string;
   flag: string;
 }>;
 
@@ -95,6 +96,48 @@ const readCookie = (name: string) => {
   return m ? decodeURIComponent(m.pop() as string) : null;
 };
 
+const readFirstCookie = (names: string[]) => {
+  for (const name of names) {
+    const value = readCookie(name);
+    if (value) return value;
+  }
+  return "";
+};
+
+const getUserScope = () => {
+  const level = readFirstCookie(["user_Level", "user_LEVEL", "user_level"]).toUpperCase();
+  return {
+    level,
+    fcba: readFirstCookie(["user_Fcba", "user_FCBA", "user_fcba"]),
+    afdeling: readFirstCookie([
+      "user_Afdeling",
+      "user_AFDELING",
+      "user_afdeling",
+      "user_Section",
+      "user_SECTION",
+      "user_section",
+    ]),
+    gang: readFirstCookie(["user_Gang", "user_GANG", "user_gang"]),
+  };
+};
+
+const applyClientUserScope = (params: URLSearchParams) => {
+  const { level, fcba, afdeling, gang } = getUserScope();
+  if (level === "ADM" || level === "ADMIN") return;
+
+  if (["MGR", "KSI", "MD1", "AST", "KRT", "KRP", "MDP"].includes(level) && fcba) {
+    params.set("fcba", fcba);
+  }
+
+  if (["MD1", "AST", "KRT", "KRP", "MDP"].includes(level) && afdeling) {
+    params.set("afdeling", afdeling);
+  }
+
+  if ((level === "KRP" || level === "MDP") && gang) {
+    params.set("kemandoran", gang);
+  }
+};
+
 /* =========================
    M A I N
 ========================= */
@@ -120,17 +163,21 @@ export default function PengangkutanPage() {
       tph: "",
       fieldcode: "",
       status_pengangkutan: "",
+      kemandoran: "",
       flag: "",
     };
   });
 
   const [q, setQ] = useState("");
   const [showFilters, setShowFilters] = useState(false);
-  const [userLevel, setUserLevel] = useState<"ADM" | "MGR" | "AST" | "OTHER">(
+  const [userLevel, setUserLevel] = useState<
+    "ADM" | "MGR" | "KSI" | "MD1" | "AST" | "KRT" | "KRP" | "MDP" | "OTHER"
+  >(
     "OTHER",
   );
   const [homeFcba, setHomeFcba] = useState<string>("");
   const [homeSection, setHomeSection] = useState<string>("");
+  const [homeGang, setHomeGang] = useState<string>("");
 
   // Toast
   const [alert, setAlert] = useState<{
@@ -144,34 +191,36 @@ export default function PengangkutanPage() {
 
   // Initialize user defaults
   useEffect(() => {
-    const ckHome = readCookie("user_Fcba") || readCookie("user_FCBA") || "";
+    const { level, fcba, afdeling, gang } = getUserScope();
+    const ckHome = fcba;
     setHomeFcba(ckHome);
-
-    const ckSection =
-      readCookie("user_Section") || readCookie("user_SECTION") || "";
+    const ckSection = afdeling;
     setHomeSection(ckSection);
+    setHomeGang(gang);
 
-    const levelRaw = (
-      (readCookie("user_Level") || readCookie("user_LEVEL") || "") as string
-    ).toUpperCase();
     const resolvedLevel =
-      levelRaw === "ADM"
+      level === "ADM" || level === "ADMIN"
         ? "ADM"
-        : levelRaw === "MGR"
-          ? "MGR"
-          : levelRaw === "AST"
-            ? "AST"
-            : "OTHER";
+        : ["MGR", "KSI", "MD1", "AST", "KRT", "KRP", "MDP"].includes(level)
+          ? (level as "MGR" | "KSI" | "MD1" | "AST" | "KRT" | "KRP" | "MDP")
+          : "OTHER";
     setUserLevel(resolvedLevel);
   }, []);
 
   useEffect(() => {
-    if (userLevel === "MGR") {
+    if (userLevel === "MGR" || userLevel === "KSI") {
       setFilters((f) => ({ ...f, fcba: homeFcba }));
-    } else if (userLevel === "AST") {
+    } else if (userLevel === "MD1" || userLevel === "AST" || userLevel === "KRT") {
       setFilters((f) => ({ ...f, fcba: homeFcba, afdeling: homeSection }));
+    } else if (userLevel === "KRP" || userLevel === "MDP") {
+      setFilters((f) => ({
+        ...f,
+        fcba: homeFcba,
+        afdeling: homeSection,
+        kemandoran: homeGang,
+      }));
     }
-  }, [userLevel, homeFcba, homeSection]);
+  }, [userLevel, homeFcba, homeSection, homeGang]);
 
   const fetchData = useCallback(
     async (overrideFilters?: Filters) => {
@@ -202,7 +251,10 @@ export default function PengangkutanPage() {
         if (current.fieldcode) p.set("fieldcode", current.fieldcode as string);
         if (current.status_pengangkutan)
           p.set("status_pengangkutan", current.status_pengangkutan as string);
+        if (current.kemandoran)
+          p.set("kemandoran", current.kemandoran as string);
         if (current.flag) p.set("flag", current.flag as string);
+        applyClientUserScope(p);
 
         const res = await fetch(`/api/pengangkutans?${p.toString()}`, {
           credentials: "include",

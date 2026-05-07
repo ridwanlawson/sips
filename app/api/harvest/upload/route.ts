@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromCookie } from "@/utils/absensiProxy";
+import { applyUserDataScope } from "@/utils/requestScope";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -23,10 +24,11 @@ export async function GET(req: NextRequest) {
     }
 
     // Ambil query parameters dari request
-    const searchParams = req.nextUrl.searchParams;
+    const searchParams = new URLSearchParams(req.nextUrl.searchParams.toString());
+    applyUserDataScope(req, searchParams);
     const queryString = searchParams.toString();
 
-    const externalUrl = `${EXTERNAL_API_BASE}/api/report/upload-harvesting?${queryString}`;
+    const externalUrl = `${EXTERNAL_API_BASE}/api/report/upload-harvesting${queryString ? `?${queryString}` : ""}`;
 
     console.log("========== HARVESTING UPLOAD DEBUG ==========");
     console.log("Proxying to:", externalUrl);

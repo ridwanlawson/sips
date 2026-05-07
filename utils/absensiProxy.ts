@@ -23,6 +23,8 @@ export function buildFilteredUrl(base: string, searchParams: URLSearchParams) {
     "fcba",
     "afdeling",
     "gang",
+    "gangcode",
+    "kemandoran",
     "attendance",
     "status_attendance",
     "attendance_type",

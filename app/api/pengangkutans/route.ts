@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getTokenFromCookie } from "@/utils/absensiProxy";
+import { applyUserDataScope } from "@/utils/requestScope";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -14,6 +15,7 @@ const querySchema = z.object({
   tanggal_end: z.string().optional(),
   fcba: z.string().optional(),
   afdeling: z.string().optional(),
+  kemandoran: z.string().optional(),
   status_pengangkutan: z.string().optional(),
 }).passthrough();
 
@@ -43,24 +45,7 @@ export async function GET(req: NextRequest) {
 
   const sp = new URLSearchParams(req.nextUrl.searchParams.toString());
 
-  // Read cookies for scoping
-  const cookies = req.cookies;
-  const rawLevel =
-    cookies.get("user_Level")?.value || cookies.get("user_LEVEL")?.value || cookies.get("user_level")?.value || "";
-  const level = String(rawLevel).toUpperCase();
-
-  const homeFcba =
-    cookies.get("user_Fcba")?.value || cookies.get("user_FCBA")?.value || cookies.get("user_fcba")?.value || "";
-
-  const homeAfdeling =
-    cookies.get("user_Section")?.value || cookies.get("user_SECTION")?.value || cookies.get("user_section")?.value || cookies.get("user_Afdeling")?.value || cookies.get("user_afdeling")?.value || "";
-
-  if (level === "MGR") {
-    if (homeFcba) sp.set("fcba", homeFcba);
-  } else if (level === "AST") {
-    if (homeFcba) sp.set("fcba", homeFcba);
-    if (homeAfdeling) sp.set("afdeling", homeAfdeling);
-  }
+  applyUserDataScope(req, sp);
 
   // Allowed params for pengangkutan
   const allowed = new Set([
@@ -81,6 +66,7 @@ export async function GET(req: NextRequest) {
     "fcba",
     "pabrik_tujuan",
     "afdeling",
+    "kemandoran",
     "tph",
     "fieldcode",
     "status_pengangkutan",
