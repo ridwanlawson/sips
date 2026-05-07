@@ -43,6 +43,7 @@ export default function LhmReport() {
     blok: string;
     tahuntanam: string;
     jjg: string;
+    brd: string;
     ha: string;
     mentahqty: string;
     mentahrp: string;
@@ -62,6 +63,8 @@ export default function LhmReport() {
     rate3: string;
     rplv3: string;
     totalrppremi: string;
+    rphk: string;
+    brd_rp: string;
     total: string;
     keterangan?: string;
     mandorpanen?: string;
@@ -303,16 +306,17 @@ export default function LhmReport() {
                 <th rowSpan={3}>HK</th>
                 <th rowSpan={3}>Blok</th>
                 <th rowSpan={3}>Tahun Tanam</th>
-                <th colSpan={2}>Hasil Kerja</th>
+                <th colSpan={3}>Hasil Kerja</th>
                 <th colSpan={7}>Denda</th>
                 <th rowSpan={3}>Hasil Netto (Jjg)</th>
                 <th rowSpan={3}>Basis (Jjg)</th>
                 <th colSpan={11}>Premi</th>
-                <th rowSpan={3}>Premi Di Bayar</th>
+                <th colSpan={4}>Upah Di Bayar (Rp)</th>
                 <th rowSpan={3}>Keterangan</th>
               </tr>
               <tr>
                 <th rowSpan={2}>Jjg</th>
+                <th rowSpan={2}>Brd</th>
                 <th rowSpan={2}>Ha</th>
                 <th colSpan={2}>Buah Mentah (A)</th>
                 <th colSpan={2}>Empty Bunch (E2)</th>
@@ -323,6 +327,10 @@ export default function LhmReport() {
                 <th colSpan={3}>Lebih Basis 2</th>
                 <th colSpan={3}>Lebih Basis 3</th>
                 <th rowSpan={2}>Jumlah Premi (Rp)</th>
+                <th rowSpan={2}>Upah Pokok</th>
+                <th rowSpan={2}>Premi Panen</th>
+                <th rowSpan={2}>Premi Brondol</th>
+                <th rowSpan={2}>Total</th>
               </tr>
               <tr>
                 <th>Janjang</th>
@@ -373,6 +381,10 @@ export default function LhmReport() {
                 <th>(29)</th>
                 <th>(30)</th>
                 <th>(31)</th>
+                <th>(32)</th>
+                <th>(33)</th>
+                <th>(34)</th>
+                <th>(35)</th>
               </tr>
             </thead>
             <tbody>
@@ -396,6 +408,7 @@ export default function LhmReport() {
                       <td className="text-center">{row.blok}</td>
                       <td className="text-center">{row.tahuntanam}</td>
                       <td className="text-right">{formatNumber(row.jjg)}</td>
+                      <td className="text-right">{formatNumber(row.brd)}</td>
                       <td className="text-right">{formatNumber(row.ha)}</td>
                       <td className="text-right">
                         {formatNumber(row.mentahqty)}
@@ -442,6 +455,15 @@ export default function LhmReport() {
                         {formatNumber(row.totalrppremi)}
                       </td>
                       <td className="text-right font-bold whitespace-nowrap">
+                        {formatNumber(row.rphk)}
+                      </td>
+                      <td className="text-right font-bold whitespace-nowrap">
+                        {formatNumber(row.totalrppremi)}
+                      </td>
+                      <td className="text-right font-bold whitespace-nowrap">
+                        {formatNumber(row.brd_rp)}
+                      </td>
+                      <td className="text-right font-bold whitespace-nowrap">
                         {formatNumber(row.total)}
                       </td>
                       <td className="whitespace-nowrap">
@@ -458,6 +480,14 @@ export default function LhmReport() {
                       {formatNumber(
                         data.reduce(
                           (sum, row) => sum + Number(row.jjg || 0),
+                          0,
+                        ),
+                      )}
+                    </td>
+                    <td className="text-right whitespace-nowrap">
+                      {formatNumber(
+                        data.reduce(
+                          (sum, row) => sum + Number(row.brd || 0),
                           0,
                         ),
                       )}
@@ -588,6 +618,30 @@ export default function LhmReport() {
                       {formatNumber(
                         data.reduce(
                           (sum, row) => sum + Number(row.totalrppremi || 0),
+                          0,
+                        ),
+                      )}
+                    </td>
+                    <td className="text-right font-bold whitespace-nowrap">
+                      {formatNumber(
+                        data.reduce(
+                          (sum, row) => sum + Number(row.rphk || 0),
+                          0,
+                        ),
+                      )}
+                    </td>
+                    <td className="text-right font-bold whitespace-nowrap">
+                      {formatNumber(
+                        data.reduce(
+                          (sum, row) => sum + Number(row.totalrppremi || 0),
+                          0,
+                        ),
+                      )}
+                    </td>
+                    <td className="text-right font-bold whitespace-nowrap">
+                      {formatNumber(
+                        data.reduce(
+                          (sum, row) => sum + Number(row.brd_rp || 0),
                           0,
                         ),
                       )}

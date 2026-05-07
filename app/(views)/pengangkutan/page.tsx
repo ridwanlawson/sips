@@ -105,7 +105,11 @@ const readFirstCookie = (names: string[]) => {
 };
 
 const getUserScope = () => {
-  const level = readFirstCookie(["user_Level", "user_LEVEL", "user_level"]).toUpperCase();
+  const level = readFirstCookie([
+    "user_Level",
+    "user_LEVEL",
+    "user_level",
+  ]).toUpperCase();
   return {
     level,
     fcba: readFirstCookie(["user_Fcba", "user_FCBA", "user_fcba"]),
@@ -125,7 +129,10 @@ const applyClientUserScope = (params: URLSearchParams) => {
   const { level, fcba, afdeling, gang } = getUserScope();
   if (level === "ADM" || level === "ADMIN") return;
 
-  if (["MGR", "KSI", "MD1", "AST", "KRT", "KRP", "MDP"].includes(level) && fcba) {
+  if (
+    ["MGR", "KSI", "MD1", "AST", "KRT", "KRP", "MDP"].includes(level) &&
+    fcba
+  ) {
     params.set("fcba", fcba);
   }
 
@@ -172,9 +179,7 @@ export default function PengangkutanPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [userLevel, setUserLevel] = useState<
     "ADM" | "MGR" | "KSI" | "MD1" | "AST" | "KRT" | "KRP" | "MDP" | "OTHER"
-  >(
-    "OTHER",
-  );
+  >("OTHER");
   const [homeFcba, setHomeFcba] = useState<string>("");
   const [homeSection, setHomeSection] = useState<string>("");
   const [homeGang, setHomeGang] = useState<string>("");
@@ -210,7 +215,11 @@ export default function PengangkutanPage() {
   useEffect(() => {
     if (userLevel === "MGR" || userLevel === "KSI") {
       setFilters((f) => ({ ...f, fcba: homeFcba }));
-    } else if (userLevel === "MD1" || userLevel === "AST" || userLevel === "KRT") {
+    } else if (
+      userLevel === "MD1" ||
+      userLevel === "AST" ||
+      userLevel === "KRT"
+    ) {
       setFilters((f) => ({ ...f, fcba: homeFcba, afdeling: homeSection }));
     } else if (userLevel === "KRP" || userLevel === "MDP") {
       setFilters((f) => ({
@@ -349,7 +358,7 @@ export default function PengangkutanPage() {
       name: <span title="Nomor dokumen">No Dokumen</span>,
       selector: (r) => r.nodokumen || "-",
       sortable: true,
-      width: "160px",
+      width: "250px",
     },
     {
       name: <span title="Tanggal pengangkutan (DD-MM-YYYY)">Tanggal</span>,
