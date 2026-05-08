@@ -227,7 +227,6 @@ export default function LhmReport() {
               fill="none"
               strokeLinecap="round"
               strokeLinejoin="round"
-              // className="text-white"
             >
               <polyline points="6 9 6 2 18 2 18 9"></polyline>
               <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
@@ -718,32 +717,54 @@ export default function LhmReport() {
             </div>
           </div>
 
-          <div className="lhm-print-premi">
-            <div className="premi-line text-center">
-              PREMI KERANI PANEN Rp <span className="garis"></span> X 100% X IKP{" "}
-              <span className="garis"></span>% = Rp{" "}
-              <span className="garis"></span> s/d HI Rp{" "}
-              <span className="garis"></span>
-            </div>
-            <div className="premi-line text-center">
-              PREMI KERANI TRANSPORT Rp <span className="garis"></span> X 110% X
-              IKKP <span className="garis"></span>% = Rp{" "}
-              <span className="garis"></span> a/d HI Rp{" "}
-              <span className="garis"></span>
-            </div>
-            <div className="premi-line text-center">
-              PREMI MANDOR PANEN Rp <span className="garis"></span> X 125% X IKP{" "}
-              <span className="garis"></span>% = Rp{" "}
-              <span className="garis"></span> s/d HI Rp{" "}
-              <span className="garis"></span>
-            </div>
-            <div className="premi-line">
-              PREMI MANDOR I Rp <span className="garis"></span> X 150% X IPP{" "}
-              <span className="garis"></span>% = Rp{" "}
-              <span className="garis"></span> s/d HI Rp{" "}
-              <span className="garis"></span>
-            </div>
-          </div>
+          <table className="lhm-premi-table">
+            <tbody>
+              <tr>
+                <td className="premi-label">PREMI KERANI PANEN</td>
+                <td className="premi-eq">Rp</td>
+                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-eq">X 100% X IKP</td>
+                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-eq">% = Rp</td>
+                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-eq">s/d HI Rp</td>
+                <td className="premi-input"><span className="garis"></span></td>
+              </tr>
+              <tr>
+                <td className="premi-label">PREMI KERANI TRANSPORT</td>
+                <td className="premi-eq">Rp</td>
+                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-eq">X 110% X IKKP</td>
+                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-eq">% = Rp</td>
+                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-eq">s/d HI Rp</td>
+                <td className="premi-input"><span className="garis"></span></td>
+              </tr>
+              <tr>
+                <td className="premi-label">PREMI MANDOR PANEN</td>
+                <td className="premi-eq">Rp</td>
+                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-eq">X 125% X IKP</td>
+                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-eq">% = Rp</td>
+                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-eq">s/d HI Rp</td>
+                <td className="premi-input"><span className="garis"></span></td>
+              </tr>
+              <tr>
+                <td className="premi-label">PREMI MANDOR I</td>
+                <td className="premi-eq">Rp</td>
+                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-eq">X 150% X IPP</td>
+                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-eq">% = Rp</td>
+                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-eq">s/d HI Rp</td>
+                <td className="premi-input"><span className="garis"></span></td>
+              </tr>
+            </tbody>
+          </table>
 
           <div className="lhm-print-sign whitespace-nowrap w-full">
             <div>

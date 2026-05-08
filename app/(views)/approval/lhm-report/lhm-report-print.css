@@ -149,6 +149,48 @@
 }
 
 /* Styles untuk garis tengah */
+/* Styles untuk tabel premi */
+.lhm-premi-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+  margin-top: 32px;
+  margin-bottom: 32px;
+}
+
+.lhm-premi-table td {
+  padding: 4px 2px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.lhm-premi-table .premi-label {
+  text-align: left;
+  font-weight: normal;
+  padding-right: 8px;
+}
+
+.lhm-premi-table .premi-eq {
+  text-align: center;
+  padding: 0 4px;
+}
+
+.lhm-premi-table .premi-input {
+  text-align: center;
+  min-width: 60px;
+}
+
+.lhm-premi-table .premi-input .garis {
+  display: inline-block;
+  width: 100%;
+  min-width: 50px;
+  max-width: 80px;
+  height: 1px;
+  background-color: #000;
+  vertical-align: middle;
+}
+
+/* Legacy styles untuk backward compatibility */
 .lhm-print-premi {
   margin-top: 65px;
   margin-bottom: 32px;
@@ -172,6 +214,22 @@
 
 /* Untuk cetak */
 @media print {
+  .lhm-premi-table {
+    font-size: 9px !important;
+    margin-top: 16px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .lhm-premi-table td {
+    padding: 2px 1px !important;
+  }
+
+  .lhm-premi-table .premi-input .garis {
+    background-color: #000 !important;
+    height: 1px !important;
+    min-width: 40px !important;
+  }
+
   .garis {
     background-color: #000 !important;
     height: 1px !important;
