@@ -569,9 +569,10 @@ export default function Approval() {
         selector: (r) => r.attendance,
         sortable: true,
         width: "80px",
-        cell: (r) => (
-          <span className="badge badge-sm badge-ghost">{r.attendance}</span>
-        ),
+        cell: (r) =>
+          r.attendance ? (
+            <span className="badge badge-sm badge-ghost">{r.attendance}</span>
+          ) : null,
       },
       {
         name: <span title="Hari Kerja (HK)">HK</span>,
