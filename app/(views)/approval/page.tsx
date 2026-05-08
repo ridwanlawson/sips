@@ -49,6 +49,7 @@ type LhmData = {
   rate3: string;
   rplv3: string;
   totalrppremi: string;
+  brd_rp: string;
   kurangbasis: string;
   harilibur: string;
   rphk: string;
@@ -354,6 +355,7 @@ export default function Approval() {
           kurangbasis: Number(row.kurangbasis || 0),
           harilibur: Number(row.harilibur || 0),
           rphk: Number(row.rphk || 0),
+          brd_rp: Number(row.brd_rp || 0),
           total: Number(row.total || 0),
         };
       });
@@ -433,6 +435,7 @@ export default function Approval() {
       KurangBasis: r.kurangbasis || "0",
       HariLibur: r.harilibur || "0",
       RpHK: r.rphk || "0",
+      "Brondolan RP": r.brd_rp || "0",
       Total: r.total || "0",
       "Under Ripe": r.under_ripe || "0",
       Overripe: r.overripe || "0",
@@ -757,8 +760,42 @@ export default function Approval() {
         name: <span title="Jumlah Premi (Rp)">Jumlah Premi (Rp)</span>,
         selector: (r) => r.totalrppremi,
         sortable: true,
-        width: "85px",
+        width: "95px",
         cell: (r) => numCell(r.totalrppremi),
+      },
+      {
+        name: <span title="Upah Pokok (Rp)">Upah Pokok (Rp)</span>,
+        selector: (r) => r.rphk,
+        sortable: true,
+        width: "95px",
+        cell: (r) => numCell(r.rphk),
+      },
+      {
+        name: <span title="Tidak Capai Basis (Rp)">Tidak Capai Basis (Rp)</span>,
+        selector: (r) => r.kurangbasis,
+        sortable: true,
+        width: "95px",
+        cell: (r) => numCell(r.kurangbasis),
+      },
+      {
+        name: <span title="Premi Panen (Rp)">Premi Panen (Rp)</span>,
+        selector: (r) =>
+          Number(r.totalrppremi || 0) + Number(r.rpbasis || 0),
+        sortable: true,
+        width: "95px",
+        cell: (r) =>
+          numCell(
+            String(
+              Number(r.totalrppremi || 0) + Number(r.rpbasis || 0)
+            )
+          ),
+      },
+      {
+        name: <span title="Premi Brondol (Rp)">Premi Brondol (Rp)</span>,
+        selector: (r) => r.brd_rp,
+        sortable: true,
+        width: "95px",
+        cell: (r) => numCell(r.brd_rp),
       },
       {
         name: <span title="Total">Total</span>,

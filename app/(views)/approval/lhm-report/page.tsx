@@ -98,6 +98,27 @@ export default function LhmReport() {
     keraniAfdeling: string;
   };
 
+  type LhaData = {
+    tanggal: string;
+    kemandoran: string;
+    fcba: string;
+    afdeling: string;
+    fccode: string;
+    fcname: string;
+    output: string;
+    normal: string;
+    abnormal: string;
+    mentah: string;
+    overripe: string;
+    empty: string;
+    busuk: string;
+    busuk2: string;
+    buahkecil: string;
+    parteno: string;
+    tangkaipanjang: string;
+    parteno50plus: string;
+  };
+
   const [signatures, setSignatures] = useState<SignatureData>({
     mandorPanen: "-",
     keraniPanen: "-",
@@ -107,6 +128,9 @@ export default function LhmReport() {
     keraniAfdeling: "-",
   });
   const [signaturesLoading, setSignaturesLoading] = useState(false);
+
+  const [lhaData, setLhaData] = useState<LhaData[]>([]);
+  const [lhaLoading, setLhaLoading] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -180,6 +204,41 @@ export default function LhmReport() {
     }
     fetchSignatures();
   }, [fcba, afdeling, kemandoran]);
+
+  // Fetch LHA data from API
+  useEffect(() => {
+    async function fetchLhaData() {
+      if (!fcba || !afdeling || !kemandoran || !tanggal) return;
+
+      setLhaLoading(true);
+      try {
+        const params = new URLSearchParams({
+          fcba,
+          afdeling,
+          kemandoran,
+          tanggal,
+        });
+        const res = await fetch(`/api/report/get-lha?${params.toString()}`);
+        if (!res.ok) {
+          const errText = await res.text();
+          console.error("LHA fetch error:", res.status, errText);
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          setLhaData(json.data);
+        } else {
+          console.error("LHA invalid response:", json);
+        }
+      } catch (err) {
+        console.error("LHA fetch failed:", err);
+        // Silent fail - keep empty array
+      } finally {
+        setLhaLoading(false);
+      }
+    }
+    fetchLhaData();
+  }, [fcba, afdeling, kemandoran, tanggal]);
 
   // Header info (dummy jika data kosong)
   const pt = "PT. SENTOSA KALIMANTAN JAYA";
@@ -463,7 +522,9 @@ export default function LhmReport() {
                         {formatNumber(row.kurangbasis)}
                       </td>
                       <td className="text-right font-bold whitespace-nowrap">
-                        {formatNumber(row.totalrppremi)}
+                        {formatNumber(
+                          Number(row.totalrppremi || 0) + Number(row.rpbasis || 0)
+                        )}
                       </td>
                       <td className="text-right font-bold whitespace-nowrap">
                         {formatNumber(row.brd_rp)}
@@ -543,7 +604,7 @@ export default function LhmReport() {
                     <td className="text-right whitespace-nowrap">
                       {formatNumber(
                         data.reduce(
-                          (sum, row) => sum + Number(row.jumlahdenda || 0),
+                          (sum, row) => sum + Number(row.jumlahdenda || 0) * -1,
                           0,
                         ),
                       )}
@@ -678,6 +739,71 @@ export default function LhmReport() {
             </tbody>
           </table>
         )}
+        <table className="lhm-print-table mt-2">
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>Blok</th>
+              <th>Ha</th>
+              <th>Jjg</th>
+              <th>Normal (N)</th>
+              <th>Abnormal (AB)</th>
+              <th>Over Ripe (OR)</th>
+              <th>Empty Bunch (E)</th>
+              <th>Unripe (A)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lhaLoading ? (
+              <tr>
+                <td colSpan={9} className="text-center">
+                  Memuat data LHA...
+                </td>
+              </tr>
+            ) : lhaData.length === 0 ? (
+              <tr>
+                <td colSpan={9} className="text-center">
+                  Tidak ada data LHA.
+                </td>
+              </tr>
+            ) : (
+              lhaData.map((row, idx) => (
+                <tr key={row.fccode + idx}>
+                  <td className="text-center">{idx + 1}</td>
+                  <td className="text-center">{row.fcname}</td>
+                  <td className="text-right"></td>
+                  <td className="text-right">{formatNumber(row.output)}</td>
+                  <td className="text-right">{formatNumber(row.normal)}</td>
+                  <td className="text-right">{formatNumber(row.abnormal)}</td>
+                  <td className="text-right">{formatNumber(row.overripe)}</td>
+                  <td className="text-right">{formatNumber(row.empty)}</td>
+                  <td className="text-right">{formatNumber(row.mentah)}</td>
+                </tr>
+              ))
+            )}
+            <tr className="font-bold bg-gray-100">
+              <td colSpan={3} className="text-right">Total</td>
+              <td className="text-right whitespace-nowrap">
+                {formatNumber(lhaData.reduce((sum, row) => sum + Number(row.output || 0), 0))}
+              </td>
+              <td className="text-right whitespace-nowrap">
+                {formatNumber(lhaData.reduce((sum, row) => sum + Number(row.normal || 0), 0))}
+              </td>
+              <td className="text-right whitespace-nowrap">
+                {formatNumber(lhaData.reduce((sum, row) => sum + Number(row.abnormal || 0), 0))}
+              </td>
+              <td className="text-right whitespace-nowrap">
+                {formatNumber(lhaData.reduce((sum, row) => sum + Number(row.overripe || 0), 0))}
+              </td>
+              <td className="text-right whitespace-nowrap">
+                {formatNumber(lhaData.reduce((sum, row) => sum + Number(row.empty || 0), 0))}
+              </td>
+              <td className="text-right whitespace-nowrap">
+                {formatNumber(lhaData.reduce((sum, row) => sum + Number(row.mentah || 0), 0))}
+              </td>
+            </tr>
+          </tbody>
+        </table>
         <div className="footer flex justify-between">
           <div className="lhm-print-notes border-2 border-black p-3 rounded w-full text-sm leading-tight">
             <div>
