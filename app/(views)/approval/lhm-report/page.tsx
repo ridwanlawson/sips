@@ -64,6 +64,7 @@ export default function LhmReport() {
     rplv3: string;
     totalrppremi: string;
     rphk: string;
+    kurangbasis: string;
     brd_rp: string;
     total: string;
     keterangan?: string;
@@ -311,7 +312,7 @@ export default function LhmReport() {
                 <th rowSpan={3}>Hasil Netto (Jjg)</th>
                 <th rowSpan={3}>Basis (Jjg)</th>
                 <th colSpan={11}>Premi</th>
-                <th colSpan={4}>Upah Di Bayar (Rp)</th>
+                <th colSpan={5}>Upah Di Bayar (Rp)</th>
                 <th rowSpan={3}>Keterangan</th>
               </tr>
               <tr>
@@ -328,16 +329,17 @@ export default function LhmReport() {
                 <th colSpan={3}>Lebih Basis 3</th>
                 <th rowSpan={2}>Jumlah Premi (Rp)</th>
                 <th rowSpan={2}>Upah Pokok</th>
+                <th rowSpan={2}>Tidak Capai Basis</th>
                 <th rowSpan={2}>Premi Panen</th>
                 <th rowSpan={2}>Premi Brondol</th>
                 <th rowSpan={2}>Total</th>
               </tr>
               <tr>
-                <th>Janjang</th>
+                <th>Jjg</th>
                 <th>(Rp)</th>
-                <th>Janjang</th>
+                <th>Jjg</th>
                 <th>(Rp)</th>
-                <th>Janjang</th>
+                <th>Jjg</th>
                 <th>(Rp)</th>
                 <th className="whitespace-nowrap">Jlh Jjg</th>
                 <th>Rp/Jjg</th>
@@ -385,6 +387,7 @@ export default function LhmReport() {
                 <th>(33)</th>
                 <th>(34)</th>
                 <th>(35)</th>
+                <th>(36)</th>
               </tr>
             </thead>
             <tbody>
@@ -409,7 +412,7 @@ export default function LhmReport() {
                       <td className="text-center">{row.tahuntanam}</td>
                       <td className="text-right">{formatNumber(row.jjg)}</td>
                       <td className="text-right">{formatNumber(row.brd)}</td>
-                      <td className="text-right">{formatNumber(row.ha)}</td>
+                      <td className="text-right">{row.ha}</td>
                       <td className="text-right">
                         {formatNumber(row.mentahqty)}
                       </td>
@@ -458,6 +461,9 @@ export default function LhmReport() {
                         {formatNumber(row.rphk)}
                       </td>
                       <td className="text-right font-bold whitespace-nowrap">
+                        {formatNumber(row.kurangbasis)}
+                      </td>
+                      <td className="text-right font-bold whitespace-nowrap">
                         {formatNumber(row.totalrppremi)}
                       </td>
                       <td className="text-right font-bold whitespace-nowrap">
@@ -493,9 +499,13 @@ export default function LhmReport() {
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumber(
-                        data.reduce((sum, row) => sum + Number(row.ha || 0), 0),
-                      )}
+                      {(() => {
+                        const total = data.reduce(
+                          (sum, row) => sum + Number(row.ha || 0),
+                          0,
+                        );
+                        return total === 0 ? "" : formatNumber(total);
+                      })()}
                     </td>
                     <td className="text-right whitespace-nowrap">
                       {formatNumber(
@@ -633,6 +643,14 @@ export default function LhmReport() {
                     <td className="text-right font-bold whitespace-nowrap">
                       {formatNumber(
                         data.reduce(
+                          (sum, row) => sum + Number(row.kurangbasis || 0),
+                          0,
+                        ),
+                      )}
+                    </td>
+                    <td className="text-right font-bold whitespace-nowrap">
+                      {formatNumber(
+                        data.reduce(
                           (sum, row) => sum + Number(row.totalrppremi || 0),
                           0,
                         ),
@@ -700,34 +718,32 @@ export default function LhmReport() {
             </div>
           </div>
 
-          {/* 
-            <div className="lhm-print-premi">
-              <div className="premi-line text-center">
-                PREMI KERANI PANEN Rp <span className="garis"></span> X 100% X IKP{" "}
-                <span className="garis"></span>% = Rp{" "}
-                <span className="garis"></span> s/d HI Rp{" "}
-                <span className="garis"></span>
-              </div>
-              <div className="premi-line text-center">
-                PREMI KERANI TRANSPORT Rp <span className="garis"></span> X 110% X
-                IKKP <span className="garis"></span>% = Rp{" "}
-                <span className="garis"></span> a/d HI Rp{" "}
-                <span className="garis"></span>
-              </div>
-              <div className="premi-line text-center">
-                PREMI MANDOR PANEN Rp <span className="garis"></span> X 125% X IKP{" "}
-                <span className="garis"></span>% = Rp{" "}
-                <span className="garis"></span> s/d HI Rp{" "}
-                <span className="garis"></span>
-              </div>
-              <div className="premi-line">
-                PREMI MANDOR I Rp <span className="garis"></span> X 150% X IPP{" "}
-                <span className="garis"></span>% = Rp{" "}
-                <span className="garis"></span> s/d HI Rp{" "}
-                <span className="garis"></span>
-              </div>
-            </div> 
-          */}
+          <div className="lhm-print-premi">
+            <div className="premi-line text-center">
+              PREMI KERANI PANEN Rp <span className="garis"></span> X 100% X IKP{" "}
+              <span className="garis"></span>% = Rp{" "}
+              <span className="garis"></span> s/d HI Rp{" "}
+              <span className="garis"></span>
+            </div>
+            <div className="premi-line text-center">
+              PREMI KERANI TRANSPORT Rp <span className="garis"></span> X 110% X
+              IKKP <span className="garis"></span>% = Rp{" "}
+              <span className="garis"></span> a/d HI Rp{" "}
+              <span className="garis"></span>
+            </div>
+            <div className="premi-line text-center">
+              PREMI MANDOR PANEN Rp <span className="garis"></span> X 125% X IKP{" "}
+              <span className="garis"></span>% = Rp{" "}
+              <span className="garis"></span> s/d HI Rp{" "}
+              <span className="garis"></span>
+            </div>
+            <div className="premi-line">
+              PREMI MANDOR I Rp <span className="garis"></span> X 150% X IPP{" "}
+              <span className="garis"></span>% = Rp{" "}
+              <span className="garis"></span> s/d HI Rp{" "}
+              <span className="garis"></span>
+            </div>
+          </div>
 
           <div className="lhm-print-sign whitespace-nowrap w-full">
             <div>
