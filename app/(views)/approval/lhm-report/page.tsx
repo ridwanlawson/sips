@@ -457,86 +457,93 @@ export default function LhmReport() {
                 </tr>
               ) : (
                 <>
-                  {data.map((row, idx) => (
-                    <tr key={row.employeecode + idx}>
-                      <td>{idx + 1}</td>
-                      <td className="text-center whitespace-nowrap">
-                        {row.employeecode}
-                      </td>
-                      <td className="whitespace-nowrap">{row.nama}</td>
-                      <td className="text-center">{row.attendance}</td>
-                      <td className="text-center">{row.hk}</td>
-                      <td className="text-center">{row.blok}</td>
-                      <td className="text-center">{row.tahuntanam}</td>
-                      <td className="text-right">{formatNumber(row.jjg)}</td>
-                      <td className="text-right">{formatNumber(row.brd)}</td>
-                      <td className="text-right">{row.ha}</td>
-                      <td className="text-right">
-                        {formatNumber(row.mentahqty)}
-                      </td>
-                      <td className="text-right">
-                        {formatNumber(row.mentahrp)}
-                      </td>
-                      <td className="text-right">
-                        {formatNumber(row.emptybunchqty)}
-                      </td>
-                      <td className="text-right">
-                        {formatNumber(row.emptybunchrp)}
-                      </td>
-                      <td className="text-right">-</td>
-                      <td className="text-right">-</td>
-                      <td className="text-right">
-                        {Number(row.jumlahdenda) !== 0
-                          ? formatNumber(Number(row.jumlahdenda) * -1)
-                          : formatNumber(row.jumlahdenda)}
-                      </td>
-                      <td className="text-right">
-                        {formatNumber(row.totalalljjg)}
-                      </td>
-                      <td className="text-right">{formatNumber(row.basis)}</td>
-                      <td className="text-right">
-                        {formatNumber(row.rpbasis)}
-                      </td>
-                      <td className="text-right">
-                        {formatNumber(row.premilv1)}
-                      </td>
-                      <td className="text-right">{formatNumber(row.rate1)}</td>
-                      <td className="text-right">{formatNumber(row.rplv1)}</td>
-                      <td className="text-right">
-                        {formatNumber(row.premilv2)}
-                      </td>
-                      <td className="text-right">{formatNumber(row.rate2)}</td>
-                      <td className="text-right">{formatNumber(row.rplv2)}</td>
-                      <td className="text-right">
-                        {formatNumber(row.premilv3)}
-                      </td>
-                      <td className="text-right">{formatNumber(row.rate3)}</td>
-                      <td className="text-right">{formatNumber(row.rplv3)}</td>
-                      <td className="text-right whitespace-nowrap">
-                        {formatNumber(row.totalrppremi)}
-                      </td>
-                      <td className="text-right font-bold whitespace-nowrap">
-                        {formatNumber(row.rphk)}
-                      </td>
-                      <td className="text-right font-bold whitespace-nowrap">
-                        {formatNumber(row.kurangbasis)}
-                      </td>
-                      <td className="text-right font-bold whitespace-nowrap">
-                        {formatNumber(
-                          Number(row.totalrppremi || 0) + Number(row.rpbasis || 0)
-                        )}
-                      </td>
-                      <td className="text-right font-bold whitespace-nowrap">
-                        {formatNumber(row.brd_rp)}
-                      </td>
-                      <td className="text-right font-bold whitespace-nowrap">
-                        {formatNumber(row.total)}
-                      </td>
-                      <td className="whitespace-nowrap">
-                        {row.keterangan || ""}
-                      </td>
-                    </tr>
-                  ))}
+                  {data.map((row, idx) => {
+                    const prevCode = idx > 0 ? data[idx - 1].employeecode : null;
+                    const isNew = row.employeecode !== prevCode;
+                    const rowNo = isNew
+                      ? data.slice(0, idx).filter((r, i) => i === 0 || r.employeecode !== data[i - 1].employeecode).length + 1
+                      : "";
+                    return (
+                      <tr key={row.employeecode + idx}>
+                        <td>{rowNo}</td>
+                        <td className="text-center whitespace-nowrap">
+                          {row.employeecode}
+                        </td>
+                        <td className="whitespace-nowrap">{row.nama}</td>
+                        <td className="text-center">{row.attendance}</td>
+                        <td className="text-center">{row.hk}</td>
+                        <td className="text-center">{row.blok}</td>
+                        <td className="text-center">{row.tahuntanam}</td>
+                        <td className="text-right">{formatNumber(row.jjg)}</td>
+                        <td className="text-right">{formatNumber(row.brd)}</td>
+                        <td className="text-right">{row.ha}</td>
+                        <td className="text-right">
+                          {formatNumber(row.mentahqty)}
+                        </td>
+                        <td className="text-right">
+                          {formatNumber(row.mentahrp)}
+                        </td>
+                        <td className="text-right">
+                          {formatNumber(row.emptybunchqty)}
+                        </td>
+                        <td className="text-right">
+                          {formatNumber(row.emptybunchrp)}
+                        </td>
+                        <td className="text-right">-</td>
+                        <td className="text-right">-</td>
+                        <td className="text-right">
+                          {Number(row.jumlahdenda) !== 0
+                            ? formatNumber(Number(row.jumlahdenda) * -1)
+                            : formatNumber(row.jumlahdenda)}
+                        </td>
+                        <td className="text-right">
+                          {formatNumber(row.totalalljjg)}
+                        </td>
+                        <td className="text-right">{formatNumber(row.basis)}</td>
+                        <td className="text-right">
+                          {formatNumber(row.rpbasis)}
+                        </td>
+                        <td className="text-right">
+                          {formatNumber(row.premilv1)}
+                        </td>
+                        <td className="text-right">{formatNumber(row.rate1)}</td>
+                        <td className="text-right">{formatNumber(row.rplv1)}</td>
+                        <td className="text-right">
+                          {formatNumber(row.premilv2)}
+                        </td>
+                        <td className="text-right">{formatNumber(row.rate2)}</td>
+                        <td className="text-right">{formatNumber(row.rplv2)}</td>
+                        <td className="text-right">
+                          {formatNumber(row.premilv3)}
+                        </td>
+                        <td className="text-right">{formatNumber(row.rate3)}</td>
+                        <td className="text-right">{formatNumber(row.rplv3)}</td>
+                        <td className="text-right whitespace-nowrap">
+                          {formatNumber(row.totalrppremi)}
+                        </td>
+                        <td className="text-right font-bold whitespace-nowrap">
+                          {formatNumber(row.rphk)}
+                        </td>
+                        <td className="text-right font-bold whitespace-nowrap">
+                          {formatNumber(row.kurangbasis)}
+                        </td>
+                        <td className="text-right font-bold whitespace-nowrap">
+                          {formatNumber(
+                            Number(row.totalrppremi || 0) + Number(row.rpbasis || 0)
+                          )}
+                        </td>
+                        <td className="text-right font-bold whitespace-nowrap">
+                          {formatNumber(row.brd_rp)}
+                        </td>
+                        <td className="text-right font-bold whitespace-nowrap">
+                          {formatNumber(row.total)}
+                        </td>
+                        <td className="whitespace-nowrap">
+                          {row.keterangan || ""}
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {/* Subtotal Row */}
                   <tr className="font-bold bg-gray-100">
                     <td colSpan={7} className="text-right">
