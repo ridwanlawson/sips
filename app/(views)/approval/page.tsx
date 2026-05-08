@@ -29,6 +29,7 @@ type LhmData = {
   blok: string;
   tahuntanam: string;
   jjg: string;
+  brd: string;
   ha: string;
   mentahqty: string;
   mentahrp: string;
@@ -330,6 +331,7 @@ export default function Approval() {
           blok: row.blok || "",
           tahuntanam: Number(row.tahuntanam || 0),
           jjg: Number(row.jjg || 0),
+          brd: Number(row.brd || 0),
           ha: Number(row.ha || 0),
           mentahqty: Number(row.mentahqty || 0),
           mentahrp: Number(row.mentahrp || 0),
@@ -408,6 +410,7 @@ export default function Approval() {
       Blok: r.blok || "-",
       "Tahun Tanam": r.tahuntanam || "-",
       JJG: r.jjg || "0",
+      BRD: r.brd || "0",
       HA: r.ha || "0",
       MentahQty: r.mentahqty || "0",
       MentahRp: r.mentahrp || "0",
@@ -579,7 +582,7 @@ export default function Approval() {
         selector: (r) => r.hk ?? "-",
         sortable: true,
         width: "65px",
-        cell: (r) => numCell(r.hk),
+        cell: (r) => r.hk,
       },
       {
         name: <span title="Kode Blok">Blok</span>,
@@ -599,6 +602,13 @@ export default function Approval() {
         sortable: true,
         width: "70px",
         cell: (r) => numCell(r.jjg),
+      },
+      {
+        name: <span title="Brondolan (BRD)">BRD</span>,
+        selector: (r) => r.brd,
+        sortable: true,
+        width: "70px",
+        cell: (r) => numCell(r.brd),
       },
       {
         name: <span title="Hektar (HA)">HA</span>,
