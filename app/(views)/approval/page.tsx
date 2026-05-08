@@ -550,12 +550,12 @@ export default function Approval() {
           return <span title={raw}>{formatDateDMY(raw)}</span>;
         },
       },
-      // {
-      //   name: <span title="Bisnis Unit">FCBA</span>,
-      //   selector: (r) => r.fcba,
-      //   sortable: true,
-      //   width: "70px",
-      // },
+      {
+        name: <span title="Kemandoran">Kemandoran</span>,
+        selector: (r) => r.kemandoran,
+        sortable: true,
+        width: "120px",
+      },
       {
         name: <span title="Kode Karyawan">Karyawan</span>,
         selector: (r) => r.employeecode,
