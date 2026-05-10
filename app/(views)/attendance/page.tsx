@@ -216,9 +216,8 @@ const getOrCreateDeviceIds = () => {
     localStorage.setItem(devKey, deviceId);
   }
   if (!pseudoMac) {
-    const seed = `${navigator.userAgent}|${deviceId}|${screen.width}x${
-      screen.height
-    }|${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
+    const seed = `${navigator.userAgent}|${deviceId}|${screen.width}x${screen.height
+      }|${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
     let h = 0;
     for (let i = 0; i < seed.length; i += 1) {
       h = (h * 31 + seed.charCodeAt(i)) >>> 0;
@@ -302,102 +301,100 @@ const SearchSelect: React.FC<{
   name,
   small,
 }) => {
-  const [open, setOpen] = useState(false);
-  const [q, setQ] = useState("");
-  const boxRef = useRef<HTMLDivElement | null>(null);
+    const [open, setOpen] = useState(false);
+    const [q, setQ] = useState("");
+    const boxRef = useRef<HTMLDivElement | null>(null);
 
-  const filtered = useMemo(() => {
-    if (!q.trim()) return options;
-    const s = q.toLowerCase();
-    return options.filter(
-      (o) =>
-        o.label.toLowerCase().includes(s) || o.value.toLowerCase().includes(s),
-    );
-  }, [q, options]);
+    const filtered = useMemo(() => {
+      if (!q.trim()) return options;
+      const s = q.toLowerCase();
+      return options.filter(
+        (o) =>
+          o.label.toLowerCase().includes(s) || o.value.toLowerCase().includes(s),
+      );
+    }, [q, options]);
 
-  useEffect(() => {
-    const onDoc = (e: MouseEvent) => {
-      if (!boxRef.current) return;
-      const target = e.target as Node | null;
-      if (target && !boxRef.current.contains(target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
+    useEffect(() => {
+      const onDoc = (e: MouseEvent) => {
+        if (!boxRef.current) return;
+        const target = e.target as Node | null;
+        if (target && !boxRef.current.contains(target)) setOpen(false);
+      };
+      document.addEventListener("mousedown", onDoc);
+      return () => document.removeEventListener("mousedown", onDoc);
+    }, []);
 
-  const currentLabel =
-    options.find((o) => o.value === value)?.label || value || "";
+    const currentLabel =
+      options.find((o) => o.value === value)?.label || value || "";
 
-  return (
-    <div className="relative min-w-0" ref={boxRef}>
-      {name ? <input type="hidden" name={name} value={value} /> : null}
+    return (
+      <div className="relative min-w-0" ref={boxRef}>
+        {name ? <input type="hidden" name={name} value={value} /> : null}
 
-      <button
-        type="button"
-        className={`input input-bordered w-full flex items-center justify-between whitespace-nowrap overflow-hidden ${
-          small ? "input-sm" : ""
-        } ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
-        onClick={() => !disabled && setOpen((s) => !s)}
-        aria-expanded={open}
-        title={currentLabel || placeholder}
-        disabled={disabled}
-      >
-        <span className={`truncate ${!value ? "text-base-content/50" : ""}`}>
-          {currentLabel || placeholder || "Pilih..."}
-        </span>
-        <span className="ml-2">▾</span>
-      </button>
+        <button
+          type="button"
+          className={`input input-bordered w-full flex items-center justify-between whitespace-nowrap overflow-hidden ${small ? "input-sm" : ""
+            } ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
+          onClick={() => !disabled && setOpen((s) => !s)}
+          aria-expanded={open}
+          title={currentLabel || placeholder}
+          disabled={disabled}
+        >
+          <span className={`truncate ${!value ? "text-base-content/50" : ""}`}>
+            {currentLabel || placeholder || "Pilih..."}
+          </span>
+          <span className="ml-2">▾</span>
+        </button>
 
-      {required && !value && (
-        <span className="sr-only" aria-live="polite">
-          required
-        </span>
-      )}
+        {required && !value && (
+          <span className="sr-only" aria-live="polite">
+            required
+          </span>
+        )}
 
-      {open && !disabled && (
-        <div className="absolute z-50 mt-1 w-full rounded-xl border border-base-300 bg-base-100 shadow-lg">
-          <div className="p-2">
-            <input
-              autoFocus
-              className="input input-bordered w-full"
-              placeholder="Ketik untuk mencari..."
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
+        {open && !disabled && (
+          <div className="absolute z-50 mt-1 w-full rounded-xl border border-base-300 bg-base-100 shadow-lg">
+            <div className="p-2">
+              <input
+                autoFocus
+                className="input input-bordered w-full"
+                placeholder="Ketik untuk mencari..."
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+            </div>
+            <ul className="max-h-64 overflow-auto">
+              {filtered.length === 0 && (
+                <li className="p-3 text-base-content/60">Tidak ada data</li>
+              )}
+              {filtered.map((opt) => (
+                <li key={`ss-${opt.value}`}>
+                  <button
+                    type="button"
+                    className={`w-full text-left p-2 hover:bg-base-200 ${opt.value === value ? "bg-base-200" : ""
+                      }`}
+                    onClick={() => {
+                      onChange(opt.value);
+                      setOpen(false);
+                      setQ("");
+                    }}
+                    title={opt.label}
+                  >
+                    <div className="font-medium truncate">{opt.label}</div>
+                    {opt.label !== opt.value && (
+                      <div className="text-xs opacity-70 truncate">
+                        {opt.value}
+                      </div>
+                    )}
+                  </button>
+                </li>
+              ))}
+            </ul>
           </div>
-          <ul className="max-h-64 overflow-auto">
-            {filtered.length === 0 && (
-              <li className="p-3 text-base-content/60">Tidak ada data</li>
-            )}
-            {filtered.map((opt) => (
-              <li key={`ss-${opt.value}`}>
-                <button
-                  type="button"
-                  className={`w-full text-left p-2 hover:bg-base-200 ${
-                    opt.value === value ? "bg-base-200" : ""
-                  }`}
-                  onClick={() => {
-                    onChange(opt.value);
-                    setOpen(false);
-                    setQ("");
-                  }}
-                  title={opt.label}
-                >
-                  <div className="font-medium truncate">{opt.label}</div>
-                  {opt.label !== opt.value && (
-                    <div className="text-xs opacity-70 truncate">
-                      {opt.value}
-                    </div>
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-};
+        )}
+      </div>
+    );
+  };
 
 /* =========================
    T Y P E  G U A R D S
@@ -468,7 +465,7 @@ export default function Attendance() {
   const [selGang, setSelGang] = useState<string>("");
   const [homeFcba, setHomeFcba] = useState<string>("");
   const [homeSection, setHomeSection] = useState<string>("");
-  const [userLevel, setUserLevel] = useState<"ADM" | "MGR" | "AST" | "OTHER">(
+  const [userLevel, setUserLevel] = useState<"ADM" | "MGR" | "KSI" | "MD1" | "AST" | "KRT" | "KRA" | "KRP" | "MDP" | "OTHER">(
     "OTHER",
   );
   const [destFcba, setDestFcba] = useState<string>("");
@@ -500,10 +497,10 @@ export default function Attendance() {
       const isRange = !!(start && end && start !== end);
 
       const f: Filters = { ...base };
-      if (userLevel === "MGR" || userLevel === "AST") {
+      if (userLevel === "MGR" || userLevel === "KSI" || userLevel === "MD1" || userLevel === "AST" || userLevel === "KRT" || userLevel === "KRA" || userLevel === "KRP" || userLevel === "MDP") {
         if (homeFcba) f.fcba = homeFcba;
       }
-      if (userLevel === "AST" && homeSection) {
+      if ((userLevel === "MD1" || userLevel === "AST" || userLevel === "KRT" || userLevel === "KRA" || userLevel === "KRP" || userLevel === "MDP") && homeSection) {
         f.afdeling = homeSection;
       }
 
@@ -571,6 +568,8 @@ export default function Attendance() {
       });
     },
     enabled: !!homeFcba || userLevel === "ADM", // Wait until bootstrap is done
+    staleTime: 2 * 60 * 1000, // 2 menit - attendance data lebih sering berubah
+    gcTime: 5 * 60 * 1000, // 5 menit cache
   });
 
   // show toast if query produces error so the variable is referenced
@@ -754,8 +753,18 @@ export default function Attendance() {
     setHomeSection(cookieStore.getSection());
 
     const levelRaw = cookieStore.getLevel();
-    if (levelRaw === "ADM" || levelRaw === "MGR" || levelRaw === "AST") {
-      setUserLevel(levelRaw);
+    if (
+      levelRaw === "ADM" ||
+      levelRaw === "MGR" ||
+      levelRaw === "KSI" ||
+      levelRaw === "MD1" ||
+      levelRaw === "AST" ||
+      levelRaw === "KRT" ||
+      levelRaw === "KRA" ||
+      levelRaw === "KRP" ||
+      levelRaw === "MDP"
+    ) {
+      setUserLevel(levelRaw as typeof userLevel);
     } else {
       setUserLevel("OTHER");
     }
@@ -783,7 +792,7 @@ export default function Attendance() {
 
   /* ===== Parallel data fetching with useQuery ===== */
 
-  // Business units query - runs in parallel
+  // Business units query - runs in parallel dengan caching lebih lama
   const { data: businessUnits = [], isLoading: isLoadingBU } = useQuery({
     queryKey: ["businessUnits"],
     queryFn: async () => {
@@ -804,7 +813,8 @@ export default function Attendance() {
         return [];
       }
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 30 * 60 * 1000, // 30 menit - data master jarang berubah
+    gcTime: 60 * 60 * 1000, // 1 jam cache di memori
   });
 
   // Employees query - runs in parallel, depends on cookies only
@@ -814,10 +824,14 @@ export default function Attendance() {
       let apiUrl = "/api/karyawans";
       const params = new URLSearchParams();
 
-      if (userLevel === "AST") {
+      if (userLevel === "AST" || userLevel === "KRA") {
         if (homeFcba) params.append("fcba", homeFcba);
         if (homeSection) params.append("sectionname", homeSection);
-      } else if (userLevel === "ADM") {
+      } else if (
+        userLevel === "ADM" ||
+        userLevel === "MGR" ||
+        userLevel === "KSI"
+      ) {
         if (homeFcba) params.append("fcba", homeFcba);
       }
 
@@ -869,7 +883,8 @@ export default function Attendance() {
       return Array.from(mapEmp.values());
     },
     enabled: !!homeFcba || userLevel === "ADM",
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 15 * 60 * 1000, // 15 menit - data karyawan jarang berubah
+    gcTime: 30 * 60 * 1000, // 30 menit cache
   });
 
   /* ===== Attendance-type: reset cascade dari FCBA akun ===== */
@@ -884,7 +899,11 @@ export default function Attendance() {
       setForm((s) => ({ ...s, fcba: homeFcba || "" }));
     }
 
-    if (userLevel === "AST") {
+    if (userLevel === "AST" || userLevel === "KRA") {
+      setSelSection(homeSection || "");
+      setForm((s) => ({ ...s, section: homeSection || "" }));
+    } else if (userLevel === "MD1" || userLevel === "KRT") {
+      // MD1, KRT: fcba + afdeling locked
       setSelSection(homeSection || "");
       setForm((s) => ({ ...s, section: homeSection || "" }));
     } else {
@@ -1112,10 +1131,18 @@ export default function Attendance() {
         fcbaName = buMatch ? buMatch.fcname || fc : fc;
       }
       pool = employees.filter((e) => (e.fcba || "") === fcbaName);
-    } else if (userLevel === "MGR") {
+    } else if (userLevel === "MGR" || userLevel === "KSI") {
       fcbaName = homeFcba || "";
       pool = employees.filter((e) => (e.fcba || "") === fcbaName);
-    } else if (userLevel === "AST") {
+    } else if (userLevel === "AST" || userLevel === "KRA") {
+      fcbaName = homeFcba || "";
+      const sec = homeSection || "";
+      pool = employees.filter(
+        (e) =>
+          (e.fcba || "") === fcbaName &&
+          (!sec || (e.sectionname || "") === sec),
+      );
+    } else if (userLevel === "MD1" || userLevel === "KRT") {
       fcbaName = homeFcba || "";
       const sec = homeSection || "";
       pool = employees.filter(
@@ -1203,8 +1230,8 @@ export default function Attendance() {
       mac_address: pseudoMac,
       attendance_type: "REGULAR",
       mandays: "1",
-      fcba: userLevel === "ADM" ? homeFcbaCode || "" : homeFcbaCode || "",
-      section: userLevel === "AST" ? homeSection || "" : "",
+      fcba: userLevel === "ADM" || userLevel === "KSI" ? homeFcbaCode || "" : homeFcbaCode || "",
+      section: userLevel === "AST" || userLevel === "KRA" ? homeSection || "" : "",
     });
   };
 
@@ -1214,8 +1241,8 @@ export default function Attendance() {
     setPreview("");
     setDestFcba("");
     setDestSection("");
-    setSelFcba(userLevel === "ADM" ? homeFcbaCode || "" : homeFcbaCode || "");
-    setSelSection(userLevel === "AST" ? homeSection || "" : "");
+    setSelFcba(userLevel === "ADM" || userLevel === "KSI" ? homeFcbaCode || "" : homeFcbaCode || "");
+    setSelSection(userLevel === "AST" || userLevel === "KRA" ? homeSection || "" : "");
     setSelGang("");
     setOpen(true);
     setDetailLoading(false);
@@ -1310,12 +1337,12 @@ export default function Attendance() {
       if (!form.kode_karyawan) throw new Error("Pilih Karyawan");
 
       let finalFcba = currentFcbaForForm || form.fcba || "";
-      if (userLevel !== "ADM") {
+      if (userLevel !== "ADM" && userLevel !== "KSI") {
         finalFcba = homeFcba || finalFcba;
       }
       if (!finalFcba) throw new Error("FCBA akun tidak ditemukan (cookie)");
       const finalSection =
-        userLevel === "AST" && homeSection ? homeSection : form.section || "";
+        (userLevel === "AST" || userLevel === "KRA" || userLevel === "MD1" || userLevel === "KRT") && homeSection ? homeSection : form.section || "";
 
       const trimmedException = form.exception_case.trim();
       const hasException = trimmedException.length > 0;
@@ -1534,7 +1561,7 @@ export default function Attendance() {
         cell: (row: Absensi) => {
           const status = (row.status_attendance || "").toLowerCase();
           const isPlanned = status === "planned";
-          const canEditRole = userLevel === "ADM" || userLevel === "AST";
+          const canEditRole = userLevel === "ADM" || userLevel === "KSI";
           const canEdit = canEditRole && isPlanned;
 
           const canDelete =
@@ -1544,15 +1571,14 @@ export default function Attendance() {
             <div className="space-x-1 whitespace-nowrap overflow-visible">
               {canEditRole && (
                 <button
-                  className={`btn btn-xs ${
-                    canEdit ? "btn-outline" : "btn-disabled"
-                  }`}
+                  className={`btn btn-xs ${canEdit ? "btn-outline" : "btn-disabled"
+                    }`}
                   onClick={() => canEdit && handleDetail(row.id)}
                   disabled={!canEdit}
                   title={
                     canEdit
                       ? "Edit"
-                      : "Hanya bisa edit saat Planned (ADM & AST saja)"
+                      : "Hanya bisa edit saat Planned (ADM & KSI saja)"
                   }
                 >
                   Edit
@@ -1584,13 +1610,12 @@ export default function Attendance() {
         width: "120px",
         cell: (r) => (
           <span
-            className={`badge ${
-              (r.status_attendance || "").toLowerCase() === "planned"
-                ? "badge-warning"
-                : (r.status_attendance || "").toLowerCase() === "approved"
-                  ? "badge-success"
-                  : "badge-ghost"
-            }`}
+            className={`badge ${(r.status_attendance || "").toLowerCase() === "planned"
+              ? "badge-warning"
+              : (r.status_attendance || "").toLowerCase() === "approved"
+                ? "badge-success"
+                : "badge-ghost"
+              }`}
           >
             {r.status_attendance ?? "-"}
           </span>
@@ -1940,7 +1965,7 @@ export default function Attendance() {
   const disableUnlessAllowed = (allowed: boolean) =>
     isEditing ? !allowed : false;
 
-  const canAddOrEdit = userLevel === "ADM" || userLevel === "AST";
+  const canAddOrEdit = userLevel === "ADM" || userLevel === "KSI";
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
@@ -1989,7 +2014,7 @@ export default function Attendance() {
               <button
                 className="btn btn-primary btn-sm"
                 onClick={onAddClick}
-                title="Tambah data absensi baru (hanya ADM & AST)"
+                title="Tambah data absensi baru (hanya ADM & KSI)"
               >
                 + Tambah Absensi
               </button>
@@ -2576,9 +2601,8 @@ export default function Attendance() {
                     />
                     <button
                       type="button"
-                      className={`btn btn-square ${
-                        locLoading === "in" ? "btn-disabled" : ""
-                      }`}
+                      className={`btn btn-square ${locLoading === "in" ? "btn-disabled" : ""
+                        }`}
                       onClick={() => handleGetLocation("in")}
                       disabled={
                         disableUnlessAllowed(false) || locLoading !== null
@@ -2620,9 +2644,8 @@ export default function Attendance() {
                     />
                     <button
                       type="button"
-                      className={`btn btn-square ${
-                        locLoading === "out" ? "btn-disabled" : ""
-                      }`}
+                      className={`btn btn-square ${locLoading === "out" ? "btn-disabled" : ""
+                        }`}
                       onClick={() => handleGetLocation("out")}
                       disabled={
                         disableUnlessAllowed(false) || locLoading !== null
@@ -2814,9 +2837,8 @@ export default function Attendance() {
                     Batal
                   </button>
                   <button
-                    className={`btn btn-primary ${
-                      mutation.isPending ? "btn-disabled" : ""
-                    }`}
+                    className={`btn btn-primary ${mutation.isPending ? "btn-disabled" : ""
+                      }`}
                     disabled={mutation.isPending}
                   >
                     {mutation.isPending ? (

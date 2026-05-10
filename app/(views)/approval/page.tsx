@@ -137,7 +137,7 @@ export default function Approval() {
   });
 
   const [homeFcba, setHomeFcba] = useState<string>("");
-  const [userLevel, setUserLevel] = useState<"ADM" | "MGR" | "AST" | "OTHER">(
+  const [userLevel, setUserLevel] = useState<"ADM" | "MGR" | "AST" | "KRA" | "OTHER">(
     "OTHER",
   );
 
@@ -157,8 +157,8 @@ export default function Approval() {
         readCookie("user_level") ||
         ""
       ).toUpperCase() || "OTHER";
-    if (levelRaw === "ADM" || levelRaw === "MGR" || levelRaw === "AST") {
-      setUserLevel(levelRaw);
+    if (levelRaw === "ADM" || levelRaw === "MGR" || levelRaw === "AST" || levelRaw === "KRA") {
+      setUserLevel(levelRaw as "ADM" | "MGR" | "AST" | "KRA");
     } else {
       setUserLevel("OTHER");
     }
@@ -180,7 +180,7 @@ export default function Approval() {
       const params = new URLSearchParams();
       const f = { ...filters };
 
-      if (userLevel === "MGR" || userLevel === "AST") {
+      if (userLevel === "MGR" || userLevel === "AST" || userLevel === "KRA") {
         if (homeFcba) f.fcba = homeFcba;
         if (filters.afdeling) f.afdeling = filters.afdeling;
       }
@@ -952,7 +952,7 @@ export default function Approval() {
                   setFilters((s) => ({ ...s, fcba: e.target.value }))
                 }
                 title="Filter berdasarkan FCBA"
-                disabled={userLevel === "MGR" || userLevel === "AST"}
+                disabled={userLevel === "MGR" || userLevel === "AST" || userLevel === "KRA"}
               />
               <input
                 className="input input-bordered w-full"
@@ -962,7 +962,7 @@ export default function Approval() {
                   setFilters((s) => ({ ...s, afdeling: e.target.value }))
                 }
                 title="Filter berdasarkan Afdeling"
-                disabled={userLevel === "MGR" || userLevel === "AST"}
+                disabled={userLevel === "MGR" || userLevel === "AST" || userLevel === "KRA"}
               />
               <input
                 className="input input-bordered w-full"
@@ -1026,7 +1026,7 @@ export default function Approval() {
                     kemandoran: "",
                     employeecode: "",
                     fcba:
-                      userLevel === "MGR" || userLevel === "AST"
+                      userLevel === "MGR" || userLevel === "AST" || userLevel === "KRA"
                         ? homeFcba
                         : "",
                     afdeling: "",

@@ -36,102 +36,100 @@ const SearchSelect: React.FC<{
   name,
   small,
 }) => {
-  const [open, setOpen] = useState(false);
-  const [q, setQ] = useState("");
-  const boxRef = useRef<HTMLDivElement | null>(null);
+    const [open, setOpen] = useState(false);
+    const [q, setQ] = useState("");
+    const boxRef = useRef<HTMLDivElement | null>(null);
 
-  const filtered = useMemo(() => {
-    if (!q.trim()) return options;
-    const s = q.toLowerCase();
-    return options.filter(
-      (o) =>
-        o.label.toLowerCase().includes(s) || o.value.toLowerCase().includes(s),
-    );
-  }, [q, options]);
+    const filtered = useMemo(() => {
+      if (!q.trim()) return options;
+      const s = q.toLowerCase();
+      return options.filter(
+        (o) =>
+          o.label.toLowerCase().includes(s) || o.value.toLowerCase().includes(s),
+      );
+    }, [q, options]);
 
-  useEffect(() => {
-    const onDoc = (e: MouseEvent) => {
-      if (!boxRef.current) return;
-      const target = e.target as Node | null;
-      if (target && !boxRef.current.contains(target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
+    useEffect(() => {
+      const onDoc = (e: MouseEvent) => {
+        if (!boxRef.current) return;
+        const target = e.target as Node | null;
+        if (target && !boxRef.current.contains(target)) setOpen(false);
+      };
+      document.addEventListener("mousedown", onDoc);
+      return () => document.removeEventListener("mousedown", onDoc);
+    }, []);
 
-  const currentLabel =
-    options.find((o) => o.value === value)?.label || value || "";
+    const currentLabel =
+      options.find((o) => o.value === value)?.label || value || "";
 
-  return (
-    <div className="relative min-w-0" ref={boxRef}>
-      {name ? <input type="hidden" name={name} value={value} /> : null}
+    return (
+      <div className="relative min-w-0" ref={boxRef}>
+        {name ? <input type="hidden" name={name} value={value} /> : null}
 
-      <button
-        type="button"
-        className={`input input-bordered w-full flex items-center justify-between whitespace-nowrap overflow-hidden ${
-          small ? "input-sm" : ""
-        } ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
-        onClick={() => !disabled && setOpen((s) => !s)}
-        aria-expanded={open}
-        title={currentLabel || placeholder}
-        disabled={disabled}
-      >
-        <span className={`truncate ${!value ? "text-base-content/50" : ""}`}>
-          {currentLabel || placeholder || "Pilih..."}
-        </span>
-        <span className="ml-2">▾</span>
-      </button>
+        <button
+          type="button"
+          className={`input input-bordered w-full flex items-center justify-between whitespace-nowrap overflow-hidden ${small ? "input-sm" : ""
+            } ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
+          onClick={() => !disabled && setOpen((s) => !s)}
+          aria-expanded={open}
+          title={currentLabel || placeholder}
+          disabled={disabled}
+        >
+          <span className={`truncate ${!value ? "text-base-content/50" : ""}`}>
+            {currentLabel || placeholder || "Pilih..."}
+          </span>
+          <span className="ml-2">▾</span>
+        </button>
 
-      {required && !value && (
-        <span className="sr-only" aria-live="polite">
-          required
-        </span>
-      )}
+        {required && !value && (
+          <span className="sr-only" aria-live="polite">
+            required
+          </span>
+        )}
 
-      {open && !disabled && (
-        <div className="absolute z-50 mt-1 w-full rounded-xl border border-base-300 bg-base-100 shadow-lg">
-          <div className="p-2">
-            <input
-              autoFocus
-              className="input input-bordered w-full"
-              placeholder="Ketik untuk mencari..."
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
+        {open && !disabled && (
+          <div className="absolute z-50 mt-1 w-full rounded-xl border border-base-300 bg-base-100 shadow-lg">
+            <div className="p-2">
+              <input
+                autoFocus
+                className="input input-bordered w-full"
+                placeholder="Ketik untuk mencari..."
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+            </div>
+            <ul className="max-h-64 overflow-auto">
+              {filtered.length === 0 && (
+                <li className="p-3 text-base-content/60">Tidak ada data</li>
+              )}
+              {filtered.map((opt) => (
+                <li key={`ss-${opt.value}`}>
+                  <button
+                    type="button"
+                    className={`w-full text-left p-2 hover:bg-base-200 ${opt.value === value ? "bg-base-200" : ""
+                      }`}
+                    onClick={() => {
+                      onChange(opt.value);
+                      setOpen(false);
+                      setQ("");
+                    }}
+                    title={opt.label}
+                  >
+                    <div className="font-medium truncate">{opt.label}</div>
+                    {opt.label !== opt.value && (
+                      <div className="text-xs opacity-70 truncate">
+                        {opt.value}
+                      </div>
+                    )}
+                  </button>
+                </li>
+              ))}
+            </ul>
           </div>
-          <ul className="max-h-64 overflow-auto">
-            {filtered.length === 0 && (
-              <li className="p-3 text-base-content/60">Tidak ada data</li>
-            )}
-            {filtered.map((opt) => (
-              <li key={`ss-${opt.value}`}>
-                <button
-                  type="button"
-                  className={`w-full text-left p-2 hover:bg-base-200 ${
-                    opt.value === value ? "bg-base-200" : ""
-                  }`}
-                  onClick={() => {
-                    onChange(opt.value);
-                    setOpen(false);
-                    setQ("");
-                  }}
-                  title={opt.label}
-                >
-                  <div className="font-medium truncate">{opt.label}</div>
-                  {opt.label !== opt.value && (
-                    <div className="text-xs opacity-70 truncate">
-                      {opt.value}
-                    </div>
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-};
+        )}
+      </div>
+    );
+  };
 
 /* =========================
    T Y P E S
@@ -288,6 +286,7 @@ type UserLevel =
   | "MD1"
   | "AST"
   | "KRT"
+  | "KRA"
   | "KRP"
   | "MDP"
   | "OTHER";
@@ -390,9 +389,8 @@ const getOrCreateDeviceIds = () => {
     localStorage.setItem(devKey, deviceId);
   }
   if (!pseudoMac) {
-    const seed = `${navigator.userAgent}|${deviceId}|${screen.width}x${
-      screen.height
-    }|${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
+    const seed = `${navigator.userAgent}|${deviceId}|${screen.width}x${screen.height
+      }|${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
     let h = 0;
     for (let i = 0; i < seed.length; i += 1) {
       h = (h * 31 + seed.charCodeAt(i)) >>> 0;
@@ -497,9 +495,9 @@ export default function HarvestPage() {
   // Location loading state
   const [locLoading, setLocLoading] = useState<boolean>(false);
 
-  // Check if user can modify (ADM, MGR, or KSI)
+  // Check if user can modify (ADM or KSI only)
   const canModify =
-    userLevel === "ADM" || userLevel === "MGR" || userLevel === "KSI";
+    userLevel === "ADM" || userLevel === "KSI";
 
   // ESC to close modal
   useEffect(() => {
@@ -521,13 +519,13 @@ export default function HarvestPage() {
     setHomeGang(cookieStore.getGang());
     setUserFcbaCookie(
       cookieStore.getCookie("user_Fcba") ||
-        cookieStore.getCookie("user_fcba") ||
-        "",
+      cookieStore.getCookie("user_fcba") ||
+      "",
     );
     setUserAfdelingCookie(
       cookieStore.getCookie("user_Afdeling") ||
-        cookieStore.getCookie("user_afdeling") ||
-        "",
+      cookieStore.getCookie("user_afdeling") ||
+      "",
     );
 
     const levelRaw = cookieStore.getLevel();
@@ -538,6 +536,7 @@ export default function HarvestPage() {
       levelRaw === "MD1" ||
       levelRaw === "AST" ||
       levelRaw === "KRT" ||
+      levelRaw === "KRA" ||
       levelRaw === "KRP" ||
       levelRaw === "MDP"
     ) {
@@ -561,7 +560,7 @@ export default function HarvestPage() {
   useEffect(() => {
     // ADM: no defaults, can select any
     // MGR, KSI: can select afdeling, fcba locked to user_Fcba
-    // MD1, AST, KRT: fcba + afdeling locked. KRP, MDP: plus kemandoran.
+    // MD1, AST, KRT, KRA: fcba + afdeling locked. KRP, MDP: plus kemandoran.
     if (userLevel === "ADM") {
       // ADM can select any, no defaults
     } else if (userLevel === "MGR" || userLevel === "KSI") {
@@ -574,7 +573,7 @@ export default function HarvestPage() {
         kemandoran: homeGang,
       }));
     } else {
-      // MD1, AST, KRT, or OTHER
+      // MD1, AST, KRT, KRA, or OTHER
       setFilters((f) => ({
         ...f,
         fcba: userFcbaCookie || homeFcba,
@@ -1540,9 +1539,8 @@ export default function HarvestPage() {
           <div className="space-x-1 whitespace-nowrap overflow-visible">
             {canEditRole && (
               <button
-                className={`btn btn-xs ${
-                  canEdit ? "btn-outline" : "btn-disabled"
-                }`}
+                className={`btn btn-xs ${canEdit ? "btn-outline" : "btn-disabled"
+                  }`}
                 onClick={() => canEdit && fetchDetail(row.id)}
                 disabled={!canEdit}
                 title={canEdit ? "Edit" : "Hanya bisa edit saat Planned"}
@@ -1576,13 +1574,12 @@ export default function HarvestPage() {
       width: "120px",
       cell: (r) => (
         <span
-          className={`badge ${
-            (r.status_harvesting || "").toLowerCase() === "planned"
-              ? "badge-warning"
-              : (r.status_harvesting || "").toLowerCase() === "approved"
-                ? "badge-success"
-                : "badge-ghost"
-          }`}
+          className={`badge ${(r.status_harvesting || "").toLowerCase() === "planned"
+            ? "badge-warning"
+            : (r.status_harvesting || "").toLowerCase() === "approved"
+              ? "badge-success"
+              : "badge-ghost"
+            }`}
         >
           {r.status_harvesting ?? "-"}
         </span>
@@ -1822,8 +1819,7 @@ export default function HarvestPage() {
                         : userFcbaCookie || homeFcba || "",
                     afdeling:
                       userLevel === "ADM" ||
-                      userLevel === "MGR" ||
-                      userLevel === "KSI"
+                        userLevel === "KSI"
                         ? ""
                         : userAfdelingCookie || homeSection || "",
                   });
@@ -1834,7 +1830,6 @@ export default function HarvestPage() {
                   );
                   setSelSection(
                     userLevel === "ADM" ||
-                      userLevel === "MGR" ||
                       userLevel === "KSI"
                       ? ""
                       : userAfdelingCookie || homeSection || "",
@@ -2146,14 +2141,14 @@ export default function HarvestPage() {
                   <fieldset className="fieldset">
                     <legend className="fieldset-legend">
                       {userLevel === "ADM" ||
-                      userLevel === "MGR" ||
-                      userLevel === "KSI"
+                        userLevel === "MGR" ||
+                        userLevel === "KSI"
                         ? "Afdeling (Section) *"
                         : "Afdeling (akun)"}
                     </legend>
                     {userLevel === "ADM" ||
-                    userLevel === "MGR" ||
-                    userLevel === "KSI" ? (
+                      userLevel === "MGR" ||
+                      userLevel === "KSI" ? (
                       <SearchSelect
                         options={sectionOptions}
                         value={selSection ?? ""}

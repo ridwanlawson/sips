@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { cookieStore } from "@/utils/cookieStore";
 
-export type Role = "ADM" | "MGR" | "AST" | "OTHER";
+export type Role = "ADM" | "MGR" | "AST" | "KRA" | "OTHER";
 
 export const usePermissions = () => {
   const userInfo = useMemo(() => cookieStore.getAllUserInfo(), []);
@@ -13,6 +13,7 @@ export const usePermissions = () => {
   const isAdmin = level === "ADM";
   const isMgr = level === "MGR";
   const isAst = level === "AST";
+  const isKra = level === "KRA";
   
   const canApprove = isAdmin || isMgr;
   const canUpload = isMgr; // Per existing middleware logic
@@ -23,6 +24,7 @@ export const usePermissions = () => {
     isAdmin,
     isMgr,
     isAst,
+    isKra,
     canApprove,
     canUpload
   };

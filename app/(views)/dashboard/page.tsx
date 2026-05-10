@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   SimpleBarChart,
   SimplePieChart,
@@ -348,9 +348,8 @@ const SearchSelect: React.FC<{
     <div className="relative overflow-visible" ref={boxRef}>
       <button
         type="button"
-        className={`input input-bordered w-full flex items-center justify-between whitespace-nowrap overflow-hidden ${
-          small ? "input-sm" : ""
-        } ${disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
+        className={`input input-bordered w-full flex items-center justify-between whitespace-nowrap overflow-hidden ${small ? "input-sm" : ""
+          } ${disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
         onClick={handleToggle}
         disabled={disabled}
         title={currentLabel || placeholder}
@@ -385,9 +384,8 @@ const SearchSelect: React.FC<{
               <li key={opt.value}>
                 <button
                   type="button"
-                  className={`w-full text-left px-3 py-2 hover:bg-base-200 text-sm ${
-                    opt.value === value ? "bg-base-200" : ""
-                  }`}
+                  className={`w-full text-left px-3 py-2 hover:bg-base-200 text-sm ${opt.value === value ? "bg-base-200" : ""
+                    }`}
                   onClick={() => {
                     onChange(opt.value);
                     setOpen(false);
@@ -416,6 +414,7 @@ const SearchSelect: React.FC<{
 ========================= */
 
 export default function UserDashboard() {
+  const queryClient = useQueryClient();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userLevel, setUserLevel] = useState<UserLevel>("OTHER");
 
@@ -436,11 +435,54 @@ export default function UserDashboard() {
     setIsClient(true);
   }, []);
 
+  // Prefetch data saat component mount untuk mempercepat load
+  useEffect(() => {
+    if (!isClient) return;
+
+    // Prefetch triplets (data master yang jarang berubah)
+    queryClient.prefetchQuery({
+      queryKey: ["triplets"],
+      queryFn: async () => {
+        const ckTrip = readCookie("opt_triplets");
+        if (ckTrip) {
+          try {
+            const arr = JSON.parse(ckTrip) as Triplet[];
+            if (Array.isArray(arr) && arr.length > 0) return arr;
+          } catch { /* ignore */ }
+        }
+        const res = await fetch("/api/karyawans", { credentials: "include" });
+        if (!res.ok) return [];
+        const json = await res.json();
+        return extractTriplets(json);
+      },
+      staleTime: 30 * 60 * 1000, // 30 menit
+    });
+
+    // Prefetch user profile
+    queryClient.prefetchQuery({
+      queryKey: ["userProfile"],
+      queryFn: async () => {
+        const res = await fetch("/api/user/profile", {
+          method: "GET",
+          headers: { Accept: "application/json" },
+          credentials: "include",
+        });
+        if (!res.ok) return null;
+        const json = await res.json();
+        if (json.ok && typeof json.data === "object" && json.data !== null) {
+          const data = json.data as Record<string, unknown>;
+          return data.data ? data.data : data;
+        }
+        return null;
+      },
+      staleTime: 5 * 60 * 1000, // 5 menit
+    });
+  }, [isClient, queryClient]);
+
   // combine userProfile fields into a single stable dependency key
   const userProfileKey = useMemo(() => {
-    return `${userProfile?.fcba || ""}|${userProfile?.afdeling || ""}|${
-      userProfile?.section || ""
-    }`;
+    return `${userProfile?.fcba || ""}|${userProfile?.afdeling || ""}|${userProfile?.section || ""
+      }`;
   }, [userProfile?.fcba, userProfile?.afdeling, userProfile?.section]);
 
   /* ===== Queries ===== */
@@ -475,7 +517,8 @@ export default function UserDashboard() {
       return extractTriplets(json);
     },
     enabled: isClient,
-    staleTime: 1000 * 60 * 30, // 30 mins
+    staleTime: 30 * 60 * 1000, // 30 menit
+    gcTime: 60 * 60 * 1000, // 1 jam cache
   });
 
   // 2. User Profile Query
@@ -506,6 +549,8 @@ export default function UserDashboard() {
       return null;
     },
     enabled: isClient,
+    staleTime: 10 * 60 * 1000, // 10 menit untuk user profile
+    gcTime: 20 * 60 * 1000,
   });
 
   useEffect(() => {
@@ -589,6 +634,8 @@ export default function UserDashboard() {
       return extractAttendanceArray(json);
     },
     enabled: isClient,
+    staleTime: 2 * 60 * 1000, // 2 menit - attendance lebih sering berubah
+    gcTime: 5 * 60 * 1000,
   });
 
   // 4. Harvesting Query
@@ -678,6 +725,8 @@ export default function UserDashboard() {
       };
     },
     enabled: isClient,
+    staleTime: 3 * 60 * 1000, // 3 menit
+    gcTime: 6 * 60 * 1000,
   });
 
   // 5. Pengangkutan Query
@@ -805,6 +854,8 @@ export default function UserDashboard() {
       };
     },
     enabled: isClient,
+    staleTime: 3 * 60 * 1000, // 3 menit
+    gcTime: 6 * 60 * 1000,
   });
 
   const error = attendanceError ? "Gagal memuat data dashboard" : null;
@@ -1229,9 +1280,9 @@ export default function UserDashboard() {
   const displayName =
     toTitleCase(
       userProfile?.fullname ||
-        readCookie("user_FullName") ||
-        userProfile?.username ||
-        "",
+      readCookie("user_FullName") ||
+      userProfile?.username ||
+      "",
     ) || "User";
 
   const displayLevel = (userProfile?.level || "").toUpperCase() || userLevel;
@@ -1343,11 +1394,10 @@ export default function UserDashboard() {
                 <button
                   key={tf}
                   type="button"
-                  className={`btn btn-xs md:btn-sm ${
-                    timeframe === tf
-                      ? "btn-primary"
-                      : "btn-ghost border border-base-300"
-                  }`}
+                  className={`btn btn-xs md:btn-sm ${timeframe === tf
+                    ? "btn-primary"
+                    : "btn-ghost border border-base-300"
+                    }`}
                   onClick={() => setTimeframe(tf)}
                 >
                   {timeframeLabel(tf)}
@@ -1504,7 +1554,7 @@ export default function UserDashboard() {
                     <div className="stat-title text-xs">JJG</div>
                     <div className="stat-value text-2xl font-bold text-primary">
                       {pengangkutanStats.totalOutput &&
-                      pengangkutanStats.totalOutput > 0
+                        pengangkutanStats.totalOutput > 0
                         ? pengangkutanStats.totalOutput.toLocaleString()
                         : pengangkutanStats.total}
                     </div>
@@ -1661,22 +1711,20 @@ export default function UserDashboard() {
                 </span>
                 <button
                   type="button"
-                  className={`btn btn-xs md:btn-sm ${
-                    detailMode === "perHari"
-                      ? "btn-primary"
-                      : "btn-ghost border border-base-300"
-                  }`}
+                  className={`btn btn-xs md:btn-sm ${detailMode === "perHari"
+                    ? "btn-primary"
+                    : "btn-ghost border border-base-300"
+                    }`}
                   onClick={() => setDetailMode("perHari")}
                 >
                   Per Hari (Rekap)
                 </button>
                 <button
                   type="button"
-                  className={`btn btn-xs md:btn-sm ${
-                    detailMode === "perBaris"
-                      ? "btn-primary"
-                      : "btn-ghost border border-base-300"
-                  }`}
+                  className={`btn btn-xs md:btn-sm ${detailMode === "perBaris"
+                    ? "btn-primary"
+                    : "btn-ghost border border-base-300"
+                    }`}
                   onClick={() => setDetailMode("perBaris")}
                 >
                   Per Baris (Detail)
@@ -1725,9 +1773,8 @@ export default function UserDashboard() {
                     <tbody>
                       {dailySummaries.map((d, idx) => (
                         <tr
-                          key={`${d.date}-${d.fcba ?? ""}-${
-                            d.afdeling ?? ""
-                          }-${idx}`}
+                          key={`${d.date}-${d.fcba ?? ""}-${d.afdeling ?? ""
+                            }-${idx}`}
                           className="hover:bg-base-200"
                         >
                           <td className="whitespace-nowrap font-medium">

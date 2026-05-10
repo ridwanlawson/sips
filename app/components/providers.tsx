@@ -18,8 +18,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 60 * 1000, // 1 minute
+            staleTime: 5 * 60 * 1000, // 5 menit - data dianggap fresh lebih lama
+            gcTime: 10 * 60 * 1000, // 10 menit cache di memori
             retry: 1,
+            refetchOnWindowFocus: false, // Jangan refetch saat user kembali ke tab
+            refetchOnReconnect: true, // Hanya refetch saat koneksi kembali
           },
         },
       }),

@@ -8,7 +8,7 @@ type ApplyUserDataScopeOptions = {
 
 const ADMIN_LEVELS = new Set(["ADM", "ADMIN"]);
 const FCBA_LEVELS = new Set(["MGR", "KSI"]);
-const AFDELING_LEVELS = new Set(["MD1", "AST", "KRT"]);
+const AFDELING_LEVELS = new Set(["MD1", "AST", "KRT", "KRA"]);
 const GANG_LEVELS = new Set(["KRP", "MDP"]);
 
 function getCookieValue(req: NextRequest, names: string[]) {

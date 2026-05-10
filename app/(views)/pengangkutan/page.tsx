@@ -130,13 +130,13 @@ const applyClientUserScope = (params: URLSearchParams) => {
   if (level === "ADM" || level === "ADMIN") return;
 
   if (
-    ["MGR", "KSI", "MD1", "AST", "KRT", "KRP", "MDP"].includes(level) &&
+    ["MGR", "KSI", "MD1", "AST", "KRT", "KRA", "KRP", "MDP"].includes(level) &&
     fcba
   ) {
     params.set("fcba", fcba);
   }
 
-  if (["MD1", "AST", "KRT", "KRP", "MDP"].includes(level) && afdeling) {
+  if (["MD1", "AST", "KRT", "KRA", "KRP", "MDP"].includes(level) && afdeling) {
     params.set("afdeling", afdeling);
   }
 
@@ -178,7 +178,7 @@ export default function PengangkutanPage() {
   const [q, setQ] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [userLevel, setUserLevel] = useState<
-    "ADM" | "MGR" | "KSI" | "MD1" | "AST" | "KRT" | "KRP" | "MDP" | "OTHER"
+    "ADM" | "MGR" | "KSI" | "MD1" | "AST" | "KRT" | "KRA" | "KRP" | "MDP" | "OTHER"
   >("OTHER");
   const [homeFcba, setHomeFcba] = useState<string>("");
   const [homeSection, setHomeSection] = useState<string>("");
@@ -206,8 +206,8 @@ export default function PengangkutanPage() {
     const resolvedLevel =
       level === "ADM" || level === "ADMIN"
         ? "ADM"
-        : ["MGR", "KSI", "MD1", "AST", "KRT", "KRP", "MDP"].includes(level)
-          ? (level as "MGR" | "KSI" | "MD1" | "AST" | "KRT" | "KRP" | "MDP")
+        : ["MGR", "KSI", "MD1", "AST", "KRT", "KRA", "KRP", "MDP"].includes(level)
+          ? (level as "MGR" | "KSI" | "MD1" | "AST" | "KRT" | "KRA" | "KRP" | "MDP")
           : "OTHER";
     setUserLevel(resolvedLevel);
   }, []);
@@ -218,7 +218,8 @@ export default function PengangkutanPage() {
     } else if (
       userLevel === "MD1" ||
       userLevel === "AST" ||
-      userLevel === "KRT"
+      userLevel === "KRT" ||
+      userLevel === "KRA"
     ) {
       setFilters((f) => ({ ...f, fcba: homeFcba, afdeling: homeSection }));
     } else if (userLevel === "KRP" || userLevel === "MDP") {
@@ -470,9 +471,8 @@ export default function PengangkutanPage() {
       width: "120px",
       cell: (r) => (
         <span
-          className={`badge ${
-            r.status_pengangkutan === "Planned" ? "badge-info" : "badge-ghost"
-          }`}
+          className={`badge ${r.status_pengangkutan === "Planned" ? "badge-info" : "badge-ghost"
+            }`}
         >
           {r.status_pengangkutan}
         </span>
@@ -518,9 +518,8 @@ export default function PengangkutanPage() {
         <div className="toast toast-top right-4 z-50">
           {alert && (
             <div
-              className={`alert ${
-                alert.type === "success" ? "alert-success" : "alert-error"
-              }`}
+              className={`alert ${alert.type === "success" ? "alert-success" : "alert-error"
+                }`}
             >
               <div>
                 <span className="font-semibold">

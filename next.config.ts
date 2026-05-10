@@ -12,6 +12,9 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   images: {
+    formats: ['image/webp', 'image/avif'], // Optimasi format gambar
+    deviceSizes: [640, 750, 828, 1080, 1200], // Responsive image sizes
+    imageSizes: [16, 32, 48, 64, 96, 128, 256], // Icon sizes
     localPatterns: [
       {
         pathname: '/api/image-proxy/**',
@@ -43,16 +46,28 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // Optimize CSS loading to prevent unused preload warnings
+  // Performance optimizations
   experimental: {
     optimizeCss: true,
-    optimizePackageImports: ['react-data-table-component'],
+    optimizePackageImports: ['react-data-table-component', 'lucide-react'],
+    // Turbopack optimizations
+    turbo: {
+      rules: {
+        '*.svg': {
+          loaders: ['@svgr/webpack'],
+          as: '*.js',
+        },
+      },
+    },
   },
-  // Disable CSS preload warnings
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
-  // hapus: optimizeFonts, swcMinify, assetPrefix undefined
+  // Enable compression
+  compress: true,
+  // Optimize bundle
+  poweredByHeader: false,
+  generateEtags: false,
 };
 
 export default withPWA(withNextIntl(nextConfig));
