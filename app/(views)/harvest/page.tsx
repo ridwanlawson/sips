@@ -303,6 +303,7 @@ import {
 } from "@/utils/datetime";
 import { buildMapUrl } from "@/utils/mapHelper";
 import { cookieStore } from "@/utils/cookieStore";
+import { useLocale } from "@/hooks/useLocale";
 
 const LocationButton: React.FC<{
   loc?: string | null;
@@ -442,13 +443,14 @@ const toNumber = (value: string | number | null | undefined): number => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const formatTotal = (value: number): string =>
-  value.toLocaleString("id-ID", { maximumFractionDigits: 2 });
+const formatTotal = (value: number, localeTag = "id-ID"): string =>
+  value.toLocaleString(localeTag, { maximumFractionDigits: 2 });
 
 /* =========================
    M A I N
 ========================= */
 export default function HarvestPage() {
+  const localeTag = useLocale();
   const queryClient = useQueryClient();
   const [q, setQ] = useState("");
   const [showFilters, setShowFilters] = useState(false);

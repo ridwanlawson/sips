@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import DataTable from "@/app/components/dynamic-data-table";
 import type { TableColumn } from "react-data-table-component";
 import { SkeletonTable } from "@/app/components/skeletons";
+import { useLocale } from "@/hooks/useLocale";
 
 interface HarvestingUploadData {
   spbno?: string;
@@ -58,6 +59,7 @@ interface HarvestingUploadParams {
 }
 
 export default function HarvestingUploadPage() {
+  const localeTag = useLocale();
   const [formParams, setFormParams] = useState<HarvestingUploadParams>({
     nospb: "",
     tanggal: "",
@@ -307,7 +309,7 @@ export default function HarvestingUploadPage() {
         selector: (row) => {
           try {
             return row.receptiondate
-              ? new Date(row.receptiondate).toLocaleDateString("id-ID")
+              ? new Date(row.receptiondate).toLocaleDateString(localeTag)
               : "-";
           } catch {
             return row.receptiondate || "-";
@@ -321,7 +323,7 @@ export default function HarvestingUploadPage() {
         selector: (row) => {
           try {
             return row.harvestdate
-              ? new Date(row.harvestdate).toLocaleDateString("id-ID")
+              ? new Date(row.harvestdate).toLocaleDateString(localeTag)
               : "-";
           } catch {
             return row.harvestdate || "-";
@@ -364,7 +366,7 @@ export default function HarvestingUploadPage() {
         name: "Bunch",
         selector: (row) => {
           const val = Number(row.bunch) || 0;
-          return val.toLocaleString("id-ID");
+          return val.toLocaleString(localeTag);
         },
         sortable: true,
         width: "100px",
@@ -373,7 +375,7 @@ export default function HarvestingUploadPage() {
         name: "Estate Weight (kg)",
         selector: (row) => {
           const val = Number(row.bunch_estateweight) || 0;
-          return val.toLocaleString("id-ID");
+          return val.toLocaleString(localeTag);
         },
         sortable: true,
         width: "140px",
@@ -382,7 +384,7 @@ export default function HarvestingUploadPage() {
         name: "Mill Weight Bruto",
         selector: (row) => {
           const val = Number(row.mill_weight_bruto) || 0;
-          return val.toLocaleString("id-ID");
+          return val.toLocaleString(localeTag);
         },
         sortable: true,
         width: "140px",
@@ -391,7 +393,7 @@ export default function HarvestingUploadPage() {
         name: "Mill Weight Netto",
         selector: (row) => {
           const val = Number(row.mill_weight_netto) || 0;
-          return val.toLocaleString("id-ID");
+          return val.toLocaleString(localeTag);
         },
         sortable: true,
         width: "140px",
@@ -428,7 +430,7 @@ export default function HarvestingUploadPage() {
 
     if (
       !window.confirm(
-        `Yakin ingin mengirim ${data.length} record harvesting ke SIPS?\n\nTotal Bunch: ${summary.totalBunch}\nTotal Estate Weight: ${summary.totalEstateWeight.toLocaleString("id-ID")} kg`,
+        `Yakin ingin mengirim ${data.length} record harvesting ke SIPS?\n\nTotal Bunch: ${summary.totalBunch}\nTotal Estate Weight: ${summary.totalEstateWeight.toLocaleString(localeTag)} kg`,
       )
     ) {
       return;
@@ -592,7 +594,7 @@ export default function HarvestingUploadPage() {
       setSubmitProgress("");
       if (successCount === totalRecords) {
         alert(
-          `✓ Sukses! Semua ${successCount} data harvesting berhasil dikirim ke SIPS.\n\nTotal Bunch Submitted: ${summary.totalBunch}\nTotal Estate Weight: ${summary.totalEstateWeight.toLocaleString("id-ID")} kg`,
+          `✓ Sukses! Semua ${successCount} data harvesting berhasil dikirim ke SIPS.\n\nTotal Bunch Submitted: ${summary.totalBunch}\nTotal Estate Weight: ${summary.totalEstateWeight.toLocaleString(localeTag)} kg`,
         );
         setData([]);
       } else {

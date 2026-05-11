@@ -14,6 +14,7 @@ import {
   SkeletonTable,
   SkeletonChart,
 } from "@/app/components/skeletons";
+import { useLocale } from "@/hooks/useLocale";
 
 /* =========================
    T Y P E S
@@ -183,10 +184,10 @@ const parseDateOnly = (raw?: string | null): string | null => {
   return onlyDate;
 };
 
-const formatDateID = (yyyyMmDd: string): string => {
+const formatDateID = (yyyyMmDd: string, localeTag = "id-ID"): string => {
   const d = new Date(yyyyMmDd + "T00:00:00");
   if (Number.isNaN(+d)) return yyyyMmDd;
-  return d.toLocaleDateString("id-ID", {
+  return d.toLocaleDateString(localeTag, {
     weekday: "short",
     day: "2-digit",
     month: "short",
@@ -194,9 +195,9 @@ const formatDateID = (yyyyMmDd: string): string => {
   });
 };
 
-const formatMonthID = (year: number, month: number): string => {
+const formatMonthID = (year: number, month: number, localeTag = "id-ID"): string => {
   const date = new Date(year, month - 1, 1);
-  return date.toLocaleDateString("id-ID", {
+  return date.toLocaleDateString(localeTag, {
     month: "long",
     year: "numeric",
   });
@@ -414,6 +415,7 @@ const SearchSelect: React.FC<{
 ========================= */
 
 export default function UserDashboard() {
+  const localeTag = useLocale();
   const queryClient = useQueryClient();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userLevel, setUserLevel] = useState<UserLevel>("OTHER");

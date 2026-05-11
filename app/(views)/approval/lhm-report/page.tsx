@@ -4,8 +4,10 @@ import { useEffect, useState, useRef } from "react";
 
 import { useSearchParams } from "next/navigation";
 import "./lhm-report-print.css";
+import { useLocale } from "@/hooks/useLocale";
 
 export default function LhmReport() {
+  const localeTag = useLocale();
   // Fungsi print
   const handlePrint = () => {
     window.print();
@@ -15,7 +17,7 @@ export default function LhmReport() {
   function formatNumber(val: string | number | null | undefined): string {
     const num = Number(val ?? "0");
     if (isNaN(num)) return "0";
-    return num.toLocaleString("id-ID");
+    return num.toLocaleString(localeTag);
   }
 
   // Helper untuk format tanggal

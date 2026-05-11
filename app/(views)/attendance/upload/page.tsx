@@ -10,8 +10,10 @@ import {
   insertAttendanceData,
 } from "@/utils/attendanceUploadService";
 import { SkeletonTable } from "@/app/components/skeletons";
+import { useLocale } from "@/hooks/useLocale";
 
 export default function AttendanceUploadPage() {
+  const localeTag = useLocale();
   const [formParams, setFormParams] = useState<AttendanceUploadParams>({
     tanggal: "",
     tanggal_end: "",
@@ -276,7 +278,7 @@ export default function AttendanceUploadPage() {
         name: "Date",
         selector: (row) => {
           try {
-            return new Date(row.fddate).toLocaleDateString("id-ID");
+            return new Date(row.fddate).toLocaleDateString(localeTag);
           } catch {
             return row.fddate || "-";
           }
@@ -405,7 +407,7 @@ export default function AttendanceUploadPage() {
         width: "100px",
       },
     ],
-    [],
+    [localeTag],
   );
 
   const handleSubmitAttendance = async () => {

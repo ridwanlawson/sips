@@ -35,6 +35,12 @@ export const cookieStore = {
   getGang: () => getInconsistentCookie(["user_Gang", "user_gang", "user_GANG"]),
   getPhoto: () => getInconsistentCookie(["user_Photo", "user_photo"]),
   getLocale: () => getCookie("NEXT_LOCALE") || "en",
+  /** Returns BCP 47 locale tag for use with toLocaleString / toLocaleDateString */
+  getLocaleTag: (): string => {
+    const locale = getCookie("NEXT_LOCALE") || "en";
+    const map: Record<string, string> = { id: "id-ID", en: "en-US" };
+    return map[locale] ?? "en-US";
+  },
 
   setCookie: (name: string, value: string, days = 365) => {
     if (typeof document === "undefined") return;

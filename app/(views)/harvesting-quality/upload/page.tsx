@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import DataTable from "@/app/components/dynamic-data-table";
 import type { TableColumn } from "react-data-table-component";
 import { SkeletonTable } from "@/app/components/skeletons";
+import { useLocale } from "@/hooks/useLocale";
 
 interface HarvestingQualityUploadData {
   empcode: string;
@@ -56,6 +57,7 @@ interface HarvestingQualityUploadParams {
 }
 
 export default function HarvestingQualityUploadPage() {
+  const localeTag = useLocale();
   const [formParams, setFormParams] = useState<HarvestingQualityUploadParams>({
     empcode: "",
     fddate: "",
@@ -274,7 +276,7 @@ export default function HarvestingQualityUploadPage() {
         selector: (row) => {
           try {
             return row.fddate
-              ? new Date(row.fddate).toLocaleDateString("id-ID")
+              ? new Date(row.fddate).toLocaleDateString(localeTag)
               : "-";
           } catch {
             return row.fddate || "-";
@@ -299,7 +301,7 @@ export default function HarvestingQualityUploadPage() {
         name: "Under Ripe",
         selector: (row) => {
           const val = Number(row.under_ripe) || 0;
-          return val.toLocaleString("id-ID");
+          return val.toLocaleString(localeTag);
         },
         sortable: true,
         width: "110px",
@@ -308,7 +310,7 @@ export default function HarvestingQualityUploadPage() {
         name: "Overripe",
         selector: (row) => {
           const val = Number(row.overripe) || 0;
-          return val.toLocaleString("id-ID");
+          return val.toLocaleString(localeTag);
         },
         sortable: true,
         width: "110px",
@@ -317,7 +319,7 @@ export default function HarvestingQualityUploadPage() {
         name: "Abnormal",
         selector: (row) => {
           const val = Number(row.abnormal) || 0;
-          return val.toLocaleString("id-ID");
+          return val.toLocaleString(localeTag);
         },
         sortable: true,
         width: "110px",
@@ -326,7 +328,7 @@ export default function HarvestingQualityUploadPage() {
         name: "Long Stalk",
         selector: (row) => {
           const val = Number(row.long_stalk) || 0;
-          return val.toLocaleString("id-ID");
+          return val.toLocaleString(localeTag);
         },
         sortable: true,
         width: "110px",
@@ -335,7 +337,7 @@ export default function HarvestingQualityUploadPage() {
         name: "Eaten by Rat",
         selector: (row) => {
           const val = Number(row.eaten_by_rat) || 0;
-          return val.toLocaleString("id-ID");
+          return val.toLocaleString(localeTag);
         },
         sortable: true,
         width: "120px",
@@ -344,7 +346,7 @@ export default function HarvestingQualityUploadPage() {
         name: "Unharvest FFB",
         selector: (row) => {
           const val = Number(row.unharvest_ffb) || 0;
-          return val.toLocaleString("id-ID");
+          return val.toLocaleString(localeTag);
         },
         sortable: true,
         width: "120px",
@@ -353,7 +355,7 @@ export default function HarvestingQualityUploadPage() {
         name: "Uncollect LF Circle",
         selector: (row) => {
           const val = Number(row.uncollect_lf_circle) || 0;
-          return val.toLocaleString("id-ID");
+          return val.toLocaleString(localeTag);
         },
         sortable: true,
         width: "140px",
@@ -362,7 +364,7 @@ export default function HarvestingQualityUploadPage() {
         name: "Uncollect LF Piece",
         selector: (row) => {
           const val = Number(row.uncollect_lf_piece) || 0;
-          return val.toLocaleString("id-ID");
+          return val.toLocaleString(localeTag);
         },
         sortable: true,
         width: "135px",
@@ -371,7 +373,7 @@ export default function HarvestingQualityUploadPage() {
         name: "Unarrange FFB",
         selector: (row) => {
           const val = Number(row.unarrange_ffb) || 0;
-          return val.toLocaleString("id-ID");
+          return val.toLocaleString(localeTag);
         },
         sortable: true,
         width: "125px",
@@ -380,7 +382,7 @@ export default function HarvestingQualityUploadPage() {
         name: "Unprune Frond",
         selector: (row) => {
           const val = Number(row.unprune_frond) || 0;
-          return val.toLocaleString("id-ID");
+          return val.toLocaleString(localeTag);
         },
         sortable: true,
         width: "125px",
@@ -389,7 +391,7 @@ export default function HarvestingQualityUploadPage() {
         name: "QE 1 - Pelepah",
         selector: (row) => {
           const val = Number(row.qe_1_pelepah_tidak_disusun) || 0;
-          return val.toLocaleString("id-ID");
+          return val.toLocaleString(localeTag);
         },
         sortable: true,
         width: "125px",
@@ -398,7 +400,7 @@ export default function HarvestingQualityUploadPage() {
         name: "QE 2 - Buah Matahari",
         selector: (row) => {
           const val = Number(row.qe_2_buah_matahari) || 0;
-          return val.toLocaleString("id-ID");
+          return val.toLocaleString(localeTag);
         },
         sortable: true,
         width: "140px",
@@ -407,7 +409,7 @@ export default function HarvestingQualityUploadPage() {
         name: "QE 3 - Buah Busuk",
         selector: (row) => {
           const val = Number(row.qe_3_buah_busuk) || 0;
-          return val.toLocaleString("id-ID");
+          return val.toLocaleString(localeTag);
         },
         sortable: true,
         width: "125px",
@@ -416,7 +418,7 @@ export default function HarvestingQualityUploadPage() {
         name: "QE 4 - Mentah Diperam",
         selector: (row) => {
           const val = Number(row.qe_4_buah_mentah_diperam) || 0;
-          return val.toLocaleString("id-ID");
+          return val.toLocaleString(localeTag);
         },
         sortable: true,
         width: "145px",
@@ -425,7 +427,7 @@ export default function HarvestingQualityUploadPage() {
         name: "QE 5 - Over Pruning",
         selector: (row) => {
           const val = Number(row.qe_5_over_pruning) || 0;
-          return val.toLocaleString("id-ID");
+          return val.toLocaleString(localeTag);
         },
         sortable: true,
         width: "135px",
@@ -443,7 +445,7 @@ export default function HarvestingQualityUploadPage() {
         width: "150px",
       },
     ],
-    [],
+    [localeTag],
   );
 
   const handleSubmitHarvestingQuality = async () => {
