@@ -1,5 +1,7 @@
 "use client";
 
+import { memo } from "react";
+
 interface SimpleBarChartProps {
   data: Array<{ label: string; value: number }>;
   maxValue?: number;
@@ -7,7 +9,7 @@ interface SimpleBarChartProps {
   title?: string;
 }
 
-export function SimpleBarChart({
+export const SimpleBarChart = memo(function SimpleBarChart({
   data,
   maxValue,
   color = "bg-blue-500",
@@ -48,14 +50,14 @@ export function SimpleBarChart({
       </div>
     </div>
   );
-}
+});
 
 interface PieChartProps {
   data: Array<{ label: string; value: number; color: string }>;
   title?: string;
 }
 
-export function SimplePieChart({ data, title }: PieChartProps) {
+export const SimplePieChart = memo(function SimplePieChart({ data, title }: PieChartProps) {
   const total = data.reduce((sum, item) => sum + item.value, 0);
 
   if (!data || data.length === 0 || total === 0) {
@@ -177,7 +179,7 @@ export function SimplePieChart({ data, title }: PieChartProps) {
       </div>
     </div>
   );
-}
+});
 
 /* =========================
    L I N E   "C H A R T"
@@ -198,7 +200,7 @@ interface LineChartProps {
   title?: string;
 }
 
-export function SimpleLineChart({ data, title }: LineChartProps) {
+export const SimpleLineChart = memo(function SimpleLineChart({ data, title }: LineChartProps) {
   if (!data || data.length === 0) {
     return (
       <div className="w-full h-40 flex items-center justify-center text-base-content/60">
@@ -286,4 +288,4 @@ export function SimpleLineChart({ data, title }: LineChartProps) {
       </div>
     </div>
   );
-}
+});
