@@ -577,10 +577,10 @@ export default function LhmReport() {
                       </tr>
                     );
                   })}
-                  {/* Subtotal Row */}
+                  {/* Total Row */}
                   <tr className="font-bold bg-gray-100">
                     <td colSpan={7} className="text-right">
-                      Subtotal
+                      Total
                     </td>
                     <td className="text-right whitespace-nowrap">
                       {formatNumberRounded(

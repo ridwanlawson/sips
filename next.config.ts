@@ -1,5 +1,5 @@
 import type { NextConfig } from "next";
-import createNextIntlPlugin from 'next-intl/plugin';
+import createNextIntlPlugin from "next-intl/plugin";
 import withPWAInit from "@ducanh2912/next-pwa";
 
 const withNextIntl = createNextIntlPlugin();
@@ -12,12 +12,12 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   images: {
-    formats: ['image/webp', 'image/avif'], // Optimasi format gambar
-    deviceSizes: [640, 750, 828, 1080, 1200], // Responsive image sizes
-    imageSizes: [16, 32, 48, 64, 96, 128, 256], // Icon sizes
+    formats: ["image/webp", "image/avif"],
+    deviceSizes: [640, 750, 828, 1080, 1200],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256],
     localPatterns: [
       {
-        pathname: '/api/image-proxy/**',
+        pathname: "/api/image-proxy/**",
       },
     ],
     remotePatterns: [
@@ -27,16 +27,16 @@ const nextConfig: NextConfig = {
         pathname: "/images/**",
       },
       {
-        protocol: 'http',
-        hostname: 'dev.skj.my.id',
-        port: '82',
-        pathname: '/file/attendance_images/**',
+        protocol: "http",
+        hostname: "dev.skj.my.id",
+        port: "82",
+        pathname: "/file/attendance_images/**",
       },
       {
-        protocol: 'http',
-        hostname: 'dev.skj.my.id',
-        port: '82',
-        pathname: '/file/harvesting_images/**',
+        protocol: "http",
+        hostname: "dev.skj.my.id",
+        port: "82",
+        pathname: "/file/harvesting_images/**",
       },
       {
         protocol: "http",
@@ -46,26 +46,28 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // Performance optimizations
-  experimental: {
-    optimizeCss: true,
-    optimizePackageImports: ['react-data-table-component', 'lucide-react'],
-    // Turbopack optimizations
-    turbo: {
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js',
-        },
+
+  // 🔥 PINDAH KE SINI (bukan di experimental lagi)
+  turbopack: {
+    rules: {
+      "*.svg": {
+        loaders: ["@svgr/webpack"],
+        as: "*.js",
       },
     },
   },
-  compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
+
+  experimental: {
+    optimizeCss: true,
+    optimizePackageImports: ["react-data-table-component", "lucide-react"],
+    // ❌ turbo DIHAPUS dari sini
   },
-  // Enable compression
+
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production",
+  },
+
   compress: true,
-  // Optimize bundle
   poweredByHeader: false,
   generateEtags: false,
 };
