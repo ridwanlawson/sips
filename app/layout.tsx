@@ -25,7 +25,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SiPS Mobile Web",
+  title: {
+    template: "%s | SiPS Mobile Web",
+    default: "SiPS Mobile Web",
+  },
   description: "Aplikasi SiPS Mobile Web oleh PT Sentosa Kalimantan Jaya",
   manifest: "/manifest.json",
   icons: {
