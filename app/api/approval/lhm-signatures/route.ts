@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
       fetchUserByLevel("MDP"),      // Mandor Panen: fcba, afdeling, gangcode, level = MDP
       fetchUserByLevel("KRP"),      // Kerani Panen: fcba, afdeling, gangcode, level = KRP
       fetchUserByLevel("KRT", false),      // Kerani Transport: fcba, afdeling, gangcode, level = KRT
-      fetchUserByLevel("MD1"),      // Mandor I: fcba, afdeling, gangcode, level = MD1
+      fetchUserByLevel("MD1", false),      // Mandor I: fcba, afdeling, gangcode, level = MD1
       fetchUserByLevel("AST", false), // Asisten Afdeling: fcba, afdeling, level = AST (no gangcode)
       fetchUserByLevel("KRA", false), // Kerani Afdeling: fcba, afdeling, level = KRA (no gangcode)
     ]);
