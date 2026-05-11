@@ -20,6 +20,14 @@ export default function LhmReport() {
     return num.toLocaleString(localeTag);
   }
 
+  function formatNumberRounded(
+    val: string | number | null | undefined,
+  ): string {
+    const num = Number(val ?? "0");
+    if (isNaN(num)) return "0";
+    return Math.round(num).toLocaleString(localeTag);
+  }
+
   // Helper untuk format tanggal
   function formatDateDMY(raw: string | null | undefined): string {
     if (!raw) return "-";
@@ -107,6 +115,7 @@ export default function LhmReport() {
     afdeling: string;
     fccode: string;
     fcname: string;
+    luas: string;
     output: string;
     normal: string;
     abnormal: string;
@@ -460,10 +469,17 @@ export default function LhmReport() {
               ) : (
                 <>
                   {data.map((row, idx) => {
-                    const prevCode = idx > 0 ? data[idx - 1].employeecode : null;
+                    const prevCode =
+                      idx > 0 ? data[idx - 1].employeecode : null;
                     const isNew = row.employeecode !== prevCode;
                     const rowNo = isNew
-                      ? data.slice(0, idx).filter((r, i) => i === 0 || r.employeecode !== data[i - 1].employeecode).length + 1
+                      ? data
+                          .slice(0, idx)
+                          .filter(
+                            (r, i) =>
+                              i === 0 ||
+                              r.employeecode !== data[i - 1].employeecode,
+                          ).length + 1
                       : "";
                     return (
                       <tr key={row.employeecode + idx}>
@@ -501,25 +517,39 @@ export default function LhmReport() {
                         <td className="text-right">
                           {formatNumber(row.totalalljjg)}
                         </td>
-                        <td className="text-right">{formatNumber(row.basis)}</td>
+                        <td className="text-right">
+                          {formatNumber(row.basis)}
+                        </td>
                         <td className="text-right">
                           {formatNumber(row.rpbasis)}
                         </td>
                         <td className="text-right">
                           {formatNumber(row.premilv1)}
                         </td>
-                        <td className="text-right">{formatNumber(row.rate1)}</td>
-                        <td className="text-right">{formatNumber(row.rplv1)}</td>
+                        <td className="text-right">
+                          {formatNumber(row.rate1)}
+                        </td>
+                        <td className="text-right">
+                          {formatNumber(row.rplv1)}
+                        </td>
                         <td className="text-right">
                           {formatNumber(row.premilv2)}
                         </td>
-                        <td className="text-right">{formatNumber(row.rate2)}</td>
-                        <td className="text-right">{formatNumber(row.rplv2)}</td>
+                        <td className="text-right">
+                          {formatNumber(row.rate2)}
+                        </td>
+                        <td className="text-right">
+                          {formatNumber(row.rplv2)}
+                        </td>
                         <td className="text-right">
                           {formatNumber(row.premilv3)}
                         </td>
-                        <td className="text-right">{formatNumber(row.rate3)}</td>
-                        <td className="text-right">{formatNumber(row.rplv3)}</td>
+                        <td className="text-right">
+                          {formatNumber(row.rate3)}
+                        </td>
+                        <td className="text-right">
+                          {formatNumber(row.rplv3)}
+                        </td>
                         <td className="text-right whitespace-nowrap">
                           {formatNumber(row.totalrppremi)}
                         </td>
@@ -531,7 +561,8 @@ export default function LhmReport() {
                         </td>
                         <td className="text-right font-bold whitespace-nowrap">
                           {formatNumber(
-                            Number(row.totalrppremi || 0) + Number(row.rpbasis || 0)
+                            Number(row.totalrppremi || 0) +
+                              Number(row.rpbasis || 0),
                           )}
                         </td>
                         <td className="text-right font-bold whitespace-nowrap">
@@ -552,7 +583,7 @@ export default function LhmReport() {
                       Subtotal
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumber(
+                      {formatNumberRounded(
                         data.reduce(
                           (sum, row) => sum + Number(row.jjg || 0),
                           0,
@@ -560,7 +591,7 @@ export default function LhmReport() {
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumber(
+                      {formatNumberRounded(
                         data.reduce(
                           (sum, row) => sum + Number(row.brd || 0),
                           0,
@@ -573,11 +604,11 @@ export default function LhmReport() {
                           (sum, row) => sum + Number(row.ha || 0),
                           0,
                         );
-                        return total === 0 ? "" : formatNumber(total);
+                        return total === 0 ? "" : formatNumberRounded(total);
                       })()}
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumber(
+                      {formatNumberRounded(
                         data.reduce(
                           (sum, row) => sum + Number(row.mentahqty || 0),
                           0,
@@ -585,7 +616,7 @@ export default function LhmReport() {
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumber(
+                      {formatNumberRounded(
                         data.reduce(
                           (sum, row) => sum + Number(row.mentahrp || 0),
                           0,
@@ -593,7 +624,7 @@ export default function LhmReport() {
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumber(
+                      {formatNumberRounded(
                         data.reduce(
                           (sum, row) => sum + Number(row.emptybunchqty || 0),
                           0,
@@ -601,7 +632,7 @@ export default function LhmReport() {
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumber(
+                      {formatNumberRounded(
                         data.reduce(
                           (sum, row) => sum + Number(row.emptybunchrp || 0),
                           0,
@@ -611,7 +642,7 @@ export default function LhmReport() {
                     <td className="text-right">0</td>
                     <td className="text-right">0</td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumber(
+                      {formatNumberRounded(
                         data.reduce(
                           (sum, row) => sum + Number(row.jumlahdenda || 0) * -1,
                           0,
@@ -619,7 +650,7 @@ export default function LhmReport() {
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumber(
+                      {formatNumberRounded(
                         data.reduce(
                           (sum, row) => sum + Number(row.totalalljjg || 0),
                           0,
@@ -627,7 +658,7 @@ export default function LhmReport() {
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumber(
+                      {formatNumberRounded(
                         data.reduce(
                           (sum, row) => sum + Number(row.basis || 0),
                           0,
@@ -635,7 +666,7 @@ export default function LhmReport() {
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumber(
+                      {formatNumberRounded(
                         data.reduce(
                           (sum, row) => sum + Number(row.rpbasis || 0),
                           0,
@@ -643,7 +674,7 @@ export default function LhmReport() {
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumber(
+                      {formatNumberRounded(
                         data.reduce(
                           (sum, row) => sum + Number(row.premilv1 || 0),
                           0,
@@ -652,7 +683,7 @@ export default function LhmReport() {
                     </td>
                     <td className="text-right whitespace-nowrap"></td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumber(
+                      {formatNumberRounded(
                         data.reduce(
                           (sum, row) => sum + Number(row.rplv1 || 0),
                           0,
@@ -660,7 +691,7 @@ export default function LhmReport() {
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumber(
+                      {formatNumberRounded(
                         data.reduce(
                           (sum, row) => sum + Number(row.premilv2 || 0),
                           0,
@@ -669,7 +700,7 @@ export default function LhmReport() {
                     </td>
                     <td className="text-right whitespace-nowrap"></td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumber(
+                      {formatNumberRounded(
                         data.reduce(
                           (sum, row) => sum + Number(row.rplv2 || 0),
                           0,
@@ -677,7 +708,7 @@ export default function LhmReport() {
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumber(
+                      {formatNumberRounded(
                         data.reduce(
                           (sum, row) => sum + Number(row.premilv3 || 0),
                           0,
@@ -686,7 +717,7 @@ export default function LhmReport() {
                     </td>
                     <td className="text-right whitespace-nowrap"></td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumber(
+                      {formatNumberRounded(
                         data.reduce(
                           (sum, row) => sum + Number(row.rplv3 || 0),
                           0,
@@ -694,7 +725,7 @@ export default function LhmReport() {
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumber(
+                      {formatNumberRounded(
                         data.reduce(
                           (sum, row) => sum + Number(row.totalrppremi || 0),
                           0,
@@ -702,7 +733,7 @@ export default function LhmReport() {
                       )}
                     </td>
                     <td className="text-right font-bold whitespace-nowrap">
-                      {formatNumber(
+                      {formatNumberRounded(
                         data.reduce(
                           (sum, row) => sum + Number(row.rphk || 0),
                           0,
@@ -710,7 +741,7 @@ export default function LhmReport() {
                       )}
                     </td>
                     <td className="text-right font-bold whitespace-nowrap">
-                      {formatNumber(
+                      {formatNumberRounded(
                         data.reduce(
                           (sum, row) => sum + Number(row.kurangbasis || 0),
                           0,
@@ -718,7 +749,7 @@ export default function LhmReport() {
                       )}
                     </td>
                     <td className="text-right font-bold whitespace-nowrap">
-                      {formatNumber(
+                      {formatNumberRounded(
                         data.reduce(
                           (sum, row) => sum + Number(row.totalrppremi || 0),
                           0,
@@ -726,7 +757,7 @@ export default function LhmReport() {
                       )}
                     </td>
                     <td className="text-right font-bold whitespace-nowrap">
-                      {formatNumber(
+                      {formatNumberRounded(
                         data.reduce(
                           (sum, row) => sum + Number(row.brd_rp || 0),
                           0,
@@ -734,7 +765,7 @@ export default function LhmReport() {
                       )}
                     </td>
                     <td className="text-right font-bold whitespace-nowrap">
-                      {formatNumber(
+                      {formatNumberRounded(
                         data.reduce(
                           (sum, row) => sum + Number(row.total || 0),
                           0,
@@ -780,7 +811,7 @@ export default function LhmReport() {
                 <tr key={row.fccode + idx}>
                   <td className="text-center">{idx + 1}</td>
                   <td className="text-center">{row.fcname}</td>
-                  <td className="text-right"></td>
+                  <td className="text-right">{row.luas}</td>
                   <td className="text-right">{formatNumber(row.output)}</td>
                   <td className="text-right">{formatNumber(row.normal)}</td>
                   <td className="text-right">{formatNumber(row.abnormal)}</td>
@@ -791,24 +822,58 @@ export default function LhmReport() {
               ))
             )}
             <tr className="font-bold bg-gray-100">
-              <td colSpan={3} className="text-right">Total</td>
-              <td className="text-right whitespace-nowrap">
-                {formatNumber(lhaData.reduce((sum, row) => sum + Number(row.output || 0), 0))}
+              <td colSpan={2} className="text-right">
+                Total
               </td>
               <td className="text-right whitespace-nowrap">
-                {formatNumber(lhaData.reduce((sum, row) => sum + Number(row.normal || 0), 0))}
+                {formatNumberRounded(
+                  lhaData.reduce((sum, row) => sum + Number(row.luas || 0), 0),
+                )}
               </td>
               <td className="text-right whitespace-nowrap">
-                {formatNumber(lhaData.reduce((sum, row) => sum + Number(row.abnormal || 0), 0))}
+                {formatNumberRounded(
+                  lhaData.reduce(
+                    (sum, row) => sum + Number(row.output || 0),
+                    0,
+                  ),
+                )}
               </td>
               <td className="text-right whitespace-nowrap">
-                {formatNumber(lhaData.reduce((sum, row) => sum + Number(row.overripe || 0), 0))}
+                {formatNumberRounded(
+                  lhaData.reduce(
+                    (sum, row) => sum + Number(row.normal || 0),
+                    0,
+                  ),
+                )}
               </td>
               <td className="text-right whitespace-nowrap">
-                {formatNumber(lhaData.reduce((sum, row) => sum + Number(row.empty || 0), 0))}
+                {formatNumberRounded(
+                  lhaData.reduce(
+                    (sum, row) => sum + Number(row.abnormal || 0),
+                    0,
+                  ),
+                )}
               </td>
               <td className="text-right whitespace-nowrap">
-                {formatNumber(lhaData.reduce((sum, row) => sum + Number(row.mentah || 0), 0))}
+                {formatNumberRounded(
+                  lhaData.reduce(
+                    (sum, row) => sum + Number(row.overripe || 0),
+                    0,
+                  ),
+                )}
+              </td>
+              <td className="text-right whitespace-nowrap">
+                {formatNumberRounded(
+                  lhaData.reduce((sum, row) => sum + Number(row.empty || 0), 0),
+                )}
+              </td>
+              <td className="text-right whitespace-nowrap">
+                {formatNumberRounded(
+                  lhaData.reduce(
+                    (sum, row) => sum + Number(row.mentah || 0),
+                    0,
+                  ),
+                )}
               </td>
             </tr>
           </tbody>
@@ -857,46 +922,78 @@ export default function LhmReport() {
               <tr>
                 <td className="premi-label">PREMI KERANI PANEN</td>
                 <td className="premi-eq">Rp</td>
-                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-input">
+                  <span className="garis"></span>
+                </td>
                 <td className="premi-eq">X 100% X IKP</td>
-                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-input">
+                  <span className="garis"></span>
+                </td>
                 <td className="premi-eq">% = Rp</td>
-                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-input">
+                  <span className="garis"></span>
+                </td>
                 <td className="premi-eq">s/d HI Rp</td>
-                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-input">
+                  <span className="garis"></span>
+                </td>
               </tr>
               <tr>
                 <td className="premi-label">PREMI KERANI TRANSPORT</td>
                 <td className="premi-eq">Rp</td>
-                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-input">
+                  <span className="garis"></span>
+                </td>
                 <td className="premi-eq">X 110% X IKKP</td>
-                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-input">
+                  <span className="garis"></span>
+                </td>
                 <td className="premi-eq">% = Rp</td>
-                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-input">
+                  <span className="garis"></span>
+                </td>
                 <td className="premi-eq">s/d HI Rp</td>
-                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-input">
+                  <span className="garis"></span>
+                </td>
               </tr>
               <tr>
                 <td className="premi-label">PREMI MANDOR PANEN</td>
                 <td className="premi-eq">Rp</td>
-                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-input">
+                  <span className="garis"></span>
+                </td>
                 <td className="premi-eq">X 125% X IKP</td>
-                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-input">
+                  <span className="garis"></span>
+                </td>
                 <td className="premi-eq">% = Rp</td>
-                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-input">
+                  <span className="garis"></span>
+                </td>
                 <td className="premi-eq">s/d HI Rp</td>
-                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-input">
+                  <span className="garis"></span>
+                </td>
               </tr>
               <tr>
                 <td className="premi-label">PREMI MANDOR I</td>
                 <td className="premi-eq">Rp</td>
-                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-input">
+                  <span className="garis"></span>
+                </td>
                 <td className="premi-eq">X 150% X IPP</td>
-                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-input">
+                  <span className="garis"></span>
+                </td>
                 <td className="premi-eq">% = Rp</td>
-                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-input">
+                  <span className="garis"></span>
+                </td>
                 <td className="premi-eq">s/d HI Rp</td>
-                <td className="premi-input"><span className="garis"></span></td>
+                <td className="premi-input">
+                  <span className="garis"></span>
+                </td>
               </tr>
             </tbody>
           </table>
