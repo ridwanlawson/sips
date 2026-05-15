@@ -579,6 +579,7 @@ export default function UserDashboard() {
   } = useQuery({
     queryKey: [
       "attendance",
+      timeframe,
       filterFcba,
       filterAfdeling,
       userLevel,
@@ -586,6 +587,11 @@ export default function UserDashboard() {
     ],
     queryFn: async () => {
       const params = new URLSearchParams();
+
+      // Optimize: Use server-side filtering for dates
+      const { from, to } = getDateRange(timeframe);
+      params.set("tanggal", from);
+      params.set("tanggal_end", to);
 
       const homeFcba = userProfile?.fcba || readCookie("user_Fcba") || "";
       const homeAfdeling =
@@ -963,229 +969,119 @@ export default function UserDashboard() {
 
   /* ===== Options FCBA & Afdeling (chain) ===== */
 
-  /* ===== Filter berdasarkan Timeframe (FRONTEND) ===== */
-  const filteredAttendance: AttendanceRecord[] = useMemo(() => {
-    if (!attendanceRaw.length) return [];
-    const { from, to } = getDateRange(timeframe);
-    return attendanceRaw.filter((r) => {
-      const d = parseDateOnly(r.tanggal);
-      if (!d) return false;
-      return d >= from && d <= to;
-    });
-  }, [attendanceRaw, timeframe]);
-
-  /* ===== Stats dari filteredAttendance ===== */
-
-  const stats: DashboardStats = useMemo(() => {
-    let totalHadir = 0;
-    let totalTepatWaktu = 0;
-    let totalTelat = 0;
-    let totalPulangAwal = 0;
-    let totalAlpa = 0;
-
-    for (const r of filteredAttendance) {
-      const cls = classifyStatus(r);
-      if (cls === "TEPAT_WAKTU") {
-        totalTepatWaktu += 1;
-        totalHadir += 1; // Tepat waktu juga dihitung sebagai hadir
-      } else if (cls === "TELAT") {
-        totalTelat += 1;
-        totalHadir += 1; // Telat juga dihitung sebagai hadir
-      } else if (cls === "PULANG_AWAL") {
-        totalPulangAwal += 1;
-        totalHadir += 1; // Pulang awal juga dihitung sebagai hadir
-      } else if (cls === "ALPHA") {
-        totalAlpa += 1;
-      }
-    }
-
-    return {
-      totalHadir,
-      totalTepatWaktu,
-      totalTelat,
-      totalPulangAwal,
-      totalAlpa,
+  /* ===== Consolidate Aggregation in Single Pass (Optimize Performance) ===== */
+  const { stats, dailySummaries, monthlySummaries, yearlySummaries, rowDetails } = useMemo(() => {
+    const initialStats: DashboardStats = {
+      totalHadir: 0,
+      totalTepatWaktu: 0,
+      totalTelat: 0,
+      totalPulangAwal: 0,
+      totalAlpa: 0,
     };
-  }, [filteredAttendance]);
 
-  /* ===== Aggregasi berdasarkan Timeframe ===== */
+    const dailyMap = new Map<string, DailySummary>();
+    const monthlyMap = new Map<string, MonthlySummary>();
+    const yearlyMap = new Map<number, YearlySummary>();
+    const details: AttendanceRecord[] = [];
 
-  // Aggregasi Harian (dipakai utk Riwayat Per Hari & Line Chart harian)
-  const dailySummaries: DailySummary[] = useMemo(() => {
-    const map = new Map<string, DailySummary>();
-
-    for (const r of filteredAttendance) {
+    // Optimize: Single pass over the data
+    for (const r of attendanceRaw) {
       const dateOnly = parseDateOnly(r.tanggal);
       if (!dateOnly) continue;
 
+      details.push(r);
+
+      const cls = classifyStatus(r);
+
+      // 1. Global Stats
+      if (cls === "TEPAT_WAKTU") {
+        initialStats.totalTepatWaktu += 1;
+        initialStats.totalHadir += 1;
+      } else if (cls === "TELAT") {
+        initialStats.totalTelat += 1;
+        initialStats.totalHadir += 1;
+      } else if (cls === "PULANG_AWAL") {
+        initialStats.totalPulangAwal += 1;
+        initialStats.totalHadir += 1;
+      } else if (cls === "ALPHA") {
+        initialStats.totalAlpa += 1;
+      }
+
+      // 2. Daily Summaries
       let keyObj: DailyGroupKey;
       if (userLevel === "ADM") {
-        keyObj = {
-          date: dateOnly,
-          fcba: r.fcba || "-",
-          afdeling: r.section || "-",
-        };
+        keyObj = { date: dateOnly, fcba: r.fcba || "-", afdeling: r.section || "-" };
       } else if (userLevel === "MGR") {
-        keyObj = {
-          date: dateOnly,
-          afdeling: r.section || "-",
-        };
+        keyObj = { date: dateOnly, afdeling: r.section || "-" };
       } else {
         keyObj = { date: dateOnly };
       }
-
       const keyParts = [keyObj.date];
       if (keyObj.fcba) keyParts.push(`FCBA:${keyObj.fcba}`);
       if (keyObj.afdeling) keyParts.push(`AFD:${keyObj.afdeling}`);
-      const key = keyParts.join("|");
+      const dailyKey = keyParts.join("|");
 
-      let summary = map.get(key);
-      if (!summary) {
-        summary = {
-          ...keyObj,
-          hadir: 0,
-          tepatWaktu: 0,
-          telat: 0,
-          pulangAwal: 0,
-          alpa: 0,
-        };
-        map.set(key, summary);
+      let dSum = dailyMap.get(dailyKey);
+      if (!dSum) {
+        dSum = { ...keyObj, hadir: 0, tepatWaktu: 0, telat: 0, pulangAwal: 0, alpa: 0 };
+        dailyMap.set(dailyKey, dSum);
+      }
+      if (cls === "TEPAT_WAKTU") { dSum.tepatWaktu++; dSum.hadir++; }
+      else if (cls === "TELAT") { dSum.telat++; dSum.hadir++; }
+      else if (cls === "PULANG_AWAL") { dSum.pulangAwal++; dSum.hadir++; }
+      else if (cls === "ALPHA") { dSum.alpa++; }
+
+      // 3. Monthly Summaries
+      if (timeframe === "monthly" || timeframe === "yearly") {
+        const [year, month] = dateOnly.split("-").map(Number);
+        const monthKey = `${year}-${month.toString().padStart(2, "0")}`;
+        let mSum = monthlyMap.get(monthKey);
+        if (!mSum) {
+          mSum = { year, month, monthName: formatMonthID(year, month), hadir: 0, tepatWaktu: 0, telat: 0, pulangAwal: 0, alpa: 0 };
+          monthlyMap.set(monthKey, mSum);
+        }
+        if (cls === "TEPAT_WAKTU") { mSum.tepatWaktu++; mSum.hadir++; }
+        else if (cls === "TELAT") { mSum.telat++; mSum.hadir++; }
+        else if (cls === "PULANG_AWAL") { mSum.pulangAwal++; mSum.hadir++; }
+        else if (cls === "ALPHA") { mSum.alpa++; }
       }
 
-      if (!summary) continue;
-
-      const cls = classifyStatus(r);
-      if (cls === "TEPAT_WAKTU") {
-        summary.tepatWaktu += 1;
-        summary.hadir += 1; // Tepat waktu = hadir
-      } else if (cls === "TELAT") {
-        summary.telat += 1;
-        summary.hadir += 1; // Telat juga hadir
-      } else if (cls === "PULANG_AWAL") {
-        summary.pulangAwal += 1;
-        summary.hadir += 1; // Pulang awal juga hadir
-      } else if (cls === "ALPHA") {
-        summary.alpa += 1;
-      }
-    }
-
-    const arr = Array.from(map.values());
-    // sort berdasarkan tanggal (terbaru dulu)
-    arr.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
-    return arr;
-  }, [filteredAttendance, userLevel]);
-
-  // Aggregasi Bulanan (untuk line chart monthly / yearly)
-  const monthlySummaries: MonthlySummary[] = useMemo(() => {
-    if (timeframe !== "monthly" && timeframe !== "yearly") return [];
-
-    const map = new Map<string, MonthlySummary>();
-
-    for (const r of filteredAttendance) {
-      const dateOnly = parseDateOnly(r.tanggal);
-      if (!dateOnly) continue;
-
-      const [year, month] = dateOnly.split("-").map(Number);
-      const monthKey = `${year}-${month.toString().padStart(2, "0")}`;
-
-      let summary = map.get(monthKey);
-      if (!summary) {
-        summary = {
-          year,
-          month,
-          monthName: formatMonthID(year, month),
-          hadir: 0,
-          tepatWaktu: 0,
-          telat: 0,
-          pulangAwal: 0,
-          alpa: 0,
-        };
-        map.set(monthKey, summary);
-      }
-
-      if (!summary) continue;
-      const cls = classifyStatus(r);
-      if (cls === "TEPAT_WAKTU") {
-        summary.tepatWaktu += 1;
-        summary.hadir += 1;
-      } else if (cls === "TELAT") {
-        summary.telat += 1;
-        summary.hadir += 1;
-      } else if (cls === "PULANG_AWAL") {
-        summary.pulangAwal += 1;
-        summary.hadir += 1;
-      } else if (cls === "ALPHA") {
-        summary.alpa += 1;
+      // 4. Yearly Summaries
+      if (timeframe === "yearly") {
+        const year = parseInt(dateOnly.split("-")[0]);
+        let ySum = yearlyMap.get(year);
+        if (!ySum) {
+          ySum = { year, hadir: 0, tepatWaktu: 0, telat: 0, pulangAwal: 0, alpa: 0 };
+          yearlyMap.set(year, ySum);
+        }
+        if (cls === "TEPAT_WAKTU") { ySum.tepatWaktu++; ySum.hadir++; }
+        else if (cls === "TELAT") { ySum.telat++; ySum.hadir++; }
+        else if (cls === "PULANG_AWAL") { ySum.pulangAwal++; ySum.hadir++; }
+        else if (cls === "ALPHA") { ySum.alpa++; }
       }
     }
 
-    const arr = Array.from(map.values());
-    // sort berdasarkan tahun dan bulan (terbaru dulu)
-    arr.sort((a, b) => {
-      if (a.year !== b.year) return b.year - a.year;
-      return b.month - a.month;
-    });
-    return arr;
-  }, [filteredAttendance, timeframe]);
-
-  // Aggregasi Tahunan (untuk line chart yearly)
-  const yearlySummaries: YearlySummary[] = useMemo(() => {
-    if (timeframe !== "yearly") return [];
-
-    const map = new Map<number, YearlySummary>();
-
-    for (const r of filteredAttendance) {
-      const dateOnly = parseDateOnly(r.tanggal);
-      if (!dateOnly) continue;
-
-      const year = parseInt(dateOnly.split("-")[0]);
-
-      let summary = map.get(year);
-      if (!summary) {
-        summary = {
-          year,
-          hadir: 0,
-          tepatWaktu: 0,
-          telat: 0,
-          pulangAwal: 0,
-          alpa: 0,
-        };
-        map.set(year, summary);
-      }
-      if (!summary) continue;
-      const cls = classifyStatus(r);
-      if (cls === "TEPAT_WAKTU") {
-        summary.tepatWaktu += 1;
-        summary.hadir += 1;
-      } else if (cls === "TELAT") {
-        summary.telat += 1;
-        summary.hadir += 1;
-      } else if (cls === "PULANG_AWAL") {
-        summary.pulangAwal += 1;
-        summary.hadir += 1;
-      } else if (cls === "ALPHA") {
-        summary.alpa += 1;
-      }
-    }
-
-    const arr = Array.from(map.values());
-    // sort berdasarkan tahun (terbaru dulu)
-    arr.sort((a, b) => b.year - a.year);
-    return arr;
-  }, [filteredAttendance, timeframe]);
-
-  // Data per-baris untuk Riwayat Detail (urut tanggal terbaru dulu)
-  const rowDetails: AttendanceRecord[] = useMemo(() => {
-    const arr = filteredAttendance.slice();
-    arr.sort((a, b) => {
+    const dsArr = Array.from(dailyMap.values()).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+    const msArr = Array.from(monthlyMap.values()).sort((a, b) => (a.year !== b.year ? b.year - a.year : b.month - a.month));
+    const ysArr = Array.from(yearlyMap.values()).sort((a, b) => b.year - a.year);
+    const detailsSorted = [...details].sort((a, b) => {
       const da = parseDateOnly(a.tanggal) || "";
       const db = parseDateOnly(b.tanggal) || "";
-      if (da < db) return 1;
-      if (da > db) return -1;
-      return 0;
+      return da < db ? 1 : da > db ? -1 : 0;
     });
-    return arr;
-  }, [filteredAttendance]);
+
+    return {
+      stats: initialStats,
+      dailySummaries: dsArr,
+      monthlySummaries: msArr,
+      yearlySummaries: ysArr,
+      rowDetails: detailsSorted
+    };
+  }, [attendanceRaw, timeframe, userLevel]);
+
+  // Keep filteredAttendance for JSX backwards compatibility if needed,
+  // but it's cleaner to just replace its usages since we consolidated everything.
+  const filteredAttendance = rowDetails;
 
   /* ===== Data Chart ===== */
 
