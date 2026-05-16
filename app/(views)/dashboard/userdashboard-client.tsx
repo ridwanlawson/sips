@@ -571,7 +571,7 @@ export default function UserDashboard() {
     }
   }, [profileData]);
 
-  // 3. Attendance Query
+  // 3. Attendance Query - ⚡ Bolt: Server-side filtering to reduce payload size
   const {
     data: attendanceRaw = [],
     isLoading: loading,
@@ -579,13 +579,17 @@ export default function UserDashboard() {
   } = useQuery({
     queryKey: [
       "attendance",
+      timeframe,
       filterFcba,
       filterAfdeling,
       userLevel,
       userProfileKey,
     ],
     queryFn: async () => {
+      const { from, to } = getDateRange(timeframe);
       const params = new URLSearchParams();
+      params.set("tanggal", from);
+      params.set("tanggal_end", to);
 
       const homeFcba = userProfile?.fcba || readCookie("user_Fcba") || "";
       const homeAfdeling =
@@ -964,15 +968,10 @@ export default function UserDashboard() {
   /* ===== Options FCBA & Afdeling (chain) ===== */
 
   /* ===== Filter berdasarkan Timeframe (FRONTEND) ===== */
+  // ⚡ Bolt: No longer needs deep filtering as server already filtered by date
   const filteredAttendance: AttendanceRecord[] = useMemo(() => {
-    if (!attendanceRaw.length) return [];
-    const { from, to } = getDateRange(timeframe);
-    return attendanceRaw.filter((r) => {
-      const d = parseDateOnly(r.tanggal);
-      if (!d) return false;
-      return d >= from && d <= to;
-    });
-  }, [attendanceRaw, timeframe]);
+    return attendanceRaw;
+  }, [attendanceRaw]);
 
   /* ===== Stats dari filteredAttendance ===== */
 
