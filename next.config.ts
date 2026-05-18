@@ -8,8 +8,6 @@ const withPWA = withPWAInit({
   dest: "public",
   disable: process.env.NODE_ENV === "development",
   register: true,
-  // Hanya cache aset statis — jangan cache API calls
-  runtimeCaching: [],
 });
 
 const nextConfig: NextConfig = {

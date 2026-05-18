@@ -107,7 +107,7 @@ export const MenuConfig: MenuItem[] = [
     id: "approval",
     label: "approvalLhm",
     href: "/approval",
-    icon: "M4 3h10l6 6v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm10 0v6h6M8 14l3 3 5-5",
+    icon: "M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z",
     requiredLevel: ["ADM", "MDP"],
   },
   // Commented out menus as per original code
