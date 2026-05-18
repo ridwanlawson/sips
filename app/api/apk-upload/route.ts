@@ -49,7 +49,6 @@ export async function POST(req: NextRequest) {
           success: false,
           message: `Laravel error (HTTP ${response.status})`,
           status: response.status,
-          details,
         },
         { status: response.status }
       );
@@ -63,7 +62,7 @@ export async function POST(req: NextRequest) {
     const error = err instanceof Error ? err : new Error(String(err));
     console.error("❌ Proxy crash:", error.message, error.stack);
     return NextResponse.json(
-      { success: false, message: "Proxy error: " + error.message },
+      { success: false, message: "Proxy error occurred" },
       { status: 500 }
     );
   }

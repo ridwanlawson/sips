@@ -76,8 +76,9 @@ export async function proxyGet(
     const { data, parseError } = await parseJsonSafe(response);
 
     if (parseError) {
+        console.error("Failed to parse API response:", data);
         return NextResponse.json(
-            { success: false, message: `Failed to parse API response: ${String(data).substring(0, 200)}`, data: [] },
+            { success: false, message: "Failed to parse API response", data: [] },
             { status: 500 },
         );
     }
@@ -124,8 +125,9 @@ export async function proxyPost(
     const { data, parseError } = await parseJsonSafe(response);
 
     if (parseError) {
+        console.error("Failed to parse API response:", data);
         return NextResponse.json(
-            { success: false, message: `Failed to parse API response: ${String(data).substring(0, 200)}` },
+            { success: false, message: "Failed to parse API response" },
             { status: 500 },
         );
     }
