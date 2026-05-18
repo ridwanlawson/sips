@@ -1,7 +1,5 @@
 import { cookies } from "next/headers";
-
-export const ABSENSI_BASE =
-  process.env.ABSENSI_BASE || "http://dev.skj.my.id:82/api/apps/absensis";
+export { ABSENSI_BASE, BACKEND_URL } from "@/utils/backendConfig";
 
 export async function getTokenFromCookie() {
   const jar = await cookies();

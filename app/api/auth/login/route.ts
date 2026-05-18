@@ -1,26 +1,27 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
+import { BACKEND_URL } from "@/utils/absensiProxy";
 
 export async function POST(request: Request) {
   try {
     const { username, password } = await request.json();
 
-    const upstream = await fetch('http://dev.skj.my.id:82/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    const upstream = await fetch(`${BACKEND_URL}/api/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({ username, password }),
     });
 
     const data = await upstream.json();
 
     if (!upstream.ok) {
-      return NextResponse.json({ ok: false, error: data?.message || 'Auth failed' }, { status: upstream.status });
+      return NextResponse.json({ ok: false, error: data?.message || "Auth failed" }, { status: upstream.status });
     }
 
     const token = data?.token;
     const userId = data?.user?.id;
     const userKode = data?.user?.idkaryawan;
     const userFcba = data?.user?.fcba;
-    const userAfdeling = data?.user?.afdeling;     // sectionname sumber user
+    const userAfdeling = data?.user?.afdeling;
     const userGang = data?.user?.gangcode;
     const userFullName = data?.user?.fullname;
     const userLevel = data?.user?.level;
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
     const userPhoto = data?.user?.photo;
 
     if (!token || !userId) {
-      return NextResponse.json({ ok: false, error: 'Invalid login response' }, { status: 500 });
+      return NextResponse.json({ ok: false, error: "Invalid login response" }, { status: 500 });
     }
 
     const res = NextResponse.json({ ok: true });
@@ -36,37 +37,34 @@ export async function POST(request: Request) {
     // Base cookie utk auth (server-only)
     const base = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict' as const,
-      path: '/',
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict" as const,
+      path: "/",
     };
 
     // Base cookie utk client-side info (client-readable)
     const clientBase = {
       httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict' as const,
-      path: '/',
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict" as const,
+      path: "/",
     };
 
-    // ====== 1) Set cookie auth & info user (server-only) ======
-    res.cookies.set('auth_token', String(token), base);
-    res.cookies.set('log_id', String(userId), base);
-    
-    if (userKode) res.cookies.set('user_Kode', String(userKode), clientBase);
-    if (userFcba) res.cookies.set('user_Fcba', String(userFcba), clientBase);
-    if (userAfdeling) res.cookies.set('user_Afdeling', String(userAfdeling), clientBase);
-    if (userGang) res.cookies.set('user_Gang', String(userGang), clientBase);
-    if (userFullName) res.cookies.set('user_FullName', String(userFullName), clientBase);
-    if (userLevel) res.cookies.set('user_Level', String(userLevel), clientBase);
-    if (userPosition) res.cookies.set('user_Position', String(userPosition), clientBase);
-    if (userPhoto) res.cookies.set('user_Photo', String(userPhoto), clientBase);
+    // Set cookie auth & info user
+    res.cookies.set("auth_token", String(token), base);
+    res.cookies.set("log_id", String(userId), base);
 
-    // Note: Fetch karyawans data moved to dashboard for faster login
+    if (userKode) res.cookies.set("user_Kode", String(userKode), clientBase);
+    if (userFcba) res.cookies.set("user_Fcba", String(userFcba), clientBase);
+    if (userAfdeling) res.cookies.set("user_Afdeling", String(userAfdeling), clientBase);
+    if (userGang) res.cookies.set("user_Gang", String(userGang), clientBase);
+    if (userFullName) res.cookies.set("user_FullName", String(userFullName), clientBase);
+    if (userLevel) res.cookies.set("user_Level", String(userLevel), clientBase);
+    if (userPosition) res.cookies.set("user_Position", String(userPosition), clientBase);
+    if (userPhoto) res.cookies.set("user_Photo", String(userPhoto), clientBase);
 
     return res;
-  } catch (e) {
-    console.error('[LOGIN]', e);
-    return NextResponse.json({ ok: false, error: 'Internal server error' }, { status: 500 });
+  } catch {
+    return NextResponse.json({ ok: false, error: "Internal server error" }, { status: 500 });
   }
 }

@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
-import Approval from "./approval-client";
+import ApprovalWrapper from "./approval-wrapper";
 
-export const metadata: Metadata = {
-  title: "Persetujuan",
-};
+export const metadata: Metadata = { title: "Persetujuan" };
 
 export default function Page() {
-  return <Approval />;
+  return <ApprovalWrapper />;
 }

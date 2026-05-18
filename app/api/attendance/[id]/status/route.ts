@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-
-const BASE_URL = "http://dev.skj.my.id:82/api/apps/absensis";
+import { ABSENSI_BASE, getTokenFromCookie } from "@/utils/absensiProxy";
 
 export async function PATCH(
   req: NextRequest,
@@ -12,19 +11,9 @@ export async function PATCH(
   try {
     const body = await req.json();
 
-    // =====================================================
-    // AMBIL TOKEN DARI COOKIES (SEPERTI DI SCRIPT CLIENT)
-    // =====================================================
-    // Silakan sesuaikan nama cookienya kalau beda:
-    // misal: "user_Token", "token", "auth_token", dll.
-    let rawToken =
-      req.cookies.get("user_Token")?.value || // contoh kalau pakai ini
-      req.cookies.get("token")?.value ||
-      req.cookies.get("auth_token")?.value ||
-      req.cookies.get("Authorization")?.value ||
-      "";
+    const token = await getTokenFromCookie();
 
-    if (!rawToken) {
+    if (!token) {
       return NextResponse.json(
         {
           ok: false,
@@ -34,16 +23,10 @@ export async function PATCH(
       );
     }
 
-    // Kalau cookienya sudah menyimpan "Bearer xxxxxx", kita pakai apa adanya.
-    // Kalau cuma "xxxxxx", kita tambahkan "Bearer ".
-    if (!rawToken.toLowerCase().startsWith("bearer ")) {
-      rawToken = `Bearer ${rawToken}`;
-    }
-
-    const res = await fetch(`${BASE_URL}/${id}/status`, {
+    const res = await fetch(`${ABSENSI_BASE}/${id}/status`, {
       method: "PATCH",
       headers: {
-        Authorization: rawToken,
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
         Accept: "application/json",
       },

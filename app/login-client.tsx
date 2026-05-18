@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { cookieStore } from "@/utils/cookieStore";
-import toast from "react-hot-toast";
+import { checkAndDownloadApp } from "@/utils/downloadapp";
 
 const LOADING_TIPS = [
   "Pastikan username dan password sudah benar.",
@@ -26,7 +25,7 @@ export default function Home() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [savePassword, setSavePassword] = useState(false);
+  const [saveUsername, setSaveUsername] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingDownload, setIsCheckingDownload] = useState(false);
@@ -40,29 +39,26 @@ export default function Home() {
     if (!saved) return;
 
     try {
-      const parsed = JSON.parse(saved) as {
-        username?: string;
-        password?: string;
-      };
-
-      if (parsed.username) setUsername(parsed.username);
-      if (parsed.password) setPassword(parsed.password);
-      if (parsed.username || parsed.password) setSavePassword(true);
+      const parsed = JSON.parse(saved) as { username?: string };
+      if (parsed.username) {
+        setUsername(parsed.username);
+        setSaveUsername(true);
+      }
     } catch {
       window.localStorage.removeItem("sips_saved_login");
     }
   }, []);
 
   useEffect(() => {
-    if (savePassword) {
+    if (saveUsername) {
       window.localStorage.setItem(
         "sips_saved_login",
-        JSON.stringify({ username, password }),
+        JSON.stringify({ username }),
       );
     } else {
       window.localStorage.removeItem("sips_saved_login");
     }
-  }, [savePassword, username, password]);
+  }, [saveUsername, username]);
 
   // Generate fireflies sekali saja (random posisi/ukuran)
   const [fireflies, setFireflies] = useState<Firefly[]>([]);
@@ -92,35 +88,7 @@ export default function Home() {
   const handleDownload = async () => {
     setIsCheckingDownload(true);
     try {
-      const token =
-        cookieStore.getCookie("auth_token") ||
-        cookieStore.getCookie("token") ||
-        cookieStore.getCookie("access_token") ||
-        "";
-
-      const response = await fetch(
-        "http://dev.skj.my.id:82/api/app-update/check",
-        {
-          method: "POST",
-          headers: {
-            Authorization: token ? `Bearer ${token}` : "",
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify({ platform: "android" }),
-        },
-      );
-
-      const data = await response.json();
-
-      if (response.ok && data.download_url) {
-        window.open(data.download_url, "_blank");
-      } else {
-        toast.error(data.message || "Gagal mendapatkan link download");
-      }
-    } catch (error) {
-      console.error("Download check error:", error);
-      toast.error("Terjadi kesalahan saat memeriksa update");
+      await checkAndDownloadApp();
     } finally {
       setIsCheckingDownload(false);
     }
@@ -224,7 +192,7 @@ export default function Home() {
           <button
             type="button"
             onClick={handleDownload}
-            className={`mt-4 inline-flex items-center gap-3 rounded-2xl bg-base-100/80 px-3 py-2 shadow-md animate-bounce transition hover:bg-base-200 ${isCheckingDownload ? "opacity-60 cursor-not-allowed" : ""}`}
+            className={`mt-4 inline-flex items-center gap-3 rounded-2xl bg-base-100/80 px-3 py-2 shadow-md animate-bounce transition hover:bg-base-200 cursor-pointer ${isCheckingDownload ? "opacity-60 cursor-not-allowed" : ""}`}
             disabled={isCheckingDownload}
           >
             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -358,12 +326,12 @@ export default function Home() {
                 <input
                   type="checkbox"
                   className="checkbox checkbox-sm"
-                  checked={savePassword}
-                  onChange={(e) => setSavePassword(e.target.checked)}
+                  checked={saveUsername}
+                  onChange={(e) => setSaveUsername(e.target.checked)}
                   disabled={isLoading}
                 />
                 <span className="label-text text-sm">
-                  Save password for next login
+                  Remember username
                 </span>
               </label>
 

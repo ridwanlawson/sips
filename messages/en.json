@@ -14,7 +14,10 @@
     "list": "Data List",
     "approval": "Approval",
     "upload": "Upload",
-    "transport": "Transport"
+    "transport": "Transport",
+    "apkUpload": "Upload APK",
+    "lhm": "LHM",
+    "approvalLhm": "Approval LHM"
   },
   "Auth": {
     "login": "Login",

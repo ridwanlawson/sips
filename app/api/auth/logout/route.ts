@@ -1,52 +1,50 @@
-import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { BACKEND_URL } from "@/utils/absensiProxy";
+import { CookieName } from "@/lib/constants";
 
-export async function POST() {
-  try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token')?.value;
+// Single source of truth — same list used by force-logout
+const COOKIES_TO_DELETE = [
+  CookieName.AUTH_TOKEN,
+  CookieName.LOG_ID,
+  CookieName.USER_AFDELING,
+  CookieName.USER_FCBA,
+  CookieName.USER_FULL_NAME,
+  CookieName.USER_GANG,
+  CookieName.USER_KODE,
+  CookieName.USER_LEVEL,
+  CookieName.USER_PHOTO,
+  CookieName.USER_POSITION,
+  CookieName.OPT_FCBA,
+  CookieName.OPT_SECTION,
+  CookieName.OPT_GANG,
+  CookieName.OPT_TRIPLETS,
+];
 
-    if (!token) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
+export async function POST(): Promise<NextResponse> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(CookieName.AUTH_TOKEN)?.value;
 
-    const response = await fetch('http://dev.skj.my.id:82/api/logout', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: 'Logout failed' },
-        { status: response.status }
-      );
-    }
-
-    // Remove the cookie
-    (await cookies()).delete('auth_token');
-    (await cookies()).delete('log_id');
-    (await cookies()).delete('user_Afdeling');
-    (await cookies()).delete('user_Fcba');
-    (await cookies()).delete('user_FullName');
-    (await cookies()).delete('user_Gang');
-    (await cookies()).delete('user_Kode');
-    (await cookies()).delete('user_Level');
-    (await cookies()).delete('user_Photo');
-    (await cookies()).delete('user_Position');
-    (await cookies()).delete('opt_fcba');
-    (await cookies()).delete('opt_section');
-    (await cookies()).delete('opt_gang');
-    (await cookies()).delete('opt_triplets');
-
-    return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+  if (!token) {
+    return NextResponse.json({ ok: false, error: "Not authenticated" }, { status: 401 });
   }
+
+  const response = await fetch(`${BACKEND_URL}/api/logout`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    return NextResponse.json({ ok: false, error: "Logout failed" }, { status: response.status });
+  }
+
+  for (const name of COOKIES_TO_DELETE) {
+    cookieStore.delete(name);
+  }
+
+  return NextResponse.json({ ok: true });
 }

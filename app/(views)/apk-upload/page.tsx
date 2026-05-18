@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
-import ApkUploadPage from "./apkuploadpage-client";
+import ApkUploadWrapper from "./apk-upload-wrapper";
 
-export const metadata: Metadata = {
-  title: "Upload APK",
-};
+export const metadata: Metadata = { title: "Upload APK" };
 
 export default function Page() {
-  return <ApkUploadPage />;
+  return <ApkUploadWrapper />;
 }

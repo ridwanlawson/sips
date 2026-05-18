@@ -1,3 +1,8 @@
+/**
+ * Client-side service for harvesting quality data.
+ * All requests go through Next.js API routes (never directly to backend).
+ */
+
 export type HarvestingQualityData = {
   empcode: string;
   fddate: string;
@@ -52,126 +57,41 @@ type ApiResponse<T> = {
   data?: T;
 };
 
-const API_BASE_URL = "http://dev.skj.my.id:82/api";
-
-const getAuthToken = (): string => {
-  if (typeof window === "undefined") return "";
-  const cookieValue = document.cookie
-    .split("; ")
-    .find((row) => row.startsWith("auth_token="))
-    ?.split("=")[1];
-  return cookieValue || "";
-};
-
 export const fetchHarvestingQuality = async (
   params: HarvestingQualityParams,
 ): Promise<ApiResponse<HarvestingQualityData[]>> => {
-  try {
-    const queryParams = new URLSearchParams();
-    if (params.empcode?.trim()) queryParams.append("empcode", params.empcode);
-    if (params.fddate?.trim()) queryParams.append("fddate", params.fddate);
-    if (params.fddate_end?.trim())
-      queryParams.append("fddate_end", params.fddate_end);
-    if (params.fieldcode?.trim()) queryParams.append("fieldcode", params.fieldcode);
-    if (params.fcba?.trim()) queryParams.append("fcba", params.fcba);
-
-    const url = `${API_BASE_URL}/report/upload-harvesting-quality${queryParams.toString() ? `?${queryParams}` : ""}`;
-
-    console.log("HARVESTING QUALITY DEBUG - URL:", url);
-
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${getAuthToken()}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      credentials: "include",
-    });
-
-    console.log("HARVESTING QUALITY DEBUG - Response Status:", response.status);
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("HARVESTING QUALITY DEBUG - Error:", errorData);
-      return {
-        success: false,
-        message:
-          errorData.message ||
-          `HTTP ${response.status}: ${response.statusText}`,
-      };
-    }
-
-    const json = await response.json();
-    console.log("HARVESTING QUALITY DEBUG - Success:", json);
-
-    if (json.success && json.data && Array.isArray(json.data)) {
-      return {
-        success: true,
-        message: json.message || "Data berhasil dimuat",
-        data: json.data,
-      };
-    }
-
-    return {
-      success: false,
-      message: json.message || "Data tidak ditemukan",
-    };
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Network request failed";
-    console.error("HARVESTING QUALITY DEBUG - Exception:", message);
-    return {
-      success: false,
-      message,
-    };
+  const queryParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value?.trim()) queryParams.append(key, value);
   }
+
+  const url = `/api/harvesting-quality/upload${queryParams.toString() ? `?${queryParams}` : ""}`;
+
+  const response = await fetch(url, { credentials: "include" });
+  const json = await response.json();
+
+  if (json.success && Array.isArray(json.data)) {
+    return { success: true, message: json.message || "Data berhasil dimuat", data: json.data };
+  }
+
+  return { success: false, message: json.message || "Data tidak ditemukan" };
 };
 
 export const insertHarvestingQualityData = async (
   payload: { data: Record<string, unknown>[] },
 ): Promise<ApiResponse<string[]>> => {
-  try {
-    const url = `${API_BASE_URL}/uploads/harvestingquality`;
+  const response = await fetch("/api/harvesting-quality/submit", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
 
-    console.log("HARVESTING QUALITY DEBUG - POST URL:", url);
-    console.log("HARVESTING QUALITY DEBUG - Payload:", payload);
+  const json = await response.json();
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${getAuthToken()}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(payload),
-      credentials: "include",
-    });
-
-    console.log("HARVESTING QUALITY DEBUG - POST Response Status:", response.status);
-
-    const json = await response.json();
-    console.log("HARVESTING QUALITY DEBUG - POST Response:", json);
-
-    if (response.ok && json.success) {
-      return {
-        success: true,
-        message: json.message || "Data berhasil diunggah",
-        data: json.data,
-      };
-    }
-
-    return {
-      success: false,
-      message: json.message || `HTTP ${response.status}`,
-    };
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Network request failed";
-    console.error("HARVESTING QUALITY DEBUG - POST Exception:", message);
-    return {
-      success: false,
-      message,
-    };
+  if (response.ok && json.success) {
+    return { success: true, message: json.message || "Data berhasil diunggah", data: json.data };
   }
+
+  return { success: false, message: json.message || `HTTP ${response.status}` };
 };

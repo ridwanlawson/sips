@@ -14,7 +14,10 @@
     "list": "Daftar Data",
     "approval": "Persetujuan",
     "upload": "Unggah",
-    "transport": "Pengangkutan"
+    "transport": "Pengangkutan",
+    "apkUpload": "Upload APK",
+    "lhm": "LHM",
+    "approvalLhm": "Approval LHM"
   },
   "Auth": {
     "login": "Masuk",

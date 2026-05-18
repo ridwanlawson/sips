@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
-import AttendanceApproval from "./attendanceapproval-client";
+import AttendanceApprovalWrapper from "./attendance-approval-wrapper";
 
-export const metadata: Metadata = {
-  title: "Persetujuan Absensi",
-};
+export const metadata: Metadata = { title: "Persetujuan Absensi" };
 
 export default function Page() {
-  return <AttendanceApproval />;
+  return <AttendanceApprovalWrapper />;
 }

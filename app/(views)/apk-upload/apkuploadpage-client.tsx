@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { backendApiUrl } from "@/utils/backendConfig";
 
 interface UploadFormData {
   platform: string;
@@ -363,7 +364,7 @@ export default function ApkUploadPage() {
     });
 
     // Upload directly to Laravel API (bypass Vercel 4.5MB limit)
-    const LARAVEL_API_URL = "http://dev.skj.my.id:82/api/app/apk";
+    const LARAVEL_API_URL = backendApiUrl("/app/apk");
 
     xhr.open("POST", LARAVEL_API_URL);
     xhr.setRequestHeader("Accept", "application/json");

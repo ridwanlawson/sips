@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { UserLevel } from "@/lib/constants";
 
 type GangParam = "gang" | "gangcode" | "kemandoran";
 
@@ -6,10 +7,18 @@ type ApplyUserDataScopeOptions = {
   gangParam?: GangParam;
 };
 
-const ADMIN_LEVELS = new Set(["ADM", "ADMIN"]);
-const FCBA_LEVELS = new Set(["MGR", "KSI"]);
-const AFDELING_LEVELS = new Set(["MD1", "AST", "KRT", "KRA"]);
-const GANG_LEVELS = new Set(["KRP", "MDP"]);
+const ADMIN_LEVELS = new Set<string>([UserLevel.ADMIN]);
+const FCBA_LEVELS = new Set<string>([UserLevel.MANAGER, UserLevel.KSI]);
+const AFDELING_LEVELS = new Set<string>([
+  UserLevel.MD1,
+  UserLevel.ASISTEN,
+  UserLevel.KRT,
+  UserLevel.KRA,
+]);
+const GANG_LEVELS = new Set<string>([
+  UserLevel.KEPALA_REGU_PANEN,
+  UserLevel.MANDOR,
+]);
 
 function getCookieValue(req: NextRequest, names: string[]) {
   for (const name of names) {

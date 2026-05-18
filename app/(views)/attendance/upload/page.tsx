@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
-import AttendanceUploadPage from "./attendanceuploadpage-client";
+import AttendanceUploadWrapper from "./attendance-upload-wrapper";
 
-export const metadata: Metadata = {
-  title: "Upload Absensi",
-};
+export const metadata: Metadata = { title: "Upload Absensi" };
 
 export default function Page() {
-  return <AttendanceUploadPage />;
+  return <AttendanceUploadWrapper />;
 }

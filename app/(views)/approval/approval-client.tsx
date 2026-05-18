@@ -104,11 +104,7 @@ type Filters = Partial<{
 /* =========================
    U T I L S
 ========================= */
-const readCookie = (name: string) => {
-  if (typeof document === "undefined") return null;
-  const m = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
-  return m ? decodeURIComponent(m.pop() as string) : null;
-};
+import { cookieStore } from "@/utils/cookieStore";
 
 /* =========================
    M A I N
@@ -143,22 +139,10 @@ export default function Approval() {
 
   /* ===== Bootstrap cookies ===== */
   useEffect(() => {
-    const ckHome =
-      readCookie("user_Fcba") ||
-      readCookie("user_FCBA") ||
-      readCookie("user_fcba") ||
-      "";
-    setHomeFcba(ckHome);
-
-    const levelRaw =
-      (
-        readCookie("user_Level") ||
-        readCookie("user_LEVEL") ||
-        readCookie("user_level") ||
-        ""
-      ).toUpperCase() || "OTHER";
-    if (levelRaw === "ADM" || levelRaw === "MGR" || levelRaw === "AST" || levelRaw === "KRA") {
-      setUserLevel(levelRaw as "ADM" | "MGR" | "AST" | "KRA");
+    setHomeFcba(cookieStore.getFcba());
+    const level = cookieStore.getLevel();
+    if (level === "ADM" || level === "MGR" || level === "AST" || level === "KRA") {
+      setUserLevel(level as "ADM" | "MGR" | "AST" | "KRA");
     } else {
       setUserLevel("OTHER");
     }

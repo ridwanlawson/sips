@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTokenFromCookie } from "@/utils/absensiProxy";
+import { BACKEND_URL, getTokenFromCookie } from "@/utils/absensiProxy";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const EXTERNAL_API_BASE = "http://dev.skj.my.id:82";
+const EXTERNAL_API_BASE = BACKEND_URL;
 
 export async function GET(req: NextRequest) {
   try {

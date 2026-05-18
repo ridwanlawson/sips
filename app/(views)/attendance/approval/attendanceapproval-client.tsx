@@ -5,7 +5,6 @@ import React, {
   useEffect,
   useMemo,
   useState,
-  forwardRef,
 } from "react";
 
 import DataTable from "@/app/components/dynamic-data-table";
@@ -47,12 +46,6 @@ type Absensi = {
 
 type UserLevel = "ADM" | "MGR" | "AST" | "OTHER";
 
-type RowSelectedState<T> = {
-  allSelected: boolean;
-  selectedCount: number;
-  selectedRows: T[];
-};
-
 type EmployeesApiRow = {
   [key: string]: unknown;
   fccode?: unknown;
@@ -60,57 +53,11 @@ type EmployeesApiRow = {
 };
 
 /* =========================
-   D A I S Y  C H E C K B O X
-========================= */
-const DaisyCheckbox = forwardRef<
-  HTMLInputElement,
-  React.InputHTMLAttributes<HTMLInputElement>
->((props, ref) => {
-  const { className, ...rest } = props;
-  return (
-    <input
-      type="checkbox"
-      ref={ref}
-      {...rest}
-      className={`checkbox checkbox-lg ${className ?? ""}`}
-    />
-  );
-});
-DaisyCheckbox.displayName = "DaisyCheckbox";
-
-/* =========================
    U T I L S
 ========================= */
-const readCookie = (name: string) => {
-  if (typeof document === "undefined") return null;
-  const m = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
-  return m ? decodeURIComponent(m.pop() as string) : null;
-};
-
-const buildMapUrl = (loc: string) => {
-  const s = (loc || "").trim();
-  const m = s.match(/^\s*(-?\d+(\.\d+)?)\s*,\s*(-?\d+(\.\d+)?)\s*$/);
-  if (m) {
-    const lat = m[1];
-    const lng = m[3];
-    return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-  }
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-    s,
-  )}`;
-};
-
-const formatDateDMY = (raw: string | null | undefined): string => {
-  if (!raw) return "-";
-  const trimmed = raw.trim();
-  if (!trimmed) return "-";
-  const onlyDate = trimmed.split(" ")[0];
-  const parts = onlyDate.split("-");
-  if (parts.length !== 3) return trimmed;
-  const [y, m, d] = parts;
-  if (!y || !m || !d) return trimmed;
-  return `${d.padStart(2, "0")}-${m.padStart(2, "0")}-${y}`;
-};
+import { cookieStore } from "@/utils/cookieStore";
+import { buildMapUrl } from "@/utils/mapHelper";
+import { formatDateDMY } from "@/utils/datetime";
 
 const LocationButton: React.FC<{ loc?: string | null; label?: string }> = ({
   loc,
@@ -176,12 +123,6 @@ export default function AttendanceApproval() {
   const [homeSection, setHomeSection] = useState<string>("");
   const [scopeReady, setScopeReady] = useState(false);
 
-  const [selectedRows, setSelectedRows] = useState<Absensi[]>([]);
-  const [clearSelectedToggle, setClearSelectedToggle] = useState(false);
-  const [bulkStatus, setBulkStatus] = useState<"Approved" | "Reject" | null>(
-    null,
-  );
-
   // map kode mandor -> "kode - nama"
   const [mandorLabelMap, setMandorLabelMap] = useState<Record<string, string>>(
     {},
@@ -189,36 +130,14 @@ export default function AttendanceApproval() {
 
   /* ===== Bootstrap dari cookies (FCBA, Section, Level user) ===== */
   useEffect(() => {
-    const ckHome =
-      readCookie("user_Fcba") ||
-      readCookie("user_FCBA") ||
-      readCookie("user_fcba") ||
-      "";
-    setHomeFcba(ckHome);
-
-    const ckSection =
-      readCookie("user_Section") ||
-      readCookie("user_SECTION") ||
-      readCookie("user_section") ||
-      readCookie("user_Afdeling") ||
-      readCookie("user_afdeling") ||
-      "";
-    setHomeSection(ckSection);
-
-    const levelRaw =
-      (
-        readCookie("user_Level") ||
-        readCookie("user_LEVEL") ||
-        readCookie("user_level") ||
-        ""
-      ).toUpperCase() || "OTHER";
-
-    if (levelRaw === "ADM" || levelRaw === "MGR" || levelRaw === "AST") {
-      setUserLevel(levelRaw);
+    setHomeFcba(cookieStore.getFcba());
+    setHomeSection(cookieStore.getSection());
+    const level = cookieStore.getLevel();
+    if (level === "ADM" || level === "MGR" || level === "AST") {
+      setUserLevel(level as UserLevel);
     } else {
       setUserLevel("OTHER");
     }
-
     setScopeReady(true);
   }, []);
 
@@ -320,88 +239,6 @@ export default function AttendanceApproval() {
     if (!scopeReady) return;
     void fetchList();
   }, [scopeReady, fetchList]);
-
-  /* ===== Seleksi baris (checkbox) ===== */
-  const handleRowSelectedChange = (state: RowSelectedState<Absensi>) => {
-    setSelectedRows(state.selectedRows);
-  };
-
-  const hasSelection = selectedRows.length > 0;
-
-  /* ===== Bulk Approve / Reject ===== */
-  const handleBulkUpdate = async (newStatus: "Approved" | "Reject") => {
-    if (!hasSelection) return;
-
-    const confirmMsg =
-      newStatus === "Approved"
-        ? `Yakin ingin meng-Approve ${selectedRows.length} data terpilih?`
-        : `Yakin ingin me-Reject ${selectedRows.length} data terpilih?`;
-
-    if (!window.confirm(confirmMsg)) return;
-
-    setBulkStatus(newStatus);
-    try {
-      const ids = selectedRows.map((r) => r.id).filter(Boolean);
-
-      const results = await Promise.all(
-        ids.map(async (id) => {
-          try {
-            const res = await fetch(`/api/attendance/${id}/status`, {
-              method: "PATCH",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              credentials: "include",
-              body: JSON.stringify({ status_attendance: newStatus }),
-            });
-
-            if (res.status === 401) {
-              await logoutAndRedirect();
-              return { ok: false, error: "Unauthorized" };
-            }
-
-            const j: unknown = await res.json().catch(() => ({}));
-            if (!res.ok) {
-              return { ok: false, error: `HTTP ${res.status}`, detail: j };
-            }
-            if (!isObject(j) || !("ok" in j) || j.ok !== true) {
-              return { ok: false, error: "Response tidak valid", detail: j };
-            }
-            return { ok: true };
-          } catch (err) {
-            console.error(err);
-            return { ok: false, error: "Fetch gagal", detail: err };
-          }
-        }),
-      );
-
-      const total = results.length;
-      const gagal = results.filter((r) => !r.ok).length;
-      const sukses = total - gagal;
-
-      if (sukses > 0) {
-        showAlert(
-          `Berhasil mengubah status ${sukses} data menjadi ${newStatus}.`,
-          "success",
-        );
-      }
-      if (gagal > 0) {
-        showAlert(
-          `Beberapa data gagal diubah (${gagal} dari ${total}).`,
-          "error",
-        );
-      }
-
-      await fetchList();
-      setSelectedRows([]);
-      setClearSelectedToggle((prev) => !prev);
-    } catch (e) {
-      console.error(e);
-      showAlert("Terjadi kesalahan saat update status", "error");
-    } finally {
-      setBulkStatus(null);
-    }
-  };
 
   /* ===== Quick search lokal ===== */
   const filteredItems = useMemo(() => {
@@ -702,8 +539,6 @@ export default function AttendanceApproval() {
   );
 
   // 👇 cast sekali, tanpa `any`, supaya TypeScript & ESLint sama-sama aman
-  const checkboxComponent = DaisyCheckbox as unknown as React.ReactNode;
-
   // Client-side UX guard: after cookies are read (scopeReady) show a friendly
   // access denied message for users who are not ADM or MGR. The real access
   // enforcement is done server-side in `middleware.ts` but this prevents
@@ -754,13 +589,13 @@ export default function AttendanceApproval() {
           <div>
             <h1
               className="text-2xl sm:text-3xl font-bold min-w-0 truncate"
-              title="Halaman Approval Absensi"
+              title="Data Absensi Pending"
             >
-              Approval Absensi
+              Data Absensi Pending
             </h1>
             <p className="text-sm opacity-70">
               Menampilkan hanya data absensi yang belum <b>Approved</b> dan
-              belum <b>Reject</b>.
+              belum <b>Reject</b> sebagai tampilan read-only.
             </p>
           </div>
           <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-end">
@@ -774,50 +609,10 @@ export default function AttendanceApproval() {
           </div>
         </div>
 
-        {/* Toolbar: Bulk action + Search */}
+        {/* Toolbar: Search */}
         <div className="mb-3 flex flex-col md:flex-row gap-2 md:items-center md:justify-between">
-          <div className="flex flex-wrap gap-2">
-            <button
-              className="btn btn-success btn-sm"
-              disabled={!hasSelection || bulkStatus !== null}
-              onClick={() => handleBulkUpdate("Approved")}
-              title="Ubah status data terpilih menjadi Approved"
-            >
-              {bulkStatus === "Approved" ? (
-                <>
-                  <span className="loading loading-spinner loading-xs" />
-                  <span>Proses Approve...</span>
-                </>
-              ) : (
-                "Approve Terpilih"
-              )}
-            </button>
-            <button
-              className="btn btn-error btn-sm"
-              disabled={!hasSelection || bulkStatus !== null}
-              onClick={() => handleBulkUpdate("Reject")}
-              title="Ubah status data terpilih menjadi Reject"
-            >
-              {bulkStatus === "Reject" ? (
-                <>
-                  <span className="loading loading-spinner loading-xs" />
-                  <span>Proses Reject...</span>
-                </>
-              ) : (
-                "Reject Terpilih"
-              )}
-            </button>
-            <button
-              className="btn btn-sm"
-              disabled={!hasSelection || bulkStatus !== null}
-              onClick={() => {
-                setSelectedRows([]);
-                setClearSelectedToggle((prev) => !prev);
-              }}
-              title="Kosongkan pilihan (uncheck semua)"
-            >
-              Clear Centang
-            </button>
+          <div className="text-sm text-base-content/60">
+            Total data: <b>{filteredItems.length}</b>
           </div>
 
           <input
@@ -848,13 +643,9 @@ export default function AttendanceApproval() {
               responsive
               noDataComponent={
                 <div className="py-8 text-base-content/70">
-                  Tidak ada data pending untuk di-approve / reject.
+                  Tidak ada data pending.
                 </div>
               }
-              selectableRows
-              selectableRowsComponent={checkboxComponent}
-              onSelectedRowsChange={handleRowSelectedChange}
-              clearSelectedRows={clearSelectedToggle}
             />
           </div>
         </div>

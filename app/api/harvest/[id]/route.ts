@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTokenFromCookie, safeJson } from "@/utils/absensiProxy";
+import { BACKEND_URL, getTokenFromCookie, safeJson } from "@/utils/absensiProxy";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const HARVEST_BASE = "http://dev.skj.my.id:82/api/apps/panens";
+const HARVEST_BASE = `${BACKEND_URL}/api/apps/panens`;
 
 export async function GET(
   _req: NextRequest,

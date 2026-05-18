@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
-import Attendance from "./attendance-client";
+import AttendanceWrapper from "./attendance-wrapper";
 
-export const metadata: Metadata = {
-  title: "Absensi",
-};
+export const metadata: Metadata = { title: "Absensi" };
 
 export default function Page() {
-  return <Attendance />;
+  return <AttendanceWrapper />;
 }

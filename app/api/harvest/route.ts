@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import {
-    buildFilteredUrl,
-    getTokenFromCookie,
-    safeJson,
-} from "@/utils/absensiProxy";
+import { buildFilteredUrl, getTokenFromCookie, safeJson, BACKEND_URL } from "@/utils/absensiProxy";
 import { applyUserDataScope } from "@/utils/requestScope";
+import { authHeaders, isRecord, extractMessage, parseJsonSafe } from "@/lib/apiProxy";
 
-export const dynamic = "force-dynamic"; // no cache
+export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const HARVEST_BASE = "http://dev.skj.my.id:82/api/apps/panens";
+const HARVEST_BASE = `${BACKEND_URL}/api/apps/panens`;
 
 const querySchema = z.object({
     tanggal: z.string().optional(),
@@ -24,128 +21,63 @@ const querySchema = z.object({
     tph: z.string().optional(),
 }).passthrough();
 
-// POST: Create new harvest record
-export async function POST(req: NextRequest) {
+export async function POST(req: NextRequest): Promise<NextResponse> {
     const token = await getTokenFromCookie();
     if (!token) {
         return NextResponse.json({ ok: false, error: "Unauthenticated" }, { status: 401 });
     }
 
-    try {
-        const incoming = await req.formData();
+    const incoming = await req.formData();
+    const upstream = await fetch(HARVEST_BASE, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+        body: incoming,
+    });
 
-        // Kirim langsung ke upstream
-        const upstream = await fetch(HARVEST_BASE, {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${token}`,
-                Accept: "application/json",
-            },
-            body: incoming,
-        });
-
-        const data = await safeJson(upstream);
-        if (!upstream.ok) {
-            return NextResponse.json(
-                { ok: false, error: data?.message || "Create failed" },
-                { status: upstream.status }
-            );
-        }
-        return NextResponse.json({ ok: true, data });
-    } catch (error: unknown) {
-        const msg = error instanceof Error ? error.message : "Internal Server Error";
-        return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+    const data = await safeJson(upstream);
+    if (!upstream.ok) {
+        return NextResponse.json({ ok: false, error: data?.message || "Create failed" }, { status: upstream.status });
     }
+    return NextResponse.json({ ok: true, data });
 }
 
-// --- type guards ---
-function isRecord(v: unknown): v is Record<string, unknown> {
-    return typeof v === "object" && v !== null;
-}
-function isSuccessArrayData(
-    v: unknown
-): v is { success?: boolean; message?: string; data: unknown[] } {
-    return isRecord(v) && Array.isArray(v.data);
-}
-
-export async function GET(req: NextRequest) {
+export async function GET(req: NextRequest): Promise<NextResponse> {
     const token = await getTokenFromCookie();
     if (!token) {
-        return NextResponse.json(
-            { ok: false, error: "Unauthenticated" },
-            { status: 401 }
-        );
+        return NextResponse.json({ ok: false, error: "Unauthenticated" }, { status: 401 });
     }
 
-    // Clone searchParams supaya bisa dimodifikasi
     const rawParams = Object.fromEntries(req.nextUrl.searchParams.entries());
     const validated = querySchema.safeParse(rawParams);
-
     if (!validated.success) {
         return NextResponse.json(
             { ok: false, error: "Invalid query parameters", details: validated.error.format() },
-            { status: 400 }
+            { status: 400 },
         );
     }
 
     const sp = new URLSearchParams(req.nextUrl.searchParams.toString());
     applyUserDataScope(req, sp);
 
-    // Build URL final ke API harvest upstream
     const upstreamUrl = buildFilteredUrl(HARVEST_BASE, sp);
 
-    try {
-        const upstream = await fetch(upstreamUrl, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-                Accept: "application/json",
-            },
-            cache: "no-store",
-        });
+    const upstream = await fetch(upstreamUrl, {
+        headers: authHeaders(token),
+        cache: "no-store",
+    });
 
-        const text = await upstream.text();
-
-        let data: unknown = null;
-        try {
-            data = text ? JSON.parse(text) : null;
-        } catch {
-            return NextResponse.json(
-                { ok: false, error: "Invalid response format" },
-                { status: 502 }
-            );
-        }
-
-        if (!upstream.ok) {
-            const message =
-                isRecord(data) && typeof data.message === "string"
-                    ? data.message
-                    : "Fetch failed";
-            return NextResponse.json(
-                { ok: false, error: message },
-                { status: upstream.status }
-            );
-        }
-
-        if (isSuccessArrayData(data)) {
-            return NextResponse.json({
-                ok: true,
-                data: data.data,
-                message: data.message,
-            });
-        }
-
-        if (isRecord(data)) {
-            const arr = Array.isArray(data.data) ? data.data : [];
-            const message = typeof data.message === "string" ? data.message : "OK";
-            return NextResponse.json({ ok: true, data: arr, message });
-        }
-
-        return NextResponse.json({ ok: true, data: [], message: "OK" });
-    } catch (error: unknown) {
-        const msg = error instanceof Error ? error.message : "Internal Server Error";
-        return NextResponse.json(
-            { ok: false, error: msg },
-            { status: 500 }
-        );
+    const { data, parseError } = await parseJsonSafe(upstream);
+    if (parseError) {
+        return NextResponse.json({ ok: false, error: "Invalid response format" }, { status: 502 });
     }
+
+    if (!upstream.ok) {
+        return NextResponse.json({ ok: false, error: extractMessage(data, "Fetch failed") }, { status: upstream.status });
+    }
+
+    if (isRecord(data) && Array.isArray(data.data)) {
+        return NextResponse.json({ ok: true, data: data.data, message: data.message ?? "OK" });
+    }
+
+    return NextResponse.json({ ok: true, data: [], message: "OK" });
 }

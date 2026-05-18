@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo, useCallback } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { Drawer } from "./drawer";
@@ -10,9 +10,13 @@ import { toTitleCase } from "@/utils/textManipulation";
 import { getProxiedImageUrl } from "@/utils/imageHelper";
 import { useTranslations } from "next-intl";
 import { cookieStore } from "@/utils/cookieStore";
-import toast from "react-hot-toast";
+import { checkAndDownloadApp } from "@/utils/downloadapp";
 
-export default function Navbar() {
+const FALLBACK_AVATAR =
+  "https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp";
+
+// memo: Navbar tidak perlu re-render kecuali pathname berubah
+export default memo(function Navbar() {
   const t = useTranslations("Navbar");
   const router = useRouter();
   const pathname = usePathname();
@@ -21,44 +25,32 @@ export default function Navbar() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isNavigating, setIsNavigating] = useState<string | null>(null);
   const [isCheckingDownload, setIsCheckingDownload] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
+  // Reset progress bar saat navigasi selesai
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    // Reset loading state saat halaman selesai diload (pathname berubah)
     setIsNavigating(null);
   }, [pathname]);
 
+  // Baca cookie sekali saat mount — tidak perlu re-read
   useEffect(() => {
-    const userInfo = cookieStore.getAllUserInfo();
-    const photoCookie = userInfo.photo;
-    const fullNameCookie = userInfo.fullName;
-    const fcbaCookie = userInfo.fcba;
+    const { photo, fullName, fcba } = cookieStore.getAllUserInfo();
+    const cleanPhoto = photo?.trim();
+    const name = fullName?.trim() ?? "";
+    const unit = fcba?.trim() ?? "";
 
-    // bersihkan spasi
-    const name = (fullNameCookie ?? "").trim();
-    const fcba = (fcbaCookie ?? "").trim();
-
-    // Avoid "null" or "undefined" strings from cookie
-    const photo =
-      photoCookie && photoCookie !== "null" && photoCookie !== "undefined"
-        ? photoCookie.trim()
-        : null;
-
-    // rakit tampilan: "Nama (FCBA)" hanya kalau datanya ada
     const parts: string[] = [];
     if (name) parts.push(toTitleCase(name));
-    if (fcba) parts.push(`(${fcba.toUpperCase()})`);
-    const display = parts.join(" ").trim();
+    if (unit) parts.push(`(${unit.toUpperCase()})`);
 
-    setPhotoUrl(photo || null);
-    setFullNameDisplay(display || null);
+    setPhotoUrl(
+      cleanPhoto && cleanPhoto !== "null" && cleanPhoto !== "undefined"
+        ? cleanPhoto
+        : null,
+    );
+    setFullNameDisplay(parts.join(" ").trim() || null);
   }, []);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     setIsLoggingOut(true);
     try {
       const response = await fetch("/api/auth/logout", {
@@ -66,61 +58,34 @@ export default function Navbar() {
         headers: { "Content-Type": "application/json" },
       });
       if (response.ok) {
-        // Brief delay to show the logout animation
-        await new Promise((resolve) => setTimeout(resolve, 500));
         router.push("/");
       } else {
         setIsLoggingOut(false);
-        console.error("Logout failed:", response.statusText);
       }
-    } catch (error) {
+    } catch {
       setIsLoggingOut(false);
-      console.error("Logout failed:", error);
     }
-  };
+  }, [router]);
 
-  // Handle navigation dengan loading pada menu yang diklik
-  const handleNavigate = (href: string) => {
-    if (pathname === href) return;
-    setIsNavigating(href);
-    router.push(href);
-  };
+  const handleNavigate = useCallback(
+    (href: string) => {
+      if (pathname === href) return;
+      setIsNavigating(href);
+      router.push(href);
+    },
+    [pathname, router],
+  );
 
-  // Handle download - call API to check for updates
-  const handleDownload = async () => {
+  const handleDownload = useCallback(async () => {
     setIsCheckingDownload(true);
     try {
-      const token =
-        cookieStore.getCookie("auth_token") ||
-        cookieStore.getCookie("token") ||
-        cookieStore.getCookie("access_token") ||
-        "";
-
-      const response = await fetch("http://dev.skj.my.id:82/api/app-update/check", {
-        method: "POST",
-        headers: {
-          Authorization: token ? `Bearer ${token}` : "",
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({ platform: "android" }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.download_url) {
-        // Open download URL in new tab
-        window.open(data.download_url, "_blank");
-      } else {
-        toast.error(data.message || "Gagal mendapatkan link download");
-      }
-    } catch (error) {
-      console.error("Download check error:", error);
-      toast.error("Terjadi kesalahan saat memeriksa update");
+      await checkAndDownloadApp();
     } finally {
       setIsCheckingDownload(false);
     }
-  };
+  }, []);
+
+  const avatarSrc = getProxiedImageUrl(photoUrl) || FALLBACK_AVATAR;
 
   return (
     <div className="navbar bg-base-100 shadow-sm">
@@ -129,34 +94,29 @@ export default function Navbar() {
       </div>
 
       <div className="navbar-center">
+        {/* priority: logo adalah LCP element di halaman ini */}
         <Image
           src="/logo.svg"
-          alt="Nama Brand"
+          alt="SIPS"
           width={50}
           height={50}
-          loading="eager"
+          priority
         />
       </div>
 
       <div className="navbar-end gap-2">
         <LanguageSwitcher />
+
         <div className="dropdown dropdown-end">
-          <div
-            tabIndex={0}
-            role="button"
-            className="btn btn-ghost btn-circle avatar"
-          >
+          <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar">
             <div className="w-10 rounded-full">
               <Image
                 alt="User Avatar"
-                src={
-                  getProxiedImageUrl(photoUrl) ||
-                  "https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"
-                }
+                src={avatarSrc}
                 width={40}
                 height={40}
                 className="rounded-full object-cover"
-                unoptimized={true}
+                unoptimized
               />
             </div>
           </div>
@@ -166,37 +126,26 @@ export default function Navbar() {
             className="menu menu-sm dropdown-content bg-base-100 rounded-box z-50 mt-3 w-52 p-2 shadow"
           >
             <li>
-              <a>
-                <b>{fullNameDisplay ?? t("pengguna")}</b>
-              </a>
+              <span className="font-bold">{fullNameDisplay ?? t("pengguna")}</span>
             </li>
             <li>
-              {mounted ? (
-                <button
-                  onClick={handleDownload}
-                  className={`w-full text-left justify-between flex items-center ${isCheckingDownload ? "opacity-50 cursor-not-allowed" : ""}`}
-                  disabled={isCheckingDownload}
-                >
-                  <span>SIPS Mobile</span>
-                  {isCheckingDownload ? (
-                    <span className="loading loading-spinner loading-xs" />
-                  ) : (
-                    <span className="badge">{t("download")}</span>
-                  )}
-                </button>
-              ) : (
-                <a
-                  href="#"
-                  className="justify-between"
-                  onClick={(e) => e.preventDefault()}
-                >
-                  SIPS Mobile <span className="badge">{t("download")}</span>
-                </a>
-              )}
+              <button
+                onClick={handleDownload}
+                className="w-full text-left justify-between flex items-center"
+                disabled={isCheckingDownload}
+              >
+                <span>SIPS Mobile</span>
+                {isCheckingDownload ? (
+                  <span className="loading loading-spinner loading-xs" />
+                ) : (
+                  <span className="badge">{t("download")}</span>
+                )}
+              </button>
             </li>
             <li>
               <a
                 target="_blank"
+                rel="noopener noreferrer"
                 href="https://skj.my.id/"
                 className="justify-between"
               >
@@ -235,16 +184,16 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Progress Bar */}
+      {/* Progress bar navigasi */}
       {isNavigating && (
-        <div className="fixed top-0 left-0 right-0 z-[9999]">
-          <div className="h-3 bg-primary animate-pulse shadow-md"></div>
+        <div className="fixed top-0 left-0 right-0 z-[9999] pointer-events-none">
+          <div className="h-1 bg-primary animate-pulse" />
         </div>
       )}
 
-      {/* Global logout overlay */}
+      {/* Overlay logout */}
       {isLoggingOut && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="flex flex-col items-center gap-4">
             <span className="loading loading-spinner loading-lg text-primary" />
             <p className="text-white font-medium">{t("signingOut")}</p>
@@ -253,4 +202,4 @@ export default function Navbar() {
       )}
     </div>
   );
-}
+});

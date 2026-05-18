@@ -10,23 +10,19 @@ import {
   insertAttendanceData,
 } from "@/utils/attendanceUploadService";
 import { SkeletonTable } from "@/app/components/skeletons";
+import { AccessDenied } from "@/app/components/access-denied";
 import { useLocale } from "@/hooks/useLocale";
+import { useUploadPage } from "@/hooks/useUploadPage";
+
+const EMPTY_PARAMS: AttendanceUploadParams = {
+  tanggal: "", tanggal_end: "", fcba: "", afdeling: "", gangcode: "",
+};
 
 export default function AttendanceUploadPage() {
   const localeTag = useLocale();
-  const [formParams, setFormParams] = useState<AttendanceUploadParams>({
-    tanggal: "",
-    tanggal_end: "",
-    fcba: "",
-    afdeling: "",
-    gangcode: "",
-  });
+  const { isMgr, isAdmin, initCheck, userFcba, userAfdeling } = useUploadPage();
 
-  const [userDefaults, setUserDefaults] = useState({
-    fcba: "",
-    afdeling: "",
-  });
-
+  const [formParams, setFormParams] = useState<AttendanceUploadParams>(EMPTY_PARAMS);
   const [data, setData] = useState<AttendanceUploadData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,9 +30,6 @@ export default function AttendanceUploadPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitProgress, setSubmitProgress] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [isMgr, setIsMgr] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [initCheck, setInitCheck] = useState(false);
 
   const fetchData = async (overrideParams?: AttendanceUploadParams) => {
     setLoading(true);
@@ -80,94 +73,15 @@ export default function AttendanceUploadPage() {
     }
   };
 
-  // Baca default values dari cookie saat mount & check user level
   useEffect(() => {
-    const readCookie = (name: string) => {
-      if (typeof document === "undefined") return "";
-      const m = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
-      return m ? decodeURIComponent(m.pop() as string) : "";
-    };
-
-    const fcba =
-      readCookie("user_Fcba") ||
-      readCookie("user_FCBA") ||
-      readCookie("user_fcba") ||
-      "";
-    const afdeling =
-      readCookie("user_Afdeling") ||
-      readCookie("user_AFDELING") ||
-      readCookie("user_afdeling") ||
-      "";
-
-    // Check level MGR and ADMIN
-    const levelRaw =
-      readCookie("user_Level") ||
-      readCookie("user_LEVEL") ||
-      readCookie("user_level") ||
-      "";
-    const level = String(levelRaw).toUpperCase();
-    console.log(
-      "[DEBUG] User level from cookie:",
-      levelRaw,
-      "→ parsed:",
-      level,
-    );
-    setIsMgr(level === "MGR");
-    setIsAdmin(level === "ADMIN" || level === "ADM");
-    setInitCheck(true);
-
-    setUserDefaults({ fcba, afdeling });
-
-    // Construct initial params
+    if (!initCheck) return;
     const initialParams: AttendanceUploadParams = {
-      tanggal: "",
-      tanggal_end: "",
-      fcba: fcba,
-      afdeling: afdeling,
-      gangcode: "",
+      ...EMPTY_PARAMS, fcba: userFcba, afdeling: userAfdeling,
     };
-
-    setFormParams((prev) => ({
-      ...prev,
-      fcba: fcba || prev.fcba,
-      afdeling: afdeling || prev.afdeling,
-    }));
-
-    // Auto execute search on mount
-    // Use a separate async function to avoid circular dependencies
-    (async () => {
-      setLoading(true);
-      setError(null);
-      setData([]);
-
-      try {
-        const response = await fetchAttendanceUpload(initialParams);
-
-        if (response.success) {
-          if (response.data && response.data.length > 0) {
-            const uniqueData = Array.from(
-              new Map(
-                response.data.map((item) => [item.linenokey, item]),
-              ).values(),
-            );
-            setData(uniqueData);
-          }
-        } else {
-          if (
-            !response.message ||
-            !response.message.toLowerCase().includes("tidak ditemukan")
-          ) {
-            setError(response.message || "Gagal mengambil data");
-          }
-        }
-      } catch (err) {
-        console.error("Search error:", err);
-        setError(err instanceof Error ? err.message : "Terjadi kesalahan");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+    setFormParams((prev) => ({ ...prev, fcba: userFcba || prev.fcba, afdeling: userAfdeling || prev.afdeling }));
+    fetchData(initialParams);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initCheck]);
 
   const handleParamChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -183,25 +97,7 @@ export default function AttendanceUploadPage() {
   };
 
   const handleResetFilter = () => {
-    if (isAdmin) {
-      // Admin: reset semua field
-      setFormParams({
-        tanggal: "",
-        tanggal_end: "",
-        fcba: "",
-        afdeling: "",
-        gangcode: "",
-      });
-    } else {
-      // Non-admin: reset semua kecuali fcba dan afdeling (keep user defaults)
-      setFormParams((prev) => ({
-        tanggal: "",
-        tanggal_end: "",
-        fcba: userDefaults.fcba || prev.fcba,
-        afdeling: userDefaults.afdeling || prev.afdeling,
-        gangcode: "",
-      }));
-    }
+    setFormParams(isAdmin ? EMPTY_PARAMS : { ...EMPTY_PARAMS, fcba: userFcba, afdeling: userAfdeling });
   };
 
   // Add row key untuk DataTable
@@ -603,26 +499,8 @@ export default function AttendanceUploadPage() {
     }
   };
 
-  if (initCheck && !isMgr && !isAdmin) {
-    return (
-      <div className="min-h-screen bg-base-100 p-6 flex items-center justify-center">
-        <div className="text-center max-w-lg">
-          <h1 className="text-3xl font-bold text-error mb-4">Akses Ditolak</h1>
-          <p className="text-base-content/70 mb-6">
-            Halaman ini hanya dapat diakses oleh user dengan level <b>MGR</b>{" "}
-            atau <b>ADM</b>.
-          </p>
-          <a href="/dashboard" className="btn btn-primary">
-            Kembali ke Dashboard
-          </a>
-        </div>
-      </div>
-    );
-  }
-
-  if (!initCheck) {
-    return <div className="min-h-screen bg-base-100 p-6"></div>; // Loading blank
-  }
+  if (initCheck && !isMgr && !isAdmin) return <AccessDenied />;
+  if (!initCheck) return <div className="min-h-screen bg-base-100 p-6" />;
 
   return (
     <div className="min-h-screen bg-base-100 p-6">
@@ -685,9 +563,9 @@ export default function AttendanceUploadPage() {
               <div className="form-group">
                 <label className="block text-sm font-medium text-base-content mb-1">
                   FCBA
-                  {userDefaults.fcba && (
+                  {userFcba && (
                     <span className="text-xs text-info ml-2">
-                      (Default: {userDefaults.fcba})
+                      (Default: {userFcba})
                     </span>
                   )}
                 </label>
@@ -704,9 +582,9 @@ export default function AttendanceUploadPage() {
               <div className="form-group">
                 <label className="block text-sm font-medium text-base-content mb-1">
                   Afdeling
-                  {userDefaults.afdeling && (
+                  {userAfdeling && (
                     <span className="text-xs text-info ml-2">
-                      (Default: {userDefaults.afdeling})
+                      (Default: {userAfdeling})
                     </span>
                   )}
                 </label>
@@ -774,8 +652,7 @@ export default function AttendanceUploadPage() {
                 <div className="mt-2 text-xs opacity-75 space-y-2">
                   <div className="bg-base-200 p-2 rounded">
                     <p className="font-mono text-xs">
-                      External API:
-                      http://dev.skj.my.id:82/api/report/upload-attendance
+                      API route: /api/attendance/upload
                     </p>
                   </div>
                   <div>

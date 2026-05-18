@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
-import HarvestPage from "./harvestpage-client";
+import HarvestWrapper from "./harvest-wrapper";
 
-export const metadata: Metadata = {
-  title: "Harvesting",
-};
+export const metadata: Metadata = { title: "Harvesting" };
 
 export default function Page() {
-  return <HarvestPage />;
+  return <HarvestWrapper />;
 }

@@ -1,170 +1,65 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTokenFromCookie } from "@/utils/absensiProxy";
+import { BACKEND_URL, getTokenFromCookie } from "@/utils/absensiProxy";
 import { applyUserDataScope } from "@/utils/requestScope";
+import { authHeaders, parseJsonSafe, extractMessage, unauthorizedResponse } from "@/lib/apiProxy";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const EXTERNAL_API_BASE = "http://dev.skj.my.id:82";
+export async function GET(req: NextRequest): Promise<NextResponse> {
+  const token = await getTokenFromCookie();
+  if (!token) return NextResponse.json({ ok: false, error: "Unauthenticated", data: [] }, { status: 401 });
 
-export async function GET(req: NextRequest) {
-  try {
-    const token = await getTokenFromCookie();
+  const searchParams = new URLSearchParams(req.nextUrl.searchParams.toString());
+  applyUserDataScope(req, searchParams, { gangParam: "gangcode" });
 
-    if (!token) {
-      console.warn("No token found");
-      return NextResponse.json(
-        {
-          success: false,
-          message: "No authentication token found. Please login again.",
-          data: [],
-        },
-        { status: 401 }
-      );
-    }
+  const url = `${BACKEND_URL}/api/report/upload-attendance${searchParams.toString() ? `?${searchParams}` : ""}`;
 
-    // Ambil query parameters dari request
-    const searchParams = new URLSearchParams(req.nextUrl.searchParams.toString());
-    applyUserDataScope(req, searchParams, { gangParam: "gangcode" });
-    const queryString = searchParams.toString();
+  const response = await fetch(url, { method: "GET", headers: authHeaders(token) });
+  const { data, parseError } = await parseJsonSafe(response);
 
-    const externalUrl = `${EXTERNAL_API_BASE}/api/report/upload-attendance${queryString ? `?${queryString}` : ""}`;
-
-    console.log("========== ATTENDANCE UPLOAD DEBUG ==========");
-    console.log("Proxying to:", externalUrl);
-    console.log("Token present:", !!token);
-    console.log("Token preview:", token?.substring(0, 20) + "...");
-
-    const headers: HeadersInit = {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      Authorization: `Bearer ${token}`,
-    };
-
-    console.log("Headers:", {
-      "Content-Type": headers["Content-Type"],
-      "Authorization": "Bearer [TOKEN]",
-    });
-
-    const response = await fetch(externalUrl, {
-      method: "GET",
-      headers,
-    });
-
-    console.log("Response status:", response.status);
-    console.log("Response headers:", Object.fromEntries(response.headers.entries()));
-
-    let data;
-    try {
-      data = await response.json();
-    } catch (parseError) {
-      console.error("Failed to parse JSON response:", parseError);
-      const textData = await response.text();
-      console.error("Response text:", textData);
-      return NextResponse.json(
-        {
-          success: false,
-          message: `Failed to parse API response: ${textData.substring(0, 200)}`,
-          data: [],
-        },
-        { status: 500 }
-      );
-    }
-
-    // Jika 404 dan data tidak ditemukan, anggap sebagai kondisi normal (data kosong)
-    if (!response.ok) {
-      if (response.status === 404 || (data?.message && data.message.includes("Data tidak ditemukan"))) {
-        console.log("ℹ️ Data tidak ditemukan (404) - returning empty data");
-        return NextResponse.json({
-          success: true,
-          message: "Data tidak ditemukan dengan parameter yang diberikan",
-          data: [],
-        });
-      }
-
-      console.error("API returned error:");
-      console.error("Status:", response.status);
-      console.error("Response data:", data);
-      return NextResponse.json(
-        {
-          success: false,
-          message: `External API error ${response.status}: ${data?.message || "Unknown error"}`,
-          data: [],
-        },
-        { status: response.status }
-      );
-    }
-
-    console.log("✓ Success! Data length:", data?.data?.length || 0);
-    console.log("============================================");
-    return NextResponse.json(data);
-  } catch (error) {
-    console.error("❌ Upload attendance proxy error:", error);
-    const errorMsg = error instanceof Error ? error.message : "Unknown error";
+  if (parseError) {
     return NextResponse.json(
-      {
-        success: false,
-        message: `Server Error: ${errorMsg}`,
-        data: [],
-      },
-      { status: 500 }
+      { ok: false, error: `Failed to parse API response: ${String(data).substring(0, 200)}`, data: [] },
+      { status: 500 },
     );
   }
+
+  if (!response.ok) {
+    const msg = extractMessage(data);
+    if (response.status === 404 || msg.toLowerCase().includes("tidak ditemukan")) {
+      return NextResponse.json({ ok: true, message: "Data tidak ditemukan", data: [] });
+    }
+    return NextResponse.json(
+      { ok: false, error: `External API error ${response.status}: ${msg}`, data: [] },
+      { status: response.status },
+    );
+  }
+
+  return NextResponse.json(data);
 }
 
-export async function PUT(
-  req: NextRequest
-) {
-  try {
-    const token = await getTokenFromCookie();
+export async function PUT(req: NextRequest): Promise<NextResponse> {
+  const token = await getTokenFromCookie();
+  if (!token) return unauthorizedResponse();
 
-    if (!token) {
-      return NextResponse.json(
-        { success: false, message: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+  const body = await req.json();
+  const recordId = new URL(req.url).pathname.split("/").pop();
 
-    const body = await req.json();
-    const recordId = new URL(req.url).pathname.split("/").pop();
+  const response = await fetch(`${BACKEND_URL}/api/report/upload-attendance/${recordId}`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify(body),
+  });
 
-    const externalUrl = `${EXTERNAL_API_BASE}/api/report/upload-attendance/${recordId}`;
+  const { data } = await parseJsonSafe(response);
 
-    console.log("Proxying PUT to:", externalUrl);
-
-    const headers: HeadersInit = {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      Authorization: `Bearer ${token}`,
-    };
-
-    const response = await fetch(externalUrl, {
-      method: "PUT",
-      headers,
-      body: JSON.stringify(body),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: `External API error: ${response.status}`,
-        },
-        { status: response.status }
-      );
-    }
-
-    return NextResponse.json(data);
-  } catch (error) {
-    console.error("Upload attendance update proxy error:", error);
+  if (!response.ok) {
     return NextResponse.json(
-      {
-        success: false,
-        message: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-      },
-      { status: 500 }
+      { ok: false, error: `External API error: ${response.status}` },
+      { status: response.status },
     );
   }
+
+  return NextResponse.json(data);
 }

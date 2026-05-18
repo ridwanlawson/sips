@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
-import UserDashboard from "./userdashboard-client";
+import DashboardWrapper from "./dashboard-wrapper";
 
-export const metadata: Metadata = {
-  title: "Dashboard",
-};
+export const metadata: Metadata = { title: "Dashboard" };
 
 export default function Page() {
-  return <UserDashboard />;
+  return <DashboardWrapper />;
 }

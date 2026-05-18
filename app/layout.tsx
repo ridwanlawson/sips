@@ -2,15 +2,16 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "./components/theme-provider";
-import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages } from 'next-intl/server';
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
 import Providers from "./components/providers";
 
+// display: "swap" + preload: false → font tidak blokir render awal
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
   display: "swap",
-  preload: false,
+  preload: true,          // preload latin subset untuk LCP lebih cepat
   adjustFontFallback: false,
   fallback: ["system-ui", "sans-serif"],
 });
@@ -19,7 +20,7 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
   display: "swap",
-  preload: false,
+  preload: false,         // mono font tidak kritis untuk LCP
   adjustFontFallback: false,
   fallback: ["monospace"],
 });
@@ -60,9 +61,7 @@ export default async function RootLayout({
 
   return (
     <html lang={locale} data-theme="light">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <NextIntlClientProvider messages={messages}>
           <Providers>
             <ThemeProvider />

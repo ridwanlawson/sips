@@ -1,4 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
+import { ImageProxy } from "@/lib/constants";
+import { BACKEND_URL } from "@/utils/backendConfig";
 
 /**
  * Image proxy to serve images from HTTP backend through HTTPS
@@ -7,54 +9,76 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function GET(request: NextRequest) {
     try {
         const searchParams = request.nextUrl.searchParams;
-        const imageUrl = searchParams.get('url');
+        const imageUrl = searchParams.get("url");
 
         if (!imageUrl) {
             return NextResponse.json(
-                { error: 'Missing image URL parameter' },
-                { status: 400 }
+                { ok: false, error: "Missing image URL parameter" },
+                { status: 400 },
             );
         }
 
         // Validate that the URL is from our trusted backend
-        if (!imageUrl.startsWith('http://dev.skj.my.id:82/')) {
+        const allowedOrigins = [BACKEND_URL];
+
+        const isAllowed = allowedOrigins.some((origin) =>
+            imageUrl.startsWith(`${origin}/`),
+        );
+
+        if (!isAllowed) {
             return NextResponse.json(
-                { error: 'Invalid image URL' },
-                { status: 403 }
+                { ok: false, error: "Invalid image URL" },
+                { status: 403 },
             );
         }
 
         // Fetch the image from the backend
         const response = await fetch(imageUrl, {
             headers: {
-                'Accept': 'image/*',
+                Accept: "image/*",
             },
         });
 
         if (!response.ok) {
             return NextResponse.json(
-                { error: 'Failed to fetch image' },
-                { status: response.status }
+                { ok: false, error: "Failed to fetch image" },
+                { status: response.status },
             );
         }
 
-        // Get the image data
+        // Enforce size limit
+        const contentLength = response.headers.get("content-length");
+        if (contentLength && parseInt(contentLength, 10) > ImageProxy.MAX_SIZE_BYTES) {
+            return NextResponse.json(
+                { ok: false, error: "Image too large" },
+                { status: 413 },
+            );
+        }
+
         const imageBuffer = await response.arrayBuffer();
-        const contentType = response.headers.get('content-type') || 'image/jpeg';
+
+        // Double-check after read (in case content-length was missing)
+        if (imageBuffer.byteLength > ImageProxy.MAX_SIZE_BYTES) {
+            return NextResponse.json(
+                { ok: false, error: "Image too large" },
+                { status: 413 },
+            );
+        }
+
+        const contentType = response.headers.get("content-type") || "image/jpeg";
 
         // Return the image with proper headers
         return new NextResponse(imageBuffer, {
             status: 200,
             headers: {
-                'Content-Type': contentType,
-                'Cache-Control': 'public, max-age=31536000, immutable',
+                "Content-Type": contentType,
+                "Cache-Control": "public, max-age=31536000, immutable",
             },
         });
-    } catch (error) {
-        console.error('Image proxy error:', error);
+    } catch {
         return NextResponse.json(
-            { error: 'Internal server error' },
-            { status: 500 }
+            { ok: false, error: "Internal server error" },
+            { status: 500 },
         );
     }
 }

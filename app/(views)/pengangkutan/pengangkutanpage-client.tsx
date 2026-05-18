@@ -6,6 +6,7 @@ import DataTable from "@/app/components/dynamic-data-table";
 import type { TableColumn } from "react-data-table-component";
 import { getProxiedImageUrl, PLACEHOLDER_IMAGE } from "@/utils/imageHelper";
 import { isUnauthenticatedJson, logoutAndRedirect } from "@/utils/authHelper";
+import { cookieStore } from "@/utils/cookieStore";
 
 /* =========================
    T Y P E S
@@ -90,11 +91,7 @@ const formatDateDMY = (raw: string | null | undefined): string => {
   return `${d.padStart(2, "0")}-${m.padStart(2, "0")}-${y}`;
 };
 
-const readCookie = (name: string) => {
-  if (typeof document === "undefined") return null;
-  const m = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
-  return m ? decodeURIComponent(m.pop() as string) : null;
-};
+const readCookie = (name: string) => cookieStore.getCookie(name);
 
 const readFirstCookie = (names: string[]) => {
   for (const name of names) {
@@ -104,26 +101,12 @@ const readFirstCookie = (names: string[]) => {
   return "";
 };
 
-const getUserScope = () => {
-  const level = readFirstCookie([
-    "user_Level",
-    "user_LEVEL",
-    "user_level",
-  ]).toUpperCase();
-  return {
-    level,
-    fcba: readFirstCookie(["user_Fcba", "user_FCBA", "user_fcba"]),
-    afdeling: readFirstCookie([
-      "user_Afdeling",
-      "user_AFDELING",
-      "user_afdeling",
-      "user_Section",
-      "user_SECTION",
-      "user_section",
-    ]),
-    gang: readFirstCookie(["user_Gang", "user_GANG", "user_gang"]),
-  };
-};
+const getUserScope = () => ({
+  level: cookieStore.getLevel(),
+  fcba: cookieStore.getFcba(),
+  afdeling: cookieStore.getSection(),
+  gang: cookieStore.getGang(),
+});
 
 const applyClientUserScope = (params: URLSearchParams) => {
   const { level, fcba, afdeling, gang } = getUserScope();
