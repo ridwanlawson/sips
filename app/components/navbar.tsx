@@ -108,10 +108,15 @@ export default memo(function Navbar() {
         <LanguageSwitcher />
 
         <div className="dropdown dropdown-end">
-          <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar">
+          <div
+            tabIndex={0}
+            role="button"
+            className="btn btn-ghost btn-circle avatar focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            aria-label={t("userMenu")}
+          >
             <div className="w-10 rounded-full">
               <Image
-                alt="User Avatar"
+                alt={t("userAvatar")}
                 src={avatarSrc}
                 width={40}
                 height={40}
