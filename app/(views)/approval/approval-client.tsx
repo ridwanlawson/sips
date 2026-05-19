@@ -52,6 +52,8 @@ type LhmData = {
   brd_rp: string;
   kurangbasis: string;
   harilibur: string;
+  totalbrd: string;
+  rate_brondolan: string;
   rphk: string;
   total: string;
   under_ripe: string;
@@ -338,6 +340,8 @@ export default function Approval() {
           totalrppremi: Number(row.totalrppremi || 0),
           kurangbasis: Number(row.kurangbasis || 0),
           harilibur: Number(row.harilibur || 0),
+          totalbrd: Number(row.totalbrd || 0),
+          rate_brondolan: Number(row.rate_brondolan || 0),
           rphk: Number(row.rphk || 0),
           brd_rp: Number(row.brd_rp || 0),
           total: Number(row.total || 0),
@@ -421,40 +425,13 @@ export default function Approval() {
       RpHK: Number(r.rphk || "0"),
       "Brondolan RP": Number(r.brd_rp || "0"),
       Total: Number(r.total || "0"),
-      "Under Ripe": Number(r.under_ripe || "0"),
-      Overripe: Number(r.overripe || "0"),
-      Abnormal: Number(r.abnormal || "0"),
-      "Long Stalk": Number(r.long_stalk || "0"),
-      "Eaten by Rat": Number(r.eaten_by_rat || "0"),
-      "Unharvest FFB": Number(r.unharvest_ffb || "0"),
-      "Uncollect LF Circle": Number(r.uncollect_lf_circle || "0"),
-      "Uncollect LF Piece": Number(r.uncollect_lf_piece || "0"),
-      "Unarrange FFB": Number(r.unarrange_ffb || "0"),
-      "Unprune Frond": Number(r.unprune_frond || "0"),
-      "QE1 Pelepah Tidak Disusun": Number(r.qe_1_pelepah_tidak_disusun || "0"),
-      "QE2 Buah Matahari": Number(r.qe_2_buah_matahari || "0"),
-      "QE3 Buah Busuk": Number(r.qe_3_buah_busuk || "0"),
-      "QE4 Buah Mentah Diperam": Number(r.qe_4_buah_mentah_diperam || "0"),
-      "QE5 Over Pruning": Number(r.qe_5_over_pruning || "0"),
-      "QE6 Brondolan Tidak Dialas": Number(r.qe_6_brondolan_tidak_dialas || "0"),
-      "QE7 Brondolan Kotor Sampah": Number(r.qe_7_brondolan_kotor_sampah || "0"),
-      "QE8 Buah Dibelah": Number(r.qe_8_buah_dibelah || "0"),
-      QE9: Number(r.qe_9 || "0"),
-      QE10: Number(r.qe_10 || "0"),
-      "QE11 Buah Mentah A1": Number(r.qe_11_buah_mentah_a1 || "0"),
-      "QE12 Buah Tinggal S": Number(r.qe_12_buah_tinggal_s || "0"),
-      "QE13 B Ggng Pjg T Dipotong": Number(r.qe_13_b_ggng_pjg_t_dipotong || "0"),
-      QE14: Number(r.qe_14 || "0"),
-      QE15: Number(r.qe_15 || "0"),
-      "QE16 Buah Mentah Kerani": Number(r.qe_16_buah_mentah_kerani || "0"),
-      "QE17 Buah Mentah Mandor": Number(r.qe_17_buah_mentah_mandor || "0"),
       "Document No": r.documentno || "-",
       "Last Update": r.lastupdate || "-",
       "Last Time": r.lasttime || "-",
     }));
 
     const xlsx = await import("xlsx");
-    const ws = xlsx.utils.json_to_sheet(dataToExport, {cellDates: true,});
+    const ws = xlsx.utils.json_to_sheet(dataToExport, { cellDates: true, });
     const wb = xlsx.utils.book_new();
     xlsx.utils.book_append_sheet(wb, ws, "Approval LHM");
     xlsx.writeFile(
@@ -1056,8 +1033,8 @@ export default function Approval() {
                 progressPending={loading}
                 pagination
                 customStyles={centerHeaderStyle}
-                paginationPerPage={100}
-                paginationRowsPerPageOptions={[10, 30, 100, 500]}
+                paginationPerPage={200}
+                paginationRowsPerPageOptions={[100, 500, 1000]}
                 dense
                 highlightOnHover
                 fixedHeader
