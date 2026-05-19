@@ -22,7 +22,8 @@
     "languageMenu": "Select language",
     "openSidebar": "Open sidebar",
     "userAvatar": "User avatar",
-    "theme": "Theme"
+    "theme": "Theme",
+    "scrollToTop": "Scroll to top"
   },
   "Auth": {
     "login": "Login",
