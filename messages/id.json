@@ -17,7 +17,12 @@
     "transport": "Pengangkutan",
     "apkUpload": "Upload APK",
     "lhm": "LHM",
-    "approvalLhm": "Approval LHM"
+    "approvalLhm": "Approval LHM",
+    "userMenu": "Menu pengguna",
+    "languageMenu": "Pilih bahasa",
+    "openSidebar": "Buka sidebar",
+    "userAvatar": "Avatar pengguna",
+    "theme": "Tema"
   },
   "Auth": {
     "login": "Masuk",

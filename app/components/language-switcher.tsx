@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { cookieStore } from "@/utils/cookieStore";
+import { useTranslations } from "next-intl";
 
 export const LanguageSwitcher = () => {
+  const t = useTranslations("Navbar");
   const router = useRouter();
   const [locale, setLocale] = useState("en");
 
@@ -23,7 +25,8 @@ export const LanguageSwitcher = () => {
       <div
         tabIndex={0}
         role="button"
-        className="flex items-center gap-2 px-2 py-1"
+        className="flex items-center gap-2 px-2 py-1 btn btn-ghost btn-xs focus-visible:ring-2 focus-visible:ring-primary"
+        aria-label={t("languageMenu")}
       >
         <span className="uppercase font-medium text-xs">{locale}</span>
         <svg
