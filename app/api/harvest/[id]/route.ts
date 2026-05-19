@@ -65,8 +65,9 @@ export async function PUT(
 
   const data = await safeJson(upstream);
   if (!upstream.ok) {
+    console.error("[PUT ERROR] app/api/harvest/[id]/route.ts:", data);
     return NextResponse.json(
-      { ok: false, error: data?.message || "Update failed", debug: data },
+      { ok: false, error: data?.message || "Update failed" },
       { status: upstream.status }
     );
   }

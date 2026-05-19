@@ -17,7 +17,12 @@
     "transport": "Transport",
     "apkUpload": "Upload APK",
     "lhm": "LHM",
-    "approvalLhm": "Approval LHM"
+    "approvalLhm": "Approval LHM",
+    "userMenu": "User menu",
+    "languageMenu": "Select language",
+    "openSidebar": "Open sidebar",
+    "userAvatar": "User avatar",
+    "theme": "Theme"
   },
   "Auth": {
     "login": "Login",

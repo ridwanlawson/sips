@@ -19,8 +19,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const { data, parseError } = await parseJsonSafe(response);
 
   if (parseError) {
+    console.error("Failed to parse API response:", data);
     return NextResponse.json(
-      { ok: false, error: `Failed to parse API response: ${String(data).substring(0, 200)}`, data: [] },
+      { ok: false, error: "Failed to parse API response", data: [] },
       { status: 500 },
     );
   }

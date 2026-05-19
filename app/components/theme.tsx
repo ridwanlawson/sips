@@ -1,8 +1,10 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useTheme } from "../hooks/useTheme";
 
 export const Theme = () => {
+  const t = useTranslations("Navbar");
   const { theme, changeTheme } = useTheme();
 
   const handleThemeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -19,8 +21,12 @@ export const Theme = () => {
 
   return (
     <div className="dropdown">
-      <div tabIndex={0} role="button">
-        Theme
+      <div
+        tabIndex={0}
+        role="button"
+        className="flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-primary rounded-md px-1"
+      >
+        {t("theme")}
         <svg
           width="12px"
           height="12px"
