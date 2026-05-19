@@ -22,7 +22,10 @@ export async function GET(
 
   const data = await safeJson(upstream);
   if (!upstream.ok) {
-    return NextResponse.json({ ok: false, error: data?.message || "Fetch failed" }, { status: upstream.status });
+    // SECURITY: Log original error details server-side but return generic message
+    // to client to prevent information leakage (CWE-209).
+    console.error("[API_HARVEST_ID_GET_ERROR]", { status: upstream.status, data });
+    return NextResponse.json({ ok: false, error: "Failed to fetch harvest record" }, { status: upstream.status });
   }
   return NextResponse.json({ ok: true, data });
 }
@@ -65,9 +68,11 @@ export async function PUT(
 
   const data = await safeJson(upstream);
   if (!upstream.ok) {
-    console.error("[PUT ERROR] app/api/harvest/[id]/route.ts:", data);
+    // SECURITY: Log original error details server-side but return generic message
+    // to client to prevent information leakage (CWE-209).
+    console.error("[API_HARVEST_ID_PUT_ERROR]", { status: upstream.status, data });
     return NextResponse.json(
-      { ok: false, error: data?.message || "Update failed" },
+      { ok: false, error: "Failed to update harvest record" },
       { status: upstream.status }
     );
   }
@@ -90,7 +95,10 @@ export async function DELETE(
 
   const data = await safeJson(upstream);
   if (!upstream.ok) {
-    return NextResponse.json({ ok: false, error: data?.message || "Delete failed" }, { status: upstream.status });
+    // SECURITY: Log original error details server-side but return generic message
+    // to client to prevent information leakage (CWE-209).
+    console.error("[API_HARVEST_ID_DELETE_ERROR]", { status: upstream.status, data });
+    return NextResponse.json({ ok: false, error: "Failed to delete harvest record" }, { status: upstream.status });
   }
   return NextResponse.json({ ok: true, data });
 }

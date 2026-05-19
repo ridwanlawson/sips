@@ -14,7 +14,13 @@ export async function POST(request: Request) {
     const data = await upstream.json();
 
     if (!upstream.ok) {
-      return NextResponse.json({ ok: false, error: data?.message || "Auth failed" }, { status: upstream.status });
+      // SECURITY: Log original error details server-side but return generic message
+      // to client to prevent information leakage (CWE-209).
+      console.error("[AUTH_LOGIN_ERROR]", { status: upstream.status, data });
+      return NextResponse.json(
+        { ok: false, error: "Invalid credentials or authentication error" },
+        { status: upstream.status }
+      );
     }
 
     const token = data?.token;
