@@ -124,8 +124,11 @@ export async function POST(req: NextRequest) {
 
   const data = await safeJson(upstream);
   if (!upstream.ok) {
+    // SECURITY: Log original error details server-side but return generic message
+    // to client to prevent information leakage (CWE-209).
+    console.error("[API_ATTENDANCE_POST_ERROR]", { status: upstream.status, data });
     return NextResponse.json(
-      { ok: false, error: data?.message || "Create failed" },
+      { ok: false, error: "Attendance submission failed" },
       { status: upstream.status }
     );
   }

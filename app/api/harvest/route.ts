@@ -36,7 +36,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const data = await safeJson(upstream);
     if (!upstream.ok) {
-        return NextResponse.json({ ok: false, error: data?.message || "Create failed" }, { status: upstream.status });
+        // SECURITY: Log original error details server-side but return generic message
+        // to client to prevent information leakage (CWE-209).
+        console.error("[API_HARVEST_POST_ERROR]", { status: upstream.status, data });
+        return NextResponse.json({ ok: false, error: "Harvest submission failed" }, { status: upstream.status });
     }
     return NextResponse.json({ ok: true, data });
 }
@@ -72,7 +75,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     }
 
     if (!upstream.ok) {
-        return NextResponse.json({ ok: false, error: extractMessage(data, "Fetch failed") }, { status: upstream.status });
+        // SECURITY: Log original error details server-side but return generic message
+        // to client to prevent information leakage (CWE-209).
+        console.error("[API_HARVEST_GET_ERROR]", { status: upstream.status, data });
+        return NextResponse.json({ ok: false, error: "Failed to fetch harvest data" }, { status: upstream.status });
     }
 
     if (isRecord(data) && Array.isArray(data.data)) {

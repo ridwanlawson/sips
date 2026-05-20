@@ -25,7 +25,13 @@ export async function POST(request: Request) {
     const data = await upstream.json();
 
     if (!upstream.ok) {
-      return NextResponse.json({ ok: false, error: data?.message || "Failed to change password" }, { status: upstream.status });
+      // SECURITY: Log original error details server-side but return generic message
+      // to client to prevent information leakage (CWE-209).
+      console.error("[CHANGE_PASSWORD_ERROR]", { status: upstream.status, data });
+      return NextResponse.json(
+        { ok: false, error: "Failed to change password" },
+        { status: upstream.status }
+      );
     }
 
     return NextResponse.json({ ok: true, message: data?.message || "Password changed successfully" });
