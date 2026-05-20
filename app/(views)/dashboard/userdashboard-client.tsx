@@ -41,6 +41,9 @@ interface AttendanceRecord {
   fcba?: string | null;
   section?: string | null;
   gang?: string | null;
+  // ⚡ Bolt Optimization: cached display values
+  _displayDate?: string;
+  _status?: ClassifiedStatus;
 }
 
 interface DashboardStats {
@@ -94,6 +97,7 @@ interface DailySummary extends DailyGroupKey {
   telat: number;
   pulangAwal: number;
   alpa: number;
+  _displayDate?: string;
 }
 
 interface MonthlySummary {
@@ -183,23 +187,29 @@ const parseDateOnly = (raw?: string | null): string | null => {
   return onlyDate;
 };
 
-const formatDateID = (yyyyMmDd: string, localeTag = "id-ID"): string => {
+// ⚡ Bolt Optimization: Reuse Intl.DateTimeFormat instances to avoid expensive re-creation
+// creating an Intl object on every call to toLocaleDateString() is a known bottleneck.
+const dayFormatter = new Intl.DateTimeFormat("id-ID", {
+  weekday: "short",
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+});
+
+const monthFormatter = new Intl.DateTimeFormat("id-ID", {
+  month: "long",
+  year: "numeric",
+});
+
+const formatDateID = (yyyyMmDd: string): string => {
   const d = new Date(yyyyMmDd + "T00:00:00");
   if (Number.isNaN(+d)) return yyyyMmDd;
-  return d.toLocaleDateString(localeTag, {
-    weekday: "short",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  return dayFormatter.format(d);
 };
 
-const formatMonthID = (year: number, month: number, localeTag = "id-ID"): string => {
+const formatMonthID = (year: number, month: number): string => {
   const date = new Date(year, month - 1, 1);
-  return date.toLocaleDateString(localeTag, {
-    month: "long",
-    year: "numeric",
-  });
+  return monthFormatter.format(date);
 };
 
 const formatYearID = (year: number): string => {
@@ -1009,10 +1019,14 @@ export default function UserDashboard() {
       const dateOnly = parseDateOnly(r.tanggal);
       if (!dateOnly || dateOnly < from || dateOnly > to) continue;
 
+      const cls = classifyStatus(r);
+
+      // ⚡ Bolt Optimization: pre-calculate values for rendering
+      r._displayDate = formatDateID(dateOnly);
+      r._status = cls;
+
       filteredAttendance.push(r);
       rowDetailsWithDates.push({ record: r, date: dateOnly });
-
-      const cls = classifyStatus(r);
 
       // 1. Update Global Stats
       if (cls === "TEPAT_WAKTU") {
@@ -1059,6 +1073,7 @@ export default function UserDashboard() {
           telat: 0,
           pulangAwal: 0,
           alpa: 0,
+          _displayDate: r._displayDate,
         };
         dailyMap.set(dailyKey, dSummary);
       }
@@ -1196,7 +1211,7 @@ export default function UserDashboard() {
         .slice()
         .reverse()
         .map((d) => ({
-          label: formatDateID(d.date),
+          label: d._displayDate || d.date,
           hadir: d.hadir,
           tepatWaktu: d.tepatWaktu,
           telat: d.telat,
@@ -1761,7 +1776,7 @@ export default function UserDashboard() {
                           className="hover:bg-base-200"
                         >
                           <td className="whitespace-nowrap font-medium">
-                            {formatDateID(d.date)}
+                            {d._displayDate || d.date}
                           </td>
                           {userLevel === "ADM" && (
                             <>
@@ -1852,20 +1867,20 @@ export default function UserDashboard() {
                     </thead>
                     <tbody>
                       {rowDetails.map((r, idx) => {
-                        const dateOnly = parseDateOnly(r.tanggal) || "-";
-                        const status = classifyStatus(r);
+                        // ⚡ Bolt Optimization: Use pre-calculated values
+                        const status = r._status;
 
                         // FIX DUPLICATE KEY: gabungkan id + index
                         const keyBase =
                           r.id !== undefined && r.id !== null
                             ? String(r.id)
-                            : `${dateOnly}`;
+                            : `${r.tanggal}`;
                         const rowKey = `${keyBase}-${idx}`;
 
                         return (
                           <tr key={rowKey} className="hover:bg-base-200">
                             <td className="whitespace-nowrap">
-                              {dateOnly !== "-" ? formatDateID(dateOnly) : "-"}
+                              {r._displayDate || "-"}
                             </td>
 
                             {/* Kolom lokasi disesuaikan level */}
