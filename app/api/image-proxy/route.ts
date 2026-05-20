@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ImageProxy } from "@/lib/constants";
 import { BACKEND_URL } from "@/utils/backendConfig";
+import { getTokenFromCookie } from "@/utils/absensiProxy";
 
 /**
  * Image proxy to serve images from HTTP backend through HTTPS
@@ -8,6 +9,16 @@ import { BACKEND_URL } from "@/utils/backendConfig";
  */
 export async function GET(request: NextRequest) {
     try {
+        // SECURITY: Authentication check (CWE-306)
+        // Proxy should only be accessible to authenticated users.
+        const token = await getTokenFromCookie();
+        if (!token) {
+            return NextResponse.json(
+                { ok: false, error: "Unauthenticated" },
+                { status: 401 },
+            );
+        }
+
         const searchParams = request.nextUrl.searchParams;
         const imageUrl = searchParams.get("url");
 
@@ -18,17 +29,22 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        // Validate that the URL is from our trusted backend
-        const allowedOrigins = [BACKEND_URL];
+        // SECURITY: Robust origin validation (CWE-441 / CWE-918)
+        // Ensure the URL is from our trusted backend by parsing it.
+        try {
+            const parsedUrl = new URL(imageUrl);
+            const backendOrigin = new URL(BACKEND_URL).origin;
 
-        const isAllowed = allowedOrigins.some((origin) =>
-            imageUrl.startsWith(`${origin}/`),
-        );
-
-        if (!isAllowed) {
+            if (parsedUrl.origin !== backendOrigin) {
+                return NextResponse.json(
+                    { ok: false, error: "Invalid image origin" },
+                    { status: 403 },
+                );
+            }
+        } catch {
             return NextResponse.json(
-                { ok: false, error: "Invalid image URL" },
-                { status: 403 },
+                { ok: false, error: "Malformed image URL" },
+                { status: 400 },
             );
         }
 
@@ -67,12 +83,26 @@ export async function GET(request: NextRequest) {
 
         const contentType = response.headers.get("content-type") || "image/jpeg";
 
-        // Return the image with proper headers
+        // SECURITY: Strict Content-Type validation (CWE-434 / CWE-79)
+        // Prevent attackers from returning HTML/JS through the proxy.
+        if (!contentType.startsWith("image/")) {
+            return NextResponse.json(
+                { ok: false, error: "Invalid content type from upstream" },
+                { status: 415 },
+            );
+        }
+
+        // Return the image with proper security headers
         return new NextResponse(imageBuffer, {
             status: 200,
             headers: {
                 "Content-Type": contentType,
-                "Cache-Control": "public, max-age=31536000, immutable",
+                // SECURITY: Prevent MIME-sniffing (CWE-116)
+                "X-Content-Type-Options": "nosniff",
+                // SECURITY: Restrictive CSP for images (CWE-1021)
+                "Content-Security-Policy": "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'",
+                // SECURITY: Use private cache for potentially sensitive user photos (PII)
+                "Cache-Control": "private, max-age=86400",
             },
         });
     } catch {
