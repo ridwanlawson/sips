@@ -58,39 +58,39 @@ type ApiResponse<T> = {
 };
 
 export const fetchHarvestingQuality = async (
-  params: HarvestingQualityParams,
+  params: HarvestingQualityParams
 ): Promise<ApiResponse<HarvestingQualityData[]>> => {
   const queryParams = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
     if (value?.trim()) queryParams.append(key, value);
   }
 
-  const url = `/api/harvesting-quality/upload${queryParams.toString() ? `?${queryParams}` : ""}`;
+  const url = `/api/harvesting-quality/upload${queryParams.toString() ? `?${queryParams}` : ''}`;
 
-  const response = await fetch(url, { credentials: "include" });
+  const response = await fetch(url, { credentials: 'include' });
   const json = await response.json();
 
   if (json.success && Array.isArray(json.data)) {
-    return { success: true, message: json.message || "Data berhasil dimuat", data: json.data };
+    return { success: true, message: json.message || 'Data berhasil dimuat', data: json.data };
   }
 
-  return { success: false, message: json.message || "Data tidak ditemukan" };
+  return { success: false, message: json.message || 'Data tidak ditemukan' };
 };
 
-export const insertHarvestingQualityData = async (
-  payload: { data: Record<string, unknown>[] },
-): Promise<ApiResponse<string[]>> => {
-  const response = await fetch("/api/harvesting-quality/submit", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    credentials: "include",
+export const insertHarvestingQualityData = async (payload: {
+  data: Record<string, unknown>[];
+}): Promise<ApiResponse<string[]>> => {
+  const response = await fetch('/api/harvesting-quality/submit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    credentials: 'include',
     body: JSON.stringify(payload),
   });
 
   const json = await response.json();
 
   if (response.ok && json.success) {
-    return { success: true, message: json.message || "Data berhasil diunggah", data: json.data };
+    return { success: true, message: json.message || 'Data berhasil diunggah', data: json.data };
   }
 
   return { success: false, message: json.message || `HTTP ${response.status}` };

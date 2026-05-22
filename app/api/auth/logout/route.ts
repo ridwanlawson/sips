@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { BACKEND_URL } from "@/utils/absensiProxy";
-import { CookieName } from "@/lib/constants";
+import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { BACKEND_URL } from '@/utils/absensiProxy';
+import { CookieName } from '@/lib/constants';
 
-// Single source of truth — same list used by force-logout
+// Single source of truth; force-logout uses the same list.
 const COOKIES_TO_DELETE = [
   CookieName.AUTH_TOKEN,
   CookieName.LOG_ID,
@@ -26,20 +26,20 @@ export async function POST(): Promise<NextResponse> {
   const token = cookieStore.get(CookieName.AUTH_TOKEN)?.value;
 
   if (!token) {
-    return NextResponse.json({ ok: false, error: "Not authenticated" }, { status: 401 });
+    return NextResponse.json({ ok: false, error: 'Not authenticated' }, { status: 401 });
   }
 
   const response = await fetch(`${BACKEND_URL}/api/logout`, {
-    method: "POST",
+    method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-      Accept: "application/json",
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
     },
   });
 
   if (!response.ok) {
-    return NextResponse.json({ ok: false, error: "Logout failed" }, { status: response.status });
+    return NextResponse.json({ ok: false, error: 'Logout failed' }, { status: response.status });
   }
 
   for (const name of COOKIES_TO_DELETE) {

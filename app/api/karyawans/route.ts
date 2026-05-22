@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import { BACKEND_URL } from "@/utils/absensiProxy";
-import { authHeaders, extractDataArray } from "@/lib/apiProxy";
+import { NextRequest, NextResponse } from 'next/server';
+import { BACKEND_URL } from '@/utils/absensiProxy';
+import { authHeaders, extractDataArray } from '@/lib/apiProxy';
 
 interface KaryawanRow {
   fcba?: string | number | null;
@@ -9,12 +9,20 @@ interface KaryawanRow {
   [key: string]: unknown;
 }
 
-const ALLOWED_PARAMS = ["fcba", "afdeling", "sectionname", "gangcode", "noancak", "fctype", "fccompanycode"];
+const ALLOWED_PARAMS = [
+  'fcba',
+  'afdeling',
+  'sectionname',
+  'gangcode',
+  'noancak',
+  'fctype',
+  'fccompanycode',
+];
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  const token = req.cookies.get("auth_token")?.value;
+  const token = req.cookies.get('auth_token')?.value;
   if (!token) {
-    return NextResponse.json({ ok: false, error: "Not authenticated" }, { status: 401 });
+    return NextResponse.json({ ok: false, error: 'Not authenticated' }, { status: 401 });
   }
 
   const upstreamParams = new URLSearchParams();
@@ -23,21 +31,23 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     if (value) upstreamParams.append(param, value);
   }
 
-  const url = `${BACKEND_URL}/api/apps/karyawans${upstreamParams.toString() ? `?${upstreamParams}` : ""}`;
+  const url = `${BACKEND_URL}/api/apps/karyawans${upstreamParams.toString() ? `?${upstreamParams}` : ''}`;
 
   const upstream = await fetch(url, {
     headers: authHeaders(token),
-    cache: "no-store",
+    cache: 'no-store',
   });
 
   if (!upstream.ok) {
     let errorMessage = `Upstream returned ${upstream.status} ${upstream.statusText}`;
     try {
-      if (upstream.headers.get("content-type")?.includes("application/json")) {
+      if (upstream.headers.get('content-type')?.includes('application/json')) {
         const raw = await upstream.json();
         errorMessage = raw?.message || errorMessage;
       }
-    } catch { /* keep default */ }
+    } catch {
+      /* keep default */
+    }
     return NextResponse.json({ ok: false, error: errorMessage }, { status: upstream.status });
   }
 

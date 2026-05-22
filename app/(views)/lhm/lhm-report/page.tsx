@@ -1,8 +1,8 @@
-import type { Metadata } from "next";
-import LhmReport from "./lhmreport-client";
+import type { Metadata } from 'next';
+import LhmReport from './lhmreport-client';
 
 export const metadata: Metadata = {
-  title: "Laporan LHM",
+  title: 'Laporan LHM',
 };
 
 export default function Page() {

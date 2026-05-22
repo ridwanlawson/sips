@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import dynamic from "next/dynamic";
-import { SkeletonTable } from "@/app/components/skeletons";
+import dynamic from 'next/dynamic';
+import { SkeletonTable } from '@/app/components/skeletons';
 
-const AttendanceUploadPage = dynamic(() => import("./attendanceuploadpage-client"), {
+const AttendanceUploadPage = dynamic(() => import('./attendanceuploadpage-client'), {
   ssr: false,
   loading: () => (
     <div className="p-6">

@@ -1,10 +1,10 @@
-import type { Metadata } from "next";
-import { cookies } from "next/headers";
-import { BACKEND_URL } from "@/utils/backendConfig";
-import ChangePasswordPage from "./changepasswordpage-client";
+import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
+import { BACKEND_URL } from '@/utils/backendConfig';
+import ChangePasswordPage from './changepasswordpage-client';
 
 export const metadata: Metadata = {
-  title: "Ganti Password",
+  title: 'Change Password',
 };
 
 type UserProfile = {
@@ -24,13 +24,13 @@ type UserProfile = {
 };
 
 /**
- * Server Component — fetch profile di server sebelum halaman dikirim ke browser.
- * Tidak ada loading spinner untuk profile, data langsung tersedia saat render.
+ * Server Component that fetches the profile before sending the page to the browser.
+ * Profile data is available on initial render, so no profile loading spinner is needed.
  */
 export default async function Page() {
   const cookieStore = await cookies();
-  const token = cookieStore.get("auth_token")?.value;
-  const userId = cookieStore.get("log_id")?.value;
+  const token = cookieStore.get('auth_token')?.value;
+  const userId = cookieStore.get('log_id')?.value;
 
   let profile: UserProfile | null = null;
 
@@ -39,19 +39,18 @@ export default async function Page() {
       const res = await fetch(`${BACKEND_URL}/api/user/${encodeURIComponent(userId)}`, {
         headers: {
           Authorization: `Bearer ${token}`,
-          Accept: "application/json",
+          Accept: 'application/json',
         },
-        // Tidak di-cache — data user harus selalu fresh
-        cache: "no-store",
+        cache: 'no-store',
       });
 
       if (res.ok) {
         const json = await res.json();
-        // Handle nested: { data: { data: {...} } } atau { data: {...} }
+        // Handle both { data: { data: {...} } } and { data: {...} } shapes.
         profile = json?.data?.data ?? json?.data ?? null;
       }
     } catch {
-      // Gagal fetch profile — halaman tetap render, form tetap bisa dipakai
+      // Still render the page when profile fetch fails so the form remains usable.
     }
   }
 

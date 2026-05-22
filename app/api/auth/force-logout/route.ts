@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { CookieName } from "@/lib/constants";
+import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { CookieName } from '@/lib/constants';
 
 /**
- * Force logout endpoint — clears all cookies regardless of token validity.
+ * Force logout endpoint that clears all cookies regardless of token validity.
  * Used when token is invalid/expired and normal logout fails.
  */
 const COOKIES_TO_DELETE = [
@@ -18,9 +18,16 @@ const COOKIES_TO_DELETE = [
   CookieName.USER_POSITION,
   CookieName.USER_PHOTO,
   // Legacy / inconsistent variants
-  "user_Section", "user_SECTION", "user_section", "user_afdeling",
-  "user_FCBA", "user_fcba", "user_LEVEL", "user_level",
-  "user_GANG", "user_gang",
+  'user_Section',
+  'user_SECTION',
+  'user_section',
+  'user_afdeling',
+  'user_FCBA',
+  'user_fcba',
+  'user_LEVEL',
+  'user_level',
+  'user_GANG',
+  'user_gang',
   // Options
   CookieName.OPT_FCBA,
   CookieName.OPT_SECTION,
@@ -36,9 +43,9 @@ export async function POST() {
       cookieStore.delete(name);
     }
 
-    return NextResponse.json({ ok: true, message: "All cookies cleared successfully" });
+    return NextResponse.json({ ok: true, message: 'All cookies cleared successfully' });
   } catch {
-    // Even on error, return success — we want to logout anyway
-    return NextResponse.json({ ok: true, message: "Logout completed with warnings" });
+    // Even on error, return success because logout should continue anyway.
+    return NextResponse.json({ ok: true, message: 'Logout completed with warnings' });
   }
 }

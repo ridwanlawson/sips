@@ -1,7 +1,7 @@
-import type { NextRequest } from "next/server";
-import { UserLevel } from "@/lib/constants";
+import type { NextRequest } from 'next/server';
+import { UserLevel } from '@/lib/constants';
 
-type GangParam = "gang" | "gangcode" | "kemandoran";
+type GangParam = 'gang' | 'gangcode' | 'kemandoran';
 
 type ApplyUserDataScopeOptions = {
   gangParam?: GangParam;
@@ -15,53 +15,60 @@ const AFDELING_LEVELS = new Set<string>([
   UserLevel.KRT,
   UserLevel.KRA,
 ]);
-const GANG_LEVELS = new Set<string>([
-  UserLevel.KEPALA_REGU_PANEN,
-  UserLevel.MANDOR,
-]);
+const GANG_LEVELS = new Set<string>([UserLevel.KEPALA_REGU_PANEN, UserLevel.MANDOR]);
 
 function getCookieValue(req: NextRequest, names: string[]) {
   for (const name of names) {
     const value = req.cookies.get(name)?.value;
     if (value) return value;
   }
-  return "";
+  return '';
+}
+
+function normalizeLevel(level: string) {
+  const upperLevel = level.toUpperCase();
+  return upperLevel === 'ADMIN' ? UserLevel.ADMIN : upperLevel;
 }
 
 export function applyUserDataScope(
   req: NextRequest,
   searchParams: URLSearchParams,
-  options: ApplyUserDataScopeOptions = {},
+  options: ApplyUserDataScopeOptions = {}
 ) {
-  const level = getCookieValue(req, [
-    "user_Level",
-    "user_LEVEL",
-    "user_level",
-  ]).toUpperCase();
+  const level = normalizeLevel(getCookieValue(req, ['user_Level', 'user_LEVEL', 'user_level']));
 
   if (!level || ADMIN_LEVELS.has(level)) return searchParams;
 
-  const fcba = getCookieValue(req, ["user_Fcba", "user_FCBA", "user_fcba"]);
+  const fcba = getCookieValue(req, ['user_Fcba', 'user_FCBA', 'user_fcba']);
   const afdeling = getCookieValue(req, [
-    "user_Afdeling",
-    "user_AFDELING",
-    "user_afdeling",
-    "user_Section",
-    "user_SECTION",
-    "user_section",
+    'user_Afdeling',
+    'user_AFDELING',
+    'user_afdeling',
+    'user_Section',
+    'user_SECTION',
+    'user_section',
   ]);
-  const gang = getCookieValue(req, ["user_Gang", "user_GANG", "user_gang"]);
+  const gang = getCookieValue(req, [
+    'user_Gang',
+    'user_GANG',
+    'user_gang',
+    'user_GangCode',
+    'user_GANGCODE',
+    'user_gangcode',
+    'user_GANG_CODE',
+    'user_gang_code',
+  ]);
 
   if (FCBA_LEVELS.has(level) || AFDELING_LEVELS.has(level) || GANG_LEVELS.has(level)) {
-    if (fcba) searchParams.set("fcba", fcba);
+    if (fcba) searchParams.set('fcba', fcba);
   }
 
   if (AFDELING_LEVELS.has(level) || GANG_LEVELS.has(level)) {
-    if (afdeling) searchParams.set("afdeling", afdeling);
+    if (afdeling) searchParams.set('afdeling', afdeling);
   }
 
   if (GANG_LEVELS.has(level)) {
-    const gangParam = options.gangParam || "kemandoran";
+    const gangParam = options.gangParam || 'kemandoran';
     if (gang) searchParams.set(gangParam, gang);
   }
 

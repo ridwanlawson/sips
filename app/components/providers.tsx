@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useRef, useEffect } from "react";
-import { Toaster } from "react-hot-toast";
-import AuthExpiryChecker from "./auth-expiry-checker";
-import { isAuthErrorResponse, logoutAndRedirect } from "@/utils/authHelper";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useRef, useEffect } from 'react';
+import { Toaster } from 'react-hot-toast';
+import AuthExpiryChecker from './auth-expiry-checker';
+import { isAuthErrorResponse, logoutAndRedirect } from '@/utils/authHelper';
 
 declare global {
   interface Window {
@@ -12,34 +12,32 @@ declare global {
   }
 }
 
-// QueryClient dibuat sekali di module level — tidak perlu useState.
-// useState menyebabkan re-create saat hot reload di dev.
-// useRef lebih tepat: nilai stabil, tidak trigger re-render.
+// Create QueryClient once at module level.
 function makeQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 5 * 60 * 1000,       // 5 menit — data dianggap fresh
-        gcTime: 10 * 60 * 1000,          // 10 menit cache di memori
+        staleTime: 5 * 60 * 1000,
+        gcTime: 10 * 60 * 1000,
         retry: 1,
-        refetchOnWindowFocus: false,      // jangan refetch saat user kembali ke tab
-        refetchOnReconnect: true,         // refetch saat koneksi kembali
-        refetchOnMount: false,            // jangan refetch jika data masih fresh
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: true,
+        refetchOnMount: false,
       },
     },
   });
 }
 
 export default function Providers({ children }: { children: React.ReactNode }) {
-  // useRef: QueryClient stabil antar render, tidak trigger re-render
+  // Keep QueryClient stable across renders.
   const queryClientRef = useRef<QueryClient | null>(null);
   if (!queryClientRef.current) {
     queryClientRef.current = makeQueryClient();
   }
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    // Guard: install interceptor hanya sekali per session
+    if (typeof window === 'undefined') return;
+    // Install the interceptor only once per session.
     if (window.__authFetchInterceptorInstalled) return;
     window.__authFetchInterceptorInstalled = true;
 
@@ -47,14 +45,14 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
     window.fetch = async (...args) => {
       const response = await originalFetch(...args);
-      // Clone response sebelum dicek agar body tidak habis terbaca
+      // Clone before checking so downstream callers can still read the body.
       if (await isAuthErrorResponse(response.clone())) {
         logoutAndRedirect();
       }
       return response;
     };
 
-    // Cleanup tidak diperlukan — interceptor harus aktif selama session
+    // No cleanup needed; the interceptor should stay active for the session.
   }, []);
 
   return (
@@ -65,9 +63,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         position="top-right"
         reverseOrder={false}
         toastOptions={{
-          // Kurangi durasi default agar toast tidak menumpuk
+          // Keep toast duration short enough to avoid stacking.
           duration: 3000,
-          style: { maxWidth: "400px" },
+          style: { maxWidth: '400px' },
         }}
       />
     </QueryClientProvider>

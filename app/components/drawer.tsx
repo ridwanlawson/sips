@@ -1,14 +1,14 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useRef, useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
-import { cookieStore } from "@/utils/cookieStore";
-import { getMenuForUserLevel, MenuItem } from "@/lib/menuConfig";
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { useRef, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { cookieStore } from '@/utils/cookieStore';
+import { getMenuForUserLevel, MenuItem } from '@/lib/menuConfig';
 
 export const Drawer = () => {
-  const t = useTranslations("Navbar");
+  const t = useTranslations('Navbar');
   const pathname = usePathname();
   const router = useRouter();
   const drawerRef = useRef<HTMLInputElement>(null);
@@ -29,23 +29,21 @@ export const Drawer = () => {
     const newStates: Record<string, boolean> = {};
     menuItems.forEach(item => {
       if (item.children && item.children.length > 0) {
-        const hasActiveChild = item.children.some(child =>
-          pathname.startsWith(child.href)
-        );
+        const hasActiveChild = item.children.some(child => pathname.startsWith(child.href));
         newStates[item.id] = hasActiveChild;
       }
     });
     setDropdownStates(newStates);
-    // Reset loading state saat halaman selesai diload
+    // Reset loading state when navigation completes.
     setIsNavigating(null);
   }, [pathname, menuItems]);
 
-  // Tutup drawer
+  // Close the drawer.
   const closeDrawer = () => {
     if (drawerRef.current) drawerRef.current.checked = false;
   };
 
-  // Navigate dengan loading pada menu yang diklik
+  // Navigate and mark the clicked item as loading.
   const handleNavigate = (href: string) => {
     if (pathname === href) {
       closeDrawer();
@@ -56,20 +54,19 @@ export const Drawer = () => {
     router.push(href);
   };
 
-  // Helper: kelas aktif
-  const isActive = (href: string) =>
-    pathname === href ? "active bg-base-300" : "";
+  // Active menu item helper.
+  const isActive = (href: string) => (pathname === href ? 'active bg-base-300' : '');
 
   // Helper: toggle dropdown state
   const toggleDropdown = (itemId: string) => {
     setDropdownStates(prev => ({
       ...prev,
-      [itemId]: !prev[itemId]
+      [itemId]: !prev[itemId],
     }));
   };
 
   // Render menu icon
-  const renderIcon = (iconPath: string, size: string = "h-5 w-5") => (
+  const renderIcon = (iconPath: string, size: string = 'h-5 w-5') => (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       className={size}
@@ -89,7 +86,7 @@ export const Drawer = () => {
           <details
             className="[&_summary::-webkit-details-marker]:hidden"
             open={dropdownStates[item.id] || false}
-            onToggle={(e) => {
+            onToggle={e => {
               // Only update state if user clicked, not when pathname changes
               if (e.currentTarget.open !== dropdownStates[item.id]) {
                 toggleDropdown(item.id);
@@ -118,7 +115,7 @@ export const Drawer = () => {
           className={isActive(item.href)}
           onClick={() => handleNavigate(item.href)}
         >
-          {renderIcon(item.icon, isChild ? "h-4 w-4" : "h-5 w-5")}
+          {renderIcon(item.icon, isChild ? 'h-4 w-4' : 'h-5 w-5')}
           {t(item.label)}
         </Link>
       </li>
@@ -134,19 +131,14 @@ export const Drawer = () => {
         </div>
       )}
       <div className="drawer">
-        <input
-          id="my-drawer"
-          type="checkbox"
-          className="drawer-toggle"
-          ref={drawerRef}
-        />
+        <input id="my-drawer" type="checkbox" className="drawer-toggle" ref={drawerRef} />
         <div className="drawer-content">
-          {/* Tombol buka drawer */}
+          {/* Open drawer button */}
           <label
             htmlFor="my-drawer"
             role="button"
             className="btn btn-ghost btn-circle drawer-button focus-visible:ring-2 focus-visible:ring-primary"
-            aria-label={t("openSidebar")}
+            aria-label={t('openSidebar')}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -166,11 +158,7 @@ export const Drawer = () => {
         </div>
 
         <div className="drawer-side z-[9999]">
-          <label
-            htmlFor="my-drawer"
-            aria-label="close sidebar"
-            className="drawer-overlay"
-          ></label>
+          <label htmlFor="my-drawer" aria-label="close sidebar" className="drawer-overlay"></label>
 
           <ul className="menu bg-base-200 text-base-content min-h-full w-80 p-4 gap-1">
             {/* Header/brand */}

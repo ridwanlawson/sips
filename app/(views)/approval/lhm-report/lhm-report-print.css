@@ -1,4 +1,4 @@
-@media print {
+﻿@media print {
   @page {
     size: A4 landscape;
     margin: 6mm;
@@ -148,8 +148,8 @@
   font-size: 10px;
 }
 
-/* Styles untuk garis tengah */
-/* Styles untuk tabel premi */
+/* Styles for center divider */
+/* Styles for premium table */
 .lhm-premi-table {
   width: 100%;
   border-collapse: collapse;
@@ -190,7 +190,7 @@
   vertical-align: middle;
 }
 
-/* Legacy styles untuk backward compatibility */
+/* Legacy styles for backward compatibility */
 .lhm-print-premi {
   margin-top: 65px;
   margin-bottom: 32px;

@@ -23,26 +23,26 @@ export interface FetchBusinessUnitParams {
  * parameters, and error handling).
  */
 export async function fetchBusinessUnits(
-  params: FetchBusinessUnitParams = {},
+  params: FetchBusinessUnitParams = {}
 ): Promise<BusinessUnit[]> {
   // build URL with search params for local API route
-  const url = new URL("/api/business-units", window.location.origin);
+  const url = new URL('/api/business-units', window.location.origin);
 
   Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") {
+    if (value !== undefined && value !== null && value !== '') {
       url.searchParams.append(key, String(value));
     }
   });
 
   const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    Accept: "application/json",
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
   };
 
   const res = await fetch(url.toString(), {
-    method: "GET",
+    method: 'GET',
     headers,
-    credentials: "include", // include cookies for authentication
+    credentials: 'include', // include cookies for authentication
   });
 
   if (!res.ok) {

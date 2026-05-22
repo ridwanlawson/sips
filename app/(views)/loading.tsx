@@ -1,4 +1,4 @@
-import { SkeletonCard, SkeletonTable } from "@/app/components/skeletons";
+import { SkeletonCard, SkeletonTable } from '@/app/components/skeletons';
 
 export default function Loading() {
   return (

@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import dynamic from "next/dynamic";
-import { SkeletonTable } from "@/app/components/skeletons";
+import dynamic from 'next/dynamic';
+import { SkeletonTable } from '@/app/components/skeletons';
 
-const Lhm = dynamic(() => import("./lhm-client"), {
+const Lhm = dynamic(() => import('./lhm-client'), {
   ssr: false,
   loading: () => (
     <div className="p-6">

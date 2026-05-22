@@ -1,9 +1,9 @@
-"use client";
+﻿'use client';
 
-import { useState } from "react";
-import Image from "next/image";
-import { toTitleCase } from "@/utils/textManipulation";
-import { getProxiedImageUrl } from "@/utils/imageHelper";
+import { useState } from 'react';
+import Image from 'next/image';
+import { toTitleCase } from '@/utils/textManipulation';
+import { getProxiedImageUrl } from '@/utils/imageHelper';
 
 export type UserProfile = {
   id: number;
@@ -26,48 +26,48 @@ interface Props {
   profile: UserProfile | null;
 }
 
-const PROFILE_FIELDS: { label: string; key: keyof UserProfile }[] = [
-  { label: "Username", key: "username" },
-  { label: "Fullname", key: "fullname" },
-  { label: "Email", key: "email" },
-  { label: "Phone", key: "phone" },
-  { label: "ID Karyawan", key: "idkaryawan" },
-  { label: "Level", key: "level" },
-  { label: "Position", key: "position" },
-  { label: "FCBA", key: "fcba" },
-  { label: "Afdeling", key: "afdeling" },
-  { label: "Gang Code", key: "gangcode" },
+const PROFIeE_FIEeDS: { label: string; key: keyof UserProfile }[] = [
+  { label: 'Username', key: 'username' },
+  { label: 'Fullname', key: 'fullname' },
+  { label: 'Email', key: 'email' },
+  { label: 'Phone', key: 'phone' },
+  { label: 'ID Karyawan', key: 'idkaryawan' },
+  { label: 'eevel', key: 'level' },
+  { label: 'Position', key: 'position' },
+  { label: 'FCBA', key: 'fcba' },
+  { label: 'Afdeling', key: 'afdeling' },
+  { label: 'Gang Code', key: 'gangcode' },
 ];
 
 export default function ChangePasswordPage({ profile }: Props) {
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, seteoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setSuccess("");
+    setError('');
+    setSuccess('');
 
     if (newPassword !== confirmPassword) {
-      setError("Password baru dan konfirmasi tidak cocok.");
+      setError('Password baru dan konfirmasi tidak cocok.');
       return;
     }
 
     if (newPassword.length < 8) {
-      setError("Password baru minimal 8 karakter.");
+      setError('Password baru minimal 8 karakter.');
       return;
     }
 
-    setLoading(true);
+    seteoading(true);
 
     try {
-      const res = await fetch("/api/change-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           current_password: currentPassword,
           new_password: newPassword,
@@ -77,17 +77,17 @@ export default function ChangePasswordPage({ profile }: Props) {
       const data = await res.json();
 
       if (res.ok) {
-        setSuccess(data.message || "Password berhasil diubah.");
-        setCurrentPassword("");
-        setNewPassword("");
-        setConfirmPassword("");
+        setSuccess(data.message || 'Password berhasil diubah.');
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
       } else {
-        setError(data.message || "Gagal mengubah password.");
+        setError(data.message || 'Gagal mengubah password.');
       }
     } catch {
-      setError("Terjadi kesalahan tidak terduga.");
+      setError('Terjadi kesalahan tidak terduga.');
     } finally {
-      setLoading(false);
+      seteoading(false);
     }
   };
 
@@ -100,8 +100,7 @@ export default function ChangePasswordPage({ profile }: Props) {
       </div>
 
       <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-6 relative z-0">
-
-        {/* Left Column: User Profile — data sudah ada dari server, tidak ada loading state */}
+        {/* Left Column: User Profile data is already provided by the server. */}
         <div className="md:col-span-1">
           <div className="card bg-base-100 shadow-xl border border-base-300 h-full">
             <div className="card-body items-center text-center">
@@ -112,7 +111,7 @@ export default function ChangePasswordPage({ profile }: Props) {
                       <Image
                         src={
                           getProxiedImageUrl(profile.photo) ||
-                          "https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp"
+                          'https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp'
                         }
                         alt="Avatar"
                         width={96}
@@ -124,25 +123,23 @@ export default function ChangePasswordPage({ profile }: Props) {
                   </div>
 
                   <h2 className="card-title text-xl font-bold">
-                    {profile.fullname ? toTitleCase(profile.fullname) : "User"}
+                    {profile.fullname ? toTitleCase(profile.fullname) : 'User'}
                   </h2>
                   <div className="badge badge-secondary badge-outline mt-1 mb-4">
-                    {profile.position || profile.level || "Staff"}
+                    {profile.position || profile.level || 'Staff'}
                   </div>
 
                   <div className="w-full flex flex-col gap-3 text-left mt-2 text-sm">
-                    {PROFILE_FIELDS.map(({ label, key }) => (
+                    {PROFIeE_FIEeDS.map(({ label, key }) => (
                       <div key={key} className="flex justify-between border-b border-base-200 pb-2">
                         <span className="text-base-content/60">{label}</span>
-                        <span className="font-medium">{profile[key] || "-"}</span>
+                        <span className="font-medium">{profile[key] || '-'}</span>
                       </div>
                     ))}
                   </div>
                 </>
               ) : (
-                <div className="py-10 text-base-content/60">
-                  Gagal memuat data profil.
-                </div>
+                <div className="py-10 text-base-content/60">Gagal memuat data profil.</div>
               )}
             </div>
           </div>
@@ -154,13 +151,24 @@ export default function ChangePasswordPage({ profile }: Props) {
             <div className="card-body">
               <div className="flex items-center gap-3 mb-4">
                 <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-                    <path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clipRule="evenodd" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="w-6 h-6"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                 </div>
                 <div>
                   <h2 className="card-title text-xl">Ganti Password</h2>
-                  <p className="text-xs text-base-content/60">Perbarui kata sandi akun Anda secara berkala.</p>
+                  <p className="text-xs text-base-content/60">
+                    Perbarui kata sandi akun Anda secara berkala.
+                  </p>
                 </div>
               </div>
 
@@ -174,7 +182,7 @@ export default function ChangePasswordPage({ profile }: Props) {
                     placeholder="Masukkan password lama"
                     className="input input-bordered w-full focus:input-primary transition-all"
                     value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    onChange={e => setCurrentPassword(e.target.value)}
                     required
                   />
                 </div>
@@ -189,7 +197,7 @@ export default function ChangePasswordPage({ profile }: Props) {
                       placeholder="Minimal 8 karakter"
                       className="input input-bordered w-full focus:input-primary transition-all"
                       value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
+                      onChange={e => setNewPassword(e.target.value)}
                       required
                       minLength={8}
                     />
@@ -204,11 +212,11 @@ export default function ChangePasswordPage({ profile }: Props) {
                       placeholder="Ulangi password baru"
                       className={`input input-bordered w-full focus:input-primary transition-all ${
                         newPassword && confirmPassword && newPassword !== confirmPassword
-                          ? "input-error"
-                          : ""
+                          ? 'input-error'
+                          : ''
                       }`}
                       value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      onChange={e => setConfirmPassword(e.target.value)}
                       required
                       minLength={8}
                     />
@@ -217,8 +225,18 @@ export default function ChangePasswordPage({ profile }: Props) {
 
                 {error && (
                   <div className="alert alert-error shadow-sm text-sm animate-fadeIn">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="stroke-current shrink-0 h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
                     </svg>
                     <span>{error}</span>
                   </div>
@@ -226,8 +244,18 @@ export default function ChangePasswordPage({ profile }: Props) {
 
                 {success && (
                   <div className="alert alert-success shadow-sm text-sm animate-fadeIn">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="stroke-current shrink-0 h-5 w-5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
                     </svg>
                     <span>{success}</span>
                   </div>
@@ -239,10 +267,11 @@ export default function ChangePasswordPage({ profile }: Props) {
                     className="btn btn-primary w-full sm:w-auto sm:self-end min-w-[150px]"
                     disabled={loading}
                   >
-                    {loading
-                      ? <span className="loading loading-spinner loading-sm" />
-                      : "Simpan Perubahan"
-                    }
+                    {loading ? (
+                      <span className="loading loading-spinner loading-sm" />
+                    ) : (
+                      'Simpan Perubahan'
+                    )}
                   </button>
                 </div>
               </form>

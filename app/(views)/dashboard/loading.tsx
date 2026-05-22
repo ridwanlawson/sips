@@ -1,4 +1,4 @@
-import { SkeletonCard, SkeletonChart, SkeletonTable } from "@/app/components/skeletons";
+import { SkeletonCard, SkeletonChart, SkeletonTable } from '@/app/components/skeletons';
 
 export default function DashboardLoading() {
   return (

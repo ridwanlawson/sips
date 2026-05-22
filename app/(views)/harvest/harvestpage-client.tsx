@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { BusinessUnit } from "../../../utils/businessUnitService";
-import { fetchBusinessUnits } from "../../../utils/businessUnitService";
-import DataTable from "@/app/components/dynamic-data-table";
-import type { TableColumn } from "react-data-table-component";
-import Image from "next/image";
-import toast from "react-hot-toast";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { SkeletonTable } from "@/app/components/skeletons";
-import { centerHeaderStyle } from "@/utils/tableHelper";
-import { isUnauthenticatedJson, logoutAndRedirect } from "@/utils/authHelper";
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { BusinessUnit } from '../../../utils/businessUnitService';
+import { fetchBusinessUnits } from '../../../utils/businessUnitService';
+import DataTable from '@/app/components/dynamic-data-table';
+import type { TableColumn } from 'react-data-table-component';
+import Image from 'next/image';
+import toast from 'react-hot-toast';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { SkeletonTable } from '@/app/components/skeletons';
+import { centerHeaderStyle } from '@/utils/tableHelper';
+import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/authHelper';
 
 /* =========================
    Searchable Select Component
@@ -26,110 +26,97 @@ const SearchSelect: React.FC<{
   required?: boolean;
   name?: string;
   small?: boolean;
-}> = ({
-  options,
-  value,
-  onChange,
-  placeholder,
-  disabled,
-  required,
-  name,
-  small,
-}) => {
-    const [open, setOpen] = useState(false);
-    const [q, setQ] = useState("");
-    const boxRef = useRef<HTMLDivElement | null>(null);
+}> = ({ options, value, onChange, placeholder, disabled, required, name, small }) => {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const boxRef = useRef<HTMLDivElement | null>(null);
 
-    const filtered = useMemo(() => {
-      if (!q.trim()) return options;
-      const s = q.toLowerCase();
-      return options.filter(
-        (o) =>
-          o.label.toLowerCase().includes(s) || o.value.toLowerCase().includes(s),
-      );
-    }, [q, options]);
-
-    useEffect(() => {
-      const onDoc = (e: MouseEvent) => {
-        if (!boxRef.current) return;
-        const target = e.target as Node | null;
-        if (target && !boxRef.current.contains(target)) setOpen(false);
-      };
-      document.addEventListener("mousedown", onDoc);
-      return () => document.removeEventListener("mousedown", onDoc);
-    }, []);
-
-    const currentLabel =
-      options.find((o) => o.value === value)?.label || value || "";
-
-    return (
-      <div className="relative min-w-0" ref={boxRef}>
-        {name ? <input type="hidden" name={name} value={value} /> : null}
-
-        <button
-          type="button"
-          className={`input input-bordered w-full flex items-center justify-between whitespace-nowrap overflow-hidden ${small ? "input-sm" : ""
-            } ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
-          onClick={() => !disabled && setOpen((s) => !s)}
-          aria-expanded={open}
-          title={currentLabel || placeholder}
-          disabled={disabled}
-        >
-          <span className={`truncate ${!value ? "text-base-content/50" : ""}`}>
-            {currentLabel || placeholder || "Pilih..."}
-          </span>
-          <span className="ml-2">▾</span>
-        </button>
-
-        {required && !value && (
-          <span className="sr-only" aria-live="polite">
-            required
-          </span>
-        )}
-
-        {open && !disabled && (
-          <div className="absolute z-50 mt-1 w-full rounded-xl border border-base-300 bg-base-100 shadow-lg">
-            <div className="p-2">
-              <input
-                autoFocus
-                className="input input-bordered w-full"
-                placeholder="Ketik untuk mencari..."
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-              />
-            </div>
-            <ul className="max-h-64 overflow-auto">
-              {filtered.length === 0 && (
-                <li className="p-3 text-base-content/60">Tidak ada data</li>
-              )}
-              {filtered.map((opt) => (
-                <li key={`ss-${opt.value}`}>
-                  <button
-                    type="button"
-                    className={`w-full text-left p-2 hover:bg-base-200 ${opt.value === value ? "bg-base-200" : ""
-                      }`}
-                    onClick={() => {
-                      onChange(opt.value);
-                      setOpen(false);
-                      setQ("");
-                    }}
-                    title={opt.label}
-                  >
-                    <div className="font-medium truncate">{opt.label}</div>
-                    {opt.label !== opt.value && (
-                      <div className="text-xs opacity-70 truncate">
-                        {opt.value}
-                      </div>
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
+  const filtered = useMemo(() => {
+    if (!q.trim()) return options;
+    const s = q.toLowerCase();
+    return options.filter(
+      o => o.label.toLowerCase().includes(s) || o.value.toLowerCase().includes(s)
     );
-  };
+  }, [q, options]);
+
+  useEffect(() => {
+    const onDoc = (e: MouseEvent) => {
+      if (!boxRef.current) return;
+      const target = e.target as Node | null;
+      if (target && !boxRef.current.contains(target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, []);
+
+  const currentLabel = options.find(o => o.value === value)?.label || value || '';
+
+  return (
+    <div className="relative min-w-0" ref={boxRef}>
+      {name ? <input type="hidden" name={name} value={value} /> : null}
+
+      <button
+        type="button"
+        className={`input input-bordered w-full flex items-center justify-between whitespace-nowrap overflow-hidden ${
+          small ? 'input-sm' : ''
+        } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+        onClick={() => !disabled && setOpen(s => !s)}
+        aria-expanded={open}
+        title={currentLabel || placeholder}
+        disabled={disabled}
+      >
+        <span className={`truncate ${!value ? 'text-base-content/50' : ''}`}>
+          {currentLabel || placeholder || 'Pilih...'}
+        </span>
+        <span className="ml-2">▾</span>
+      </button>
+
+      {required && !value && (
+        <span className="sr-only" aria-live="polite">
+          required
+        </span>
+      )}
+
+      {open && !disabled && (
+        <div className="absolute z-50 mt-1 w-full rounded-xl border border-base-300 bg-base-100 shadow-lg">
+          <div className="p-2">
+            <input
+              autoFocus
+              className="input input-bordered w-full"
+              placeholder="Ketik untuk mencari..."
+              value={q}
+              onChange={e => setQ(e.target.value)}
+            />
+          </div>
+          <ul className="max-h-64 overflow-auto">
+            {filtered.length === 0 && <li className="p-3 text-base-content/60">Tidak ada data</li>}
+            {filtered.map(opt => (
+              <li key={`ss-${opt.value}`}>
+                <button
+                  type="button"
+                  className={`w-full text-left p-2 hover:bg-base-200 ${
+                    opt.value === value ? 'bg-base-200' : ''
+                  }`}
+                  onClick={() => {
+                    onChange(opt.value);
+                    setOpen(false);
+                    setQ('');
+                  }}
+                  title={opt.label}
+                >
+                  <div className="font-medium truncate">{opt.label}</div>
+                  {opt.label !== opt.value && (
+                    <div className="text-xs opacity-70 truncate">{opt.value}</div>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+};
 
 /* =========================
    T Y P E S
@@ -235,35 +222,35 @@ type FormState = {
 };
 
 const initialForm: FormState = {
-  nodokumen: "",
+  nodokumen: '',
   tanggal: getTodayISO(),
-  kode_karyawan_mandor1: "",
-  kode_karyawan_mandor_panen: "",
-  kode_karyawan_kerani: "",
-  kode_karyawan: "",
-  noancak: "",
-  tph: "",
-  fieldcode: "",
-  fcba: "",
-  afdeling: "",
-  output: "",
-  mentah: "0",
-  overripe: "0",
-  busuk: "0",
-  busuk2: "0",
-  buahkecil: "0",
-  brondol: "0",
-  alasbrondol: "",
-  tangkaipanjang: "0",
-  parteno: "0",
-  parteno50plus: "0",
-  status_assistensi: "",
-  status_harvesting: "Planned",
-  kemandoran: "",
-  exception_case: "",
-  location: "",
-  id_device: "",
-  card_id: "",
+  kode_karyawan_mandor1: '',
+  kode_karyawan_mandor_panen: '',
+  kode_karyawan_kerani: '',
+  kode_karyawan: '',
+  noancak: '',
+  tph: '',
+  fieldcode: '',
+  fcba: '',
+  afdeling: '',
+  output: '',
+  mentah: '0',
+  overripe: '0',
+  busuk: '0',
+  busuk2: '0',
+  buahkecil: '0',
+  brondol: '0',
+  alasbrondol: '',
+  tangkaipanjang: '0',
+  parteno: '0',
+  parteno50plus: '0',
+  status_assistensi: '',
+  status_harvesting: 'Planned',
+  kemandoran: '',
+  exception_case: '',
+  location: '',
+  id_device: '',
+  card_id: '',
   images: null,
   no_ba_exca: null,
 };
@@ -279,30 +266,15 @@ type Filters = Partial<{
   kemandoran: string;
 }>;
 
-type UserLevel =
-  | "ADM"
-  | "MGR"
-  | "KSI"
-  | "MD1"
-  | "AST"
-  | "KRT"
-  | "KRA"
-  | "KRP"
-  | "MDP"
-  | "OTHER";
+type UserLevel = 'ADM' | 'MGR' | 'KSI' | 'MD1' | 'AST' | 'KRT' | 'KRA' | 'KRP' | 'MDP' | 'OTHER';
 
 /* =========================
    U T I L S
 ========================= */
-import { getProxiedImageUrl, PLACEHOLDER_IMAGE } from "@/utils/imageHelper";
-import {
-  getTodayISO,
-  formatDateDMY,
-  formatDateISO,
-  getYesterdayISO,
-} from "@/utils/datetime";
-import { buildMapUrl } from "@/utils/mapHelper";
-import { cookieStore } from "@/utils/cookieStore";
+import { getProxiedImageUrl, PLACEHOLDER_IMAGE } from '@/utils/imageHelper';
+import { getTodayISO, formatDateDMY, formatDateISO, getYesterdayISO } from '@/utils/datetime';
+import { buildMapUrl } from '@/utils/mapHelper';
+import { cookieStore } from '@/utils/cookieStore';
 
 const LocationButton: React.FC<{
   loc?: string | null;
@@ -313,7 +285,7 @@ const LocationButton: React.FC<{
   const googleUrl = buildMapUrl(loc);
 
   // Geo Sips URL dengan parameter
-  const geoSipsUrl = `http://gis.skj.my.id:91?${new URLSearchParams({ dateFrom: formatDateISO(new Date(tanggal || "")) || "", dateTo: formatDateISO(new Date(tanggal || "")) || "", nodokumen: nodokumen || "" }).toString()}`;
+  const geoSipsUrl = `http://gis.skj.my.id:91?${new URLSearchParams({ dateFrom: formatDateISO(new Date(tanggal || '')) || '', dateTo: formatDateISO(new Date(tanggal || '')) || '', nodokumen: nodokumen || '' }).toString()}`;
 
   return (
     <div className="flex gap-1">
@@ -324,7 +296,7 @@ const LocationButton: React.FC<{
         className="btn btn-ghost btn-xs gap-1"
         title={`Google Maps: ${loc}`}
       >
-        <span aria-hidden>📍</span> {"GMaps"}
+        <span aria-hidden>📍</span> {'GMaps'}
       </a>
       <a
         href={geoSipsUrl}
@@ -340,47 +312,47 @@ const LocationButton: React.FC<{
 };
 
 const getReadableDevice = () => {
-  if (typeof navigator === "undefined") return "Unknown • Unknown";
+  if (typeof navigator === 'undefined') return 'Unknown • Unknown';
   const ua = navigator.userAgent;
   const os = /Windows/i.test(ua)
-    ? "Windows"
+    ? 'Windows'
     : /Android/i.test(ua)
-      ? "Android"
+      ? 'Android'
       : /iPhone|iPad|iPod/i.test(ua)
-        ? "iOS"
+        ? 'iOS'
         : /Mac OS X/i.test(ua)
-          ? "macOS"
+          ? 'macOS'
           : /Linux/i.test(ua)
-            ? "Linux"
-            : "Unknown";
+            ? 'Linux'
+            : 'Unknown';
   const browser = /Edg\//i.test(ua)
-    ? "Edge"
+    ? 'Edge'
     : /Chrome\//i.test(ua)
-      ? "Chrome"
+      ? 'Chrome'
       : /Firefox\//i.test(ua)
-        ? "Firefox"
+        ? 'Firefox'
         : /Safari\//i.test(ua)
-          ? "Safari"
-          : "Browser";
+          ? 'Safari'
+          : 'Browser';
   return `${os} • ${browser}`;
 };
 
 const getOrCreateDeviceIds = () => {
-  if (typeof window === "undefined") return { deviceId: "", pseudoMac: "" };
-  const devKey = "sips_device_id";
-  const macKey = "sips_pseudo_mac";
-  let deviceId = localStorage.getItem(devKey) || "";
-  let pseudoMac = localStorage.getItem(macKey) || "";
+  if (typeof window === 'undefined') return { deviceId: '', pseudoMac: '' };
+  const devKey = 'sips_device_id';
+  const macKey = 'sips_pseudo_mac';
+  let deviceId = localStorage.getItem(devKey) || '';
+  let pseudoMac = localStorage.getItem(macKey) || '';
   const ensurePseudoMacFormat = (s: string) => {
     const hex = s
-      .replace(/[^a-f0-9]/gi, "")
-      .padEnd(12, "0")
+      .replace(/[^a-f0-9]/gi, '')
+      .padEnd(12, '0')
       .slice(0, 12);
     const formatted =
       hex
         .match(/.{1,2}/g)
-        ?.join(":")
-        .toUpperCase() ?? "00:00:00:00:00:00";
+        ?.join(':')
+        .toUpperCase() ?? '00:00:00:00:00:00';
     return formatted;
   };
   if (!deviceId) {
@@ -389,8 +361,9 @@ const getOrCreateDeviceIds = () => {
     localStorage.setItem(devKey, deviceId);
   }
   if (!pseudoMac) {
-    const seed = `${navigator.userAgent}|${deviceId}|${screen.width}x${screen.height
-      }|${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
+    const seed = `${navigator.userAgent}|${deviceId}|${screen.width}x${
+      screen.height
+    }|${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
     let h = 0;
     for (let i = 0; i < seed.length; i += 1) {
       h = (h * 31 + seed.charCodeAt(i)) >>> 0;
@@ -402,19 +375,14 @@ const getOrCreateDeviceIds = () => {
 };
 
 /* Type guards */
-const isObject = (v: unknown): v is Record<string, unknown> =>
-  typeof v === "object" && v !== null;
+const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
 
 const extractArrayData = <T,>(payload: unknown): T[] => {
   if (!isObject(payload)) return [];
-  if ("ok" in payload && payload.ok === true && "data" in payload) {
+  if ('ok' in payload && payload.ok === true && 'data' in payload) {
     const d = (payload as { data: unknown }).data;
     if (Array.isArray(d)) return d as T[];
-    if (
-      isObject(d) &&
-      "data" in d &&
-      Array.isArray((d as { data: unknown }).data)
-    ) {
+    if (isObject(d) && 'data' in d && Array.isArray((d as { data: unknown }).data)) {
       return (d as { data: T[] }).data;
     }
   }
@@ -423,9 +391,9 @@ const extractArrayData = <T,>(payload: unknown): T[] => {
 
 const extractSingleData = <T,>(payload: unknown): T | null => {
   if (!isObject(payload)) return null;
-  if ("ok" in payload && payload.ok === true && "data" in payload) {
+  if ('ok' in payload && payload.ok === true && 'data' in payload) {
     const d = (payload as { data: unknown }).data;
-    if (isObject(d) && "data" in d) {
+    if (isObject(d) && 'data' in d) {
       const inner = (d as { data: unknown }).data as T;
       return inner;
     }
@@ -435,14 +403,14 @@ const extractSingleData = <T,>(payload: unknown): T | null => {
 };
 
 const toNumber = (value: string | number | null | undefined): number => {
-  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
   if (!value) return 0;
-  const normalized = value.replace(",", ".").trim();
+  const normalized = value.replace(',', '.').trim();
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const formatTotal = (value: number, localeTag = "id-ID"): string =>
+const formatTotal = (value: number, localeTag = 'id-ID'): string =>
   value.toLocaleString(localeTag, { maximumFractionDigits: 2 });
 
 /* =========================
@@ -450,7 +418,7 @@ const formatTotal = (value: number, localeTag = "id-ID"): string =>
 ========================= */
 export default function HarvestPage() {
   const queryClient = useQueryClient();
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
   const [filters, setFilters] = useState<Filters>(() => {
@@ -459,21 +427,21 @@ export default function HarvestPage() {
     return {
       tanggal: yesterday,
       tanggal_end: today,
-      nodokumen: "",
-      kode_karyawan: "",
-      fcba: "",
-      afdeling: "",
-      tph: "",
-      kemandoran: "",
+      nodokumen: '',
+      kode_karyawan: '',
+      fcba: '',
+      afdeling: '',
+      tph: '',
+      kemandoran: '',
     };
   });
 
-  const [userLevel, setUserLevel] = useState<UserLevel>("OTHER");
-  const [homeFcba, setHomeFcba] = useState<string>("");
-  const [homeSection, setHomeSection] = useState<string>("");
-  const [homeGang, setHomeGang] = useState<string>("");
-  const [userFcbaCookie, setUserFcbaCookie] = useState<string>("");
-  const [userAfdelingCookie, setUserAfdelingCookie] = useState<string>("");
+  const [userLevel, setUserLevel] = useState<UserLevel>('OTHER');
+  const [homeFcba, setHomeFcba] = useState<string>('');
+  const [homeSection, setHomeSection] = useState<string>('');
+  const [homeGang, setHomeGang] = useState<string>('');
+  const [userFcbaCookie, setUserFcbaCookie] = useState<string>('');
+  const [userAfdelingCookie, setUserAfdelingCookie] = useState<string>('');
 
   // Modal states
   const [open, setOpen] = useState(false);
@@ -482,34 +450,33 @@ export default function HarvestPage() {
 
   // Form states
   const [form, setForm] = useState<FormState>(initialForm);
-  const [preview, setPreview] = useState<string>("");
+  const [preview, setPreview] = useState<string>('');
   const imgRef = useRef<HTMLInputElement | null>(null);
   const pdfRef = useRef<HTMLInputElement | null>(null);
 
   // Cascading states for form
   const [triplets, setTriplets] = useState<Triplet[]>([]);
-  const [selFcba, setSelFcba] = useState<string>("");
-  const [selSection, setSelSection] = useState<string>("");
-  const [selGang, setSelGang] = useState<string>("");
+  const [selFcba, setSelFcba] = useState<string>('');
+  const [selSection, setSelSection] = useState<string>('');
+  const [selGang, setSelGang] = useState<string>('');
 
   // Location loading state
   const [locLoading, setLocLoading] = useState<boolean>(false);
 
   // Check if user can modify (ADM or KSI only)
-  const canModify =
-    userLevel === "ADM" || userLevel === "KSI";
+  const canModify = userLevel === 'ADM' || userLevel === 'KSI';
 
   // ESC to close modal
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      if (e.key === 'Escape') {
         e.preventDefault();
         setOpen(false);
       }
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, [open]);
 
   /* ===== Bootstrap cookies ===== */
@@ -518,34 +485,30 @@ export default function HarvestPage() {
     setHomeSection(cookieStore.getSection());
     setHomeGang(cookieStore.getGang());
     setUserFcbaCookie(
-      cookieStore.getCookie("user_Fcba") ||
-      cookieStore.getCookie("user_fcba") ||
-      "",
+      cookieStore.getCookie('user_Fcba') || cookieStore.getCookie('user_fcba') || ''
     );
     setUserAfdelingCookie(
-      cookieStore.getCookie("user_Afdeling") ||
-      cookieStore.getCookie("user_afdeling") ||
-      "",
+      cookieStore.getCookie('user_Afdeling') || cookieStore.getCookie('user_afdeling') || ''
     );
 
     const levelRaw = cookieStore.getLevel();
     if (
-      levelRaw === "ADM" ||
-      levelRaw === "MGR" ||
-      levelRaw === "KSI" ||
-      levelRaw === "MD1" ||
-      levelRaw === "AST" ||
-      levelRaw === "KRT" ||
-      levelRaw === "KRA" ||
-      levelRaw === "KRP" ||
-      levelRaw === "MDP"
+      levelRaw === 'ADM' ||
+      levelRaw === 'MGR' ||
+      levelRaw === 'KSI' ||
+      levelRaw === 'MD1' ||
+      levelRaw === 'AST' ||
+      levelRaw === 'KRT' ||
+      levelRaw === 'KRA' ||
+      levelRaw === 'KRP' ||
+      levelRaw === 'MDP'
     ) {
       setUserLevel(levelRaw as UserLevel);
     } else {
-      setUserLevel("OTHER");
+      setUserLevel('OTHER');
     }
 
-    const ckTrip = cookieStore.getCookie("opt_triplets");
+    const ckTrip = cookieStore.getCookie('opt_triplets');
     if (ckTrip) {
       try {
         const arr = JSON.parse(ckTrip) as Triplet[];
@@ -556,59 +519,49 @@ export default function HarvestPage() {
     }
   }, []);
 
-  /* ===== Apply defaults to filters ===== */
+  const getScopedFilters = useCallback(
+    (baseFilters: Filters): Filters => {
+      const scopedFilters: Filters = { ...baseFilters };
+      if (userLevel === 'ADM' || userLevel === 'OTHER') {
+        return scopedFilters;
+      }
+      scopedFilters.fcba = userFcbaCookie || homeFcba;
+      if (userLevel === 'MGR' || userLevel === 'KSI') {
+        // only FCBA locked
+      } else if (userLevel === 'MDP' || userLevel === 'KRP') {
+        scopedFilters.afdeling = userAfdelingCookie || homeSection;
+        scopedFilters.kemandoran = homeGang;
+      } else {
+        // MD1, AST, KRT, KRA
+        scopedFilters.afdeling = userAfdelingCookie || homeSection;
+      }
+      return scopedFilters;
+    },
+    [userLevel, homeFcba, homeSection, homeGang, userFcbaCookie, userAfdelingCookie]
+  );
+
+  const isFcbaLocked = userLevel !== 'ADM' && userLevel !== 'OTHER';
+  const isAfdelingLocked = !(
+    userLevel === 'ADM' ||
+    userLevel === 'MGR' ||
+    userLevel === 'KSI' ||
+    userLevel === 'OTHER'
+  );
+  const isKemandoranLocked = userLevel === 'MDP' || userLevel === 'KRP';
+
   useEffect(() => {
-    // ADM: no defaults, can select any
-    // MGR, KSI: can select afdeling, fcba locked to user_Fcba
-    // MD1, AST, KRT, KRA: fcba + afdeling locked. KRP, MDP: plus kemandoran.
-    if (userLevel === "ADM") {
-      // ADM can select any, no defaults
-    } else if (userLevel === "MGR" || userLevel === "KSI") {
-      setFilters((f) => ({ ...f, fcba: userFcbaCookie || homeFcba }));
-    } else if (userLevel === "KRP" || userLevel === "MDP") {
-      setFilters((f) => ({
-        ...f,
-        fcba: userFcbaCookie || homeFcba,
-        afdeling: userAfdelingCookie || homeSection,
-        kemandoran: homeGang,
-      }));
-    } else {
-      // MD1, AST, KRT, KRA, or OTHER
-      setFilters((f) => ({
-        ...f,
-        fcba: userFcbaCookie || homeFcba,
-        afdeling: userAfdelingCookie || homeSection,
-      }));
-    }
-  }, [
-    userLevel,
-    homeFcba,
-    homeSection,
-    homeGang,
-    userFcbaCookie,
-    userAfdelingCookie,
-  ]);
+    setFilters(current => getScopedFilters(current));
+  }, [getScopedFilters]);
 
   /* ===== Sync selFcba/selSection with user cookies ===== */
   useEffect(() => {
-    if (userLevel !== "ADM" && !selFcba) {
-      setSelFcba(userFcbaCookie || homeFcba || "");
+    if (userLevel !== 'ADM' && !selFcba) {
+      setSelFcba(userFcbaCookie || homeFcba || '');
     }
-    if (
-      !(userLevel === "ADM" || userLevel === "MGR" || userLevel === "KSI") &&
-      !selSection
-    ) {
-      setSelSection(userAfdelingCookie || homeSection || "");
+    if (!(userLevel === 'ADM' || userLevel === 'MGR' || userLevel === 'KSI') && !selSection) {
+      setSelSection(userAfdelingCookie || homeSection || '');
     }
-  }, [
-    userLevel,
-    homeFcba,
-    homeSection,
-    selFcba,
-    selSection,
-    userFcbaCookie,
-    userAfdelingCookie,
-  ]);
+  }, [userLevel, homeFcba, homeSection, selFcba, selSection, userFcbaCookie, userAfdelingCookie]);
 
   /* ===== Query for harvest list ===== */
   const {
@@ -616,20 +569,20 @@ export default function HarvestPage() {
     isLoading: loading,
     error: queryError,
   } = useQuery({
-    queryKey: ["harvest", filters, userLevel, homeFcba, homeSection, homeGang],
+    queryKey: ['harvest', filters, userLevel, homeFcba, homeSection, homeGang],
     queryFn: async () => {
       const p = new URLSearchParams();
-      if (filters.tanggal) p.set("tanggal", filters.tanggal);
-      if (filters.tanggal_end) p.set("tanggal_end", filters.tanggal_end!);
-      if (filters.nodokumen) p.set("nodokumen", filters.nodokumen);
-      if (filters.kode_karyawan) p.set("kode_karyawan", filters.kode_karyawan);
-      if (filters.fcba) p.set("fcba", filters.fcba);
-      if (filters.afdeling) p.set("afdeling", filters.afdeling);
-      if (filters.tph) p.set("tph", filters.tph);
-      if (filters.kemandoran) p.set("kemandoran", filters.kemandoran);
+      if (filters.tanggal) p.set('tanggal', filters.tanggal);
+      if (filters.tanggal_end) p.set('tanggal_end', filters.tanggal_end!);
+      if (filters.nodokumen) p.set('nodokumen', filters.nodokumen);
+      if (filters.kode_karyawan) p.set('kode_karyawan', filters.kode_karyawan);
+      if (filters.fcba) p.set('fcba', filters.fcba);
+      if (filters.afdeling) p.set('afdeling', filters.afdeling);
+      if (filters.tph) p.set('tph', filters.tph);
+      if (filters.kemandoran) p.set('kemandoran', filters.kemandoran);
 
       const res = await fetch(`/api/harvest?${p.toString()}`, {
-        credentials: "include",
+        credentials: 'include',
       });
 
       if (!res.ok) {
@@ -658,29 +611,29 @@ export default function HarvestPage() {
       const seen = new Set<string>();
       return dataRaw.map((it, idx) => {
         const candidate = [
-          it.id || "",
-          it.nodokumen || "",
-          (it.tanggal || "").split(" ")[0],
+          it.id || '',
+          it.nodokumen || '',
+          (it.tanggal || '').split(' ')[0],
           String(idx),
-        ].join("|");
+        ].join('|');
         let key = candidate;
         while (seen.has(key)) key = `${key}_`;
         seen.add(key);
         return { ...it, _rowKey: key };
       });
     },
-    enabled: !!homeFcba || userLevel === "ADM",
+    enabled: !!homeFcba || userLevel === 'ADM',
   });
 
   // Show toast on error
   useEffect(() => {
     if (queryError) {
       const msg =
-        typeof queryError === "string"
+        typeof queryError === 'string'
           ? queryError
           : queryError instanceof Error
             ? queryError.message
-            : "Terjadi kesalahan saat mengambil data";
+            : 'Terjadi kesalahan saat mengambil data';
       toast.error(msg);
     }
   }, [queryError]);
@@ -688,15 +641,15 @@ export default function HarvestPage() {
   /* ===== Parallel data fetching with useQuery ===== */
   // Business units query - runs in parallel
   const { data: businessUnits = [], isLoading: isLoadingBU } = useQuery({
-    queryKey: ["businessUnits"],
+    queryKey: ['businessUnits'],
     queryFn: async () => {
       try {
         const bu = await fetchBusinessUnits();
-        localStorage.setItem("business_units", JSON.stringify(bu));
+        localStorage.setItem('business_units', JSON.stringify(bu));
         return bu;
       } catch (err) {
-        console.warn("failed to fetch business units:", err);
-        const cached = localStorage.getItem("business_units");
+        console.warn('failed to fetch business units:', err);
+        const cached = localStorage.getItem('business_units');
         if (cached) {
           try {
             return JSON.parse(cached) as BusinessUnit[];
@@ -712,39 +665,35 @@ export default function HarvestPage() {
 
   // Employees query - runs in parallel, depends on cookies only
   const { data: employees = [], isLoading: isLoadingEmp } = useQuery({
-    queryKey: ["employees", userLevel, homeFcba, homeSection],
+    queryKey: ['employees', userLevel, homeFcba, homeSection],
     queryFn: async () => {
-      let apiUrl = "/api/karyawans";
+      let apiUrl = '/api/karyawans';
       const params = new URLSearchParams();
 
-      if (userLevel === "AST") {
-        if (homeFcba) params.append("fcba", homeFcba);
-        if (homeSection) params.append("sectionname", homeSection);
-      } else if (
-        userLevel === "ADM" ||
-        userLevel === "MGR" ||
-        userLevel === "KSI"
-      ) {
+      if (userLevel === 'AST') {
+        if (homeFcba) params.append('fcba', homeFcba);
+        if (homeSection) params.append('sectionname', homeSection);
+      } else if (userLevel === 'ADM' || userLevel === 'MGR' || userLevel === 'KSI') {
         // ADM, MGR, KSI get employees by fcba (can select afdeling in UI)
-        if (homeFcba) params.append("fcba", homeFcba);
+        if (homeFcba) params.append('fcba', homeFcba);
       }
 
       if (params.toString()) {
         apiUrl += `?${params.toString()}`;
       }
 
-      const r = await fetch(apiUrl, { credentials: "include" });
+      const r = await fetch(apiUrl, { credentials: 'include' });
       const j: unknown = await r.json();
       const rowsRaw = extractArrayData<EmployeesApiRow>(j);
 
       // Build triplets from employees if no cookie
-      const ckTrip = cookieStore.getCookie("opt_triplets");
+      const ckTrip = cookieStore.getCookie('opt_triplets');
       if (!ckTrip && rowsRaw.length > 0) {
         const map = new Map<string, Triplet>();
         for (const it of rowsRaw) {
-          const fcba = String(it.fcba ?? "").trim();
-          const sectionname = String(it.sectionname ?? "").trim();
-          const gangcode = String(it.gangcode ?? "").trim();
+          const fcba = String(it.fcba ?? '').trim();
+          const sectionname = String(it.sectionname ?? '').trim();
+          const gangcode = String(it.gangcode ?? '').trim();
           if (!fcba && !sectionname && !gangcode) continue;
           const key = `${fcba}|${sectionname}|${gangcode}`;
           if (!map.has(key)) map.set(key, { fcba, sectionname, gangcode });
@@ -755,111 +704,51 @@ export default function HarvestPage() {
       // Build employees map
       const mapEmp = new Map<string, Employee>();
       for (const it of rowsRaw) {
-        const fccode = String(it.fccode ?? "").trim();
+        const fccode = String(it.fccode ?? '').trim();
         if (!fccode) continue;
         if (!mapEmp.has(fccode)) {
           // Extract noancak from API response
           const noancakValue =
-            (it as { noancak?: unknown }).noancak ??
-            (it as { NOANCAK?: unknown }).NOANCAK;
-          const noancak =
-            typeof noancakValue === "string" ? noancakValue.trim() : undefined;
+            (it as { noancak?: unknown }).noancak ?? (it as { NOANCAK?: unknown }).NOANCAK;
+          const noancak = typeof noancakValue === 'string' ? noancakValue.trim() : undefined;
 
           mapEmp.set(fccode, {
             fccode,
-            fullname: typeof it.fcname === "string" ? it.fcname : undefined,
-            fcba: String(it.fcba ?? "").trim(),
-            sectionname: String(it.sectionname ?? "").trim(),
-            gangcode: String(it.gangcode ?? "").trim(),
+            fullname: typeof it.fcname === 'string' ? it.fcname : undefined,
+            fcba: String(it.fcba ?? '').trim(),
+            sectionname: String(it.sectionname ?? '').trim(),
+            gangcode: String(it.gangcode ?? '').trim(),
             noancak,
           });
         }
       }
       return Array.from(mapEmp.values());
     },
-    enabled: !!homeFcba || userLevel === "ADM",
+    enabled: !!homeFcba || userLevel === 'ADM',
     staleTime: 30 * 60 * 1000, // 30 minutes - for poor network conditions
     gcTime: 60 * 60 * 1000, // 1 hour garbage collection
   });
 
   // Query: Field Codes from TPH API (by fcba + afdeling)
-  const { data: tphFieldcodeData = [], isLoading: isLoadingFieldcode } =
-    useQuery({
-      queryKey: ["tph-fieldcodes", selFcba, selSection],
-      queryFn: async () => {
-        if (!selFcba || !selSection) return [];
-
-        // Get actual fcba name
-        let fcbaName = selFcba;
-        const buMatch = Array.isArray(businessUnits)
-          ? businessUnits.find((b) => b.fccode === selFcba)
-          : undefined;
-        if (buMatch) fcbaName = buMatch.fcname || selFcba;
-
-        const params = new URLSearchParams();
-        params.append("fcba", fcbaName);
-        params.append("afdeling", selSection);
-
-        try {
-          const res = await fetch(`/api/tph?${params.toString()}`, {
-            credentials: "include",
-          });
-          if (!res.ok) {
-            if (res.status === 404) return [];
-            throw new Error(`HTTP ${res.status}`);
-          }
-          const json = await res.json();
-          const data = extractArrayData<{
-            notph?: string;
-            fieldcode?: string;
-            ancakno?: string;
-            division?: string;
-          }>(json);
-          return data;
-        } catch (err) {
-          console.error("Failed to fetch TPH fieldcodes:", err);
-          return [];
-        }
-      },
-      enabled: !!selFcba && !!selSection,
-      staleTime: 30 * 60 * 1000, // 30 minutes
-      gcTime: 60 * 60 * 1000,
-    });
-
-  // Derived: distinct Field Code options from TPH data
-  const fieldcodeOptions: Option[] = useMemo(() => {
-    if (!tphFieldcodeData.length) return [];
-    const set = new Set<string>();
-    for (const t of tphFieldcodeData) {
-      const fc = String(t.fieldcode ?? "").trim();
-      if (fc) set.add(fc);
-    }
-    return Array.from(set)
-      .sort()
-      .map((v) => ({ value: v, label: v }));
-  }, [tphFieldcodeData]);
-
-  // Query: TPH data from API (by fcba + afdeling + fieldcode)
-  const { data: tphDetailData = [], isLoading: isLoadingTph } = useQuery({
-    queryKey: ["tph-detail", selFcba, selSection, form.fieldcode],
+  const { data: tphFieldcodeData = [], isLoading: isLoadingFieldcode } = useQuery({
+    queryKey: ['tph-fieldcodes', selFcba, selSection],
     queryFn: async () => {
-      if (!selFcba || !selSection || !form.fieldcode) return [];
+      if (!selFcba || !selSection) return [];
 
       // Get actual fcba name
       let fcbaName = selFcba;
       const buMatch = Array.isArray(businessUnits)
-        ? businessUnits.find((b) => b.fccode === selFcba)
+        ? businessUnits.find(b => b.fccode === selFcba)
         : undefined;
       if (buMatch) fcbaName = buMatch.fcname || selFcba;
 
       const params = new URLSearchParams();
-      params.append("fcba", fcbaName);
-      params.append("afdeling", selSection);
-      params.append("fieldcode", form.fieldcode);
+      params.append('fcba', fcbaName);
+      params.append('afdeling', selSection);
 
       try {
         const res = await fetch(`/api/tph?${params.toString()}`, {
-          credentials: "include",
+          credentials: 'include',
         });
         if (!res.ok) {
           if (res.status === 404) return [];
@@ -874,7 +763,64 @@ export default function HarvestPage() {
         }>(json);
         return data;
       } catch (err) {
-        console.error("Failed to fetch TPH detail:", err);
+        console.error('Failed to fetch TPH fieldcodes:', err);
+        return [];
+      }
+    },
+    enabled: !!selFcba && !!selSection,
+    staleTime: 30 * 60 * 1000, // 30 minutes
+    gcTime: 60 * 60 * 1000,
+  });
+
+  // Derived: distinct Field Code options from TPH data
+  const fieldcodeOptions: Option[] = useMemo(() => {
+    if (!tphFieldcodeData.length) return [];
+    const set = new Set<string>();
+    for (const t of tphFieldcodeData) {
+      const fc = String(t.fieldcode ?? '').trim();
+      if (fc) set.add(fc);
+    }
+    return Array.from(set)
+      .sort()
+      .map(v => ({ value: v, label: v }));
+  }, [tphFieldcodeData]);
+
+  // Query: TPH data from API (by fcba + afdeling + fieldcode)
+  const { data: tphDetailData = [], isLoading: isLoadingTph } = useQuery({
+    queryKey: ['tph-detail', selFcba, selSection, form.fieldcode],
+    queryFn: async () => {
+      if (!selFcba || !selSection || !form.fieldcode) return [];
+
+      // Get actual fcba name
+      let fcbaName = selFcba;
+      const buMatch = Array.isArray(businessUnits)
+        ? businessUnits.find(b => b.fccode === selFcba)
+        : undefined;
+      if (buMatch) fcbaName = buMatch.fcname || selFcba;
+
+      const params = new URLSearchParams();
+      params.append('fcba', fcbaName);
+      params.append('afdeling', selSection);
+      params.append('fieldcode', form.fieldcode);
+
+      try {
+        const res = await fetch(`/api/tph?${params.toString()}`, {
+          credentials: 'include',
+        });
+        if (!res.ok) {
+          if (res.status === 404) return [];
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const json = await res.json();
+        const data = extractArrayData<{
+          notph?: string;
+          fieldcode?: string;
+          ancakno?: string;
+          division?: string;
+        }>(json);
+        return data;
+      } catch (err) {
+        console.error('Failed to fetch TPH detail:', err);
         return [];
       }
     },
@@ -888,13 +834,13 @@ export default function HarvestPage() {
     if (!tphDetailData.length) return [];
     const set = new Map<string, string>();
     for (const t of tphDetailData) {
-      const notph = String(t.notph ?? "").trim();
+      const notph = String(t.notph ?? '').trim();
       if (notph && !set.has(notph)) {
         set.set(notph, notph);
       }
     }
-    return Array.from(set, ([value, label]) => ({ value, label })).sort(
-      (a, b) => a.label.localeCompare(b.label),
+    return Array.from(set, ([value, label]) => ({ value, label })).sort((a, b) =>
+      a.label.localeCompare(b.label)
     );
   }, [tphDetailData]);
 
@@ -903,14 +849,14 @@ export default function HarvestPage() {
   const prefetchTphData = useCallback(
     async (fcba: string, section: string, fieldcode?: string) => {
       const buMatch = Array.isArray(businessUnits)
-        ? businessUnits.find((b) => b.fccode === fcba)
+        ? businessUnits.find(b => b.fccode === fcba)
         : undefined;
       const fcbaName = buMatch ? buMatch.fcname || fcba : fcba;
 
       if (fieldcode) {
         // Prefetch TPH Detail
         await queryClient.prefetchQuery({
-          queryKey: ["tph-detail", fcba, section, fieldcode],
+          queryKey: ['tph-detail', fcba, section, fieldcode],
           queryFn: async () => {
             try {
               const params = new URLSearchParams({
@@ -919,7 +865,7 @@ export default function HarvestPage() {
                 fieldcode: fieldcode,
               });
               const res = await fetch(`/api/tph?${params.toString()}`, {
-                credentials: "include",
+                credentials: 'include',
               });
               if (!res.ok) return [];
               const json = await res.json();
@@ -938,7 +884,7 @@ export default function HarvestPage() {
       } else {
         // Prefetch Field Codes
         await queryClient.prefetchQuery({
-          queryKey: ["tph-fieldcodes", fcba, section],
+          queryKey: ['tph-fieldcodes', fcba, section],
           queryFn: async () => {
             try {
               const params = new URLSearchParams({
@@ -946,7 +892,7 @@ export default function HarvestPage() {
                 afdeling: section,
               });
               const res = await fetch(`/api/tph?${params.toString()}`, {
-                credentials: "include",
+                credentials: 'include',
               });
               if (!res.ok) return [];
               const json = await res.json();
@@ -964,7 +910,7 @@ export default function HarvestPage() {
         });
       }
     },
-    [businessUnits, queryClient],
+    [businessUnits, queryClient]
   );
 
   useEffect(() => {
@@ -983,28 +929,26 @@ export default function HarvestPage() {
 
   /* ===== Location handler ===== */
   const handleGetLocation = () => {
-    if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
-      toast.error(
-        "Browser tidak mendukung GPS / geolocation. Isi manual saja.",
-      );
+    if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
+      toast.error('Browser tidak mendukung GPS / geolocation. Isi manual saja.');
       return;
     }
 
     setLocLoading(true);
 
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      pos => {
         const { latitude, longitude } = pos.coords;
         const value = `${latitude},${longitude}`;
-        setForm((s) => ({ ...s, location: value }));
+        setForm(s => ({ ...s, location: value }));
         setLocLoading(false);
       },
-      (err) => {
-        console.error("Geolocation error:", err);
+      err => {
+        console.error('Geolocation error:', err);
         toast.error(
           err.code === err.PERMISSION_DENIED
-            ? "Izin lokasi ditolak. Aktifkan izin lokasi di browser."
-            : "Gagal mengambil lokasi. Coba lagi.",
+            ? 'Izin lokasi ditolak. Aktifkan izin lokasi di browser.'
+            : 'Gagal mengambil lokasi. Coba lagi.'
         );
         setLocLoading(false);
       },
@@ -1012,56 +956,46 @@ export default function HarvestPage() {
         enableHighAccuracy: true,
         timeout: 15000,
         maximumAge: 0,
-      },
+      }
     );
   };
 
   /* ===== Mutations ===== */
   const mutation = useMutation({
-    mutationFn: async ({
-      url,
-      method,
-      body,
-    }: {
-      url: string;
-      method: string;
-      body: FormData;
-    }) => {
+    mutationFn: async ({ url, method, body }: { url: string; method: string; body: FormData }) => {
       const res = await fetch(url, {
         method,
         body,
-        credentials: "include",
+        credentials: 'include',
       });
       if (res.status === 401) {
         await logoutAndRedirect();
-        throw new Error("Unauthorized");
+        throw new Error('Unauthorized');
       }
       const json: Record<string, unknown> = await res.json();
       if (isUnauthenticatedJson(json)) {
         await logoutAndRedirect();
-        throw new Error("Unauthorized");
+        throw new Error('Unauthorized');
       }
       if (!res.ok || !json.ok) {
         const errorMsg =
-          typeof json.message === "string"
+          typeof json.message === 'string'
             ? json.message
-            : typeof json.error === "string"
+            : typeof json.error === 'string'
               ? json.error
-              : "Operation failed";
+              : 'Operation failed';
         throw new Error(errorMsg);
       }
       return json;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["harvest"] });
+      queryClient.invalidateQueries({ queryKey: ['harvest'] });
       setOpen(false);
       setForm(initialForm);
-      setPreview("");
-      if (imgRef.current) imgRef.current.value = "";
-      if (pdfRef.current) pdfRef.current.value = "";
-      toast.success(
-        isEditing ? "Data berhasil diupdate" : "Data berhasil ditambahkan",
-      );
+      setPreview('');
+      if (imgRef.current) imgRef.current.value = '';
+      if (pdfRef.current) pdfRef.current.value = '';
+      toast.success(isEditing ? 'Data berhasil diupdate' : 'Data berhasil ditambahkan');
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -1071,28 +1005,27 @@ export default function HarvestPage() {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/harvest/${id}`, {
-        method: "DELETE",
-        credentials: "include",
+        method: 'DELETE',
+        credentials: 'include',
       });
       if (res.status === 401) {
         await logoutAndRedirect();
-        throw new Error("Unauthorized");
+        throw new Error('Unauthorized');
       }
       const json: Record<string, unknown> = await res.json();
       if (isUnauthenticatedJson(json)) {
         await logoutAndRedirect();
-        throw new Error("Unauthorized");
+        throw new Error('Unauthorized');
       }
       if (!res.ok || !json.ok) {
-        const errorMsg =
-          typeof json.error === "string" ? json.error : "Gagal hapus";
+        const errorMsg = typeof json.error === 'string' ? json.error : 'Gagal hapus';
         throw new Error(errorMsg);
       }
       return id;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["harvest"] });
-      toast.success("Data berhasil dihapus 🗑️");
+      queryClient.invalidateQueries({ queryKey: ['harvest'] });
+      toast.success('Data berhasil dihapus 🗑️');
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -1107,7 +1040,7 @@ export default function HarvestPage() {
       setOpen(true);
       try {
         const res = await fetch(`/api/harvest/${id}`, {
-          credentials: "include",
+          credentials: 'include',
         });
         if (res.status === 401) {
           await logoutAndRedirect();
@@ -1119,72 +1052,71 @@ export default function HarvestPage() {
           return;
         }
         const data = extractSingleData<Harvest>(json);
-        if (!res.ok || !data) throw new Error("Gagal ambil data");
+        if (!res.ok || !data) throw new Error('Gagal ambil data');
 
         setForm({
           id: data.id,
-          nodokumen: data.nodokumen || "",
-          tanggal: data.tanggal ? data.tanggal.split(" ")[0] : "",
-          kode_karyawan_mandor1: data.kode_karyawan_mandor1 || "",
-          kode_karyawan_mandor_panen: data.kode_karyawan_mandor_panen || "",
-          kode_karyawan_kerani: data.kode_karyawan_kerani || "",
-          kode_karyawan: data.kode_karyawan || "",
-          noancak: data.noancak || "",
-          tph: data.tph || "",
-          fieldcode: data.fieldcode || "",
-          fcba: data.fcba || "",
-          afdeling: data.afdeling || "",
-          output: data.output || "",
-          mentah: data.mentah || "0",
-          overripe: data.overripe || "0",
-          busuk: data.busuk || "0",
-          busuk2: data.busuk2 || "0",
-          buahkecil: data.buahkecil || "0",
-          brondol: data.brondol || "0",
-          alasbrondol: data.alasbrondol || "",
-          tangkaipanjang: data.tangkaipanjang || "0",
-          parteno: data.parteno || "0",
-          parteno50plus: data.parteno50plus || "0",
-          status_assistensi: data.status_assistensi || "",
-          status_harvesting: data.status_harvesting || "Planned",
-          kemandoran: data.kemandoran || "",
-          exception_case: data.exception_case || "",
-          location: data.location || "",
+          nodokumen: data.nodokumen || '',
+          tanggal: data.tanggal ? data.tanggal.split(' ')[0] : '',
+          kode_karyawan_mandor1: data.kode_karyawan_mandor1 || '',
+          kode_karyawan_mandor_panen: data.kode_karyawan_mandor_panen || '',
+          kode_karyawan_kerani: data.kode_karyawan_kerani || '',
+          kode_karyawan: data.kode_karyawan || '',
+          noancak: data.noancak || '',
+          tph: data.tph || '',
+          fieldcode: data.fieldcode || '',
+          fcba: data.fcba || '',
+          afdeling: data.afdeling || '',
+          output: data.output || '',
+          mentah: data.mentah || '0',
+          overripe: data.overripe || '0',
+          busuk: data.busuk || '0',
+          busuk2: data.busuk2 || '0',
+          buahkecil: data.buahkecil || '0',
+          brondol: data.brondol || '0',
+          alasbrondol: data.alasbrondol || '',
+          tangkaipanjang: data.tangkaipanjang || '0',
+          parteno: data.parteno || '0',
+          parteno50plus: data.parteno50plus || '0',
+          status_assistensi: data.status_assistensi || '',
+          status_harvesting: data.status_harvesting || 'Planned',
+          kemandoran: data.kemandoran || '',
+          exception_case: data.exception_case || '',
+          location: data.location || '',
           id_device:
-            data.id_device ||
-            `${getReadableDevice()} • ${getOrCreateDeviceIds().deviceId}`,
-          card_id: data.card_id || "",
+            data.id_device || `${getReadableDevice()} • ${getOrCreateDeviceIds().deviceId}`,
+          card_id: data.card_id || '',
           images: null,
           no_ba_exca: data.no_ba_exca || null,
         });
-        setPreview(data.images ? getProxiedImageUrl(data.images) : "");
-        setSelFcba(data.fcba || homeFcba || "");
-        setSelSection(data.afdeling || homeSection || "");
-        setSelGang(data.kemandoran || "");
+        setPreview(data.images ? getProxiedImageUrl(data.images) : '');
+        setSelFcba(data.fcba || homeFcba || '');
+        setSelSection(data.afdeling || homeSection || '');
+        setSelGang(data.kemandoran || '');
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "Gagal memuat detail";
+        const msg = e instanceof Error ? e.message : 'Gagal memuat detail';
         toast.error(msg);
         setOpen(false);
       } finally {
         setDetailLoading(false);
       }
     },
-    [homeFcba, homeSection],
+    [homeFcba, homeSection]
   );
 
   /* ===== Computed options for cascading selects ===== */
   const fcbaOptions = useMemo(() => {
     if (businessUnits && businessUnits.length) {
       return businessUnits
-        .map((b) => ({
+        .map(b => ({
           value: b.fccode,
           label: b.fcname ? `${b.fccode} - ${b.fcname}` : b.fccode,
         }))
         .sort((a, b) => a.label.localeCompare(b.label));
     }
-    return Array.from(new Set(triplets.map((t) => t.fcba).filter(Boolean)))
+    return Array.from(new Set(triplets.map(t => t.fcba).filter(Boolean)))
       .sort()
-      .map((v) => ({ value: v, label: v }));
+      .map(v => ({ value: v, label: v }));
   }, [triplets, businessUnits]);
 
   const sectionOptions: Option[] = useMemo(() => {
@@ -1192,20 +1124,20 @@ export default function HarvestPage() {
     return Array.from(
       new Set(
         triplets
-          .filter((t) => {
+          .filter(t => {
             if (t.fcba === selFcba) return true;
             const buMatch = Array.isArray(businessUnits)
-              ? businessUnits.find((b) => b.fccode === selFcba)
+              ? businessUnits.find(b => b.fccode === selFcba)
               : undefined;
             if (buMatch && t.fcba === buMatch.fcname) return true;
             return false;
           })
-          .map((t) => t.sectionname)
-          .filter(Boolean),
-      ),
+          .map(t => t.sectionname)
+          .filter(Boolean)
+      )
     )
       .sort()
-      .map((v) => ({ value: v, label: v }));
+      .map(v => ({ value: v, label: v }));
   }, [triplets, selFcba, businessUnits]);
 
   // Kemandoran: only gangs starting with MD
@@ -1213,102 +1145,97 @@ export default function HarvestPage() {
     if (!selFcba || !selSection) return [];
     let fcbaName = selFcba;
     const buMatch = Array.isArray(businessUnits)
-      ? businessUnits.find((b) => b.fccode === selFcba)
+      ? businessUnits.find(b => b.fccode === selFcba)
       : undefined;
     if (buMatch) fcbaName = buMatch.fcname || selFcba;
 
     // Kemandoran = gangcode from employees matching fcba and section, only MD prefix
     const pool = employees.filter(
-      (e) =>
-        (e.fcba || "") === fcbaName &&
-        (e.sectionname || "") === selSection &&
-        (e.gangcode || "").toUpperCase().startsWith("MD"),
+      e =>
+        (e.fcba || '') === fcbaName &&
+        (e.sectionname || '') === selSection &&
+        (e.gangcode || '').toUpperCase().startsWith('MD')
     );
     const set = new Set<string>();
     for (const e of pool) {
-      const raw = (e.gangcode || "").trim();
+      const raw = (e.gangcode || '').trim();
       if (raw) set.add(raw);
     }
     return Array.from(set)
       .sort()
-      .map((v) => ({ value: v, label: v }));
+      .map(v => ({ value: v, label: v }));
   }, [employees, selFcba, selSection, businessUnits]);
 
   // Query: Employees by fcba + afdeling + kemandoran (with MD->PN transformation for API)
-  const { data: employeesByGang = [], isLoading: isLoadingEmpByGang } =
-    useQuery({
-      queryKey: ["employees-by-gang", selFcba, selSection, selGang],
-      queryFn: async () => {
-        if (!selFcba || !selSection || !selGang) return [];
+  const { data: employeesByGang = [], isLoading: isLoadingEmpByGang } = useQuery({
+    queryKey: ['employees-by-gang', selFcba, selSection, selGang],
+    queryFn: async () => {
+      if (!selFcba || !selSection || !selGang) return [];
 
-        // Get actual fcba name
-        let fcbaName = selFcba;
-        const buMatch = Array.isArray(businessUnits)
-          ? businessUnits.find((b) => b.fccode === selFcba)
-          : undefined;
-        if (buMatch) fcbaName = buMatch.fcname || selFcba;
+      // Get actual fcba name
+      let fcbaName = selFcba;
+      const buMatch = Array.isArray(businessUnits)
+        ? businessUnits.find(b => b.fccode === selFcba)
+        : undefined;
+      if (buMatch) fcbaName = buMatch.fcname || selFcba;
 
-        // Transform MDxxx to PNxxx for API parameter
-        const gangForApi = selGang.toUpperCase().startsWith("MD")
-          ? "PN" + selGang.substring(2)
-          : selGang;
+      // Transform MDxxx to PNxxx for API parameter
+      const gangForApi = selGang.toUpperCase().startsWith('MD')
+        ? 'PN' + selGang.substring(2)
+        : selGang;
 
-        const params = new URLSearchParams();
-        params.append("fcba", fcbaName);
-        params.append("sectionname", selSection);
-        params.append("gangcode", gangForApi);
+      const params = new URLSearchParams();
+      params.append('fcba', fcbaName);
+      params.append('sectionname', selSection);
+      params.append('gangcode', gangForApi);
 
-        try {
-          const res = await fetch(`/api/karyawans?${params.toString()}`, {
-            credentials: "include",
-          });
-          if (!res.ok) {
-            if (res.status === 404) return [];
-            throw new Error(`HTTP ${res.status}`);
-          }
-          const json = await res.json();
-          const rowsRaw = extractArrayData<EmployeesApiRow>(json);
-
-          // Build employees map with noancak
-          const mapEmp = new Map<string, Employee>();
-          for (const it of rowsRaw) {
-            const fccode = String(it.fccode ?? "").trim();
-            if (!fccode) continue;
-            if (!mapEmp.has(fccode)) {
-              const noancakValue =
-                (it as { noancak?: unknown }).noancak ??
-                (it as { NOANCAK?: unknown }).NOANCAK;
-              const noancak =
-                typeof noancakValue === "string"
-                  ? noancakValue.trim()
-                  : undefined;
-
-              mapEmp.set(fccode, {
-                fccode,
-                fullname: typeof it.fcname === "string" ? it.fcname : undefined,
-                fcba: String(it.fcba ?? "").trim(),
-                sectionname: String(it.sectionname ?? "").trim(),
-                gangcode: String(it.gangcode ?? "").trim(),
-                noancak,
-              });
-            }
-          }
-          return Array.from(mapEmp.values());
-        } catch (err) {
-          console.error("Failed to fetch employees by gang:", err);
-          return [];
+      try {
+        const res = await fetch(`/api/karyawans?${params.toString()}`, {
+          credentials: 'include',
+        });
+        if (!res.ok) {
+          if (res.status === 404) return [];
+          throw new Error(`HTTP ${res.status}`);
         }
-      },
-      enabled: !!selFcba && !!selSection && !!selGang,
-      staleTime: 30 * 60 * 1000, // 30 minutes
-      gcTime: 60 * 60 * 1000,
-    });
+        const json = await res.json();
+        const rowsRaw = extractArrayData<EmployeesApiRow>(json);
+
+        // Build employees map with noancak
+        const mapEmp = new Map<string, Employee>();
+        for (const it of rowsRaw) {
+          const fccode = String(it.fccode ?? '').trim();
+          if (!fccode) continue;
+          if (!mapEmp.has(fccode)) {
+            const noancakValue =
+              (it as { noancak?: unknown }).noancak ?? (it as { NOANCAK?: unknown }).NOANCAK;
+            const noancak = typeof noancakValue === 'string' ? noancakValue.trim() : undefined;
+
+            mapEmp.set(fccode, {
+              fccode,
+              fullname: typeof it.fcname === 'string' ? it.fcname : undefined,
+              fcba: String(it.fcba ?? '').trim(),
+              sectionname: String(it.sectionname ?? '').trim(),
+              gangcode: String(it.gangcode ?? '').trim(),
+              noancak,
+            });
+          }
+        }
+        return Array.from(mapEmp.values());
+      } catch (err) {
+        console.error('Failed to fetch employees by gang:', err);
+        return [];
+      }
+    },
+    enabled: !!selFcba && !!selSection && !!selGang,
+    staleTime: 30 * 60 * 1000, // 30 minutes
+    gcTime: 60 * 60 * 1000,
+  });
 
   // Employee options from employeesByGang query
   const employeeOptions: Option[] = useMemo(() => {
     if (!employeesByGang.length) return [];
     return employeesByGang
-      .map((e) => ({
+      .map(e => ({
         value: e.fccode,
         label: e.fullname ? `${e.fccode} - ${e.fullname}` : e.fccode,
       }))
@@ -1318,63 +1245,63 @@ export default function HarvestPage() {
   /* ===== Cascading change handlers ===== */
   const onChangeFcba = (v: string) => {
     setSelFcba(v);
-    setSelSection("");
-    setSelGang("");
-    setForm((s) => ({
+    setSelSection('');
+    setSelGang('');
+    setForm(s => ({
       ...s,
       fcba: v,
-      afdeling: "",
-      fieldcode: "", // fieldcode dari TPH, reset saat FCBA berubah
-      kemandoran: "",
-      noancak: "",
-      kode_karyawan: "",
-      tph: "",
+      afdeling: '',
+      fieldcode: '', // fieldcode dari TPH, reset saat FCBA berubah
+      kemandoran: '',
+      noancak: '',
+      kode_karyawan: '',
+      tph: '',
     }));
   };
 
   const onChangeSection = (v: string) => {
     setSelSection(v);
-    setSelGang("");
+    setSelGang('');
     // fieldcode tidak direset saat section berubah (karena dari TPH API)
-    setForm((s) => ({
+    setForm(s => ({
       ...s,
       afdeling: v,
-      kemandoran: "",
-      kode_karyawan: "",
+      kemandoran: '',
+      kode_karyawan: '',
     }));
   };
 
   const onChangeFieldcode = (v: string) => {
-    setForm((s) => ({
+    setForm(s => ({
       ...s,
       fieldcode: v,
-      noancak: "", // reset noancak dan tph saat fieldcode berubah
-      tph: "",
+      noancak: '', // reset noancak dan tph saat fieldcode berubah
+      tph: '',
     }));
   };
 
   const onChangeGang = (v: string) => {
     setSelGang(v);
-    setForm((s) => ({
+    setForm(s => ({
       ...s,
       kemandoran: v,
-      kode_karyawan: "",
+      kode_karyawan: '',
     }));
   };
 
   const onChangeEmployee = (fccode: string) => {
-    const emp = employeesByGang.find((e) => e.fccode === fccode);
-    setForm((s) => ({
+    const emp = employeesByGang.find(e => e.fccode === fccode);
+    setForm(s => ({
       ...s,
       kode_karyawan: fccode,
-      noancak: emp?.noancak || "", // No Ancak from selected employee
+      noancak: emp?.noancak || '', // No Ancak from selected employee
     }));
   };
 
   /* ===== Device IDs ===== */
   useEffect(() => {
     const { deviceId } = getOrCreateDeviceIds();
-    setForm((s) => ({
+    setForm(s => ({
       ...s,
       id_device: s.id_device || `${getReadableDevice()} • ${deviceId}`,
     }));
@@ -1385,40 +1312,35 @@ export default function HarvestPage() {
     e.preventDefault();
     if (mutation.isPending) return;
     if (!canModify) {
-      toast.error("Anda tidak memiliki akses untuk melakukan perubahan");
+      toast.error('Anda tidak memiliki akses untuk melakukan perubahan');
       return;
     }
 
     const formData = new FormData();
     Object.entries(form).forEach(([key, value]) => {
-      if (key === "images" && value instanceof File) {
+      if (key === 'images' && value instanceof File) {
         formData.append(key, value);
-      } else if (key === "no_ba_exca" && value instanceof File) {
+      } else if (key === 'no_ba_exca' && value instanceof File) {
         formData.append(key, value);
-      } else if (
-        key === "no_ba_exca" &&
-        isEditing &&
-        typeof value === "string"
-      ) {
+      } else if (key === 'no_ba_exca' && isEditing && typeof value === 'string') {
         formData.append(key, value);
       } else if (value !== null && value !== undefined) {
         formData.append(key, String(value));
       }
     });
 
-    const url =
-      isEditing && form.id ? `/api/harvest/${form.id}` : "/api/harvest";
-    const method = isEditing && form.id ? "PUT" : "POST";
+    const url = isEditing && form.id ? `/api/harvest/${form.id}` : '/api/harvest';
+    const method = isEditing && form.id ? 'PUT' : 'POST';
 
     mutation.mutate({ url, method, body: formData });
   };
 
   const handleDelete = useCallback(
     (id: string) => {
-      if (!confirm("Yakin ingin menghapus data ini?")) return;
+      if (!confirm('Yakin ingin menghapus data ini?')) return;
       deleteMutation.mutate(id);
     },
-    [deleteMutation],
+    [deleteMutation]
   );
 
   /* ===== Quick search ===== */
@@ -1426,7 +1348,7 @@ export default function HarvestPage() {
     let res = items;
     if (q.trim()) {
       const s = q.toLowerCase();
-      res = items.filter((it) =>
+      res = items.filter(it =>
         [
           it.nodokumen,
           it.kode_karyawan,
@@ -1439,7 +1361,7 @@ export default function HarvestPage() {
           it.kemandoran,
         ]
           .filter(Boolean)
-          .some((v) => String(v).toLowerCase().includes(s)),
+          .some(v => String(v).toLowerCase().includes(s))
       );
     }
     return res;
@@ -1461,64 +1383,64 @@ export default function HarvestPage() {
           overripe: 0,
           busuk: 0,
           brondol: 0,
-        },
+        }
       ),
-    [filtered],
+    [filtered]
   );
 
   const totalCards = [
     {
-      label: "Total Janjang",
+      label: 'Total Janjang',
       value: harvestTotals.output,
-      className: "text-primary",
+      className: 'text-primary',
     },
     {
-      label: "Total Brondolan",
+      label: 'Total Brondolan',
       value: harvestTotals.brondol,
-      className: "text-success",
+      className: 'text-success',
     },
   ];
 
   /* ===== EXPORT EXCEL ===== */
   const handleExport = async () => {
     if (filtered.length === 0) {
-      toast.error("Tidak ada data untuk diekspor");
+      toast.error('Tidak ada data untuk diekspor');
       return;
     }
 
     const dataToExport = filtered.map((r, idx) => ({
       No: idx + 1,
-      "No Dokumen": r.nodokumen || "-",
-      Tanggal: (r.tanggal || "").split(" ")[0],
-      "Kode Karyawan": r.kode_karyawan || "-",
-      "Nama Karyawan": r.nama_karyawan || "-",
-      Kemandoran: r.kemandoran || "-",
-      FCBA: r.fcba || "-",
-      Afdeling: r.afdeling || "-",
-      TPH: r.tph || "-",
-      "Field Code": r.fieldcode || "-",
-      Output: r.output || "0",
-      Mentah: r.mentah || "0",
-      Overripe: r.overripe || "0",
-      Busuk: r.busuk || "0",
-      Busuk2: r.busuk2 || "0",
-      "Buah Kecil": r.buahkecil || "0",
-      Brondol: r.brondol || "0",
-      "Alas Brondol": r.alasbrondol || "0",
-      "Tangkai Panjang": r.tangkaipanjang || "0",
-      Parteno: r.parteno || "0",
-      "Parteno 50+": r.parteno50plus || "0",
-      Status: r.status_harvesting || "-",
-      Lokasi: r.location || "-",
+      'No Dokumen': r.nodokumen || '-',
+      Tanggal: (r.tanggal || '').split(' ')[0],
+      'Kode Karyawan': r.kode_karyawan || '-',
+      'Nama Karyawan': r.nama_karyawan || '-',
+      Kemandoran: r.kemandoran || '-',
+      FCBA: r.fcba || '-',
+      Afdeling: r.afdeling || '-',
+      TPH: r.tph || '-',
+      'Field Code': r.fieldcode || '-',
+      Output: r.output || '0',
+      Mentah: r.mentah || '0',
+      Overripe: r.overripe || '0',
+      Busuk: r.busuk || '0',
+      Busuk2: r.busuk2 || '0',
+      'Buah Kecil': r.buahkecil || '0',
+      Brondol: r.brondol || '0',
+      'Alas Brondol': r.alasbrondol || '0',
+      'Tangkai Panjang': r.tangkaipanjang || '0',
+      Parteno: r.parteno || '0',
+      'Parteno 50+': r.parteno50plus || '0',
+      Status: r.status_harvesting || '-',
+      Lokasi: r.location || '-',
     }));
 
-    const xlsx = await import("xlsx");
+    const xlsx = await import('xlsx');
     const ws = xlsx.utils.json_to_sheet(dataToExport);
     const wb = xlsx.utils.book_new();
-    xlsx.utils.book_append_sheet(wb, ws, "Harvesting");
+    xlsx.utils.book_append_sheet(wb, ws, 'Harvesting');
     xlsx.writeFile(
       wb,
-      `Harvesting_${filters.tanggal || "all"}_${filters.tanggal_end || "all"}.xlsx`,
+      `Harvesting_${filters.tanggal || 'all'}_${filters.tanggal_end || 'all'}.xlsx`
     );
   };
 
@@ -1526,24 +1448,22 @@ export default function HarvestPage() {
   const columns: TableColumn<Harvest>[] = [
     {
       name: <span title="Aksi edit/hapus data panen">Aksi</span>,
-      width: "120px",
+      width: '120px',
       cell: (row: Harvest) => {
-        const status = (row.status_harvesting || "").toLowerCase();
-        const isPlanned = status === "planned";
+        const status = (row.status_harvesting || '').toLowerCase();
+        const isPlanned = status === 'planned';
         const canEditRole = canModify;
         const canEdit = canEditRole && isPlanned;
-        const canDelete =
-          userLevel === "ADM" && status !== "approved" && status !== "";
+        const canDelete = userLevel === 'ADM' && status !== 'approved' && status !== '';
 
         return (
           <div className="space-x-1 whitespace-nowrap overflow-visible">
             {canEditRole && (
               <button
-                className={`btn btn-xs ${canEdit ? "btn-outline" : "btn-disabled"
-                  }`}
+                className={`btn btn-xs ${canEdit ? 'btn-outline' : 'btn-disabled'}`}
                 onClick={() => canEdit && fetchDetail(row.id)}
                 disabled={!canEdit}
-                title={canEdit ? "Edit" : "Hanya bisa edit saat Planned"}
+                title={canEdit ? 'Edit' : 'Hanya bisa edit saat Planned'}
               >
                 Edit
               </button>
@@ -1564,52 +1484,49 @@ export default function HarvestPage() {
       ignoreRowClick: true,
     },
     {
-      name: (
-        <span title="Status persetujuan panen (Planned/Approved/dll)">
-          Status
-        </span>
-      ),
-      selector: (r) => r.status_harvesting ?? "-",
+      name: <span title="Status persetujuan panen (Planned/Approved/dll)">Status</span>,
+      selector: r => r.status_harvesting ?? '-',
       sortable: true,
-      width: "120px",
-      cell: (r) => (
+      width: '120px',
+      cell: r => (
         <span
-          className={`badge ${(r.status_harvesting || "").toLowerCase() === "planned"
-            ? "badge-warning"
-            : (r.status_harvesting || "").toLowerCase() === "approved"
-              ? "badge-success"
-              : "badge-ghost"
-            }`}
+          className={`badge ${
+            (r.status_harvesting || '').toLowerCase() === 'planned'
+              ? 'badge-warning'
+              : (r.status_harvesting || '').toLowerCase() === 'approved'
+                ? 'badge-success'
+                : 'badge-ghost'
+          }`}
         >
-          {r.status_harvesting ?? "-"}
+          {r.status_harvesting ?? '-'}
         </span>
       ),
     },
     {
       name: <span title="Nomor urut baris">#</span>,
-      width: "56px",
+      width: '56px',
       cell: (_r, i) => <span>{i + 1}</span>,
       ignoreRowClick: true,
     },
     {
-      name: "No Dokumen",
-      selector: (row) => row.nodokumen,
+      name: 'No Dokumen',
+      selector: row => row.nodokumen,
       sortable: true,
-      width: "250px",
+      width: '250px',
     },
     {
-      name: "Tanggal",
-      selector: (row) => row.tanggal,
-      format: (row) => formatDateDMY(row.tanggal),
+      name: 'Tanggal',
+      selector: row => row.tanggal,
+      format: row => formatDateDMY(row.tanggal),
       sortable: true,
-      width: "100px",
+      width: '100px',
     },
     {
-      name: "Karyawan",
-      selector: (row) => row.nama_karyawan || row.kode_karyawan,
+      name: 'Karyawan',
+      selector: row => row.nama_karyawan || row.kode_karyawan,
       sortable: true,
-      width: "180px",
-      cell: (row) => (
+      width: '180px',
+      cell: row => (
         <div>
           <div className="font-medium">{row.nama_karyawan}</div>
           <div className="text-xs text-gray-500">{row.kode_karyawan}</div>
@@ -1617,69 +1534,69 @@ export default function HarvestPage() {
       ),
     },
     {
-      name: "Kemandoran",
-      selector: (row) => row.kemandoran || "-",
+      name: 'Kemandoran',
+      selector: row => row.kemandoran || '-',
       sortable: true,
-      width: "120px",
+      width: '120px',
     },
     {
-      name: "FCBA",
-      selector: (row) => row.fcba,
+      name: 'FCBA',
+      selector: row => row.fcba,
       sortable: true,
-      width: "80px",
+      width: '80px',
     },
     {
-      name: "Afd",
-      selector: (row) => row.afdeling,
+      name: 'Afd',
+      selector: row => row.afdeling,
       sortable: true,
-      width: "80px",
+      width: '80px',
     },
     {
-      name: "TPH",
-      selector: (row) => row.tph,
+      name: 'TPH',
+      selector: row => row.tph,
       sortable: true,
-      width: "80px",
+      width: '80px',
     },
     {
-      name: "Field",
-      selector: (row) => row.fieldcode,
+      name: 'Field',
+      selector: row => row.fieldcode,
       sortable: true,
-      width: "80px",
+      width: '80px',
     },
     {
-      name: "Output",
-      selector: (row) => row.output,
+      name: 'Output',
+      selector: row => row.output,
       sortable: true,
-      width: "90px",
-      style: { justifyContent: "end" },
+      width: '90px',
+      style: { justifyContent: 'end' },
     },
     {
-      name: "Mentah",
-      selector: (row) => row.mentah,
+      name: 'Mentah',
+      selector: row => row.mentah,
       sortable: true,
-      width: "90px",
-      style: { justifyContent: "end" },
+      width: '90px',
+      style: { justifyContent: 'end' },
     },
     {
-      name: "Over",
-      selector: (row) => row.overripe,
+      name: 'Over',
+      selector: row => row.overripe,
       sortable: true,
-      width: "90px",
-      style: { justifyContent: "end" },
+      width: '90px',
+      style: { justifyContent: 'end' },
     },
     {
-      name: "Busuk",
-      selector: (row) => row.busuk,
+      name: 'Busuk',
+      selector: row => row.busuk,
       sortable: true,
-      width: "90px",
-      style: { justifyContent: "end" },
+      width: '90px',
+      style: { justifyContent: 'end' },
     },
     {
-      name: "Brondol",
-      selector: (row) => row.brondol,
+      name: 'Brondol',
+      selector: row => row.brondol,
       sortable: true,
-      width: "90px",
-      style: { justifyContent: "end" },
+      width: '90px',
+      style: { justifyContent: 'end' },
     },
     {
       name: (
@@ -1687,32 +1604,24 @@ export default function HarvestPage() {
           Lokasi
         </span>
       ),
-      selector: (row) => row.location || "",
-      width: "140px",
-      cell: (row) => (
-        <LocationButton
-          loc={row.location}
-          tanggal={row.tanggal}
-          nodokumen={row.nodokumen}
-        />
+      selector: row => row.location || '',
+      width: '140px',
+      cell: row => (
+        <LocationButton loc={row.location} tanggal={row.tanggal} nodokumen={row.nodokumen} />
       ),
     },
     {
-      name: (
-        <span title="Exception Case (alasan/keterangan khusus)">
-          Exception Case
-        </span>
-      ),
-      selector: (row) => row.exception_case || "-",
+      name: <span title="Exception Case (alasan/keterangan khusus)">Exception Case</span>,
+      selector: row => row.exception_case || '-',
       sortable: true,
-      style: { flexGrow: 1.1 as number, minWidth: "160px" },
+      style: { flexGrow: 1.1 as number, minWidth: '160px' },
     },
     {
       name: <span title="Lampiran BA EXCA atau file pendukung">Lampiran</span>,
-      selector: (row) => row.no_ba_exca || "-",
+      selector: row => row.no_ba_exca || '-',
       sortable: true,
-      width: "120px",
-      cell: (row) =>
+      width: '120px',
+      cell: row =>
         row.no_ba_exca ? (
           <a
             href={row.no_ba_exca}
@@ -1724,12 +1633,12 @@ export default function HarvestPage() {
             PDF
           </a>
         ) : (
-          "-"
+          '-'
         ),
     },
     {
       name: <span title="Foto pendukung panen (bila ada)">Foto</span>,
-      width: "90px",
+      width: '90px',
       cell: (r: Harvest) =>
         r.images ? (
           <a
@@ -1745,7 +1654,7 @@ export default function HarvestPage() {
                 fill
                 className="object-cover"
                 loading="lazy"
-                onError={(e) => {
+                onError={e => {
                   const img = e?.currentTarget as HTMLImageElement | null;
                   if (img) {
                     img.onerror = null;
@@ -1757,7 +1666,7 @@ export default function HarvestPage() {
             </div>
           </a>
         ) : (
-          "-"
+          '-'
         ),
       ignoreRowClick: true,
     },
@@ -1775,17 +1684,12 @@ export default function HarvestPage() {
             Harvesting (Panen)
           </h1>
           <div className="flex justify-start sm:justify-end gap-2 flex-wrap w-full">
-            <button
-              className="btn btn-outline btn-sm"
-              onClick={() => setShowFilters((s) => !s)}
-            >
-              {showFilters ? "Sembunyikan Filter" : "Tampilkan Filter"}
+            <button className="btn btn-outline btn-sm" onClick={() => setShowFilters(s => !s)}>
+              {showFilters ? 'Sembunyikan Filter' : 'Tampilkan Filter'}
             </button>
             <button
-              className={`btn btn-sm ${loading ? "btn-disabled" : ""}`}
-              onClick={() =>
-                queryClient.invalidateQueries({ queryKey: ["harvest"] })
-              }
+              className={`btn btn-sm ${loading ? 'btn-disabled' : ''}`}
+              onClick={() => queryClient.invalidateQueries({ queryKey: ['harvest'] })}
               disabled={loading}
             >
               {loading ? (
@@ -1794,7 +1698,7 @@ export default function HarvestPage() {
                   Memuat...
                 </>
               ) : (
-                "Refresh"
+                'Refresh'
               )}
             </button>
             <button
@@ -1813,28 +1717,21 @@ export default function HarvestPage() {
                   setForm({
                     ...initialForm,
                     tanggal: getTodayISO(),
-                    fcba:
-                      userLevel === "ADM"
-                        ? ""
-                        : userFcbaCookie || homeFcba || "",
+                    fcba: userLevel === 'ADM' ? '' : userFcbaCookie || homeFcba || '',
                     afdeling:
-                      userLevel === "ADM" ||
-                        userLevel === "KSI"
-                        ? ""
-                        : userAfdelingCookie || homeSection || "",
+                      userLevel === 'ADM' || userLevel === 'KSI'
+                        ? ''
+                        : userAfdelingCookie || homeSection || '',
                   });
-                  setPreview("");
+                  setPreview('');
                   // Initialize cascading selects with user cookies
-                  setSelFcba(
-                    userLevel === "ADM" ? "" : userFcbaCookie || homeFcba || "",
-                  );
+                  setSelFcba(userLevel === 'ADM' ? '' : userFcbaCookie || homeFcba || '');
                   setSelSection(
-                    userLevel === "ADM" ||
-                      userLevel === "KSI"
-                      ? ""
-                      : userAfdelingCookie || homeSection || "",
+                    userLevel === 'ADM' || userLevel === 'KSI'
+                      ? ''
+                      : userAfdelingCookie || homeSection || ''
                   );
-                  setSelGang("");
+                  setSelGang('');
                   setOpen(true);
                   // Auto get location
                   setTimeout(() => {
@@ -1851,14 +1748,12 @@ export default function HarvestPage() {
         <div className="mb-4 flex items-center gap-3">
           {/* TOTAL CARDS (di kiri) */}
           <div className="flex gap-2">
-            {totalCards.map((card) => (
+            {totalCards.map(card => (
               <div
                 key={card.label}
                 className="bg-base-100 border border-base-200 rounded-lg px-3 py-2 shadow-sm whitespace-nowrap"
               >
-                <div className="text-[10px] opacity-70 leading-none">
-                  {card.label}
-                </div>
+                <div className="text-[10px] opacity-70 leading-none">{card.label}</div>
                 <div className={`text-sm font-semibold ${card.className}`}>
                   {formatTotal(card.value)}
                 </div>
@@ -1872,7 +1767,7 @@ export default function HarvestPage() {
               className="input input-bordered w-full"
               placeholder="Cari No Dokumen, Karyawan, FCBA, TPH..."
               value={q}
-              onChange={(e) => setQ(e.target.value)}
+              onChange={e => setQ(e.target.value)}
             />
           </div>
         </div>
@@ -1885,88 +1780,65 @@ export default function HarvestPage() {
                 type="date"
                 className="input input-bordered w-full"
                 value={filters.tanggal}
-                onChange={(e) =>
-                  setFilters((s) => ({ ...s, tanggal: e.target.value }))
-                }
+                onChange={e => setFilters(s => ({ ...s, tanggal: e.target.value }))}
               />
               <input
                 type="date"
                 className="input input-bordered w-full"
                 value={filters.tanggal_end}
-                onChange={(e) =>
-                  setFilters((s) => ({ ...s, tanggal_end: e.target.value }))
-                }
+                onChange={e => setFilters(s => ({ ...s, tanggal_end: e.target.value }))}
               />
               <input
                 type="text"
                 className="input input-bordered w-full"
                 placeholder="No Dokumen"
                 value={filters.nodokumen}
-                onChange={(e) =>
-                  setFilters((s) => ({ ...s, nodokumen: e.target.value }))
-                }
+                onChange={e => setFilters(s => ({ ...s, nodokumen: e.target.value }))}
               />
               <input
                 type="text"
                 className="input input-bordered w-full"
                 placeholder="Kode Karyawan"
                 value={filters.kode_karyawan}
-                onChange={(e) =>
-                  setFilters((s) => ({ ...s, kode_karyawan: e.target.value }))
-                }
+                onChange={e => setFilters(s => ({ ...s, kode_karyawan: e.target.value }))}
               />
               <input
                 type="text"
                 className="input input-bordered w-full"
                 placeholder="Kemandoran"
                 value={filters.kemandoran}
-                onChange={(e) =>
-                  setFilters((s) => ({ ...s, kemandoran: e.target.value }))
-                }
+                disabled={isKemandoranLocked}
+                onChange={e => setFilters(s => ({ ...s, kemandoran: e.target.value }))}
               />
               <input
                 type="text"
                 className="input input-bordered w-full"
                 placeholder="FCBA"
                 value={filters.fcba}
-                disabled={userLevel !== "ADM"}
-                onChange={(e) =>
-                  setFilters((s) => ({ ...s, fcba: e.target.value }))
-                }
+                disabled={isFcbaLocked}
+                onChange={e => setFilters(s => ({ ...s, fcba: e.target.value }))}
               />
               <input
                 type="text"
                 className="input input-bordered w-full"
                 placeholder="Afdeling"
                 value={filters.afdeling}
-                disabled={
-                  !(
-                    userLevel === "ADM" ||
-                    userLevel === "MGR" ||
-                    userLevel === "KSI"
-                  )
-                }
-                onChange={(e) =>
-                  setFilters((s) => ({ ...s, afdeling: e.target.value }))
-                }
+                disabled={isAfdelingLocked}
+                onChange={e => setFilters(s => ({ ...s, afdeling: e.target.value }))}
               />
               <input
                 type="text"
                 className="input input-bordered w-full"
                 placeholder="TPH"
                 value={filters.tph}
-                onChange={(e) =>
-                  setFilters((s) => ({ ...s, tph: e.target.value }))
-                }
+                onChange={e => setFilters(s => ({ ...s, tph: e.target.value }))}
               />
             </div>
 
             <div className="flex justify-start gap-2 pt-3 border-t border-base-200">
               <button
-                className={`btn btn-outline ${loading ? "btn-disabled" : ""}`}
-                onClick={() =>
-                  queryClient.invalidateQueries({ queryKey: ["harvest"] })
-                }
+                className={`btn btn-outline ${loading ? 'btn-disabled' : ''}`}
+                onClick={() => queryClient.invalidateQueries({ queryKey: ['harvest'] })}
                 disabled={loading}
                 title="Terapkan filter"
               >
@@ -1976,23 +1848,23 @@ export default function HarvestPage() {
                     Memuat...
                   </>
                 ) : (
-                  "Terapkan Filter"
+                  'Terapkan Filter'
                 )}
               </button>
               <button
-                className={`btn ${loading ? "btn-disabled" : ""}`}
+                className={`btn ${loading ? 'btn-disabled' : ''}`}
                 onClick={() => {
                   const resetFilters: Filters = {
-                    tanggal: "",
-                    tanggal_end: "",
-                    nodokumen: "",
-                    kode_karyawan: "",
-                    kemandoran: "",
-                    fcba: "",
-                    afdeling: "",
-                    tph: "",
+                    tanggal: '',
+                    tanggal_end: '',
+                    nodokumen: '',
+                    kode_karyawan: '',
+                    kemandoran: '',
+                    fcba: '',
+                    afdeling: '',
+                    tph: '',
                   };
-                  setFilters(resetFilters);
+                  setFilters(getScopedFilters(resetFilters));
                 }}
                 disabled={loading}
                 title="Reset semua filter"
@@ -2003,7 +1875,7 @@ export default function HarvestPage() {
                     Memuat...
                   </>
                 ) : (
-                  "Reset"
+                  'Reset'
                 )}
               </button>
             </div>
@@ -2029,11 +1901,7 @@ export default function HarvestPage() {
                 fixedHeaderScrollHeight="520px"
                 persistTableHead
                 responsive
-                noDataComponent={
-                  <div className="py-8 text-base-content/70">
-                    Tidak ada data.
-                  </div>
-                }
+                noDataComponent={<div className="py-8 text-base-content/70">Tidak ada data.</div>}
               />
             )}
           </div>
@@ -2046,14 +1914,14 @@ export default function HarvestPage() {
           <div className="modal-box max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-start justify-between mb-4">
               <h3 className="font-bold text-lg">
-                {isEditing ? "Edit Data Panen" : "Tambah Data Panen"}
+                {isEditing ? 'Edit Data Panen' : 'Tambah Data Panen'}
               </h3>
               <button
                 type="button"
                 className="btn btn-sm btn-circle btn-ghost"
                 onClick={() => {
                   setOpen(false);
-                  setPreview("");
+                  setPreview('');
                 }}
                 aria-label="Tutup"
               >
@@ -2089,9 +1957,7 @@ export default function HarvestPage() {
                       type="text"
                       className="input input-bordered w-full"
                       value={form.nodokumen}
-                      onChange={(e) =>
-                        setForm((s) => ({ ...s, nodokumen: e.target.value }))
-                      }
+                      onChange={e => setForm(s => ({ ...s, nodokumen: e.target.value }))}
                       required
                     />
                   </fieldset>
@@ -2104,9 +1970,7 @@ export default function HarvestPage() {
                       className="input input-bordered w-full"
                       value={form.tanggal}
                       max={getTodayISO()}
-                      onChange={(e) =>
-                        setForm((s) => ({ ...s, tanggal: e.target.value }))
-                      }
+                      onChange={e => setForm(s => ({ ...s, tanggal: e.target.value }))}
                       required
                     />
                   </fieldset>
@@ -2114,23 +1978,21 @@ export default function HarvestPage() {
                   {/* FCBA: ADM bisa pilih, lainnya dikunci ke user_Fcba cookie */}
                   <fieldset className="fieldset">
                     <legend className="fieldset-legend">
-                      {userLevel === "ADM" ? "FCBA *" : "FCBA (akun)"}
+                      {userLevel === 'ADM' ? 'FCBA *' : 'FCBA (akun)'}
                     </legend>
-                    {userLevel === "ADM" ? (
+                    {userLevel === 'ADM' ? (
                       <SearchSelect
                         options={fcbaOptions}
                         value={selFcba}
                         onChange={onChangeFcba}
-                        placeholder={
-                          isLoadingBU ? "Memuat FCBA..." : "Pilih FCBA"
-                        }
+                        placeholder={isLoadingBU ? 'Memuat FCBA...' : 'Pilih FCBA'}
                         disabled={isLoadingBU}
                       />
                     ) : (
                       <input
                         type="text"
                         className="input input-bordered w-full"
-                        value={userFcbaCookie || homeFcba || ""}
+                        value={userFcbaCookie || homeFcba || ''}
                         readOnly
                         disabled
                       />
@@ -2140,25 +2002,21 @@ export default function HarvestPage() {
                   {/* Afdeling: ADM/MGR/KSI bisa pilih, lainnya dikunci ke user_Afdeling cookie */}
                   <fieldset className="fieldset">
                     <legend className="fieldset-legend">
-                      {userLevel === "ADM" ||
-                        userLevel === "MGR" ||
-                        userLevel === "KSI"
-                        ? "Afdeling (Section) *"
-                        : "Afdeling (akun)"}
+                      {userLevel === 'ADM' || userLevel === 'MGR' || userLevel === 'KSI'
+                        ? 'Afdeling (Section) *'
+                        : 'Afdeling (akun)'}
                     </legend>
-                    {userLevel === "ADM" ||
-                      userLevel === "MGR" ||
-                      userLevel === "KSI" ? (
+                    {userLevel === 'ADM' || userLevel === 'MGR' || userLevel === 'KSI' ? (
                       <SearchSelect
                         options={sectionOptions}
-                        value={selSection ?? ""}
+                        value={selSection ?? ''}
                         onChange={onChangeSection}
                         placeholder={
                           isLoadingEmp
-                            ? "Memuat..."
+                            ? 'Memuat...'
                             : selFcba
-                              ? "Pilih Afdeling"
-                              : "Pilih FCBA dulu"
+                              ? 'Pilih Afdeling'
+                              : 'Pilih FCBA dulu'
                         }
                         disabled={!selFcba || isLoadingEmp}
                       />
@@ -2166,7 +2024,7 @@ export default function HarvestPage() {
                       <input
                         type="text"
                         className="input input-bordered w-full"
-                        value={userAfdelingCookie || homeSection || ""}
+                        value={userAfdelingCookie || homeSection || ''}
                         readOnly
                         disabled
                       />
@@ -2181,14 +2039,14 @@ export default function HarvestPage() {
                     ) : (
                       <SearchSelect
                         options={fieldcodeOptions}
-                        value={form.fieldcode ?? ""}
+                        value={form.fieldcode ?? ''}
                         onChange={onChangeFieldcode}
                         placeholder={
                           selFcba && selSection
                             ? fieldcodeOptions.length === 0
-                              ? "Tidak ada Field Code"
-                              : "Pilih Field Code"
-                            : "Pilih FCBA dan Afdeling dulu"
+                              ? 'Tidak ada Field Code'
+                              : 'Pilih Field Code'
+                            : 'Pilih FCBA dan Afdeling dulu'
                         }
                         disabled={!selFcba || !selSection}
                       />
@@ -2203,14 +2061,14 @@ export default function HarvestPage() {
                     ) : (
                       <SearchSelect
                         options={tphOptions}
-                        value={form.tph ?? ""}
-                        onChange={(v) => setForm((s) => ({ ...s, tph: v }))}
+                        value={form.tph ?? ''}
+                        onChange={v => setForm(s => ({ ...s, tph: v }))}
                         placeholder={
                           form.fieldcode
                             ? tphOptions.length === 0
-                              ? "Tidak ada TPH"
-                              : "Pilih TPH"
-                            : "Pilih Field Code dulu"
+                              ? 'Tidak ada TPH'
+                              : 'Pilih TPH'
+                            : 'Pilih Field Code dulu'
                         }
                         disabled={!form.fieldcode}
                       />
@@ -2222,16 +2080,16 @@ export default function HarvestPage() {
                     <legend className="fieldset-legend">Kemandoran</legend>
                     <SearchSelect
                       options={kemandoranOptions}
-                      value={form.kemandoran ?? ""}
+                      value={form.kemandoran ?? ''}
                       onChange={onChangeGang}
                       placeholder={
                         isLoadingEmp
-                          ? "Memuat..."
+                          ? 'Memuat...'
                           : selSection
                             ? kemandoranOptions.length === 0
-                              ? "Tidak ada Kemandoran MD"
-                              : "Pilih Kemandoran"
-                            : "Pilih Afdeling dulu"
+                              ? 'Tidak ada Kemandoran MD'
+                              : 'Pilih Kemandoran'
+                            : 'Pilih Afdeling dulu'
                       }
                       disabled={!selSection || isLoadingEmp}
                     />
@@ -2242,16 +2100,16 @@ export default function HarvestPage() {
                     <legend className="fieldset-legend">Karyawan *</legend>
                     <SearchSelect
                       options={employeeOptions}
-                      value={form.kode_karyawan ?? ""}
+                      value={form.kode_karyawan ?? ''}
                       onChange={onChangeEmployee}
                       placeholder={
                         isLoadingEmpByGang
-                          ? "Memuat Karyawan..."
+                          ? 'Memuat Karyawan...'
                           : selGang
                             ? employeeOptions.length === 0
-                              ? "Tidak ada Karyawan"
-                              : "Pilih Karyawan"
-                            : "Pilih Kemandoran dulu"
+                              ? 'Tidak ada Karyawan'
+                              : 'Pilih Karyawan'
+                            : 'Pilih Kemandoran dulu'
                       }
                       disabled={!selGang || isLoadingEmpByGang}
                     />
@@ -2263,7 +2121,7 @@ export default function HarvestPage() {
                     <input
                       type="text"
                       className="input input-bordered w-full"
-                      value={form.noancak ?? ""}
+                      value={form.noancak ?? ''}
                       readOnly
                       disabled
                       placeholder="Otomatis dari Karyawan"
@@ -2283,9 +2141,7 @@ export default function HarvestPage() {
                       type="number"
                       className="input input-bordered"
                       value={form.output}
-                      onChange={(e) =>
-                        setForm((s) => ({ ...s, output: e.target.value }))
-                      }
+                      onChange={e => setForm(s => ({ ...s, output: e.target.value }))}
                       required
                       min="0"
                     />
@@ -2300,9 +2156,7 @@ export default function HarvestPage() {
                       type="number"
                       className="input input-bordered"
                       value={form.mentah}
-                      onChange={(e) =>
-                        setForm((s) => ({ ...s, mentah: e.target.value }))
-                      }
+                      onChange={e => setForm(s => ({ ...s, mentah: e.target.value }))}
                       min="0"
                     />
                   </div>
@@ -2316,9 +2170,7 @@ export default function HarvestPage() {
                       type="number"
                       className="input input-bordered"
                       value={form.overripe}
-                      onChange={(e) =>
-                        setForm((s) => ({ ...s, overripe: e.target.value }))
-                      }
+                      onChange={e => setForm(s => ({ ...s, overripe: e.target.value }))}
                       min="0"
                     />
                   </div>
@@ -2332,9 +2184,7 @@ export default function HarvestPage() {
                       type="number"
                       className="input input-bordered"
                       value={form.busuk}
-                      onChange={(e) =>
-                        setForm((s) => ({ ...s, busuk: e.target.value }))
-                      }
+                      onChange={e => setForm(s => ({ ...s, busuk: e.target.value }))}
                       min="0"
                     />
                   </div>
@@ -2348,9 +2198,7 @@ export default function HarvestPage() {
                       type="number"
                       className="input input-bordered"
                       value={form.busuk2}
-                      onChange={(e) =>
-                        setForm((s) => ({ ...s, busuk2: e.target.value }))
-                      }
+                      onChange={e => setForm(s => ({ ...s, busuk2: e.target.value }))}
                       min="0"
                     />
                   </div>
@@ -2364,9 +2212,7 @@ export default function HarvestPage() {
                       type="number"
                       className="input input-bordered"
                       value={form.buahkecil}
-                      onChange={(e) =>
-                        setForm((s) => ({ ...s, buahkecil: e.target.value }))
-                      }
+                      onChange={e => setForm(s => ({ ...s, buahkecil: e.target.value }))}
                       min="0"
                     />
                   </div>
@@ -2380,9 +2226,7 @@ export default function HarvestPage() {
                       type="number"
                       className="input input-bordered"
                       value={form.brondol}
-                      onChange={(e) =>
-                        setForm((s) => ({ ...s, brondol: e.target.value }))
-                      }
+                      onChange={e => setForm(s => ({ ...s, brondol: e.target.value }))}
                       min="0"
                     />
                   </div>
@@ -2396,8 +2240,8 @@ export default function HarvestPage() {
                       type="number"
                       className="input input-bordered"
                       value={form.tangkaipanjang}
-                      onChange={(e) =>
-                        setForm((s) => ({
+                      onChange={e =>
+                        setForm(s => ({
                           ...s,
                           tangkaipanjang: e.target.value,
                         }))
@@ -2415,9 +2259,7 @@ export default function HarvestPage() {
                       type="number"
                       className="input input-bordered"
                       value={form.parteno}
-                      onChange={(e) =>
-                        setForm((s) => ({ ...s, parteno: e.target.value }))
-                      }
+                      onChange={e => setForm(s => ({ ...s, parteno: e.target.value }))}
                       min="0"
                     />
                   </div>
@@ -2431,8 +2273,8 @@ export default function HarvestPage() {
                       type="number"
                       className="input input-bordered"
                       value={form.parteno50plus}
-                      onChange={(e) =>
-                        setForm((s) => ({
+                      onChange={e =>
+                        setForm(s => ({
                           ...s,
                           parteno50plus: e.target.value,
                         }))
@@ -2449,9 +2291,7 @@ export default function HarvestPage() {
                     <select
                       className="select select-bordered"
                       value={form.alasbrondol}
-                      onChange={(e) =>
-                        setForm((s) => ({ ...s, alasbrondol: e.target.value }))
-                      }
+                      onChange={e => setForm(s => ({ ...s, alasbrondol: e.target.value }))}
                     >
                       <option value="">- Pilih -</option>
                       <option value="Y">Ya (Y)</option>
@@ -2465,31 +2305,27 @@ export default function HarvestPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Lokasi */}
                   <fieldset className="fieldset md:col-span-2">
-                    <legend className="fieldset-legend">
-                      Lokasi (lat,lng) *
-                    </legend>
+                    <legend className="fieldset-legend">Lokasi (lat,lng) *</legend>
                     <div className="flex gap-2">
                       <input
                         type="text"
                         className="input input-bordered w-full"
                         value={form.location}
-                        onChange={(e) =>
-                          setForm((s) => ({ ...s, location: e.target.value }))
-                        }
+                        onChange={e => setForm(s => ({ ...s, location: e.target.value }))}
                         placeholder="contoh: -2.2893371,118.0399877"
                         required
                       />
 
                       <button
                         type="button"
-                        className={`btn btn-square ${locLoading ? "btn-disabled" : ""}`}
+                        className={`btn btn-square ${locLoading ? 'btn-disabled' : ''}`}
                         onClick={handleGetLocation}
                         disabled={locLoading}
                       >
                         {locLoading ? (
                           <span className="loading loading-spinner loading-xs" />
                         ) : (
-                          "📍"
+                          '📍'
                         )}
                       </button>
                     </div>
@@ -2511,14 +2347,14 @@ export default function HarvestPage() {
                   {/* Exception Case + File PDF dalam 1 row */}
                   <fieldset className="fieldset">
                     <legend className="fieldset-legend">
-                      Exception Case {!isEditing ? "*" : ""}
+                      Exception Case {!isEditing ? '*' : ''}
                     </legend>
 
                     <textarea
                       className="textarea textarea-bordered min-h-24 w-full"
                       value={form.exception_case}
-                      onChange={(e) =>
-                        setForm((s) => ({
+                      onChange={e =>
+                        setForm(s => ({
                           ...s,
                           exception_case: e.target.value,
                         }))
@@ -2529,18 +2365,16 @@ export default function HarvestPage() {
                   </fieldset>
 
                   <fieldset className="fieldset">
-                    <legend className="fieldset-legend">
-                      File BA ExCa (PDF)
-                    </legend>
+                    <legend className="fieldset-legend">File BA ExCa (PDF)</legend>
 
                     <input
                       type="file"
                       ref={pdfRef}
                       accept=".pdf"
                       className="file-input file-input-bordered w-full"
-                      onChange={(e) => {
+                      onChange={e => {
                         const file = e.target.files?.[0] || null;
-                        setForm((s) => ({ ...s, no_ba_exca: file }));
+                        setForm(s => ({ ...s, no_ba_exca: file }));
                       }}
                     />
                   </fieldset>
@@ -2554,10 +2388,10 @@ export default function HarvestPage() {
                       ref={imgRef}
                       accept="image/*"
                       className="file-input file-input-bordered w-full"
-                      onChange={(e) => {
+                      onChange={e => {
                         const file = e.target.files?.[0] || null;
 
-                        setForm((s) => ({ ...s, images: file }));
+                        setForm(s => ({ ...s, images: file }));
 
                         if (file) {
                           const url = URL.createObjectURL(file);
@@ -2588,23 +2422,19 @@ export default function HarvestPage() {
                     className="btn"
                     onClick={() => {
                       setOpen(false);
-                      setPreview("");
+                      setPreview('');
                     }}
                   >
                     Batal
                   </button>
-                  <button
-                    type="submit"
-                    className="btn btn-primary"
-                    disabled={mutation.isPending}
-                  >
+                  <button type="submit" className="btn btn-primary" disabled={mutation.isPending}>
                     {mutation.isPending ? (
                       <>
                         <span className="loading loading-spinner loading-sm"></span>
                         Menyimpan...
                       </>
                     ) : (
-                      "Simpan"
+                      'Simpan'
                     )}
                   </button>
                 </div>
@@ -2615,7 +2445,7 @@ export default function HarvestPage() {
             className="modal-backdrop"
             onClick={() => {
               setOpen(false);
-              setPreview("");
+              setPreview('');
             }}
           ></div>
         </div>

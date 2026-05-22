@@ -1,15 +1,15 @@
-"use client";
+﻿'use client';
 
-import { useEffect, useState } from "react";
-import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
-import { checkAndDownloadApp } from "@/utils/downloadapp";
+import { useEffect, useState } from 'react';
+import Image from 'next/image';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { checkAndDownloadApp } from '@/utils/downloadapp';
 
 const LOADING_TIPS = [
-  "Pastikan username dan password sudah benar.",
-  "Jaga kerahasiaan akun Anda, jangan dibagikan ke orang lain.",
-  "Hubungi Administrator jika lupa kata sandi.",
-  "Gunakan koneksi internet yang stabil untuk pengalaman terbaik.",
+  'Pastikan username dan password sudah benar.',
+  'Jaga kerahasiaan akun Anda, jangan dibagikan ke orang lain.',
+  'Hubungi Administrator jika lupa kata sandi.',
+  'Gunakan koneksi internet yang stabil untuk pengalaman terbaik.',
 ];
 
 type Firefly = {
@@ -22,20 +22,20 @@ type Firefly = {
 
 export default function Home() {
   const router = useRouter();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [saveUsername, setSaveUsername] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingDownload, setIsCheckingDownload] = useState(false);
   const [tipIndex, setTipIndex] = useState(0);
   const searchParams = useSearchParams();
 
-  const redirectTo = searchParams.get("redirect") || "/dashboard";
+  const redirectTo = searchParams.get('redirect') || '/dashboard';
 
   useEffect(() => {
-    const saved = window.localStorage.getItem("sips_saved_login");
+    const saved = window.localStorage.getItem('sips_saved_login');
     if (!saved) return;
 
     try {
@@ -45,18 +45,15 @@ export default function Home() {
         setSaveUsername(true);
       }
     } catch {
-      window.localStorage.removeItem("sips_saved_login");
+      window.localStorage.removeItem('sips_saved_login');
     }
   }, []);
 
   useEffect(() => {
     if (saveUsername) {
-      window.localStorage.setItem(
-        "sips_saved_login",
-        JSON.stringify({ username }),
-      );
+      window.localStorage.setItem('sips_saved_login', JSON.stringify({ username }));
     } else {
-      window.localStorage.removeItem("sips_saved_login");
+      window.localStorage.removeItem('sips_saved_login');
     }
   }, [saveUsername, username]);
 
@@ -71,17 +68,14 @@ export default function Home() {
         duration: 10 + Math.random() * 10,
         delay: Math.random() * 8,
         size: 4 + Math.random() * 6,
-      })),
+      }))
     );
   }, []);
 
   // Rotasi tips saat loading
   useEffect(() => {
     if (!isLoading) return;
-    const interval = setInterval(
-      () => setTipIndex((prev) => (prev + 1) % LOADING_TIPS.length),
-      2200,
-    );
+    const interval = setInterval(() => setTipIndex(prev => (prev + 1) % LOADING_TIPS.length), 2200);
     return () => clearInterval(interval);
   }, [isLoading]);
 
@@ -97,13 +91,13 @@ export default function Home() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError("");
+    setError('');
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ username: username.toLowerCase(), password }),
       });
@@ -113,14 +107,11 @@ export default function Home() {
       if (response.ok) {
         router.push(redirectTo);
       } else {
-        setError(
-          data.message ||
-            "Login gagal. Silakan periksa kembali kredensial Anda.",
-        );
+        setError(data.message || 'Login gagal. Silakan periksa kembali kredensial Anda.');
         setIsLoading(false);
       }
     } catch {
-      setError("Terjadi kesalahan. Silakan coba lagi.");
+      setError('Terjadi kesalahan. Silakan coba lagi.');
       setIsLoading(false);
     }
   };
@@ -156,9 +147,7 @@ export default function Home() {
           <div className="flex flex-col items-center gap-4 px-6 py-4 rounded-2xl bg-base-100/90 shadow-lg">
             <span className="loading loading-spinner loading-lg text-primary" />
             <div className="text-center space-y-1">
-              <p className="text-sm font-semibold text-base-content">
-                Memverifikasi kredensial...
-              </p>
+              <p className="text-sm font-semibold text-base-content">Memverifikasi kredensial...</p>
               <p className="text-xs text-base-content/70 animate-fadeIn">
                 {LOADING_TIPS[tipIndex]}
               </p>
@@ -176,13 +165,11 @@ export default function Home() {
           </p>
           <h1 className="text-2xl font-bold leading-snug">
             Masuk untuk memantau
-            <span className="text-primary"> aktivitas lapangan</span> dengan
-            lebih mudah.
+            <span className="text-primary"> aktivitas lapangan</span> dengan lebih mudah.
           </h1>
           <p className="text-sm text-base-content/70">
-            Sistem terintegrasi untuk absensi, aktivitas harian, dan kontrol
-            operasional di Estate. Login dengan akun yang diberikan oleh
-            Administrator.
+            Sistem terintegrasi untuk absensi, aktivitas harian, dan kontrol operasional di Estate.
+            Login dengan akun yang diberikan oleh Administrator.
           </p>
           <div className="mt-2 flex items-center gap-2 text-xs text-base-content/60">
             <span className="status status-success inline-block animate-pulse [animation-duration:2s]" />
@@ -192,7 +179,7 @@ export default function Home() {
           <button
             type="button"
             onClick={handleDownload}
-            className={`mt-4 inline-flex items-center gap-3 rounded-2xl bg-base-100/80 px-3 py-2 shadow-md animate-bounce transition hover:bg-base-200 cursor-pointer ${isCheckingDownload ? "opacity-60 cursor-not-allowed" : ""}`}
+            className={`mt-4 inline-flex items-center gap-3 rounded-2xl bg-base-100/80 px-3 py-2 shadow-md animate-bounce transition hover:bg-base-200 cursor-pointer ${isCheckingDownload ? 'opacity-60 cursor-not-allowed' : ''}`}
             disabled={isCheckingDownload}
           >
             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -206,9 +193,7 @@ export default function Home() {
               </svg>
             </div>
             <div className="text-[0.7rem] leading-snug">
-              <p className="font-semibold text-base-content">
-                Download SIPS Mobile Now!
-              </p>
+              <p className="font-semibold text-base-content">Download SIPS Mobile Now!</p>
             </div>
             {isCheckingDownload && (
               <span className="loading loading-spinner loading-sm text-primary" />
@@ -259,7 +244,7 @@ export default function Home() {
                   className="grow bg-transparent outline-none"
                   placeholder="Username"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={e => setUsername(e.target.value)}
                   disabled={isLoading}
                   required
                   autoFocus
@@ -283,20 +268,20 @@ export default function Home() {
                   />
                 </svg>
                 <input
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   className="grow bg-transparent outline-none"
                   placeholder="Password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={e => setPassword(e.target.value)}
                   disabled={isLoading}
                   required
                   minLength={8}
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
+                  onClick={() => setShowPassword(prev => !prev)}
                   className="btn btn-ghost btn-square btn-xs opacity-70 hover:text-primary"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? (
                     <svg
@@ -327,12 +312,10 @@ export default function Home() {
                   type="checkbox"
                   className="checkbox checkbox-sm"
                   checked={saveUsername}
-                  onChange={(e) => setSaveUsername(e.target.checked)}
+                  onChange={e => setSaveUsername(e.target.checked)}
                   disabled={isLoading}
                 />
-                <span className="label-text text-sm">
-                  Remember username
-                </span>
+                <span className="label-text text-sm">Remember username</span>
               </label>
 
               {error && (
@@ -356,18 +339,14 @@ export default function Home() {
                 className="btn btn-primary w-full transition-transform duration-200 hover:-translate-y-[1px] active:scale-95"
                 disabled={isLoading}
               >
-                {isLoading ? (
-                  <span className="loading loading-spinner loading-sm" />
-                ) : (
-                  "Login"
-                )}
+                {isLoading ? <span className="loading loading-spinner loading-sm" /> : 'Login'}
               </button>
             </div>
           </form>
         </div>
       </main>
 
-      {/* Custom CSS untuk animasi kunang-kunang */}
+      {/* Custom CSS for the firefly animation */}
       <style jsx global>{`
         .firefly {
           position: absolute;

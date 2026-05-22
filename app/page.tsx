@@ -1,8 +1,8 @@
-import type { Metadata } from "next";
-import Home from "./login-client";
+import type { Metadata } from 'next';
+import Home from './login-client';
 
 export const metadata: Metadata = {
-  title: "Login",
+  title: 'Login',
 };
 
 export default function Page() {

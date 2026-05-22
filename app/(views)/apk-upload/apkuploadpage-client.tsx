@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect, useRef } from "react";
-import { backendApiUrl } from "@/utils/backendConfig";
+import React, { useState, useEffect, useRef } from 'react';
+import { backendApiUrl } from '@/utils/backendConfig';
 
 interface UploadFormData {
   platform: string;
@@ -26,22 +26,22 @@ interface UploadResult {
 
 export default function ApkUploadPage() {
   const [formData, setFormData] = useState<UploadFormData>({
-    platform: "android",
-    version: "",
+    platform: 'android',
+    version: '',
     force_update: false,
-    min_version: "",
-    changelog: "",
+    min_version: '',
+    changelog: '',
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadStatus, setUploadStatus] = useState<
-    "idle" | "uploading" | "success" | "error"
-  >("idle");
-  const [uploadMessage, setUploadMessage] = useState("");
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>(
+    'idle'
+  );
+  const [uploadMessage, setUploadMessage] = useState('');
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
-  const [uploadSpeed, setUploadSpeed] = useState<string>("");
-  const [uploadEta, setUploadEta] = useState<string>("");
+  const [uploadSpeed, setUploadSpeed] = useState<string>('');
+  const [uploadEta, setUploadEta] = useState<string>('');
   const [isMgr, setIsMgr] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [initCheck, setInitCheck] = useState(false);
@@ -55,55 +55,50 @@ export default function ApkUploadPage() {
   // Check user level from cookie
   useEffect(() => {
     const readCookie = (name: string) => {
-      if (typeof document === "undefined") return "";
-      const m = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
-      return m ? decodeURIComponent(m.pop() as string) : "";
+      if (typeof document === 'undefined') return '';
+      const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return m ? decodeURIComponent(m.pop() as string) : '';
     };
 
     const levelRaw =
-      readCookie("user_Level") ||
-      readCookie("user_LEVEL") ||
-      readCookie("user_level") ||
-      "";
-    const level = String(levelRaw).toUpperCase();
-    setIsMgr(level === "MGR");
-    setIsAdmin(level === "ADMIN" || level === "ADM");
+      readCookie('user_Level') || readCookie('user_LEVEL') || readCookie('user_level') || '';
+    const levelUpper = String(levelRaw).toUpperCase();
+    const level = levelUpper === 'ADMIN' ? 'ADM' : levelUpper;
+    setIsMgr(level === 'MGR');
+    setIsAdmin(level === 'ADM');
     setInitCheck(true);
   }, []);
 
   const handleParamChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >,
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value, type } = e.target;
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
-      [name]:
-        type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
     }));
   };
 
   const validateAndSetFile = (file: File) => {
-    const extension = file.name.split(".").pop()?.toLowerCase();
-    if (!extension || !["apk", "ipa"].includes(extension)) {
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    if (!extension || !['apk', 'ipa'].includes(extension)) {
       setUploadMessage(
-        "❌ Ekstensi file tidak diizinkan. Hanya file .apk atau .ipa yang diterima.",
+        '❌ Ekstensi file tidak diizinkan. Hanya file .apk atau .ipa yang diterima.'
       );
-      setUploadStatus("error");
+      setUploadStatus('error');
       return false;
     }
     const maxSize = 200 * 1024 * 1024;
     if (file.size > maxSize) {
       setUploadMessage(
-        `❌ Ukuran file terlalu besar. Maksimum 200MB. File Anda: ${(file.size / (1024 * 1024)).toFixed(2)}MB`,
+        `❌ Ukuran file terlalu besar. Maksimum 200MB. File Anda: ${(file.size / (1024 * 1024)).toFixed(2)}MB`
       );
-      setUploadStatus("error");
+      setUploadStatus('error');
       return false;
     }
     setSelectedFile(file);
-    setUploadStatus("idle");
-    setUploadMessage("");
+    setUploadStatus('idle');
+    setUploadMessage('');
     setUploadResult(null);
     return true;
   };
@@ -138,82 +133,80 @@ export default function ApkUploadPage() {
     }
     setUploading(false);
     setUploadProgress(0);
-    setUploadStatus("error");
-    setUploadMessage("❌ Upload dibatalkan.");
-    setUploadSpeed("");
-    setUploadEta("");
+    setUploadStatus('error');
+    setUploadMessage('❌ Upload dibatalkan.');
+    setUploadSpeed('');
+    setUploadEta('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!selectedFile) {
-      setUploadMessage("❌ Pilih file terlebih dahulu sebelum upload");
-      setUploadStatus("error");
+      setUploadMessage('❌ Pilih file terlebih dahulu sebelum upload');
+      setUploadStatus('error');
       return;
     }
 
     if (!formData.version.trim()) {
-      setUploadMessage("❌ Versi wajib diisi");
-      setUploadStatus("error");
+      setUploadMessage('❌ Versi wajib diisi');
+      setUploadStatus('error');
       return;
     }
 
     // Auto-validate platform vs extension
-    const ext = selectedFile.name.split(".").pop()?.toLowerCase();
-    if (formData.platform === "android" && ext !== "apk") {
-      setUploadMessage(
-        "❌ Platform Android membutuhkan file .apk, bukan ." + ext,
-      );
-      setUploadStatus("error");
+    const ext = selectedFile.name.split('.').pop()?.toLowerCase();
+    if (formData.platform === 'android' && ext !== 'apk') {
+      setUploadMessage('❌ Platform Android membutuhkan file .apk, bukan .' + ext);
+      setUploadStatus('error');
       return;
     }
-    if (formData.platform === "ios" && ext !== "ipa") {
-      setUploadMessage("❌ Platform iOS membutuhkan file .ipa, bukan ." + ext);
-      setUploadStatus("error");
+    if (formData.platform === 'ios' && ext !== 'ipa') {
+      setUploadMessage('❌ Platform iOS membutuhkan file .ipa, bukan .' + ext);
+      setUploadStatus('error');
       return;
     }
 
     setUploading(true);
-    setUploadStatus("uploading");
+    setUploadStatus('uploading');
     setUploadProgress(0);
-    setUploadMessage("⏳ Mengambil token...");
+    setUploadMessage('⏳ Mengambil token...');
     setUploadResult(null);
-    setUploadSpeed("");
-    setUploadEta("");
+    setUploadSpeed('');
+    setUploadEta('');
 
     // Step 1: Get token from server first
     let token: string;
     try {
-      const tokenRes = await fetch("/api/auth/token");
+      const tokenRes = await fetch('/api/auth/token');
       const tokenData = await tokenRes.json();
       if (!tokenData.success) {
-        throw new Error("Token tidak ditemukan");
+        throw new Error('Token tidak ditemukan');
       }
       token = tokenData.token;
     } catch {
       setUploading(false);
-      setUploadStatus("error");
-      setUploadMessage("❌ Gagal mengambil token autentikasi. Silakan login ulang.");
+      setUploadStatus('error');
+      setUploadMessage('❌ Gagal mengambil token autentikasi. Silakan login ulang.');
       return;
     }
 
-    setUploadMessage("⏳ Mempersiapkan upload...");
+    setUploadMessage('⏳ Mempersiapkan upload...');
 
     startTimeRef.current = Date.now();
     lastLoadedRef.current = 0;
     lastTimeRef.current = Date.now();
 
     const uploadFormData = new FormData();
-    uploadFormData.append("platform", formData.platform);
-    uploadFormData.append("version", formData.version);
-    uploadFormData.append("file", selectedFile);
+    uploadFormData.append('platform', formData.platform);
+    uploadFormData.append('version', formData.version);
+    uploadFormData.append('file', selectedFile);
     // Send force_update as "1" for true, empty string for false (backend expects this)
-    uploadFormData.append("force_update", formData.force_update ? "1" : "");
-    uploadFormData.append("min_version", formData.min_version.trim());
-    uploadFormData.append("changelog", formData.changelog.trim());
+    uploadFormData.append('force_update', formData.force_update ? '1' : '');
+    uploadFormData.append('min_version', formData.min_version.trim());
+    uploadFormData.append('changelog', formData.changelog.trim());
 
-    console.log("📤 FormData prepared:", {
+    console.log('📤 FormData prepared:', {
       platform: formData.platform,
       version: formData.version,
       force_update: formData.force_update,
@@ -225,7 +218,7 @@ export default function ApkUploadPage() {
     const xhr = new XMLHttpRequest();
     xhrRef.current = xhr;
 
-    xhr.upload.addEventListener("progress", (event) => {
+    xhr.upload.addEventListener('progress', event => {
       if (event.lengthComputable) {
         const now = Date.now();
         const percentComplete = (event.loaded / event.total) * 100;
@@ -234,12 +227,12 @@ export default function ApkUploadPage() {
         // Calculate speed every 500ms
         const timeDelta = (now - lastTimeRef.current) / 1000; // seconds
         const bytesDelta = event.loaded - lastLoadedRef.current;
-        let speedStr = "";
-        let etaStr = "";
+        let speedStr = '';
+        let etaStr = '';
 
         if (timeDelta > 0.5 && bytesDelta > 0) {
           const speedBps = bytesDelta / timeDelta;
-          speedStr = formatBytes(speedBps) + "/s";
+          speedStr = formatBytes(speedBps) + '/s';
           const remaining = event.total - event.loaded;
           const etaSec = remaining / speedBps;
           etaStr = formatEta(etaSec);
@@ -251,18 +244,18 @@ export default function ApkUploadPage() {
         setUploadSpeed(speedStr);
         setUploadEta(etaStr);
         setUploadMessage(
-          `⏳ Mengupload... ${pct}% — ${formatBytes(event.loaded)} / ${formatBytes(event.total)}`,
+          `⏳ Mengupload... ${pct}% — ${formatBytes(event.loaded)} / ${formatBytes(event.total)}`
         );
       }
     });
 
-    xhr.addEventListener("load", () => {
+    xhr.addEventListener('load', () => {
       xhrRef.current = null;
       setUploading(false);
-      setUploadSpeed("");
-      setUploadEta("");
+      setUploadSpeed('');
+      setUploadEta('');
 
-      const rawText = xhr.responseText || "";
+      const rawText = xhr.responseText || '';
       type ErrorResponse = {
         success?: boolean;
         message?: string;
@@ -279,111 +272,101 @@ export default function ApkUploadPage() {
           response = JSON.parse(rawText) as ErrorResponse;
         } catch {
           parseError = true;
-          console.warn("❗ Response parsing bukan JSON", rawText.slice(0, 600));
+          console.warn('❗ Response parsing bukan JSON', rawText.slice(0, 600));
         }
       }
 
-      console.log("📥 Response received:", {
+      console.log('📥 Response received:', {
         status: xhr.status,
         response,
         rawText: rawText.slice(0, 800),
       });
 
       if (xhr.status >= 200 && xhr.status < 300 && response?.success) {
-        setUploadStatus("success");
+        setUploadStatus('success');
         setUploadProgress(100);
         setUploadResult((response.data as unknown as UploadResult) || null);
         setUploadMessage(
-          `✓ Upload berhasil! ${(response.data as unknown as UploadResult)?.file_name || "APK berhasil diupload"}`,
+          `✓ Upload berhasil! ${(response.data as unknown as UploadResult)?.file_name || 'APK berhasil diupload'}`
         );
         // Reset form
         setSelectedFile(null);
         setFormData({
-          platform: "android",
-          version: "",
+          platform: 'android',
+          version: '',
           force_update: false,
-          min_version: "",
-          changelog: "",
+          min_version: '',
+          changelog: '',
         });
-        const fileInput = document.getElementById("file") as HTMLInputElement;
-        if (fileInput) fileInput.value = "";
+        const fileInput = document.getElementById('file') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
       } else {
-        setUploadStatus("error");
+        setUploadStatus('error');
         setUploadProgress(0);
 
         if (parseError) {
-          setUploadMessage(
-            `❌ Upload gagal: Response server bukan JSON, status ${xhr.status}`,
-          );
-          console.error("❌ Non-JSON response:", rawText.slice(0, 1000));
+          setUploadMessage(`❌ Upload gagal: Response server bukan JSON, status ${xhr.status}`);
+          console.error('❌ Non-JSON response:', rawText.slice(0, 1000));
           return;
         }
 
-        const errMsg =
-          response?.message ||
-          response?.error ||
-          `HTTP ${xhr.status}: Upload gagal`;
+        const errMsg = response?.message || response?.error || `HTTP ${xhr.status}: Upload gagal`;
 
         const details = response?.details;
-        if (
-          typeof details === "string" &&
-          details.trim().startsWith("<!DOCTYPE")
-        ) {
-          const snippet = details.replace(/\s+/g, " ").slice(0, 360);
-          console.warn("❗ Backend HTML error delivered in details:", snippet);
+        if (typeof details === 'string' && details.trim().startsWith('<!DOCTYPE')) {
+          const snippet = details.replace(/\s+/g, ' ').slice(0, 360);
+          console.warn('❗ Backend HTML error delivered in details:', snippet);
           setUploadMessage(`❌ Upload gagal: ${errMsg}. (Laravel 500)`);
         } else {
           setUploadMessage(`❌ Upload gagal: ${errMsg}`);
         }
 
-        console.error("❌ Upload error details:", response || {});
+        console.error('❌ Upload error details:', response || {});
         if (details) {
-          console.error("❌ Backend details:", details);
+          console.error('❌ Backend details:', details);
         }
       }
     });
 
-    xhr.addEventListener("error", () => {
+    xhr.addEventListener('error', () => {
       xhrRef.current = null;
       setUploading(false);
-      setUploadStatus("error");
+      setUploadStatus('error');
       setUploadProgress(0);
-      setUploadSpeed("");
-      setUploadEta("");
-      console.error("❌ XHR network error");
-      console.error("Status:", xhr.status);
-      console.error("StatusText:", xhr.statusText);
-      console.error("Response:", xhr.responseText);
-      setUploadMessage(
-        "❌ Terjadi kesalahan jaringan. Periksa koneksi Anda dan coba lagi.",
-      );
+      setUploadSpeed('');
+      setUploadEta('');
+      console.error('❌ XHR network error');
+      console.error('Status:', xhr.status);
+      console.error('StatusText:', xhr.statusText);
+      console.error('Response:', xhr.responseText);
+      setUploadMessage('❌ Terjadi kesalahan jaringan. Periksa koneksi Anda dan coba lagi.');
     });
 
-    xhr.addEventListener("abort", () => {
+    xhr.addEventListener('abort', () => {
       xhrRef.current = null;
     });
 
     // Upload directly to Laravel API (bypass Vercel 4.5MB limit)
-    const LARAVEL_API_URL = backendApiUrl("/app/apk");
+    const LARAVEL_API_URL = backendApiUrl('/app/apk');
 
-    xhr.open("POST", LARAVEL_API_URL);
-    xhr.setRequestHeader("Accept", "application/json");
-    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    xhr.open('POST', LARAVEL_API_URL);
+    xhr.setRequestHeader('Accept', 'application/json');
+    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
     // Do NOT set Content-Type — browser sets it with correct multipart boundary
     xhr.withCredentials = false; // CORS direct to Laravel
     xhr.send(uploadFormData);
   };
 
   const formatBytes = (bytes: number): string => {
-    if (bytes === 0) return "0 B";
+    if (bytes === 0) return '0 B';
     const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB"];
+    const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return (bytes / Math.pow(k, i)).toFixed(i > 1 ? 1 : 0) + " " + sizes[i];
+    return (bytes / Math.pow(k, i)).toFixed(i > 1 ? 1 : 0) + ' ' + sizes[i];
   };
 
   const formatEta = (seconds: number): string => {
-    if (!isFinite(seconds) || seconds < 0) return "";
+    if (!isFinite(seconds) || seconds < 0) return '';
     if (seconds < 60) return `${Math.round(seconds)}d`;
     const m = Math.floor(seconds / 60);
     const s = Math.round(seconds % 60);
@@ -396,8 +379,7 @@ export default function ApkUploadPage() {
         <div className="text-center max-w-lg">
           <h1 className="text-3xl font-bold text-error mb-4">Akses Ditolak</h1>
           <p className="text-base-content/70 mb-6">
-            Halaman ini hanya dapat diakses oleh user dengan level <b>MGR</b>{" "}
-            atau <b>ADM</b>.
+            Halaman ini hanya dapat diakses oleh user dengan level <b>MGR</b> atau <b>ADM</b>.
           </p>
           <a href="/dashboard" className="btn btn-primary">
             Kembali ke Dashboard
@@ -416,9 +398,7 @@ export default function ApkUploadPage() {
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-base-content">
-            Upload APK / IPA
-          </h1>
+          <h1 className="text-3xl font-bold text-base-content">Upload APK / IPA</h1>
           <p className="text-sm text-base-content/60 mt-1">
             Upload aplikasi mobile untuk sistem update otomatis
           </p>
@@ -472,17 +452,15 @@ export default function ApkUploadPage() {
               <div
                 className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
                   isDragOver
-                    ? "border-primary bg-primary/5"
+                    ? 'border-primary bg-primary/5'
                     : selectedFile
-                      ? "border-success bg-success/5"
-                      : "border-base-300 hover:border-primary/50"
-                } ${uploading ? "opacity-50 pointer-events-none" : ""}`}
+                      ? 'border-success bg-success/5'
+                      : 'border-base-300 hover:border-primary/50'
+                } ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
-                onClick={() =>
-                  !uploading && document.getElementById("file")?.click()
-                }
+                onClick={() => !uploading && document.getElementById('file')?.click()}
               >
                 <input
                   id="file"
@@ -509,25 +487,19 @@ export default function ApkUploadPage() {
                         d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                       />
                     </svg>
-                    <p className="font-semibold text-success text-sm mt-1">
-                      {selectedFile.name}
-                    </p>
-                    <p className="text-xs text-base-content/50">
-                      {formatBytes(selectedFile.size)}
-                    </p>
+                    <p className="font-semibold text-success text-sm mt-1">{selectedFile.name}</p>
+                    <p className="text-xs text-base-content/50">{formatBytes(selectedFile.size)}</p>
                     {!uploading && (
                       <button
                         type="button"
                         className="btn btn-xs btn-ghost text-error mt-1"
-                        onClick={(e) => {
+                        onClick={e => {
                           e.stopPropagation();
                           setSelectedFile(null);
-                          setUploadStatus("idle");
-                          setUploadMessage("");
-                          const fi = document.getElementById(
-                            "file",
-                          ) as HTMLInputElement;
-                          if (fi) fi.value = "";
+                          setUploadStatus('idle');
+                          setUploadMessage('');
+                          const fi = document.getElementById('file') as HTMLInputElement;
+                          if (fi) fi.value = '';
                         }}
                       >
                         Hapus file
@@ -550,10 +522,8 @@ export default function ApkUploadPage() {
                       />
                     </svg>
                     <p className="text-sm text-base-content/60">
-                      Drag &amp; drop file di sini, atau{" "}
-                      <span className="text-primary font-medium">
-                        pilih file
-                      </span>
+                      Drag &amp; drop file di sini, atau{' '}
+                      <span className="text-primary font-medium">pilih file</span>
                     </p>
                     <p className="text-xs text-base-content/40">
                       Mendukung .apk dan .ipa · Maksimum 200MB
@@ -575,7 +545,7 @@ export default function ApkUploadPage() {
                   disabled={uploading}
                 />
                 <span className="text-sm text-base-content">
-                  Force Update{" "}
+                  Force Update{' '}
                   <span className="text-base-content/50 font-normal">
                     (user wajib update ke versi ini)
                   </span>
@@ -586,10 +556,8 @@ export default function ApkUploadPage() {
             {/* Minimum Version */}
             <div className="form-group">
               <label className="block text-sm font-medium text-base-content mb-2">
-                Versi Minimum{" "}
-                <span className="text-base-content/40 font-normal text-xs">
-                  (opsional)
-                </span>
+                Versi Minimum{' '}
+                <span className="text-base-content/40 font-normal text-xs">(opsional)</span>
               </label>
               <input
                 type="text"
@@ -608,10 +576,8 @@ export default function ApkUploadPage() {
             {/* Changelog */}
             <div className="form-group">
               <label className="block text-sm font-medium text-base-content mb-2">
-                Changelog{" "}
-                <span className="text-base-content/40 font-normal text-xs">
-                  (opsional)
-                </span>
+                Changelog{' '}
+                <span className="text-base-content/40 font-normal text-xs">(opsional)</span>
               </label>
               <textarea
                 name="changelog"
@@ -629,9 +595,7 @@ export default function ApkUploadPage() {
               <button
                 type="submit"
                 disabled={uploading || !selectedFile}
-                className={`btn flex-1 ${
-                  uploading ? "btn-disabled" : "btn-primary"
-                }`}
+                className={`btn flex-1 ${uploading ? 'btn-disabled' : 'btn-primary'}`}
               >
                 {uploading ? (
                   <>
@@ -640,12 +604,7 @@ export default function ApkUploadPage() {
                   </>
                 ) : (
                   <>
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -672,23 +631,21 @@ export default function ApkUploadPage() {
           </form>
 
           {/* ─── Progress Bar ─── */}
-          {(uploading || uploadStatus === "success") && uploadProgress > 0 && (
+          {(uploading || uploadStatus === 'success') && uploadProgress > 0 && (
             <div className="mt-5 space-y-2">
               {/* Bar */}
               <div className="relative w-full bg-base-200 rounded-full h-4 overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-300 ease-out ${
-                    uploadStatus === "success" ? "bg-success" : "bg-primary"
-                  } ${uploading && uploadProgress < 100 ? "animate-pulse" : ""}`}
+                    uploadStatus === 'success' ? 'bg-success' : 'bg-primary'
+                  } ${uploading && uploadProgress < 100 ? 'animate-pulse' : ''}`}
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>
 
               {/* Progress details row */}
               <div className="flex items-center justify-between text-xs text-base-content/60">
-                <span className="font-mono font-semibold text-base-content">
-                  {uploadProgress}%
-                </span>
+                <span className="font-mono font-semibold text-base-content">{uploadProgress}%</span>
 
                 <div className="flex gap-4">
                   {uploadSpeed && (
@@ -703,8 +660,8 @@ export default function ApkUploadPage() {
                   )}
                   {selectedFile && uploading && (
                     <span>
-                      {formatBytes((uploadProgress / 100) * selectedFile.size)}{" "}
-                      / {formatBytes(selectedFile.size)}
+                      {formatBytes((uploadProgress / 100) * selectedFile.size)} /{' '}
+                      {formatBytes(selectedFile.size)}
                     </span>
                   )}
                 </div>
@@ -716,11 +673,11 @@ export default function ApkUploadPage() {
           {uploadMessage && (
             <div
               className={`alert mt-4 shadow-sm ${
-                uploadStatus === "success"
-                  ? "alert-success"
-                  : uploadStatus === "error"
-                    ? "alert-error"
-                    : "alert-info"
+                uploadStatus === 'success'
+                  ? 'alert-success'
+                  : uploadStatus === 'error'
+                    ? 'alert-error'
+                    : 'alert-info'
               }`}
             >
               <div className="w-full">
@@ -730,14 +687,10 @@ export default function ApkUploadPage() {
           )}
 
           {/* ─── Success Result Card ─── */}
-          {uploadStatus === "success" && uploadResult && (
+          {uploadStatus === 'success' && uploadResult && (
             <div className="mt-4 rounded-xl border border-success/30 bg-success/5 p-4 space-y-3">
               <h3 className="font-semibold text-success text-sm flex items-center gap-2">
-                <svg
-                  className="w-4 h-4"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                   <path
                     fillRule="evenodd"
                     clipRule="evenodd"
@@ -751,19 +704,13 @@ export default function ApkUploadPage() {
                 <div className="font-mono font-medium">{uploadResult.id}</div>
 
                 <div className="text-base-content/50">Platform</div>
-                <div className="font-medium capitalize">
-                  {uploadResult.platform}
-                </div>
+                <div className="font-medium capitalize">{uploadResult.platform}</div>
 
                 <div className="text-base-content/50">Versi</div>
-                <div className="font-mono font-medium">
-                  {uploadResult.version}
-                </div>
+                <div className="font-mono font-medium">{uploadResult.version}</div>
 
                 <div className="text-base-content/50">Nama File</div>
-                <div className="font-mono break-all">
-                  {uploadResult.file_name}
-                </div>
+                <div className="font-mono break-all">{uploadResult.file_name}</div>
 
                 <div className="text-base-content/50">Ukuran</div>
                 <div>{formatBytes(uploadResult.file_size)}</div>
@@ -783,9 +730,7 @@ export default function ApkUploadPage() {
                 {uploadResult.changelog && (
                   <>
                     <div className="text-base-content/50">Changelog</div>
-                    <div className="whitespace-pre-wrap">
-                      {uploadResult.changelog}
-                    </div>
+                    <div className="whitespace-pre-wrap">{uploadResult.changelog}</div>
                   </>
                 )}
               </div>
@@ -797,9 +742,7 @@ export default function ApkUploadPage() {
         <div className="mt-6 bg-info/10 rounded-lg p-4 border border-info/20">
           <h3 className="font-semibold text-info mb-2">ℹ️ Informasi Upload</h3>
           <ul className="text-sm text-base-content/70 space-y-1 list-disc list-inside">
-            <li>
-              File akan disimpan di server dan digunakan untuk automatic update
-            </li>
+            <li>File akan disimpan di server dan digunakan untuk automatic update</li>
             <li>Format file yang didukung: .apk (Android) dan .ipa (iOS)</li>
             <li>Ukuran maksimum file: 200MB</li>
             <li>Pastikan platform sesuai dengan ekstensi file yang dipilih</li>

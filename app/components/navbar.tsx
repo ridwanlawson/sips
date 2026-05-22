@@ -1,23 +1,23 @@
-"use client";
+'use client';
 
-import { useEffect, useState, memo, useCallback } from "react";
-import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
-import { Drawer } from "./drawer";
-import { Theme } from "./theme";
-import { LanguageSwitcher } from "./language-switcher";
-import { toTitleCase } from "@/utils/textManipulation";
-import { getProxiedImageUrl } from "@/utils/imageHelper";
-import { useTranslations } from "next-intl";
-import { cookieStore } from "@/utils/cookieStore";
-import { checkAndDownloadApp } from "@/utils/downloadapp";
+import { useEffect, useState, memo, useCallback } from 'react';
+import Image from 'next/image';
+import { usePathname, useRouter } from 'next/navigation';
+import { Drawer } from './drawer';
+import { Theme } from './theme';
+import { LanguageSwitcher } from './language-switcher';
+import { toTitleCase } from '@/utils/textManipulation';
+import { getProxiedImageUrl } from '@/utils/imageHelper';
+import { useTranslations } from 'next-intl';
+import { cookieStore } from '@/utils/cookieStore';
+import { checkAndDownloadApp } from '@/utils/downloadapp';
 
 const FALLBACK_AVATAR =
-  "https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp";
+  'https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp';
 
-// memo: Navbar tidak perlu re-render kecuali pathname berubah
+// Memoize Navbar so it only re-renders when pathname-driven state changes.
 export default memo(function Navbar() {
-  const t = useTranslations("Navbar");
+  const t = useTranslations('Navbar');
   const router = useRouter();
   const pathname = usePathname();
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -26,39 +26,37 @@ export default memo(function Navbar() {
   const [isNavigating, setIsNavigating] = useState<string | null>(null);
   const [isCheckingDownload, setIsCheckingDownload] = useState(false);
 
-  // Reset progress bar saat navigasi selesai
+  // Reset the progress bar when navigation completes.
   useEffect(() => {
     setIsNavigating(null);
   }, [pathname]);
 
-  // Baca cookie sekali saat mount — tidak perlu re-read
+  // Read cookies once on mount.
   useEffect(() => {
     const { photo, fullName, fcba } = cookieStore.getAllUserInfo();
     const cleanPhoto = photo?.trim();
-    const name = fullName?.trim() ?? "";
-    const unit = fcba?.trim() ?? "";
+    const name = fullName?.trim() ?? '';
+    const unit = fcba?.trim() ?? '';
 
     const parts: string[] = [];
     if (name) parts.push(toTitleCase(name));
     if (unit) parts.push(`(${unit.toUpperCase()})`);
 
     setPhotoUrl(
-      cleanPhoto && cleanPhoto !== "null" && cleanPhoto !== "undefined"
-        ? cleanPhoto
-        : null,
+      cleanPhoto && cleanPhoto !== 'null' && cleanPhoto !== 'undefined' ? cleanPhoto : null
     );
-    setFullNameDisplay(parts.join(" ").trim() || null);
+    setFullNameDisplay(parts.join(' ').trim() || null);
   }, []);
 
   const handleLogout = useCallback(async () => {
     setIsLoggingOut(true);
     try {
-      const response = await fetch("/api/auth/logout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
       });
       if (response.ok) {
-        router.push("/");
+        router.push('/');
       } else {
         setIsLoggingOut(false);
       }
@@ -73,7 +71,7 @@ export default memo(function Navbar() {
       setIsNavigating(href);
       router.push(href);
     },
-    [pathname, router],
+    [pathname, router]
   );
 
   const handleDownload = useCallback(async () => {
@@ -94,14 +92,8 @@ export default memo(function Navbar() {
       </div>
 
       <div className="navbar-center">
-        {/* priority: logo adalah LCP element di halaman ini */}
-        <Image
-          src="/logo.svg"
-          alt="SIPS"
-          width={50}
-          height={50}
-          priority
-        />
+        {/* The logo is the likely LCP element on this page. */}
+        <Image src="/logo.svg" alt="SIPS" width={50} height={50} priority />
       </div>
 
       <div className="navbar-end gap-2">
@@ -112,11 +104,11 @@ export default memo(function Navbar() {
             tabIndex={0}
             role="button"
             className="btn btn-ghost btn-circle avatar focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-            aria-label={t("userMenu")}
+            aria-label={t('userMenu')}
           >
             <div className="w-10 rounded-full">
               <Image
-                alt={t("userAvatar")}
+                alt={t('userAvatar')}
                 src={avatarSrc}
                 width={40}
                 height={40}
@@ -131,7 +123,7 @@ export default memo(function Navbar() {
             className="menu menu-sm dropdown-content bg-base-100 rounded-box z-50 mt-3 w-52 p-2 shadow"
           >
             <li>
-              <span className="font-bold">{fullNameDisplay ?? t("pengguna")}</span>
+              <span className="font-bold">{fullNameDisplay ?? t('pengguna')}</span>
             </li>
             <li>
               <button
@@ -143,7 +135,7 @@ export default memo(function Navbar() {
                 {isCheckingDownload ? (
                   <span className="loading loading-spinner loading-xs" />
                 ) : (
-                  <span className="badge">{t("download")}</span>
+                  <span className="badge">{t('download')}</span>
                 )}
               </button>
             </li>
@@ -154,7 +146,7 @@ export default memo(function Navbar() {
                 href="https://skj.my.id/"
                 className="justify-between"
               >
-                SIPS <span className="badge">{t("visit")}</span>
+                SIPS <span className="badge">{t('visit')}</span>
               </a>
             </li>
             <li>
@@ -162,26 +154,26 @@ export default memo(function Navbar() {
             </li>
             <li>
               <button
-                onClick={() => handleNavigate("/change-password")}
+                onClick={() => handleNavigate('/change-password')}
                 className="w-full text-left"
                 disabled={!!isNavigating}
               >
-                {t("changePassword")}
+                {t('changePassword')}
               </button>
             </li>
             <li>
               <button
                 onClick={handleLogout}
-                className={`w-full text-left ${isLoggingOut ? "opacity-50 cursor-not-allowed" : ""}`}
+                className={`w-full text-left ${isLoggingOut ? 'opacity-50 cursor-not-allowed' : ''}`}
                 disabled={isLoggingOut}
               >
                 {isLoggingOut ? (
                   <span className="flex items-center gap-2">
                     <span className="loading loading-spinner loading-xs" />
-                    {t("logout")}
+                    {t('logout')}
                   </span>
                 ) : (
-                  t("logout")
+                  t('logout')
                 )}
               </button>
             </li>
@@ -189,19 +181,19 @@ export default memo(function Navbar() {
         </div>
       </div>
 
-      {/* Progress bar navigasi */}
+      {/* Navigation progress bar */}
       {isNavigating && (
         <div className="fixed top-0 left-0 right-0 z-[9999] pointer-events-none">
           <div className="h-1 bg-primary animate-pulse" />
         </div>
       )}
 
-      {/* Overlay logout */}
+      {/* Logout overlay */}
       {isLoggingOut && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="flex flex-col items-center gap-4">
             <span className="loading loading-spinner loading-lg text-primary" />
-            <p className="text-white font-medium">{t("signingOut")}</p>
+            <p className="text-white font-medium">{t('signingOut')}</p>
           </div>
         </div>
       )}

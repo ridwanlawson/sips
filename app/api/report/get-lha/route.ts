@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { BACKEND_URL, getTokenFromCookie } from "@/utils/absensiProxy";
-import { applyUserDataScope } from "@/utils/requestScope";
-import { proxyGet, unauthorizedResponse } from "@/lib/apiProxy";
+import { NextRequest, NextResponse } from 'next/server';
+import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
+import { applyUserDataScope } from '@/utils/requestScope';
+import { proxyGet, unauthorizedResponse } from '@/lib/apiProxy';
 
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const token = await getTokenFromCookie();
@@ -13,6 +13,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const searchParams = new URLSearchParams(req.nextUrl.searchParams.toString());
   applyUserDataScope(req, searchParams);
 
-  const url = `${BACKEND_URL}/api/report/get-lha${searchParams.toString() ? `?${searchParams}` : ""}`;
+  const url = `${BACKEND_URL}/api/report/get-lha${searchParams.toString() ? `?${searchParams}` : ''}`;
   return proxyGet(url, token);
 }

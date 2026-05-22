@@ -1,4 +1,4 @@
-import { SkeletonTable } from "@/app/components/skeletons";
+import { SkeletonTable } from '@/app/components/skeletons';
 
 export default function AttendanceLoading() {
   return (

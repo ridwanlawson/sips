@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import dynamic from "next/dynamic";
-import { SkeletonTable } from "@/app/components/skeletons";
+import dynamic from 'next/dynamic';
+import { SkeletonTable } from '@/app/components/skeletons';
 
-const HarvestingUploadPage = dynamic(() => import("./harvestinguploadpage-client"), {
+const HarvestingUploadPage = dynamic(() => import('./harvestinguploadpage-client'), {
   ssr: false,
   loading: () => (
     <div className="p-6">

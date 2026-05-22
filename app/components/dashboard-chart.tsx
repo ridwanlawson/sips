@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { memo } from "react";
+import { memo } from 'react';
 
 interface SimpleBarChartProps {
   data: Array<{ label: string; value: number }>;
@@ -12,10 +12,10 @@ interface SimpleBarChartProps {
 export const SimpleBarChart = memo(function SimpleBarChart({
   data,
   maxValue,
-  color = "bg-blue-500",
+  color = 'bg-blue-500',
   title,
 }: SimpleBarChartProps) {
-  const max = maxValue || Math.max(...data.map((d) => d.value), 1);
+  const max = maxValue || Math.max(...data.map(d => d.value), 1);
 
   if (!data || data.length === 0) {
     return (
@@ -77,7 +77,7 @@ export const SimplePieChart = memo(function SimplePieChart({ data, title }: PieC
 
   let currentAngle = -90; // Start from top
 
-  const slices = data.map((item) => {
+  const slices = data.map(item => {
     const percentage = (item.value / total) * 100;
     const angle = (percentage / 100) * 360;
 
@@ -106,8 +106,8 @@ export const SimplePieChart = memo(function SimplePieChart({ data, title }: PieC
       `A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}`,
       `L ${x3} ${y3}`,
       `A ${holeRadius} ${holeRadius} 0 ${largeArc} 0 ${x4} ${y4}`,
-      "Z",
-    ].join(" ");
+      'Z',
+    ].join(' ');
 
     currentAngle += angle;
 
@@ -134,7 +134,7 @@ export const SimplePieChart = memo(function SimplePieChart({ data, title }: PieC
                   fill={slice.color}
                   className="transition-all duration-300 hover:opacity-80"
                   style={{
-                    filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.1))",
+                    filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
                   }}
                 />
               </g>
@@ -165,10 +165,7 @@ export const SimplePieChart = memo(function SimplePieChart({ data, title }: PieC
             const percentage = ((item.value / total) * 100).toFixed(1);
             return (
               <div key={idx} className="flex items-center gap-2">
-                <div
-                  className="w-3 h-3 rounded-sm"
-                  style={{ backgroundColor: item.color }}
-                />
+                <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: item.color }} />
                 <span className="text-xs">
                   {item.label}: {item.value} ({percentage}%)
                 </span>
@@ -231,8 +228,7 @@ export const SimpleLineChart = memo(function SimpleLineChart({ data, title }: Li
           <tbody>
             {data.map((item, idx) => {
               // Use mutually-exclusive categories for percentage: tepatWaktu + telat + pulangAwal + alpa
-              const total =
-                item.tepatWaktu + item.telat + item.pulangAwal + item.alpa || 1;
+              const total = item.tepatWaktu + item.telat + item.pulangAwal + item.alpa || 1;
 
               const pTepat = ((item.tepatWaktu / total) * 100).toFixed(1);
               const pTelat = ((item.telat / total) * 100).toFixed(1);
@@ -244,33 +240,25 @@ export const SimpleLineChart = memo(function SimpleLineChart({ data, title }: Li
                   <td className="font-medium">{item.label}</td>
 
                   <td className="text-center">
-                    <span className="badge badge-primary badge-sm">
-                      {item.hadir}
-                    </span>
+                    <span className="badge badge-primary badge-sm">{item.hadir}</span>
                   </td>
 
                   <td className="text-center">
-                    <span className="badge badge-success badge-sm">
-                      {item.tepatWaktu}
-                    </span>
+                    <span className="badge badge-success badge-sm">{item.tepatWaktu}</span>
                   </td>
 
                   <td className="text-center">
-                    <span className="badge badge-warning badge-sm">
-                      {item.telat}
-                    </span>
+                    <span className="badge badge-warning badge-sm">{item.telat}</span>
                   </td>
 
                   <td className="text-center">
-                    <span className="badge badge-error badge-sm">
-                      {item.pulangAwal}
-                    </span>
+                    <span className="badge badge-error badge-sm">{item.pulangAwal}</span>
                   </td>
 
                   <td className="text-center">
                     <span
                       className="badge badge-sm"
-                      style={{ backgroundColor: "#000", color: "#fff" }}
+                      style={{ backgroundColor: '#000', color: '#fff' }}
                     >
                       {item.alpa}
                     </span>

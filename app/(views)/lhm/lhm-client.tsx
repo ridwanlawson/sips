@@ -1,17 +1,17 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import DataTable from "@/app/components/dynamic-data-table";
-import type { TableColumn } from "react-data-table-component";
-import toast from "react-hot-toast";
-import { SkeletonTable } from "@/app/components/skeletons";
-import { isUnauthenticatedJson, logoutAndRedirect } from "@/utils/authHelper";
-import { getTodayISO, formatDateDMY, getYesterdayISO } from "@/utils/datetime";
-import { centerHeaderStyle } from "@/utils/tableHelper";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import DataTable from '@/app/components/dynamic-data-table';
+import type { TableColumn } from 'react-data-table-component';
+import toast from 'react-hot-toast';
+import { SkeletonTable } from '@/app/components/skeletons';
+import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/authHelper';
+import { getTodayISO, formatDateDMY, getYesterdayISO } from '@/utils/datetime';
+import { centerHeaderStyle } from '@/utils/tableHelper';
 
 /* =========================
-   T Y P E S
+   T Y P E h
 ========================= */
 type LhmData = {
   _rowKey?: string;
@@ -101,16 +101,43 @@ type Filters = Partial<{
   attendance: string;
 }>;
 
+type UserLevel = 'ADM' | 'MGR' | 'KSI' | 'MD1' | 'AST' | 'KRT' | 'KRA' | 'KRP' | 'MDP' | 'OTHER';
+
+const USER_LEVELS: UserLevel[] = [
+  'ADM',
+  'MGR',
+  'KSI',
+  'AST',
+  'MD1',
+  'MDP',
+  'KRA',
+  'KRT',
+  'KRP',
+  'OTHER',
+];
+
+const normalizeUserLevel = (level: string): UserLevel => {
+  const upperLevel = level.toUpperCase();
+  const normalizedLevel = upperLevel === 'ADMIN' ? 'ADM' : upperLevel;
+
+  if (USER_LEVELS.includes(normalizedLevel as UserLevel)) {
+    return normalizedLevel as UserLevel;
+  }
+
+  return 'OTHER';
+};
+
 /* =========================
-   U T I L S
-========================= */
-import { cookieStore } from "@/utils/cookieStore";
+   U T I L h
+   ========================= */
+import { cookieStore } from '@/utils/cookieStore';
+import { getFilterCriteria, getLockedFields } from '@/utils/filterHelper';
 
 /* =========================
    M A I N
-========================= */
+   ========================= */
 export default function Lhm() {
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
   const [filters, setFilters] = useState<Filters>(() => {
@@ -119,31 +146,71 @@ export default function Lhm() {
     return {
       fddate: yesterday,
       fddate_end: today,
-      kemandoran: "",
-      employeecode: "",
-      fcba: "",
-      afdeling: "",
-      tahuntanam: "",
-      blok: "",
-      attendance: "",
+      kemandoran: '',
+      employeecode: '',
+      fcba: '',
+      afdeling: '',
+      tahuntanam: '',
+      blok: '',
+      attendance: '',
     };
   });
 
-  const [homeFcba, setHomeFcba] = useState<string>("");
-  const [userLevel, setUserLevel] = useState<"ADM" | "MGR" | "AST" | "KRA" | "OTHER">(
-    "OTHER",
-  );
+  const [userLevel, setUserLevel] = useState<UserLevel>('OTHER');
+  const [homeFcba, setHomeFcba] = useState<string>('');
+  const [homeSection, setHomeSection] = useState<string>('');
+  const [homeGang, setHomeGang] = useState<string>('');
+  const [userFcbaCookie, setUserFcbaCookie] = useState<string>('');
+  const [userAfdelingCookie, setUserAfdelingCookie] = useState<string>('');
 
   /* ===== Bootstrap cookies ===== */
   useEffect(() => {
     setHomeFcba(cookieStore.getFcba());
+    setHomeSection(cookieStore.getSection());
+    setHomeGang(cookieStore.getGang());
+    setUserFcbaCookie(
+      cookieStore.getCookie('user_Fcba') || cookieStore.getCookie('user_fcba') || ''
+    );
+    setUserAfdelingCookie(
+      cookieStore.getCookie('user_Afdeling') || cookieStore.getCookie('user_afdeling') || ''
+    );
+
     const level = cookieStore.getLevel();
-    if (level === "ADM" || level === "MGR" || level === "AST" || level === "KRA") {
-      setUserLevel(level as "ADM" | "MGR" | "AST" | "KRA");
-    } else {
-      setUserLevel("OTHER");
-    }
+    setUserLevel(normalizeUserLevel(level));
   }, []);
+
+  const getScopedFilters = useCallback(
+    (baseFilters: Filters): Filters => {
+      const scopedFilters: Filters = { ...baseFilters };
+
+      const filterCriteria = getFilterCriteria(
+        {
+          level: userLevel,
+          fcba: userFcbaCookie || homeFcba,
+          afdeling: userAfdelingCookie || homeSection,
+          gang: homeGang,
+        },
+        'lhm'
+      );
+
+      // Apply the filter criteria to base filters
+      if (filterCriteria.fcba) scopedFilters.fcba = filterCriteria.fcba;
+      if (filterCriteria.afdeling) scopedFilters.afdeling = filterCriteria.afdeling;
+      if (filterCriteria.kemandoran) scopedFilters.kemandoran = filterCriteria.kemandoran;
+
+      return scopedFilters;
+    },
+    [userLevel, homeFcba, homeSection, homeGang, userFcbaCookie, userAfdelingCookie]
+  );
+
+  const { isFcbaLocked, isAfdelingLocked, isKemandoranLocked } = useMemo(
+    () => getLockedFields(userLevel, 'lhm'),
+    [userLevel]
+  );
+
+  useEffect(() => {
+    setFilters(current => getScopedFilters(current));
+  }, [getScopedFilters]);
 
   /* ===== Fetch LHM data ===== */
   const [items, setItems] = useState<LhmData[]>([]);
@@ -157,23 +224,17 @@ export default function Lhm() {
 
     try {
       const params = new URLSearchParams();
-      const f = { ...filters };
-
-      if (userLevel === "MGR" || userLevel === "AST" || userLevel === "KRA") {
-        if (homeFcba) f.fcba = homeFcba;
-        if (filters.afdeling) f.afdeling = filters.afdeling;
-      }
+      const f = getScopedFilters(filters);
 
       Object.entries(f).forEach(([k, v]) => {
-        if (v !== undefined && v !== null && v !== "") {
+        if (v !== undefined && v !== null && v !== '') {
           params.append(k, v as string);
         }
       });
 
-      const res = await fetch(
-        `/api/approval/lhm${params.toString() ? `?${params}` : ""}`,
-        { credentials: "include" },
-      );
+      const res = await fetch(`/api/approval/lhm${params.toString() ? `?${params}` : ''}`, {
+        credentials: 'include',
+      });
 
       if (res.status === 401) {
         await logoutAndRedirect();
@@ -195,21 +256,21 @@ export default function Lhm() {
 
       if (json.success && Array.isArray(json.data)) {
         if (json.data.length === 0) {
-          // Data kosong, tampilkan message dari API
-          setError(json.message || "Data tidak ditemukan.");
+          // Show the API message when data is empty
+          setError(json.message || 'Data tidak ditemukan.');
           setItems([]);
         } else {
           const seen = new Set<string>();
           const data = json.data.map((it: LhmData, idx: number) => {
             const candidate = [
-              it.employeecode || "",
-              it.kemandoran || "",
-              (it.fddate || "").split(" ")[0],
-              it.blok || "",
-              it.fcba || "",
-              it.afdeling || "",
+              it.employeecode || '',
+              it.kemandoran || '',
+              (it.fddate || '').split(' ')[0],
+              it.blok || '',
+              it.fcba || '',
+              it.afdeling || '',
               String(idx),
-            ].join("|");
+            ].join('|');
             let key = candidate;
             while (seen.has(key)) key = `${key}_`;
             seen.add(key);
@@ -218,21 +279,21 @@ export default function Lhm() {
           setItems(data);
         }
       } else {
-        const msg = json.message || "Gagal mengambil data";
+        const msg = json.message || 'Gagal mengambil data';
         setError(msg);
         setItems([]);
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Terjadi kesalahan";
+      const msg = err instanceof Error ? err.message : 'Terjadi kesalahan';
       setError(msg);
       toast.error(msg);
     } finally {
       setLoading(false);
     }
-  }, [filters, userLevel, homeFcba]);
+  }, [filters, getScopedFilters]);
 
   useEffect(() => {
-    if (homeFcba || userLevel === "ADM") {
+    if (homeFcba || userLevel === 'ADM') {
       fetchData();
     }
   }, [filters, userLevel, homeFcba, fetchData]);
@@ -241,7 +302,7 @@ export default function Lhm() {
   const filtered = useMemo(() => {
     if (!q.trim()) return items;
     const s = q.toLowerCase();
-    const filteredItems = items.filter((it) =>
+    const filteredItems = items.filter(it =>
       [
         it.employeecode,
         it.nama,
@@ -257,12 +318,12 @@ export default function Lhm() {
         it.lastupdate,
       ]
         .filter(Boolean)
-        .some((v) => String(v).toLowerCase().includes(s)),
+        .some(v => String(v).toLowerCase().includes(s))
     );
     // Jika pencarian attendance tidak ditemukan, tampilkan error
     if (q && items.length > 0) {
-      const attendanceExists = items.some((item) =>
-        (item.attendance || "").toLowerCase().includes(s),
+      const attendanceExists = items.some(item =>
+        (item.attendance || '').toLowerCase().includes(s)
       );
       if (!attendanceExists) {
         setError(`Data dengan attendance "${q}" tidak ditemukan.`);
@@ -276,116 +337,109 @@ export default function Lhm() {
   /* ===== Export Excel ===== */
   const handleExport = async () => {
     if (filtered.length === 0) {
-      toast.error("Tidak ada data untuk diekspor");
+      toast.error('Tidak ada data untuk diekspor');
       return;
     }
 
     const dataToExport = filtered.map((r, idx) => ({
       No: idx + 1,
       Tanggal: formatDateDMY(r.fddate),
-      Kemandoran: r.kemandoran || "-",
-      FCBA: r.fcba || "-",
-      Afdeling: r.afdeling || "-",
-      "Kode Karyawan": r.employeecode || "-",
-      Nama: r.nama || "-",
-      Attendance: r.attendance || "-",
-      HK: r.hk ?? "-",
-      Blok: r.blok || "-",
-      "Tahun Tanam": r.tahuntanam || "-",
-      JJG: Number(r.jjg || "0"),
-      BRD: Number(r.brd || "0"),
-      HA: Number(r.ha || "0"),
-      MentahQty: Number(r.mentahqty || "0"),
-      MentahRp: Number(r.mentahrp || "0"),
-      EmptyBunchQty: Number(r.emptybunchqty || "0"),
-      EmptyBunchRp: Number(r.emptybunchrp || "0"),
-      JumlahDenda: Number(r.jumlahdenda || "0"),
-      TotalAllJjg: Number(r.totalalljjg || "0"),
-      Basis: Number(r.basis || "0"),
-      RpBasis: Number(r.rpbasis || "0"),
-      PremiLv1: Number(r.premilv1 || "0"),
-      Rate1: Number(r.rate1 || "0"),
-      RpLv1: Number(r.rplv1 || "0"),
-      PremiLv2: Number(r.premilv2 || "0"),
-      Rate2: Number(r.rate2 || "0"),
-      RpLv2: Number(r.rplv2 || "0"),
-      PremiLv3: Number(r.premilv3 || "0"),
-      Rate3: Number(r.rate3 || "0"),
-      RpLv3: Number(r.rplv3 || "0"),
-      TotalRpPremi: Number(r.totalrppremi || "0"),
-      KurangBasis: Number(r.kurangbasis || "0"),
-      HariLibur: Number(r.harilibur || "0"),
-      RpHK: Number(r.rphk || "0"),
-      "Brondolan RP": Number(r.brd_rp || "0"),
-      Total: Number(r.total || "0"),
-      "Under Ripe": Number(r.under_ripe || "0"),
-      Overripe: Number(r.overripe || "0"),
-      Abnormal: Number(r.abnormal || "0"),
-      "Long Stalk": Number(r.long_stalk || "0"),
-      "Eaten by Rat": Number(r.eaten_by_rat || "0"),
-      "Unharvest FFB": Number(r.unharvest_ffb || "0"),
-      "Uncollect LF Circle": Number(r.uncollect_lf_circle || "0"),
-      "Uncollect LF Piece": Number(r.uncollect_lf_piece || "0"),
-      "Unarrange FFB": Number(r.unarrange_ffb || "0"),
-      "Unprune Frond": Number(r.unprune_frond || "0"),
-      "QE1 Pelepah Tidak Disusun": Number(r.qe_1_pelepah_tidak_disusun || "0"),
-      "QE2 Buah Matahari": Number(r.qe_2_buah_matahari || "0"),
-      "QE3 Buah Busuk": Number(r.qe_3_buah_busuk || "0"),
-      "QE4 Buah Mentah Diperam": Number(r.qe_4_buah_mentah_diperam || "0"),
-      "QE5 Over Pruning": Number(r.qe_5_over_pruning || "0"),
-      "QE6 Brondolan Tidak Dialas": Number(r.qe_6_brondolan_tidak_dialas || "0"),
-      "QE7 Brondolan Kotor Sampah": Number(r.qe_7_brondolan_kotor_sampah || "0"),
-      "QE8 Buah Dibelah": Number(r.qe_8_buah_dibelah || "0"),
-      QE9: Number(r.qe_9 || "0"),
-      QE10: Number(r.qe_10 || "0"),
-      "QE11 Buah Mentah A1": Number(r.qe_11_buah_mentah_a1 || "0"),
-      "QE12 Buah Tinggal S": Number(r.qe_12_buah_tinggal_s || "0"),
-      "QE13 B Ggng Pjg T Dipotong": Number(r.qe_13_b_ggng_pjg_t_dipotong || "0"),
-      QE14: Number(r.qe_14 || "0"),
-      QE15: Number(r.qe_15 || "0"),
-      "QE16 Buah Mentah Kerani": Number(r.qe_16_buah_mentah_kerani || "0"),
-      "QE17 Buah Mentah Mandor": Number(r.qe_17_buah_mentah_mandor || "0"),
-      "Document No": r.documentno || "-",
-      "Last Update": r.lastupdate || "-",
-      "Last Time": r.lasttime || "-",
+      Kemandoran: r.kemandoran || '-',
+      FCBA: r.fcba || '-',
+      Afdeling: r.afdeling || '-',
+      'Kode Karyawan': r.employeecode || '-',
+      Nama: r.nama || '-',
+      Attendance: r.attendance || '-',
+      HK: r.hk ?? '-',
+      Blok: r.blok || '-',
+      'Tahun Tanam': r.tahuntanam || '-',
+      JJG: Number(r.jjg || '0'),
+      BRD: Number(r.brd || '0'),
+      HA: Number(r.ha || '0'),
+      MentahQty: Number(r.mentahqty || '0'),
+      MentahRp: Number(r.mentahrp || '0'),
+      EmptyBunchQty: Number(r.emptybunchqty || '0'),
+      EmptyBunchRp: Number(r.emptybunchrp || '0'),
+      JumlahDenda: Number(r.jumlahdenda || '0'),
+      TotalAllJjg: Number(r.totalalljjg || '0'),
+      Basis: Number(r.basis || '0'),
+      RpBasis: Number(r.rpbasis || '0'),
+      PremiLv1: Number(r.premilv1 || '0'),
+      Rate1: Number(r.rate1 || '0'),
+      RpLv1: Number(r.rplv1 || '0'),
+      PremiLv2: Number(r.premilv2 || '0'),
+      Rate2: Number(r.rate2 || '0'),
+      RpLv2: Number(r.rplv2 || '0'),
+      PremiLv3: Number(r.premilv3 || '0'),
+      Rate3: Number(r.rate3 || '0'),
+      RpLv3: Number(r.rplv3 || '0'),
+      TotalRpPremi: Number(r.totalrppremi || '0'),
+      KurangBasis: Number(r.kurangbasis || '0'),
+      HariLibur: Number(r.harilibur || '0'),
+      RpHK: Number(r.rphk || '0'),
+      'Brondolan RP': Number(r.brd_rp || '0'),
+      Total: Number(r.total || '0'),
+      'Under Ripe': Number(r.under_ripe || '0'),
+      Overripe: Number(r.overripe || '0'),
+      Abnormal: Number(r.abnormal || '0'),
+      'Long Stalk': Number(r.long_stalk || '0'),
+      'Eaten by Rat': Number(r.eaten_by_rat || '0'),
+      'Unharvest FFB': Number(r.unharvest_ffb || '0'),
+      'Uncollect LF Circle': Number(r.uncollect_lf_circle || '0'),
+      'Uncollect LF Piece': Number(r.uncollect_lf_piece || '0'),
+      'Unarrange FFB': Number(r.unarrange_ffb || '0'),
+      'Unprune Frond': Number(r.unprune_frond || '0'),
+      'QE1 Pelepah Tidak Disusun': Number(r.qe_1_pelepah_tidak_disusun || '0'),
+      'QE2 Buah Matahari': Number(r.qe_2_buah_matahari || '0'),
+      'QE3 Buah Busuk': Number(r.qe_3_buah_busuk || '0'),
+      'QE4 Buah Mentah Diperam': Number(r.qe_4_buah_mentah_diperam || '0'),
+      'QE5 Over Pruning': Number(r.qe_5_over_pruning || '0'),
+      'QE6 Brondolan Tidak Dialas': Number(r.qe_6_brondolan_tidak_dialas || '0'),
+      'QE7 Brondolan Kotor Sampah': Number(r.qe_7_brondolan_kotor_sampah || '0'),
+      'QE8 Buah Dibelah': Number(r.qe_8_buah_dibelah || '0'),
+      QE9: Number(r.qe_9 || '0'),
+      QE10: Number(r.qe_10 || '0'),
+      'QE11 Buah Mentah A1': Number(r.qe_11_buah_mentah_a1 || '0'),
+      'QE12 Buah Tinggal S': Number(r.qe_12_buah_tinggal_s || '0'),
+      'QE13 B Ggng Pjg T Dipotong': Number(r.qe_13_b_ggng_pjg_t_dipotong || '0'),
+      QE14: Number(r.qe_14 || '0'),
+      QE15: Number(r.qe_15 || '0'),
+      'QE16 Buah Mentah Kerani': Number(r.qe_16_buah_mentah_kerani || '0'),
+      'QE17 Buah Mentah Mandor': Number(r.qe_17_buah_mentah_mandor || '0'),
+      'Document No': r.documentno || '-',
+      'Last Update': r.lastupdate || '-',
+      'Last Time': r.lasttime || '-',
     }));
 
-    const xlsx = await import("xlsx");
-    const ws = xlsx.utils.json_to_sheet(dataToExport, { cellDates: true, });
+    const xlsx = await import('xlsx');
+    const ws = xlsx.utils.json_to_sheet(dataToExport, { cellDates: true });
     const wb = xlsx.utils.book_new();
-    xlsx.utils.book_append_sheet(wb, ws, "LHM");
-    xlsx.writeFile(
-      wb,
-      `LHM_${filters.fddate}_${filters.fddate_end}.xlsx`,
-    );
+    xlsx.utils.book_append_sheet(wb, ws, 'LHM');
+    xlsx.writeFile(wb, `LHM_${filters.fddate}_${filters.fddate_end}.xlsx`);
   };
 
   /* ===== Columns ===== */
   const formatNumber = useCallback((val: string | null | undefined) => {
-    const num = Number(val ?? "0");
-    if (isNaN(num)) return "0";
-    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    const num = Number(val ?? '0');
+    if (isNaN(num)) return '0';
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   }, []);
 
   const numCell = useCallback(
     (val: string | null | undefined) => {
       const formatted = formatNumber(val);
-      return (
-        <span className="text-right inline-block w-full text-gray-700">
-          {formatted}
-        </span>
-      );
+      return <span className="text-right inline-block w-full text-gray-700">{formatted}</span>;
     },
-    [formatNumber],
+    [formatNumber]
   );
 
   const columns: TableColumn<LhmData>[] = useMemo(
     () => [
       {
         name: <span title="Aksi edit/hapus data absensi">Act</span>,
-        width: "50px",
-        cell: (r) => {
-          const tanggal = (r.fddate || "").split(" ")[0];
+        width: '50px',
+        cell: r => {
+          const tanggal = (r.fddate || '').split(' ')[0];
 
           return (
             <div className="space-x-1 whitespace-nowrap">
@@ -420,110 +474,108 @@ export default function Lhm() {
       },
       {
         name: <span title="Nomor urut baris">#</span>,
-        width: "70px",
+        width: '70px',
         cell: (_r, i) => <span>{i + 1}</span>,
         ignoreRowClick: true,
       },
       {
         name: <span title="Tanggal panen">Tanggal</span>,
-        selector: (r) => (r.fddate || "").split(" ")[0],
+        selector: r => (r.fddate || '').split(' ')[0],
         sortable: true,
-        width: "125px",
-        cell: (r) => {
-          const raw = (r.fddate || "").split(" ")[0];
+        width: '125px',
+        cell: r => {
+          const raw = (r.fddate || '').split(' ')[0];
           return <span title={raw}>{formatDateDMY(raw)}</span>;
         },
       },
       {
         name: <span title="Kemandoran">Kemandoran</span>,
-        selector: (r) => r.kemandoran,
+        selector: r => r.kemandoran,
         sortable: true,
-        width: "120px",
+        width: '120px',
       },
       {
         name: <span title="Kode Karyawan">Karyawan</span>,
-        selector: (r) => r.employeecode,
+        selector: r => r.employeecode,
         sortable: true,
-        width: "180px",
-        style: { flexGrow: 2 as number, minWidth: "160px" },
+        width: '180px',
+        style: { flexGrow: 2 as number, minWidth: '160px' },
       },
       {
         name: <span title="Nama Karyawan">Nama</span>,
-        selector: (r) => r.nama,
+        selector: r => r.nama,
         sortable: true,
-        width: "160px",
-        style: { flexGrow: 2 as number, minWidth: "140px" },
+        width: '160px',
+        style: { flexGrow: 2 as number, minWidth: '140px' },
       },
       {
         name: <span title="Kode Attendance">Att</span>,
-        selector: (r) => r.attendance,
+        selector: r => r.attendance,
         sortable: true,
-        width: "80px",
-        cell: (r) =>
-          r.attendance ? (
-            <span className="badge badge-sm badge-ghost">{r.attendance}</span>
-          ) : null,
+        width: '80px',
+        cell: r =>
+          r.attendance ? <span className="badge badge-sm badge-ghost">{r.attendance}</span> : null,
       },
       {
         name: <span title="Hari Kerja (HK)">HK</span>,
-        selector: (r) => r.hk ?? "-",
+        selector: r => r.hk ?? '-',
         sortable: true,
-        width: "65px",
-        cell: (r) => r.hk,
+        width: '65px',
+        cell: r => r.hk,
       },
       {
         name: <span title="Kode Blok">Blok</span>,
-        selector: (r) => r.blok,
+        selector: r => r.blok,
         sortable: true,
-        width: "75px",
+        width: '75px',
       },
       {
         name: <span title="Tahun Tanam">Tahun Tanam</span>,
-        selector: (r) => r.tahuntanam,
+        selector: r => r.tahuntanam,
         sortable: true,
-        width: "80px",
+        width: '80px',
       },
       {
         name: <span title="Janjang (JJG)">JJG</span>,
-        selector: (r) => r.jjg,
+        selector: r => r.jjg,
         sortable: true,
-        width: "70px",
-        cell: (r) => numCell(r.jjg),
+        width: '70px',
+        cell: r => numCell(r.jjg),
       },
       {
         name: <span title="Brondolan (BRD)">BRD</span>,
-        selector: (r) => r.brd,
+        selector: r => r.brd,
         sortable: true,
-        width: "70px",
-        cell: (r) => numCell(r.brd),
+        width: '70px',
+        cell: r => numCell(r.brd),
       },
       {
         name: <span title="Hektar (HA)">HA</span>,
-        selector: (r) => r.ha,
+        selector: r => r.ha,
         sortable: true,
-        width: "65px",
-        cell: (r) => numCell(r.ha),
+        width: '65px',
+        cell: r => numCell(r.ha),
       },
       {
         name: <span title="Mentah Qty">Mentah-A (Jjg)</span>,
-        selector: (r) => r.mentahqty,
+        selector: r => r.mentahqty,
         sortable: true,
-        width: "110px",
-        cell: (r) => numCell(r.mentahqty),
+        width: '110px',
+        cell: r => numCell(r.mentahqty),
       },
       {
         name: <span title="Mentah Rp">Mentah-A (Rp)</span>,
-        selector: (r) => r.mentahrp,
+        selector: r => r.mentahrp,
         sortable: true,
-        width: "110px",
-        cell: (r) => numCell(r.mentahrp),
+        width: '110px',
+        cell: r => numCell(r.mentahrp),
       },
       {
         name: <span title="Empty Bunch Qty">E (Jjg)</span>,
-        selector: (r) => r.emptybunchqty,
+        selector: r => r.emptybunchqty,
         sortable: true,
-        width: "70px",
-        cell: (r) => numCell(r.emptybunchqty),
+        width: '70px',
+        cell: r => numCell(r.emptybunchqty),
       },
       {
         name: (
@@ -532,168 +584,148 @@ export default function Lhm() {
             (Rp)
           </span>
         ),
-        selector: (r) => r.emptybunchrp,
+        selector: r => r.emptybunchrp,
         sortable: true,
-        width: "85px",
-        cell: (r) => numCell(r.emptybunchrp),
+        width: '85px',
+        cell: r => numCell(r.emptybunchrp),
       },
       {
-        name: <span title="Jumlah Denda">Jumlah (Rp)</span>,
-        selector: (r) => r.jumlahdenda,
+        name: <span title="Jumlah aenda">Jumlah (Rp)</span>,
+        selector: r => r.jumlahdenda,
         sortable: true,
-        width: "85px",
-        cell: (r) => numCell(r.jumlahdenda),
+        width: '85px',
+        cell: r => numCell(r.jumlahdenda),
       },
       {
         name: <span title="Hasil Netto Jjg">Hasil Netto (Jjg)</span>,
-        selector: (r) => r.totalalljjg,
+        selector: r => r.totalalljjg,
         sortable: true,
-        width: "80px",
-        cell: (r) => numCell(r.totalalljjg),
+        width: '80px',
+        cell: r => numCell(r.totalalljjg),
       },
       {
         name: <span title="Janjang Basis">Basis (Jjg)</span>,
-        selector: (r) => r.basis,
+        selector: r => r.basis,
         sortable: true,
-        width: "70px",
-        cell: (r) => numCell(r.basis),
+        width: '70px',
+        cell: r => numCell(r.basis),
       },
       {
         name: <span title="Rupiah Siap Basis">Siap Basis (Rp)</span>,
-        selector: (r) => r.rpbasis,
+        selector: r => r.rpbasis,
         sortable: true,
-        width: "85px",
-        cell: (r) => numCell(r.rpbasis),
+        width: '85px',
+        cell: r => numCell(r.rpbasis),
       },
       {
-        name: (
-          <span title="Jumlah Janjang Lebih Basis Level 1">
-            Level 1 Jlh Jjg
-          </span>
-        ),
-        selector: (r) => r.premilv1,
+        name: <span title="Jumlah Janjang Lebih Basis Level 1">Level 1 Jlh Jjg</span>,
+        selector: r => r.premilv1,
         sortable: true,
-        width: "85px",
-        cell: (r) => numCell(r.premilv1),
+        width: '85px',
+        cell: r => numCell(r.premilv1),
       },
       {
         name: <span title="Rupiah / Janjang Level 1">Level 1 Rp/Jjg</span>,
-        selector: (r) => r.rate1,
+        selector: r => r.rate1,
         sortable: true,
-        width: "85px",
-        cell: (r) => numCell(r.rate1),
+        width: '85px',
+        cell: r => numCell(r.rate1),
       },
       {
         name: <span title="Rupiah Level 1">Level 1 Rp</span>,
-        selector: (r) => r.rplv1,
+        selector: r => r.rplv1,
         sortable: true,
-        width: "85px",
-        cell: (r) => numCell(r.rplv1),
+        width: '85px',
+        cell: r => numCell(r.rplv1),
       },
       {
-        name: (
-          <span title="Jumlah Janjang Lebih Basis Level 2">
-            Level 2 Jlh Jjg
-          </span>
-        ),
-        selector: (r) => r.premilv2,
+        name: <span title="Jumlah Janjang Lebih Basis Level 2">Level 2 Jlh Jjg</span>,
+        selector: r => r.premilv2,
         sortable: true,
-        width: "85px",
-        cell: (r) => numCell(r.premilv2),
+        width: '85px',
+        cell: r => numCell(r.premilv2),
       },
       {
         name: <span title="Rupiah / Janjang Level 2">Level 2 Rp/Jjg</span>,
-        selector: (r) => r.rate2,
+        selector: r => r.rate2,
         sortable: true,
-        width: "85px",
-        cell: (r) => numCell(r.rate2),
+        width: '85px',
+        cell: r => numCell(r.rate2),
       },
       {
         name: <span title="Rupiah Level 2">Level 2 Rp</span>,
-        selector: (r) => r.rplv2,
+        selector: r => r.rplv2,
         sortable: true,
-        width: "85px",
-        cell: (r) => numCell(r.rplv2),
+        width: '85px',
+        cell: r => numCell(r.rplv2),
       },
       {
-        name: (
-          <span title="Jumlah Janjang Lebih Basis Level 3">
-            Level 3 Jlh Jjg
-          </span>
-        ),
-        selector: (r) => r.premilv3,
+        name: <span title="Jumlah Janjang Lebih Basis Level 3">Level 3 Jlh Jjg</span>,
+        selector: r => r.premilv3,
         sortable: true,
-        width: "85px",
-        cell: (r) => numCell(r.premilv3),
+        width: '85px',
+        cell: r => numCell(r.premilv3),
       },
       {
         name: <span title="Rupiah / Janjang Level 3">Level 3 Rp/Jjg</span>,
-        selector: (r) => r.rate3,
+        selector: r => r.rate3,
         sortable: true,
-        width: "85px",
-        cell: (r) => numCell(r.rate3),
+        width: '85px',
+        cell: r => numCell(r.rate3),
       },
       {
         name: <span title="Rupiah Level 3">Level 3 Rp</span>,
-        selector: (r) => r.rplv3,
+        selector: r => r.rplv3,
         sortable: true,
-        width: "85px",
-        cell: (r) => numCell(r.rplv3),
+        width: '85px',
+        cell: r => numCell(r.rplv3),
       },
       {
         name: <span title="Jumlah Premi (Rp)">Jumlah Premi (Rp)</span>,
-        selector: (r) => r.totalrppremi,
+        selector: r => r.totalrppremi,
         sortable: true,
-        width: "95px",
-        cell: (r) => numCell(r.totalrppremi),
+        width: '95px',
+        cell: r => numCell(r.totalrppremi),
       },
       {
         name: <span title="Upah Pokok (Rp)">Upah Pokok (Rp)</span>,
-        selector: (r) => r.rphk,
+        selector: r => r.rphk,
         sortable: true,
-        width: "95px",
-        cell: (r) => numCell(r.rphk),
+        width: '95px',
+        cell: r => numCell(r.rphk),
       },
       {
         name: <span title="Tidak Capai Basis (Rp)">Tidak Capai Basis (Rp)</span>,
-        selector: (r) => r.kurangbasis,
+        selector: r => r.kurangbasis,
         sortable: true,
-        width: "95px",
-        cell: (r) => numCell(r.kurangbasis),
+        width: '95px',
+        cell: r => numCell(r.kurangbasis),
       },
       {
         name: <span title="Premi Panen (Rp)">Premi Panen (Rp)</span>,
-        selector: (r) =>
-          Number(r.totalrppremi || 0) + Number(r.rpbasis || 0),
+        selector: r => Number(r.totalrppremi || 0) + Number(r.rpbasis || 0),
         sortable: true,
-        width: "95px",
-        cell: (r) =>
-          numCell(
-            String(
-              Number(r.totalrppremi || 0) + Number(r.rpbasis || 0)
-            )
-          ),
+        width: '95px',
+        cell: r => numCell(String(Number(r.totalrppremi || 0) + Number(r.rpbasis || 0))),
       },
       {
         name: <span title="Premi Brondol (Rp)">Premi Brondol (Rp)</span>,
-        selector: (r) => r.brd_rp,
+        selector: r => r.brd_rp,
         sortable: true,
-        width: "95px",
-        cell: (r) => numCell(r.brd_rp),
+        width: '95px',
+        cell: r => numCell(r.brd_rp),
       },
       {
         name: <span title="Total">Total</span>,
-        selector: (r) => r.total,
+        selector: r => r.total,
         sortable: true,
-        width: "100px",
-        cell: (r) => (
-          <span className="font-bold w-full text-right inline-block">
-            {formatNumber(r.total)}
-          </span>
+        width: '100px',
+        cell: r => (
+          <span className="font-bold w-full text-right inline-block">{formatNumber(r.total)}</span>
         ),
       },
     ],
-    [numCell],
+    [numCell]
   );
 
   return (
@@ -710,13 +742,13 @@ export default function Lhm() {
           <div className="flex justify-start sm:justify-end gap-2 flex-wrap w-full">
             <button
               className="btn btn-outline btn-sm"
-              onClick={() => setShowFilters((s) => !s)}
+              onClick={() => setShowFilters(s => !s)}
               title="Tampilkan / sembunyikan filter lanjutan"
             >
-              {showFilters ? "Sembunyikan Filter" : "Tampilkan Filter"}
+              {showFilters ? 'Sembunyikan Filter' : 'Tampilkan Filter'}
             </button>
             <button
-              className={`btn btn-sm ${loading ? "btn-disabled" : ""}`}
+              className={`btn btn-sm ${loading ? 'btn-disabled' : ''}`}
               onClick={fetchData}
               disabled={loading}
               title="Refresh data LHM"
@@ -727,7 +759,7 @@ export default function Lhm() {
                   Memuat...
                 </>
               ) : (
-                "Refresh"
+                'Refresh'
               )}
             </button>
             <button
@@ -740,13 +772,13 @@ export default function Lhm() {
           </div>
         </div>
 
-        {/* Quick Search */}
+        {/* Quick hearch */}
         <div className="mb-3 flex justify-end gap-2">
           <input
             className="input input-bordered w-full md:w-96"
             placeholder="Cari apapun (karyawan, blok, fcba, document no...)"
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={e => setQ(e.target.value)}
             title="Pencarian cepat di semua kolom penting"
           />
         </div>
@@ -759,88 +791,71 @@ export default function Lhm() {
                 type="date"
                 className="input input-bordered w-full"
                 placeholder="Tanggal Awal"
-                value={filters.fddate ?? ""}
-                onChange={(e) =>
-                  setFilters((s) => ({ ...s, fddate: e.target.value }))
-                }
+                value={filters.fddate ?? ''}
+                onChange={e => setFilters(s => ({ ...s, fddate: e.target.value }))}
                 title="Filter tanggal awal panen"
               />
               <input
                 type="date"
                 className="input input-bordered w-full"
                 placeholder="Tanggal Akhir"
-                value={filters.fddate_end ?? ""}
-                onChange={(e) =>
-                  setFilters((s) => ({ ...s, fddate_end: e.target.value }))
-                }
+                value={filters.fddate_end ?? ''}
+                onChange={e => setFilters(s => ({ ...s, fddate_end: e.target.value }))}
                 title="Filter tanggal akhir panen"
               />
               <input
                 className="input input-bordered w-full"
                 placeholder="Kemandoran"
-                value={filters.kemandoran ?? ""}
-                onChange={(e) =>
-                  setFilters((s) => ({ ...s, kemandoran: e.target.value }))
-                }
+                value={filters.kemandoran ?? ''}
+                onChange={e => setFilters(s => ({ ...s, kemandoran: e.target.value }))}
                 title="Filter berdasarkan kemandoran"
+                disabled={isKemandoranLocked}
               />
               <input
                 className="input input-bordered w-full"
                 placeholder="Kode Karyawan"
-                value={filters.employeecode ?? ""}
-                onChange={(e) =>
-                  setFilters((s) => ({ ...s, employeecode: e.target.value }))
-                }
+                value={filters.employeecode ?? ''}
+                onChange={e => setFilters(s => ({ ...s, employeecode: e.target.value }))}
                 title="Filter berdasarkan kode karyawan"
               />
               <input
                 className="input input-bordered w-full"
                 placeholder="FCBA"
-                value={filters.fcba ?? ""}
-                onChange={(e) =>
-                  setFilters((s) => ({ ...s, fcba: e.target.value }))
-                }
+                value={filters.fcba ?? ''}
+                onChange={e => setFilters(s => ({ ...s, fcba: e.target.value }))}
                 title="Filter berdasarkan FCBA"
-                disabled={userLevel === "MGR" || userLevel === "AST" || userLevel === "KRA"}
+                disabled={isFcbaLocked}
               />
               <input
                 className="input input-bordered w-full"
                 placeholder="Afdeling"
-                value={filters.afdeling ?? ""}
-                onChange={(e) =>
-                  setFilters((s) => ({ ...s, afdeling: e.target.value }))
-                }
+                value={filters.afdeling ?? ''}
+                onChange={e => setFilters(s => ({ ...s, afdeling: e.target.value }))}
                 title="Filter berdasarkan Afdeling"
-                disabled={userLevel === "MGR" || userLevel === "AST" || userLevel === "KRA"}
+                disabled={isAfdelingLocked}
               />
               <input
                 className="input input-bordered w-full"
                 placeholder="Tahun Tanam"
-                value={filters.tahuntanam ?? ""}
-                onChange={(e) =>
-                  setFilters((s) => ({ ...s, tahuntanam: e.target.value }))
-                }
+                value={filters.tahuntanam ?? ''}
+                onChange={e => setFilters(s => ({ ...s, tahuntanam: e.target.value }))}
                 title="Filter berdasarkan tahun tanam"
               />
               <input
                 className="input input-bordered w-full"
                 placeholder="Blok"
-                value={filters.blok ?? ""}
-                onChange={(e) =>
-                  setFilters((s) => ({ ...s, blok: e.target.value }))
-                }
+                value={filters.blok ?? ''}
+                onChange={e => setFilters(s => ({ ...s, blok: e.target.value }))}
                 title="Filter berdasarkan kode blok"
               />
               <select
                 className="select select-bordered w-full"
-                value={filters.attendance ?? ""}
-                onChange={(e) =>
-                  setFilters((s) => ({ ...s, attendance: e.target.value }))
-                }
+                value={filters.attendance ?? ''}
+                onChange={e => setFilters(s => ({ ...s, attendance: e.target.value }))}
                 title="Filter berdasarkan kode attendance"
               >
                 <option value="">Attendance</option>
-                {["KJ", "MK", "WH", "WS", "ML", "P1", "KB", "OT"].map((v) => (
+                {['KJ', 'MK', 'WH', 'WS', 'ML', 'P1', 'KB', 'OT'].map(v => (
                   <option key={`att-${v}`} value={v}>
                     {v}
                   </option>
@@ -850,7 +865,7 @@ export default function Lhm() {
 
             <div className="flex justify-start gap-2 pt-3 border-t border-base-200">
               <button
-                className={`btn btn-outline ${loading ? "btn-disabled" : ""}`}
+                className={`btn btn-outline ${loading ? 'btn-disabled' : ''}`}
                 onClick={fetchData}
                 disabled={loading}
                 title="Terapkan filter"
@@ -861,28 +876,26 @@ export default function Lhm() {
                     Memuat...
                   </>
                 ) : (
-                  "Terapkan Filter"
+                  'Terapkan Filter'
                 )}
               </button>
               <button
-                className={`btn ${loading ? "btn-disabled" : ""}`}
+                className={`btn ${loading ? 'btn-disabled' : ''}`}
                 onClick={() => {
                   const yesterday = getYesterdayISO();
                   const today = getTodayISO();
-                  setFilters({
+                  const resetFilters: Filters = {
                     fddate: yesterday,
                     fddate_end: today,
-                    kemandoran: "",
-                    employeecode: "",
-                    fcba:
-                      userLevel === "MGR" || userLevel === "AST" || userLevel === "KRA"
-                        ? homeFcba
-                        : "",
-                    afdeling: "",
-                    tahuntanam: "",
-                    blok: "",
-                    attendance: "",
-                  });
+                    kemandoran: '',
+                    employeecode: '',
+                    fcba: '',
+                    afdeling: '',
+                    tahuntanam: '',
+                    blok: '',
+                    attendance: '',
+                  };
+                  setFilters(getScopedFilters(resetFilters));
                 }}
                 disabled={loading}
                 title="Reset semua filter"
@@ -893,7 +906,7 @@ export default function Lhm() {
                     Memuat...
                   </>
                 ) : (
-                  "Reset"
+                  'Reset'
                 )}
               </button>
             </div>
@@ -926,11 +939,7 @@ export default function Lhm() {
                 fixedHeaderScrollHeight="520px"
                 persistTableHead
                 responsive
-                noDataComponent={
-                  <div className="py-8 text-base-content/70">
-                    Tidak ada data.
-                  </div>
-                }
+                noDataComponent={<div className="py-8 text-base-content/70">Tidak ada data.</div>}
               />
             )}
           </div>

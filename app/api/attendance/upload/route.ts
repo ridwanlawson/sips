@@ -1,39 +1,40 @@
-import { NextRequest, NextResponse } from "next/server";
-import { BACKEND_URL, getTokenFromCookie } from "@/utils/absensiProxy";
-import { applyUserDataScope } from "@/utils/requestScope";
-import { authHeaders, parseJsonSafe, extractMessage, unauthorizedResponse } from "@/lib/apiProxy";
+import { NextRequest, NextResponse } from 'next/server';
+import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
+import { applyUserDataScope } from '@/utils/requestScope';
+import { authHeaders, parseJsonSafe, extractMessage, unauthorizedResponse } from '@/lib/apiProxy';
 
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const token = await getTokenFromCookie();
-  if (!token) return NextResponse.json({ ok: false, error: "Unauthenticated", data: [] }, { status: 401 });
+  if (!token)
+    return NextResponse.json({ ok: false, error: 'Unauthenticated', data: [] }, { status: 401 });
 
   const searchParams = new URLSearchParams(req.nextUrl.searchParams.toString());
-  applyUserDataScope(req, searchParams, { gangParam: "gangcode" });
+  applyUserDataScope(req, searchParams, { gangParam: 'gangcode' });
 
-  const url = `${BACKEND_URL}/api/report/upload-attendance${searchParams.toString() ? `?${searchParams}` : ""}`;
+  const url = `${BACKEND_URL}/api/report/upload-attendance${searchParams.toString() ? `?${searchParams}` : ''}`;
 
-  const response = await fetch(url, { method: "GET", headers: authHeaders(token) });
+  const response = await fetch(url, { method: 'GET', headers: authHeaders(token) });
   const { data, parseError } = await parseJsonSafe(response);
 
   if (parseError) {
-    console.error("Failed to parse API response:", data);
+    console.error('Failed to parse API response:', data);
     return NextResponse.json(
-      { ok: false, error: "Failed to parse API response", data: [] },
-      { status: 500 },
+      { ok: false, error: 'Failed to parse API response', data: [] },
+      { status: 500 }
     );
   }
 
   if (!response.ok) {
     const msg = extractMessage(data);
-    if (response.status === 404 || msg.toLowerCase().includes("tidak ditemukan")) {
-      return NextResponse.json({ ok: true, message: "Data tidak ditemukan", data: [] });
+    if (response.status === 404 || msg.toLowerCase().includes('tidak ditemukan')) {
+      return NextResponse.json({ ok: true, message: 'Data tidak ditemukan', data: [] });
     }
     return NextResponse.json(
       { ok: false, error: `External API error ${response.status}: ${msg}`, data: [] },
-      { status: response.status },
+      { status: response.status }
     );
   }
 
@@ -45,10 +46,10 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
   if (!token) return unauthorizedResponse();
 
   const body = await req.json();
-  const recordId = new URL(req.url).pathname.split("/").pop();
+  const recordId = new URL(req.url).pathname.split('/').pop();
 
   const response = await fetch(`${BACKEND_URL}/api/report/upload-attendance/${recordId}`, {
-    method: "PUT",
+    method: 'PUT',
     headers: authHeaders(token),
     body: JSON.stringify(body),
   });
@@ -58,7 +59,7 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
   if (!response.ok) {
     return NextResponse.json(
       { ok: false, error: `External API error: ${response.status}` },
-      { status: response.status },
+      { status: response.status }
     );
   }
 

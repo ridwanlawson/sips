@@ -63,40 +63,40 @@ export interface AttendanceUploadParams {
 export async function fetchAttendanceUpload(
   params: AttendanceUploadParams
 ): Promise<AttendanceUploadResponse> {
-  const url = new URL("/api/attendance/upload", window.location.origin);
+  const url = new URL('/api/attendance/upload', window.location.origin);
 
   // Add query parameters
-  Object.keys(params).forEach((key) => {
+  Object.keys(params).forEach(key => {
     const value = params[key as keyof AttendanceUploadParams];
     if (value) {
       url.searchParams.append(key, value);
     }
   });
 
-  console.log("Fetching from:", url.toString());
+  console.log('Fetching from:', url.toString());
 
   const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    Accept: "application/json",
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
   };
 
   const response = await fetch(url.toString(), {
-    method: "GET",
+    method: 'GET',
     headers,
-    credentials: "include",
+    credentials: 'include',
   });
 
-  console.log("Response status:", response.status);
+  console.log('Response status:', response.status);
 
   // Parse response JSON terlebih dahulu
   const data = await response.json();
-  console.log("Response data:", data);
+  console.log('Response data:', data);
 
-  // Jika tidak ok tapi bukan karena data kosong, baru throw error
+  // Throw only when the failure is not an empty-data response
   if (!response.ok) {
-    // Jika success: true dengan data kosong (dari backend kita yang sudah dimodifikasi)
+    // The backend can return success with an empty data payload
     // atau message berisi "tidak ditemukan", don't throw error
-    if (data.success || (data.message && data.message.toLowerCase().includes("tidak ditemukan"))) {
+    if (data.success || (data.message && data.message.toLowerCase().includes('tidak ditemukan'))) {
       return data;
     }
     // Untuk error lainnya, tetap throw
@@ -126,14 +126,14 @@ export async function updateAttendanceRecord(
   const url = `/api/attendance/upload?id=${recordId}`;
 
   const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    Accept: "application/json",
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
   };
 
   const response = await fetch(url, {
-    method: "PUT",
+    method: 'PUT',
     headers,
-    credentials: "include",
+    credentials: 'include',
     body: JSON.stringify(updates),
   });
 
@@ -144,7 +144,7 @@ export async function updateAttendanceRecord(
   return response.json();
 }
 
-// Interface untuk insert attendance data
+// Insert attendance payload.
 export interface InsertAttendanceItem {
   data: string[];
   gangcode: string;
@@ -200,20 +200,20 @@ export interface InsertAttendanceResponse {
   data?: Record<string, unknown>;
 }
 
-export async function insertAttendanceData(
-  payload: { data: Record<string, unknown>[] }
-): Promise<InsertAttendanceResponse> {
+export async function insertAttendanceData(payload: {
+  data: Record<string, unknown>[];
+}): Promise<InsertAttendanceResponse> {
   const url = `/api/attendance/submit`;
 
   const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    Accept: "application/json",
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
   };
 
   const response = await fetch(url, {
-    method: "POST",
+    method: 'POST',
     headers,
-    credentials: "include",
+    credentials: 'include',
     body: JSON.stringify(payload),
   });
 
@@ -221,7 +221,7 @@ export async function insertAttendanceData(
 
   if (!response.ok) {
     throw new Error(
-      `Failed to insert attendance records: ${response.status} - ${data.message || "Unknown error"}`
+      `Failed to insert attendance records: ${response.status} - ${data.message || 'Unknown error'}`
     );
   }
 

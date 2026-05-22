@@ -1,23 +1,23 @@
-import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-import { BACKEND_URL } from "@/utils/absensiProxy";
+import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { BACKEND_URL } from '@/utils/absensiProxy';
 
 export async function POST(request: Request) {
   try {
     const { current_password, new_password } = await request.json();
     const cookieStore = await cookies();
-    const token = cookieStore.get("auth_token")?.value;
+    const token = cookieStore.get('auth_token')?.value;
 
     if (!token) {
-      return NextResponse.json({ ok: false, error: "Unauthenticated" }, { status: 401 });
+      return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
     }
 
     const upstream = await fetch(`${BACKEND_URL}/api/change-password`, {
-      method: "POST",
+      method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
       },
       body: JSON.stringify({ current_password, new_password }),
     });
@@ -25,11 +25,17 @@ export async function POST(request: Request) {
     const data = await upstream.json();
 
     if (!upstream.ok) {
-      return NextResponse.json({ ok: false, error: data?.message || "Failed to change password" }, { status: upstream.status });
+      return NextResponse.json(
+        { ok: false, error: data?.message || 'Failed to change password' },
+        { status: upstream.status }
+      );
     }
 
-    return NextResponse.json({ ok: true, message: data?.message || "Password changed successfully" });
+    return NextResponse.json({
+      ok: true,
+      message: data?.message || 'Password changed successfully',
+    });
   } catch {
-    return NextResponse.json({ ok: false, error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: 'Internal server error' }, { status: 500 });
   }
 }

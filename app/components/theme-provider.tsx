@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useThemeEffect } from "../hooks/useThemeEffect";
+import { useThemeEffect } from '../hooks/useThemeEffect';
 
 export function ThemeProvider() {
   useThemeEffect();

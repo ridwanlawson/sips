@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from 'react';
 
-import { useSearchParams } from "next/navigation";
-import "./lhm-report-print.css";
-import { useLocale } from "@/hooks/useLocale";
+import { useSearchParams } from 'next/navigation';
+import './lhm-report-print.css';
+import { useLocale } from '@/hooks/useLocale';
 
 export default function LhmReport() {
   const localeTag = useLocale();
@@ -13,32 +13,30 @@ export default function LhmReport() {
     window.print();
   };
 
-  // Helper untuk format angka
+  // Number formatting helper
   function formatNumber(val: string | number | null | undefined): string {
-    const num = Number(val ?? "0");
-    if (isNaN(num)) return "0";
+    const num = Number(val ?? '0');
+    if (isNaN(num)) return '0';
     return num.toLocaleString(localeTag);
   }
 
-  function formatNumberRounded(
-    val: string | number | null | undefined,
-  ): string {
-    const num = Number(val ?? "0");
-    if (isNaN(num)) return "0";
+  function formatNumberRounded(val: string | number | null | undefined): string {
+    const num = Number(val ?? '0');
+    if (isNaN(num)) return '0';
     return Math.round(num).toLocaleString(localeTag);
   }
 
-  // Helper untuk format tanggal
+  // Date formatting helper
   function formatDateDMY(raw: string | null | undefined): string {
-    if (!raw) return "-";
+    if (!raw) return '-';
     const trimmed = raw.trim();
-    if (!trimmed) return "-";
-    const onlyDate = trimmed.split(" ")[0];
-    const parts = onlyDate.split("-");
+    if (!trimmed) return '-';
+    const onlyDate = trimmed.split(' ')[0];
+    const parts = onlyDate.split('-');
     if (parts.length !== 3) return trimmed;
     const [y, m, d] = parts;
     if (!y || !m || !d) return trimmed;
-    return `${d.padStart(2, "0")}-${m.padStart(2, "0")}-${y}`;
+    return `${d.padStart(2, '0')}-${m.padStart(2, '0')}-${y}`;
   }
 
   type LhmData = {
@@ -87,12 +85,12 @@ export default function LhmReport() {
   };
 
   const searchParams = useSearchParams();
-  const fcba = searchParams.get("fcba") || "";
-  const afdeling = searchParams.get("afdeling") || "";
-  const tanggal = searchParams.get("tanggal") || "";
-  const kemandoran = searchParams.get("kemandoran") || "";
+  const fcba = searchParams.get('fcba') || '';
+  const afdeling = searchParams.get('afdeling') || '';
+  const tanggal = searchParams.get('tanggal') || '';
+  const kemandoran = searchParams.get('kemandoran') || '';
 
-  // Ref untuk wrapper print
+  // Print wrapper ref
   const printRef = useRef<HTMLDivElement>(null);
 
   const [data, setData] = useState<LhmData[]>([]);
@@ -131,12 +129,12 @@ export default function LhmReport() {
   };
 
   const [signatures, setSignatures] = useState<SignatureData>({
-    mandorPanen: "-",
-    keraniPanen: "-",
-    keraniTransport: "-",
-    mandor1: "-",
-    asistenAfdeling: "-",
-    keraniAfdeling: "-",
+    mandorPanen: '-',
+    keraniPanen: '-',
+    keraniTransport: '-',
+    mandor1: '-',
+    asistenAfdeling: '-',
+    keraniAfdeling: '-',
   });
   const [signaturesLoading, setSignaturesLoading] = useState(false);
 
@@ -164,14 +162,14 @@ export default function LhmReport() {
               row.fcba === fcba &&
               row.afdeling === afdeling &&
               row.kemandoran === kemandoran &&
-              (row.fddate || "").split(" ")[0] === tanggal,
+              (row.fddate || '').split(' ')[0] === tanggal
           );
           setData(filtered);
         } else {
-          setError("Data tidak ditemukan.");
+          setError('Data tidak ditemukan.');
         }
       } catch {
-        setError("Gagal memuat data LHM.");
+        setError('Gagal memuat data LHM.');
       } finally {
         setLoading(false);
       }
@@ -192,19 +190,17 @@ export default function LhmReport() {
           afdeling,
           kemandoran,
         });
-        const res = await fetch(
-          `/api/approval/lhm-signatures?${params.toString()}`,
-        );
+        const res = await fetch(`/api/approval/lhm-signatures?${params.toString()}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         if (json.success && json.data) {
           setSignatures({
-            mandorPanen: json.data.mandorPanen || "-",
-            keraniPanen: json.data.keraniPanen || "-",
-            keraniTransport: json.data.keraniTransport || "-",
-            mandor1: json.data.mandor1 || "-",
-            asistenAfdeling: json.data.asistenAfdeling || "-",
-            keraniAfdeling: json.data.keraniAfdeling || "-",
+            mandorPanen: json.data.mandorPanen || '-',
+            keraniPanen: json.data.keraniPanen || '-',
+            keraniTransport: json.data.keraniTransport || '-',
+            mandor1: json.data.mandor1 || '-',
+            asistenAfdeling: json.data.asistenAfdeling || '-',
+            keraniAfdeling: json.data.keraniAfdeling || '-',
           });
         }
       } catch {
@@ -232,17 +228,17 @@ export default function LhmReport() {
         const res = await fetch(`/api/report/get-lha?${params.toString()}`);
         if (!res.ok) {
           const errText = await res.text();
-          console.error("LHA fetch error:", res.status, errText);
+          console.error('LHA fetch error:', res.status, errText);
           throw new Error(`HTTP ${res.status}`);
         }
         const json = await res.json();
         if (json.success && Array.isArray(json.data)) {
           setLhaData(json.data);
         } else {
-          console.error("LHA invalid response:", json);
+          console.error('LHA invalid response:', json);
         }
       } catch (err) {
-        console.error("LHA fetch failed:", err);
+        console.error('LHA fetch failed:', err);
         // Silent fail - keep empty array
       } finally {
         setLhaLoading(false);
@@ -251,13 +247,13 @@ export default function LhmReport() {
     fetchLhaData();
   }, [fcba, afdeling, kemandoran, tanggal]);
 
-  // Header info (dummy jika data kosong)
-  const pt = "PT. SENTOSA KALIMANTAN JAYA";
+  // Header info with fallback data when empty
+  const pt = 'PT. SENTOSA KALIMANTAN JAYA';
 
   // Helper to render signature with underline or dash
   const renderSignature = (name: string) => {
     if (signaturesLoading) return <span className="animate-pulse">...</span>;
-    return name !== "-" ? <span className="underline">{name}</span> : "-";
+    return name !== '-' ? <span className="underline">{name}</span> : '-';
   };
 
   const mandorPanenEl = renderSignature(signatures.mandorPanen);
@@ -272,8 +268,8 @@ export default function LhmReport() {
       <div
         style={{
           marginBottom: 16,
-          display: "flex",
-          justifyContent: "flex-end",
+          display: 'flex',
+          justifyContent: 'flex-end',
         }}
         className="no-print"
       >
@@ -305,11 +301,7 @@ export default function LhmReport() {
           </button>
         </div>
       </div>
-      <div
-        ref={printRef}
-        className="lhm-print-wrapper"
-        style={{ overflowX: "auto" }}
-      >
+      <div ref={printRef} className="lhm-print-wrapper" style={{ overflowX: 'auto' }}>
         <div className="lhm-print-header">
           <div className="w-full">
             <div>
@@ -321,10 +313,7 @@ export default function LhmReport() {
                 Afdeling: <span>{afdeling}</span>
               </div>
             </div>
-            <div
-              className="text-center"
-              style={{ fontWeight: "bold", fontSize: 18 }}
-            >
+            <div className="text-center" style={{ fontWeight: 'bold', fontSize: 18 }}>
               LHM (LAPORAN HARIAN MANDOR) PANEN
             </div>
           </div>
@@ -333,36 +322,20 @@ export default function LhmReport() {
           <span>
             Tanggal: <span>{formatDateDMY(tanggal)}</span>
           </span>
-          <span
-            contentEditable
-            suppressContentEditableWarning
-            style={{ marginLeft: 80 }}
-          >
+          <span contentEditable suppressContentEditableWarning style={{ marginLeft: 80 }}>
             Mandor Panen : {mandorPanenEl}
           </span>
-          <span
-            contentEditable
-            suppressContentEditableWarning
-            style={{ marginLeft: 80 }}
-          >
+          <span contentEditable suppressContentEditableWarning style={{ marginLeft: 80 }}>
             Kerani Panen : {keraniPanenEl}
           </span>
-          <span
-            contentEditable
-            suppressContentEditableWarning
-            style={{ marginLeft: 80 }}
-          >
+          <span contentEditable suppressContentEditableWarning style={{ marginLeft: 80 }}>
             Kerani Transport : {keraniTransportEl}
           </span>
-          <span
-            contentEditable
-            suppressContentEditableWarning
-            style={{ marginLeft: 80 }}
-          >
+          <span contentEditable suppressContentEditableWarning style={{ marginLeft: 80 }}>
             Mandor I : {mandor1El}
           </span>
         </div>
-        {error && <div style={{ color: "red", margin: "16px 0" }}>{error}</div>}
+        {error && <div style={{ color: 'red', margin: '16px 0' }}>{error}</div>}
         {loading ? (
           <div>Memuat data...</div>
         ) : (
@@ -462,31 +435,25 @@ export default function LhmReport() {
             <tbody>
               {data.length === 0 ? (
                 <tr>
-                  <td colSpan={31} style={{ textAlign: "center" }}>
+                  <td colSpan={31} style={{ textAlign: 'center' }}>
                     Tidak ada data.
                   </td>
                 </tr>
               ) : (
                 <>
                   {data.map((row, idx) => {
-                    const prevCode =
-                      idx > 0 ? data[idx - 1].employeecode : null;
+                    const prevCode = idx > 0 ? data[idx - 1].employeecode : null;
                     const isNew = row.employeecode !== prevCode;
                     const rowNo = isNew
                       ? data
                           .slice(0, idx)
-                          .filter(
-                            (r, i) =>
-                              i === 0 ||
-                              r.employeecode !== data[i - 1].employeecode,
-                          ).length + 1
-                      : "";
+                          .filter((r, i) => i === 0 || r.employeecode !== data[i - 1].employeecode)
+                          .length + 1
+                      : '';
                     return (
                       <tr key={row.employeecode + idx}>
                         <td>{rowNo}</td>
-                        <td className="text-center whitespace-nowrap">
-                          {row.employeecode}
-                        </td>
+                        <td className="text-center whitespace-nowrap">{row.employeecode}</td>
                         <td className="whitespace-nowrap">{row.nama}</td>
                         <td className="text-center">{row.attendance}</td>
                         <td className="text-center">{row.hk}</td>
@@ -495,18 +462,10 @@ export default function LhmReport() {
                         <td className="text-right">{formatNumber(row.jjg)}</td>
                         <td className="text-right">{formatNumber(row.brd)}</td>
                         <td className="text-right">{row.ha}</td>
-                        <td className="text-right">
-                          {formatNumber(row.mentahqty)}
-                        </td>
-                        <td className="text-right">
-                          {formatNumber(row.mentahrp)}
-                        </td>
-                        <td className="text-right">
-                          {formatNumber(row.emptybunchqty)}
-                        </td>
-                        <td className="text-right">
-                          {formatNumber(row.emptybunchrp)}
-                        </td>
+                        <td className="text-right">{formatNumber(row.mentahqty)}</td>
+                        <td className="text-right">{formatNumber(row.mentahrp)}</td>
+                        <td className="text-right">{formatNumber(row.emptybunchqty)}</td>
+                        <td className="text-right">{formatNumber(row.emptybunchrp)}</td>
                         <td className="text-right">-</td>
                         <td className="text-right">-</td>
                         <td className="text-right">
@@ -514,42 +473,18 @@ export default function LhmReport() {
                             ? formatNumber(Number(row.jumlahdenda) * -1)
                             : formatNumber(row.jumlahdenda)}
                         </td>
-                        <td className="text-right">
-                          {formatNumber(row.totalalljjg)}
-                        </td>
-                        <td className="text-right">
-                          {formatNumber(row.basis)}
-                        </td>
-                        <td className="text-right">
-                          {formatNumber(row.rpbasis)}
-                        </td>
-                        <td className="text-right">
-                          {formatNumber(row.premilv1)}
-                        </td>
-                        <td className="text-right">
-                          {formatNumber(row.rate1)}
-                        </td>
-                        <td className="text-right">
-                          {formatNumber(row.rplv1)}
-                        </td>
-                        <td className="text-right">
-                          {formatNumber(row.premilv2)}
-                        </td>
-                        <td className="text-right">
-                          {formatNumber(row.rate2)}
-                        </td>
-                        <td className="text-right">
-                          {formatNumber(row.rplv2)}
-                        </td>
-                        <td className="text-right">
-                          {formatNumber(row.premilv3)}
-                        </td>
-                        <td className="text-right">
-                          {formatNumber(row.rate3)}
-                        </td>
-                        <td className="text-right">
-                          {formatNumber(row.rplv3)}
-                        </td>
+                        <td className="text-right">{formatNumber(row.totalalljjg)}</td>
+                        <td className="text-right">{formatNumber(row.basis)}</td>
+                        <td className="text-right">{formatNumber(row.rpbasis)}</td>
+                        <td className="text-right">{formatNumber(row.premilv1)}</td>
+                        <td className="text-right">{formatNumber(row.rate1)}</td>
+                        <td className="text-right">{formatNumber(row.rplv1)}</td>
+                        <td className="text-right">{formatNumber(row.premilv2)}</td>
+                        <td className="text-right">{formatNumber(row.rate2)}</td>
+                        <td className="text-right">{formatNumber(row.rplv2)}</td>
+                        <td className="text-right">{formatNumber(row.premilv3)}</td>
+                        <td className="text-right">{formatNumber(row.rate3)}</td>
+                        <td className="text-right">{formatNumber(row.rplv3)}</td>
                         <td className="text-right whitespace-nowrap">
                           {formatNumber(row.totalrppremi)}
                         </td>
@@ -560,10 +495,7 @@ export default function LhmReport() {
                           {formatNumber(row.kurangbasis)}
                         </td>
                         <td className="text-right font-bold whitespace-nowrap">
-                          {formatNumber(
-                            Number(row.totalrppremi || 0) +
-                              Number(row.rpbasis || 0),
-                          )}
+                          {formatNumber(Number(row.totalrppremi || 0) + Number(row.rpbasis || 0))}
                         </td>
                         <td className="text-right font-bold whitespace-nowrap">
                           {formatNumber(row.brd_rp)}
@@ -571,9 +503,7 @@ export default function LhmReport() {
                         <td className="text-right font-bold whitespace-nowrap">
                           {formatNumber(row.total)}
                         </td>
-                        <td className="whitespace-nowrap">
-                          {row.keterangan || ""}
-                        </td>
+                        <td className="whitespace-nowrap">{row.keterangan || ''}</td>
                       </tr>
                     );
                   })}
@@ -584,192 +514,123 @@ export default function LhmReport() {
                     </td>
                     <td className="text-right whitespace-nowrap">
                       {formatNumberRounded(
-                        data.reduce(
-                          (sum, row) => sum + Number(row.jjg || 0),
-                          0,
-                        ),
+                        data.reduce((sum, row) => sum + Number(row.jjg || 0), 0)
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap">
                       {formatNumberRounded(
-                        data.reduce(
-                          (sum, row) => sum + Number(row.brd || 0),
-                          0,
-                        ),
+                        data.reduce((sum, row) => sum + Number(row.brd || 0), 0)
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap">
                       {(() => {
-                        const total = data.reduce(
-                          (sum, row) => sum + Number(row.ha || 0),
-                          0,
-                        );
-                        return total === 0 ? "" : formatNumberRounded(total);
+                        const total = data.reduce((sum, row) => sum + Number(row.ha || 0), 0);
+                        return total === 0 ? '' : formatNumberRounded(total);
                       })()}
                     </td>
                     <td className="text-right whitespace-nowrap">
                       {formatNumberRounded(
-                        data.reduce(
-                          (sum, row) => sum + Number(row.mentahqty || 0),
-                          0,
-                        ),
+                        data.reduce((sum, row) => sum + Number(row.mentahqty || 0), 0)
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap">
                       {formatNumberRounded(
-                        data.reduce(
-                          (sum, row) => sum + Number(row.mentahrp || 0),
-                          0,
-                        ),
+                        data.reduce((sum, row) => sum + Number(row.mentahrp || 0), 0)
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap">
                       {formatNumberRounded(
-                        data.reduce(
-                          (sum, row) => sum + Number(row.emptybunchqty || 0),
-                          0,
-                        ),
+                        data.reduce((sum, row) => sum + Number(row.emptybunchqty || 0), 0)
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap">
                       {formatNumberRounded(
-                        data.reduce(
-                          (sum, row) => sum + Number(row.emptybunchrp || 0),
-                          0,
-                        ),
+                        data.reduce((sum, row) => sum + Number(row.emptybunchrp || 0), 0)
                       )}
                     </td>
                     <td className="text-right">0</td>
                     <td className="text-right">0</td>
                     <td className="text-right whitespace-nowrap">
                       {formatNumberRounded(
-                        data.reduce(
-                          (sum, row) => sum + Number(row.jumlahdenda || 0) * -1,
-                          0,
-                        ),
+                        data.reduce((sum, row) => sum + Number(row.jumlahdenda || 0) * -1, 0)
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap">
                       {formatNumberRounded(
-                        data.reduce(
-                          (sum, row) => sum + Number(row.totalalljjg || 0),
-                          0,
-                        ),
+                        data.reduce((sum, row) => sum + Number(row.totalalljjg || 0), 0)
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap">
                       {formatNumberRounded(
-                        data.reduce(
-                          (sum, row) => sum + Number(row.basis || 0),
-                          0,
-                        ),
+                        data.reduce((sum, row) => sum + Number(row.basis || 0), 0)
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap">
                       {formatNumberRounded(
-                        data.reduce(
-                          (sum, row) => sum + Number(row.rpbasis || 0),
-                          0,
-                        ),
+                        data.reduce((sum, row) => sum + Number(row.rpbasis || 0), 0)
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap">
                       {formatNumberRounded(
-                        data.reduce(
-                          (sum, row) => sum + Number(row.premilv1 || 0),
-                          0,
-                        ),
+                        data.reduce((sum, row) => sum + Number(row.premilv1 || 0), 0)
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap"></td>
                     <td className="text-right whitespace-nowrap">
                       {formatNumberRounded(
-                        data.reduce(
-                          (sum, row) => sum + Number(row.rplv1 || 0),
-                          0,
-                        ),
+                        data.reduce((sum, row) => sum + Number(row.rplv1 || 0), 0)
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap">
                       {formatNumberRounded(
-                        data.reduce(
-                          (sum, row) => sum + Number(row.premilv2 || 0),
-                          0,
-                        ),
+                        data.reduce((sum, row) => sum + Number(row.premilv2 || 0), 0)
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap"></td>
                     <td className="text-right whitespace-nowrap">
                       {formatNumberRounded(
-                        data.reduce(
-                          (sum, row) => sum + Number(row.rplv2 || 0),
-                          0,
-                        ),
+                        data.reduce((sum, row) => sum + Number(row.rplv2 || 0), 0)
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap">
                       {formatNumberRounded(
-                        data.reduce(
-                          (sum, row) => sum + Number(row.premilv3 || 0),
-                          0,
-                        ),
+                        data.reduce((sum, row) => sum + Number(row.premilv3 || 0), 0)
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap"></td>
                     <td className="text-right whitespace-nowrap">
                       {formatNumberRounded(
-                        data.reduce(
-                          (sum, row) => sum + Number(row.rplv3 || 0),
-                          0,
-                        ),
+                        data.reduce((sum, row) => sum + Number(row.rplv3 || 0), 0)
                       )}
                     </td>
                     <td className="text-right whitespace-nowrap">
                       {formatNumberRounded(
-                        data.reduce(
-                          (sum, row) => sum + Number(row.totalrppremi || 0),
-                          0,
-                        ),
+                        data.reduce((sum, row) => sum + Number(row.totalrppremi || 0), 0)
                       )}
                     </td>
                     <td className="text-right font-bold whitespace-nowrap">
                       {formatNumberRounded(
-                        data.reduce(
-                          (sum, row) => sum + Number(row.rphk || 0),
-                          0,
-                        ),
+                        data.reduce((sum, row) => sum + Number(row.rphk || 0), 0)
                       )}
                     </td>
                     <td className="text-right font-bold whitespace-nowrap">
                       {formatNumberRounded(
-                        data.reduce(
-                          (sum, row) => sum + Number(row.kurangbasis || 0),
-                          0,
-                        ),
+                        data.reduce((sum, row) => sum + Number(row.kurangbasis || 0), 0)
                       )}
                     </td>
                     <td className="text-right font-bold whitespace-nowrap">
                       {formatNumberRounded(
-                        data.reduce(
-                          (sum, row) => sum + Number(row.totalrppremi || 0),
-                          0,
-                        ),
+                        data.reduce((sum, row) => sum + Number(row.totalrppremi || 0), 0)
                       )}
                     </td>
                     <td className="text-right font-bold whitespace-nowrap">
                       {formatNumberRounded(
-                        data.reduce(
-                          (sum, row) => sum + Number(row.brd_rp || 0),
-                          0,
-                        ),
+                        data.reduce((sum, row) => sum + Number(row.brd_rp || 0), 0)
                       )}
                     </td>
                     <td className="text-right font-bold whitespace-nowrap">
                       {formatNumberRounded(
-                        data.reduce(
-                          (sum, row) => sum + Number(row.total || 0),
-                          0,
-                        ),
+                        data.reduce((sum, row) => sum + Number(row.total || 0), 0)
                       )}
                     </td>
                     <td></td>
@@ -826,53 +687,34 @@ export default function LhmReport() {
                 Total
               </td>
               <td className="text-right whitespace-nowrap">
+                {formatNumberRounded(lhaData.reduce((sum, row) => sum + Number(row.luas || 0), 0))}
+              </td>
+              <td className="text-right whitespace-nowrap">
                 {formatNumberRounded(
-                  lhaData.reduce((sum, row) => sum + Number(row.luas || 0), 0),
+                  lhaData.reduce((sum, row) => sum + Number(row.output || 0), 0)
                 )}
               </td>
               <td className="text-right whitespace-nowrap">
                 {formatNumberRounded(
-                  lhaData.reduce(
-                    (sum, row) => sum + Number(row.output || 0),
-                    0,
-                  ),
+                  lhaData.reduce((sum, row) => sum + Number(row.normal || 0), 0)
                 )}
               </td>
               <td className="text-right whitespace-nowrap">
                 {formatNumberRounded(
-                  lhaData.reduce(
-                    (sum, row) => sum + Number(row.normal || 0),
-                    0,
-                  ),
+                  lhaData.reduce((sum, row) => sum + Number(row.abnormal || 0), 0)
                 )}
               </td>
               <td className="text-right whitespace-nowrap">
                 {formatNumberRounded(
-                  lhaData.reduce(
-                    (sum, row) => sum + Number(row.abnormal || 0),
-                    0,
-                  ),
+                  lhaData.reduce((sum, row) => sum + Number(row.overripe || 0), 0)
                 )}
               </td>
               <td className="text-right whitespace-nowrap">
-                {formatNumberRounded(
-                  lhaData.reduce(
-                    (sum, row) => sum + Number(row.overripe || 0),
-                    0,
-                  ),
-                )}
+                {formatNumberRounded(lhaData.reduce((sum, row) => sum + Number(row.empty || 0), 0))}
               </td>
               <td className="text-right whitespace-nowrap">
                 {formatNumberRounded(
-                  lhaData.reduce((sum, row) => sum + Number(row.empty || 0), 0),
-                )}
-              </td>
-              <td className="text-right whitespace-nowrap">
-                {formatNumberRounded(
-                  lhaData.reduce(
-                    (sum, row) => sum + Number(row.mentah || 0),
-                    0,
-                  ),
+                  lhaData.reduce((sum, row) => sum + Number(row.mentah || 0), 0)
                 )}
               </td>
             </tr>
@@ -883,18 +725,9 @@ export default function LhmReport() {
             <div>
               <span className="font-semibold">Catatan:</span>
               <ol className="list-decimal pl-4 m-0 space-y-1">
-                <li>
-                  Jumlah pemanen per Mandoran minimal 15 orang (3 mandoran
-                  panen)
-                </li>
-                <li>
-                  Jumlah pemanen per Mandoran minimal 16 orang (1 atau 2
-                  mandoran panen)
-                </li>
-                <li>
-                  (* Sesuai ketetapan IM Pak TA No. 27 Tahun 2023 pada point 7
-                  sd. 12
-                </li>
+                <li>Jumlah pemanen per Mandoran minimal 15 orang (3 mandoran panen)</li>
+                <li>Jumlah pemanen per Mandoran minimal 16 orang (1 atau 2 mandoran panen)</li>
+                <li>(* Sesuai ketetapan IM Pak TA No. 27 Tahun 2023 pada point 7 sd. 12</li>
                 <li>
                   Kriteria Janjang Netto ** setelah dikurangi :
                   <ul className="pl-4 m-0 space-y-0.5">
@@ -908,9 +741,7 @@ export default function LhmReport() {
                     <li className="before:content-['-'] before:mr-1">
                       Buah tinggal di piringan/pasar rintis/gawangan
                     </li>
-                    <li className="before:content-['-'] before:mr-1">
-                      Buah matahari
-                    </li>
+                    <li className="before:content-['-'] before:mr-1">Buah matahari</li>
                   </ul>
                 </li>
               </ol>
@@ -1001,33 +832,21 @@ export default function LhmReport() {
           <div className="lhm-print-sign whitespace-nowrap w-full">
             <div>
               <div className="font-bold">Dibuat,</div>
-              <div
-                contentEditable
-                suppressContentEditableWarning
-                style={{ marginTop: 48 }}
-              >
+              <div contentEditable suppressContentEditableWarning style={{ marginTop: 48 }}>
                 {mandorPanenEl}
               </div>
               <div>Mandor Panen</div>
             </div>
             <div>
               <div className="font-bold">Verifikasi,</div>
-              <div
-                contentEditable
-                suppressContentEditableWarning
-                style={{ marginTop: 48 }}
-              >
+              <div contentEditable suppressContentEditableWarning style={{ marginTop: 48 }}>
                 {mandor1El}
               </div>
               <div>Mandor I</div>
             </div>
             <div>
               <div className="font-bold">Disetujui,</div>
-              <div
-                contentEditable
-                suppressContentEditableWarning
-                style={{ marginTop: 48 }}
-              >
+              <div contentEditable suppressContentEditableWarning style={{ marginTop: 48 }}>
                 {asistenAfdelingEl}
               </div>
               <div>Asisten Afdeling</div>

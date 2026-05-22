@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import dynamic from "next/dynamic";
-import { SkeletonTable } from "@/app/components/skeletons";
+import dynamic from 'next/dynamic';
+import { SkeletonTable } from '@/app/components/skeletons';
 
-const HarvestPage = dynamic(() => import("./harvestpage-client"), {
+const HarvestPage = dynamic(() => import('./harvestpage-client'), {
   ssr: false,
   loading: () => (
     <div className="p-6">

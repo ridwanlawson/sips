@@ -13,7 +13,9 @@ export const SkeletonTable = ({ rows = 5 }: { rows?: number }) => (
       <thead>
         <tr>
           {Array.from({ length: 5 }).map((_, i) => (
-            <th key={i}><div className="h-4 bg-base-300 rounded w-full"></div></th>
+            <th key={i}>
+              <div className="h-4 bg-base-300 rounded w-full"></div>
+            </th>
           ))}
         </tr>
       </thead>
@@ -21,7 +23,9 @@ export const SkeletonTable = ({ rows = 5 }: { rows?: number }) => (
         {Array.from({ length: rows }).map((_, i) => (
           <tr key={i}>
             {Array.from({ length: 5 }).map((_, j) => (
-              <td key={j}><div className="h-4 bg-base-200 rounded w-full"></div></td>
+              <td key={j}>
+                <div className="h-4 bg-base-200 rounded w-full"></div>
+              </td>
             ))}
           </tr>
         ))}
@@ -35,7 +39,11 @@ export const SkeletonChart = () => (
     <div className="h-4 bg-base-300 rounded w-1/4 mb-4"></div>
     <div className="flex items-end gap-2 h-40">
       {[35, 65, 40, 80, 50, 95, 60].map((height, i) => (
-        <div key={i} className="flex-1 bg-base-200 rounded-t" style={{ height: `${height}%` }}></div>
+        <div
+          key={i}
+          className="flex-1 bg-base-200 rounded-t"
+          style={{ height: `${height}%` }}
+        ></div>
       ))}
     </div>
   </div>

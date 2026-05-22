@@ -1,92 +1,80 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { UserLevel } from "@/lib/constants";
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { CookieName, UserLevel } from '@/lib/constants';
 
-const PUBLIC_PATHS = new Set<string>(["/", "/login", "/register", "/forgot-password"]);
+const PUBLIC_PATHS = new Set<string>(['/', '/login', '/register', '/forgot-password']);
 
-const UPLOAD_PATHS = ["/attendance/upload", "/harvest/upload", "/harvesting-quality/upload"];
+const normalizeLevel = (level: string) => {
+  const upperLevel = level.toUpperCase();
+  return upperLevel === 'ADMIN' ? UserLevel.ADMIN : upperLevel;
+};
+
+const setDefaultLocale = (response: NextResponse, request: NextRequest) => {
+  if (!request.cookies.has(CookieName.NEXT_LOCALE)) {
+    response.cookies.set(CookieName.NEXT_LOCALE, 'en');
+  }
+};
 
 export function middleware(request: NextRequest) {
   const { pathname, origin } = request.nextUrl;
   const isPublic = PUBLIC_PATHS.has(pathname);
 
-  // Initialize response
   const response = NextResponse.next();
 
-  // Set default locale if not present
-  if (!request.cookies.has("NEXT_LOCALE")) {
-    response.cookies.set("NEXT_LOCALE", "en");
-  }
+  setDefaultLocale(response, request);
 
-  // Skip untuk file statis & _next
+  // Skip static files and Next.js internals.
   if (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/assets") ||
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/assets') ||
     pathname.match(/\.(png|jpg|svg|css|js|ico|txt)$/)
   ) {
     return response;
   }
 
-  // Skip untuk API auth routes
-  if (pathname.startsWith("/api/auth")) {
+  // Skip API authentication routes.
+  if (pathname.startsWith('/api/auth')) {
     return response;
   }
 
-  const token = request.cookies.get("auth_token")?.value;
+  const token = request.cookies.get(CookieName.AUTH_TOKEN)?.value;
 
-  // Tidak ada token & route privat -> lempar ke /login
+  // Redirect unauthenticated private routes to login.
   if (!isPublic && !token) {
-    const url = new URL("/", origin);
-    url.searchParams.set("redirect", pathname);
+    const url = new URL('/', origin);
+    url.searchParams.set('redirect', pathname);
     const redirectRes = NextResponse.redirect(url);
-    if (!request.cookies.has("NEXT_LOCALE")) {
-      redirectRes.cookies.set("NEXT_LOCALE", "en");
-    }
+    setDefaultLocale(redirectRes, request);
     return redirectRes;
   }
 
-  // Sudah login & sedang di halaman public -> lempar ke dashboard
+  // Redirect authenticated users away from public auth pages.
   if (isPublic && token) {
-    const redirectRes = NextResponse.redirect(new URL("/dashboard", origin));
-    if (!request.cookies.has("NEXT_LOCALE")) {
-      redirectRes.cookies.set("NEXT_LOCALE", "en");
-    }
+    const redirectRes = NextResponse.redirect(new URL('/dashboard', origin));
+    setDefaultLocale(redirectRes, request);
     return redirectRes;
   }
 
   // Server-side role-based access control
-  const levelRaw =
-    request.cookies.get("user_Level")?.value ||
-    request.cookies.get("user_level")?.value ||
-    request.cookies.get("user_LEVEL")?.value ||
-    "";
-  const level = levelRaw.toUpperCase();
+  const levelRaw = request.cookies.get(CookieName.USER_LEVEL)?.value || '';
+  const level = normalizeLevel(levelRaw);
 
   const redirectForbidden = () => {
-    const redirectRes = NextResponse.redirect(new URL("/dashboard", origin));
-    if (!request.cookies.has("NEXT_LOCALE")) {
-      redirectRes.cookies.set("NEXT_LOCALE", "en");
-    }
+    const redirectRes = NextResponse.redirect(new URL('/dashboard', origin));
+    setDefaultLocale(redirectRes, request);
     return redirectRes;
   };
 
-  // Restrict access to attendance approval page to ADM and MGR only
-  if (pathname.startsWith("/attendance/approval")) {
-    if (level !== UserLevel.ADMIN && level !== UserLevel.MANAGER) {
-      return redirectForbidden();
-    }
-  }
-
-  // Restrict access to upload pages to ADM and MGR only
-  if (UPLOAD_PATHS.some((p) => pathname.startsWith(p))) {
-    if (level !== UserLevel.ADMIN && level !== UserLevel.MANAGER) {
-      return redirectForbidden();
-    }
-  }
-
-  // Restrict access to APK upload page to ADM only
-  if (pathname.startsWith("/apk-upload")) {
-    if (level !== UserLevel.ADMIN) {
+  // Restrict LHM approval access to permitted roles.
+  if (pathname.startsWith('/approval')) {
+    if (
+      level !== UserLevel.ADMIN &&
+      level !== UserLevel.MANDOR &&
+      level !== UserLevel.MD1 &&
+      level !== UserLevel.ASISTEN &&
+      level !== UserLevel.KSI &&
+      level !== UserLevel.MANAGER
+    ) {
       return redirectForbidden();
     }
   }
@@ -95,5 +83,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api/health).*)"],
+  matcher: ['/((?!api/health).*)'],
 };

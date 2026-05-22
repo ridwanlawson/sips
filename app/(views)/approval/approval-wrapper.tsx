@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import dynamic from "next/dynamic";
-import { SkeletonTable } from "@/app/components/skeletons";
+import dynamic from 'next/dynamic';
+import { SkeletonTable } from '@/app/components/skeletons';
 
-const Approval = dynamic(() => import("./approval-client"), {
+const Approval = dynamic(() => import('./approval-client'), {
   ssr: false,
   loading: () => (
     <div className="p-6">

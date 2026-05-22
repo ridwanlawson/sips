@@ -1,21 +1,25 @@
-"use client";
+﻿'use client';
 
-import React, { useState, useEffect, useMemo } from "react";
-import DataTable from "@/app/components/dynamic-data-table";
-import type { TableColumn } from "react-data-table-component";
+import React, { useState, useEffect, useMemo } from 'react';
+import DataTable from '@/app/components/dynamic-data-table';
+import type { TableColumn } from 'react-data-table-component';
 import {
   AttendanceUploadData,
   AttendanceUploadParams,
   fetchAttendanceUpload,
   insertAttendanceData,
-} from "@/utils/attendanceUploadService";
-import { SkeletonTable } from "@/app/components/skeletons";
-import { AccessDenied } from "@/app/components/access-denied";
-import { useLocale } from "@/hooks/useLocale";
-import { useUploadPage } from "@/hooks/useUploadPage";
+} from '@/utils/attendanceUploadService';
+import { SkeletonTable } from '@/app/components/skeletons';
+import { AccessDenied } from '@/app/components/access-denied';
+import { useLocale } from '@/hooks/useLocale';
+import { useUploadPage } from '@/hooks/useUploadPage';
 
 const EMPTY_PARAMS: AttendanceUploadParams = {
-  tanggal: "", tanggal_end: "", fcba: "", afdeling: "", gangcode: "",
+  tanggal: '',
+  tanggal_end: '',
+  fcba: '',
+  afdeling: '',
+  gangcode: '',
 };
 
 export default function AttendanceUploadPage() {
@@ -28,8 +32,8 @@ export default function AttendanceUploadPage() {
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [submitProgress, setSubmitProgress] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [submitProgress, setSubmitProgress] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const fetchData = async (overrideParams?: AttendanceUploadParams) => {
     setLoading(true);
@@ -42,32 +46,25 @@ export default function AttendanceUploadPage() {
 
       if (response.success) {
         if (response.data && response.data.length > 0) {
-          // Deduplicate data berdasarkan linenokey untuk avoid React key warning
+          // Deduplicate data by linenokey to avoid React key warnings
           const uniqueData = Array.from(
-            new Map(
-              response.data.map((item) => [item.linenokey, item]),
-            ).values(),
+            new Map(response.data.map(item => [item.linenokey, item])).values()
           );
 
-          console.log(
-            `Total records: ${response.data.length}, After dedup: ${uniqueData.length}`,
-          );
+          console.log(`Total records: ${response.data.length}, After dedup: ${uniqueData.length}`);
 
           setData(uniqueData);
         }
-        // Jika data kosong, tidak perlu set error, biarkan saja kosong
+        // Keep empty data as an empty state without setting an error
       } else {
-        // Hanya set error jika memang ada error serius (bukan data tidak ditemukan)
-        if (
-          !response.message ||
-          !response.message.toLowerCase().includes("tidak ditemukan")
-        ) {
-          setError(response.message || "Gagal mengambil data");
+        // Set an error only for serious failures, not empty data
+        if (!response.message || !response.message.toLowerCase().includes('tidak ditemukan')) {
+          setError(response.message || 'Gagal mengambil data');
         }
       }
     } catch (err) {
-      console.error("Search error:", err);
-      setError(err instanceof Error ? err.message : "Terjadi kesalahan");
+      console.error('Search error:', err);
+      setError(err instanceof Error ? err.message : 'Terjadi kesalahan');
     } finally {
       setLoading(false);
     }
@@ -76,16 +73,22 @@ export default function AttendanceUploadPage() {
   useEffect(() => {
     if (!initCheck) return;
     const initialParams: AttendanceUploadParams = {
-      ...EMPTY_PARAMS, fcba: userFcba, afdeling: userAfdeling,
+      ...EMPTY_PARAMS,
+      fcba: userFcba,
+      afdeling: userAfdeling,
     };
-    setFormParams((prev) => ({ ...prev, fcba: userFcba || prev.fcba, afdeling: userAfdeling || prev.afdeling }));
+    setFormParams(prev => ({
+      ...prev,
+      fcba: userFcba || prev.fcba,
+      afdeling: userAfdeling || prev.afdeling,
+    }));
     fetchData(initialParams);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initCheck]);
 
   const handleParamChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormParams((prev) => ({
+    setFormParams(prev => ({
       ...prev,
       [name]: value,
     }));
@@ -97,10 +100,12 @@ export default function AttendanceUploadPage() {
   };
 
   const handleResetFilter = () => {
-    setFormParams(isAdmin ? EMPTY_PARAMS : { ...EMPTY_PARAMS, fcba: userFcba, afdeling: userAfdeling });
+    setFormParams(
+      isAdmin ? EMPTY_PARAMS : { ...EMPTY_PARAMS, fcba: userFcba, afdeling: userAfdeling }
+    );
   };
 
-  // Add row key untuk DataTable
+  // Add row keys for DataTable
   const dataWithKey = useMemo(() => {
     return data.map((item, idx) => ({
       ...item,
@@ -113,7 +118,7 @@ export default function AttendanceUploadPage() {
       return dataWithKey;
     }
     const search = searchTerm.toLowerCase();
-    return dataWithKey.filter((record) => {
+    return dataWithKey.filter(record => {
       return (
         record.employeecode?.toLowerCase().includes(search) ||
         record.gangcode?.toLowerCase().includes(search) ||
@@ -131,198 +136,194 @@ export default function AttendanceUploadPage() {
     });
   }, [dataWithKey, searchTerm]);
 
-  // Define columns untuk DataTable
+  // Define DataTable columns
   const columns: TableColumn<AttendanceUploadData>[] = useMemo(
     () => [
       {
-        name: "#",
-        width: "50px",
+        name: '#',
+        width: '50px',
         cell: (_row, idx) => <span>{idx + 1}</span>,
         ignoreRowClick: true,
       },
       {
-        name: "ID",
-        selector: (row) => row.id,
+        name: 'ID',
+        selector: row => row.id,
         sortable: true,
-        width: "80px",
+        width: '80px',
       },
       {
-        name: "Line Key",
-        selector: (row) => row.linenokey,
+        name: 'Line Key',
+        selector: row => row.linenokey,
         sortable: true,
-        width: "100px",
+        width: '100px',
       },
       {
-        name: "Employee Code",
-        selector: (row) => row.employeecode || "-",
+        name: 'Employee Code',
+        selector: row => row.employeecode || '-',
         sortable: true,
-        width: "130px",
+        width: '130px',
       },
       {
-        name: "Job Code",
-        selector: (row) => row.jobcode || "-",
+        name: 'Job Code',
+        selector: row => row.jobcode || '-',
         sortable: true,
-        width: "110px",
+        width: '110px',
       },
       {
-        name: "Attendance",
-        selector: (row) => row.attendance || "-",
+        name: 'Attendance',
+        selector: row => row.attendance || '-',
         sortable: true,
-        width: "110px",
+        width: '110px',
       },
       {
-        name: "Date",
-        selector: (row) => {
+        name: 'Date',
+        selector: row => {
           try {
             return new Date(row.fddate).toLocaleDateString(localeTag);
           } catch {
-            return row.fddate || "-";
+            return row.fddate || '-';
           }
         },
         sortable: true,
-        width: "120px",
+        width: '120px',
       },
       {
-        name: "Afdeling",
-        selector: (row) => row.afdeling || "-",
+        name: 'Afdeling',
+        selector: row => row.afdeling || '-',
         sortable: true,
-        width: "110px",
+        width: '110px',
       },
       {
-        name: "Gang Code",
-        selector: (row) => row.gangcode || "-",
+        name: 'Gang Code',
+        selector: row => row.gangcode || '-',
         sortable: true,
-        width: "110px",
+        width: '110px',
       },
       {
-        name: "Location Type",
-        selector: (row) => row.locationtype || "-",
+        name: 'Location Type',
+        selector: row => row.locationtype || '-',
         sortable: true,
-        width: "130px",
+        width: '130px',
       },
       {
-        name: "Location Code",
-        selector: (row) => row.locationcode || "-",
+        name: 'Location Code',
+        selector: row => row.locationcode || '-',
         sortable: true,
-        width: "130px",
+        width: '130px',
       },
       {
-        name: "Mandays",
-        selector: (row) => row.mandays || "-",
+        name: 'Mandays',
+        selector: row => row.mandays || '-',
         sortable: true,
-        width: "100px",
+        width: '100px',
       },
       {
-        name: "Othrs",
-        selector: (row) => row.othrs || "-",
+        name: 'Othrs',
+        selector: row => row.othrs || '-',
         sortable: true,
-        width: "100px",
+        width: '100px',
       },
       {
-        name: "Rate",
-        selector: (row) => row.rate || "-",
+        name: 'Rate',
+        selector: row => row.rate || '-',
         sortable: true,
-        width: "100px",
+        width: '100px',
       },
       {
-        name: "Unit",
-        selector: (row) => row.unit || "-",
+        name: 'Unit',
+        selector: row => row.unit || '-',
         sortable: true,
-        width: "100px",
+        width: '100px',
       },
       {
-        name: "Output",
-        selector: (row) => row.output || "-",
+        name: 'Output',
+        selector: row => row.output || '-',
         sortable: true,
-        width: "100px",
+        width: '100px',
       },
       {
-        name: "OT Hours",
-        selector: (row) => row.overtime_hours || "-",
+        name: 'OT Hours',
+        selector: row => row.overtime_hours || '-',
         sortable: true,
-        width: "110px",
+        width: '110px',
       },
       {
-        name: "Remarks",
-        selector: (row) => row.remarks || "-",
+        name: 'Remarks',
+        selector: row => row.remarks || '-',
         sortable: true,
-        width: "150px",
+        width: '150px',
       },
       {
-        name: "Reference",
-        selector: (row) => row.reference || "-",
+        name: 'Reference',
+        selector: row => row.reference || '-',
         sortable: true,
-        width: "130px",
+        width: '130px',
       },
       {
-        name: "FCBA",
-        selector: (row) => row.fcba || "-",
+        name: 'FCBA',
+        selector: row => row.fcba || '-',
         sortable: true,
-        width: "100px",
+        width: '100px',
       },
       {
-        name: "Status",
-        selector: (row) => row.rowstate || "-",
+        name: 'Status',
+        selector: row => row.rowstate || '-',
         sortable: true,
-        width: "110px",
+        width: '110px',
       },
       {
-        name: "Last Update",
-        selector: (row) => row.lastupdate || "-",
+        name: 'Last Update',
+        selector: row => row.lastupdate || '-',
         sortable: true,
-        width: "150px",
+        width: '150px',
       },
       {
-        name: "Entry By",
-        selector: (row) => row.fcentry || "-",
+        name: 'Entry By',
+        selector: row => row.fcentry || '-',
         sortable: true,
-        width: "110px",
+        width: '110px',
       },
       {
-        name: "Edit By",
-        selector: (row) => row.fcedit || "-",
+        name: 'Edit By',
+        selector: row => row.fcedit || '-',
         sortable: true,
-        width: "110px",
+        width: '110px',
       },
       {
-        name: "KG Brondolan",
-        selector: (row) => row.kg_brondolan || "-",
+        name: 'KG Brondolan',
+        selector: row => row.kg_brondolan || '-',
         sortable: true,
-        width: "130px",
+        width: '130px',
       },
       {
-        name: "KG Janjang",
-        selector: (row) => row.kg_janjang || "-",
+        name: 'KG Janjang',
+        selector: row => row.kg_janjang || '-',
         sortable: true,
-        width: "130px",
+        width: '130px',
       },
       {
-        name: "BJR",
-        selector: (row) => row.bjr || "-",
+        name: 'BJR',
+        selector: row => row.bjr || '-',
         sortable: true,
-        width: "100px",
+        width: '100px',
       },
     ],
-    [localeTag],
+    [localeTag]
   );
 
   const handleSubmitAttendance = async () => {
     if (data.length === 0) {
-      setError(
-        "Tidak ada data untuk dikirim. Silakan cari data terlebih dahulu.",
-      );
+      setError('Tidak ada data untuk dikirim. Silakan cari data terlebih dahulu.');
       return;
     }
 
-    if (
-      !window.confirm(`Yakin ingin mengirim ${data.length} record ke SIPS?`)
-    ) {
+    if (!window.confirm(`Yakin ingin mengirim ${data.length} record ke SIPS?`)) {
       return;
     }
 
     setSubmitting(true);
     setError(null);
-    setSubmitProgress("Preparing data...");
+    setSubmitProgress('Preparing data...');
 
     const BATCH_SIZE = 100;
     const totalRecords = data.length;
@@ -334,27 +335,25 @@ export default function AttendanceUploadPage() {
       const createPayloadItem = (record: AttendanceUploadData) => {
         let formattedFddate = record.fddate;
         try {
-          if (record.fddate && typeof record.fddate === "string") {
-            if (record.fddate.includes("T")) {
-              formattedFddate = record.fddate
-                .replace("T", " ")
-                .substring(0, 19);
+          if (record.fddate && typeof record.fddate === 'string') {
+            if (record.fddate.includes('T')) {
+              formattedFddate = record.fddate.replace('T', ' ').substring(0, 19);
             } else if (record.fddate.length === 10) {
               // Append time if only date is present
               formattedFddate = `${record.fddate} 00:00:00`;
             }
           }
         } catch (e) {
-          console.warn("Date formatting error:", e);
+          console.warn('Date formatting error:', e);
         }
 
         return {
           // REQUIRED FIELDS
-          gangcode: record.gangcode || "",
-          fddate: formattedFddate || "",
-          employeecode: record.employeecode || "",
-          attendance: record.attendance || "",
-          fcba: record.fcba || "",
+          gangcode: record.gangcode || '',
+          fddate: formattedFddate || '',
+          employeecode: record.employeecode || '',
+          attendance: record.attendance || '',
+          fcba: record.fcba || '',
           linenokey: Number(record.linenokey || 0),
           documentno: Number(record.documentno || 0),
 
@@ -373,18 +372,14 @@ export default function AttendanceUploadPage() {
           unit: record.unit ? Number(record.unit) : 0,
           output: record.output ? Number(record.output) : 0,
           reference: record.reference || null,
-          remarks: record.remarks || "SIPS MOBILE",
+          remarks: record.remarks || 'SIPS MOBILE',
           fcentry: record.fcentry || null,
           fcedit: record.fcedit || null,
           fcip: record.fcip || null,
           lastupdate: record.lastupdate || null,
           lasttime: record.lasttime || null,
-          overtime_hours: record.overtime_hours
-            ? Number(record.overtime_hours)
-            : 0,
-          type_overtime: record.type_overtime
-            ? Number(record.type_overtime)
-            : 0,
+          overtime_hours: record.overtime_hours ? Number(record.overtime_hours) : 0,
+          type_overtime: record.type_overtime ? Number(record.type_overtime) : 0,
           chargejob: record.chargejob || null,
           chargetype: record.chargetype || null,
           chargecode: record.chargecode || null,
@@ -400,11 +395,8 @@ export default function AttendanceUploadPage() {
           bjr: record.bjr ? Number(record.bjr) : 0,
           sourcetime: record.sourcetime || null,
           janjang: 0,
-          generate: "SIPS MOBILE GENERATE",
-          generatetime: new Date()
-            .toISOString()
-            .replace("T", " ")
-            .substring(0, 19),
+          generate: 'SIPS MOBILE GENERATE',
+          generatetime: new Date().toISOString().replace('T', ' ').substring(0, 19),
           fieldcode: record.fieldcode || null,
         };
       };
@@ -416,7 +408,7 @@ export default function AttendanceUploadPage() {
         const totalBatches = Math.ceil(totalRecords / BATCH_SIZE);
 
         setSubmitProgress(
-          `Submitting batch ${currentBatchNum}/${totalBatches} (${Math.min(i + BATCH_SIZE, totalRecords)}/${totalRecords})...`,
+          `Submitting batch ${currentBatchNum}/${totalBatches} (${Math.min(i + BATCH_SIZE, totalRecords)}/${totalRecords})...`
         );
 
         const recordsToSubmit = {
@@ -425,21 +417,19 @@ export default function AttendanceUploadPage() {
 
         try {
           const response = await insertAttendanceData(
-            recordsToSubmit as { data: Record<string, unknown>[] },
+            recordsToSubmit as { data: Record<string, unknown>[] }
           );
           if (response.success) {
             successCount += batch.length;
           } else {
             // Batch level error logic - if backend says failure for whole batch
-            throw new Error(response.message || "Batch failed");
+            throw new Error(response.message || 'Batch failed');
           }
         } catch (batchErr) {
           console.error(`Batch ${currentBatchNum} failed:`, batchErr);
 
           // RETRY STRATEGY: Try 1 by 1 to identify problematic rows
-          setSubmitProgress(
-            `Batch ${currentBatchNum} failed. Retrying item 1/${batch.length}...`,
-          );
+          setSubmitProgress(`Batch ${currentBatchNum} failed. Retrying item 1/${batch.length}...`);
 
           for (let j = 0; j < batch.length; j++) {
             const item = batch[j];
@@ -451,37 +441,32 @@ export default function AttendanceUploadPage() {
               };
 
               setSubmitProgress(
-                `Retrying batch ${currentBatchNum} (Item ${j + 1}/${batch.length})...`,
+                `Retrying batch ${currentBatchNum} (Item ${j + 1}/${batch.length})...`
               );
               const singleResp = await insertAttendanceData(
-                singlePayload as { data: Record<string, unknown>[] },
+                singlePayload as { data: Record<string, unknown>[] }
               );
 
               if (singleResp.success) {
                 successCount++;
               } else {
-                failMessages.push(
-                  `Baris ${globalIndex}: ${singleResp.message}`,
-                );
+                failMessages.push(`Baris ${globalIndex}: ${singleResp.message}`);
               }
             } catch (singleErr) {
-              const errMsg =
-                singleErr instanceof Error
-                  ? singleErr.message
-                  : "Unknown error";
+              const errMsg = singleErr instanceof Error ? singleErr.message : 'Unknown error';
               failMessages.push(`Baris ${globalIndex} Error: ${errMsg}`);
             }
           }
         }
       }
 
-      setSubmitProgress("");
+      setSubmitProgress('');
       if (successCount === totalRecords) {
         alert(`✓ Sukses! Semua ${successCount} data berhasil dikirim ke SIPS.`);
         setData([]); // Clear list on full success
       } else {
         // Partial success or failure
-        const msg = `⚠️ Selesai dengan catatan.\nBerhasil: ${successCount}\nGagal: ${totalRecords - successCount}\n\nDetail Error:\n${failMessages.slice(0, 20).join("\n")}${failMessages.length > 20 ? "\n...dan " + (failMessages.length - 20) + " lainnya" : ""}`;
+        const msg = `⚠️ Selesai dengan catatan.\nBerhasil: ${successCount}\nGagal: ${totalRecords - successCount}\n\nDetail Error:\n${failMessages.slice(0, 20).join('\n')}${failMessages.length > 20 ? '\n...dan ' + (failMessages.length - 20) + ' lainnya' : ''}`;
         alert(msg);
 
         if (successCount > 0) {
@@ -489,13 +474,11 @@ export default function AttendanceUploadPage() {
         }
       }
     } catch (err) {
-      console.error("Submit critical error:", err);
-      setError(
-        `Critical Error: ${err instanceof Error ? err.message : "Unknown"}`,
-      );
+      console.error('Submit critical error:', err);
+      setError(`Critical Error: ${err instanceof Error ? err.message : 'Unknown'}`);
     } finally {
       setSubmitting(false);
-      setSubmitProgress("");
+      setSubmitProgress('');
     }
   };
 
@@ -508,9 +491,7 @@ export default function AttendanceUploadPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-base-content">
-              Upload Attendance
-            </h1>
+            <h1 className="text-3xl font-bold text-base-content">Upload Attendance</h1>
             <p className="text-sm text-base-content/60 mt-1">
               Tampilkan dan upload data attendance dari external API
             </p>
@@ -519,10 +500,10 @@ export default function AttendanceUploadPage() {
             <button
               type="button"
               className="btn btn-outline btn-sm"
-              onClick={() => setShowFilters((s) => !s)}
+              onClick={() => setShowFilters(s => !s)}
               title="Tampilkan / sembunyikan filter"
             >
-              {showFilters ? "Sembunyikan Filter" : "Tampilkan Filter"}
+              {showFilters ? 'Sembunyikan Filter' : 'Tampilkan Filter'}
             </button>
           </div>
         </div>
@@ -564,9 +545,7 @@ export default function AttendanceUploadPage() {
                 <label className="block text-sm font-medium text-base-content mb-1">
                   FCBA
                   {userFcba && (
-                    <span className="text-xs text-info ml-2">
-                      (Default: {userFcba})
-                    </span>
+                    <span className="text-xs text-info ml-2">(Default: {userFcba})</span>
                   )}
                 </label>
                 <input
@@ -583,9 +562,7 @@ export default function AttendanceUploadPage() {
                 <label className="block text-sm font-medium text-base-content mb-1">
                   Afdeling
                   {userAfdeling && (
-                    <span className="text-xs text-info ml-2">
-                      (Default: {userAfdeling})
-                    </span>
+                    <span className="text-xs text-info ml-2">(Default: {userAfdeling})</span>
                   )}
                 </label>
                 <input
@@ -613,18 +590,14 @@ export default function AttendanceUploadPage() {
               </div>
 
               <div className="flex items-end gap-2">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="btn btn-primary btn-sm flex-1"
-                >
+                <button type="submit" disabled={loading} className="btn btn-primary btn-sm flex-1">
                   {loading ? (
                     <>
                       <span className="loading loading-spinner loading-xs"></span>
                       Loading...
                     </>
                   ) : (
-                    "Search"
+                    'Search'
                   )}
                 </button>
                 <button
@@ -651,9 +624,7 @@ export default function AttendanceUploadPage() {
                 </summary>
                 <div className="mt-2 text-xs opacity-75 space-y-2">
                   <div className="bg-base-200 p-2 rounded">
-                    <p className="font-mono text-xs">
-                      API route: /api/attendance/upload
-                    </p>
+                    <p className="font-mono text-xs">API route: /api/attendance/upload</p>
                   </div>
                   <div>
                     <p className="font-semibold">Kemungkinan Penyebab:</p>
@@ -668,18 +639,12 @@ export default function AttendanceUploadPage() {
                     <p className="font-semibold">Cara Debug:</p>
                     <ol className="list-decimal ml-4 space-y-1">
                       <li>Tekan F12 → buka tab &quot;Console&quot;</li>
+                      <li>Cari log dengan prefix &quot;ATTENDANCE UPLOAD DEBUG&quot;</li>
                       <li>
-                        Cari log dengan prefix &quot;ATTENDANCE UPLOAD
-                        DEBUG&quot;
-                      </li>
-                      <li>
-                        Buka tab &quot;Network&quot; → cari request ke
-                        /api/attendance/upload
+                        Buka tab &quot;Network&quot; → cari request ke /api/attendance/upload
                       </li>
                       <li>Cek response details dan error message</li>
-                      <li>
-                        Jika perlu login ulang: refresh halaman & login kembali
-                      </li>
+                      <li>Jika perlu login ulang: refresh halaman & login kembali</li>
                     </ol>
                   </div>
                 </div>
@@ -715,8 +680,7 @@ export default function AttendanceUploadPage() {
             <div>
               <p className="font-medium">Data tidak ditemukan</p>
               <p className="text-sm opacity-75">
-                Silakan gunakan filter untuk mencari data, atau coba dengan
-                parameter yang berbeda.
+                Silakan gunakan filter untuk mencari data, atau coba dengan parameter yang berbeda.
               </p>
             </div>
           </div>
@@ -733,17 +697,15 @@ export default function AttendanceUploadPage() {
             {submitting ? (
               <>
                 <span className="loading loading-spinner loading-sm"></span>
-                {submitProgress || "Submitting..."}
+                {submitProgress || 'Submitting...'}
               </>
             ) : (
-              "📤 Submit to SIPS"
+              '📤 Submit to SIPS'
             )}
           </button>
 
           {data.length > 0 && (
-            <span className="text-sm font-medium">
-              Total Data: {data.length} records
-            </span>
+            <span className="text-sm font-medium">Total Data: {data.length} records</span>
           )}
         </div>
 
@@ -770,12 +732,12 @@ export default function AttendanceUploadPage() {
                 type="text"
                 placeholder="Cari berdasarkan Employee Code, Gang, Job, Afdeling, dll..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={e => setSearchTerm(e.target.value)}
                 className="input input-bordered input-sm w-full pl-10 pr-10"
               />
               {searchTerm && (
                 <button
-                  onClick={() => setSearchTerm("")}
+                  onClick={() => setSearchTerm('')}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   title="Clear search"
                 >
@@ -797,8 +759,7 @@ export default function AttendanceUploadPage() {
             </div>
             {searchTerm && (
               <p className="text-xs text-base-content/60 mt-2">
-                Menampilkan {filteredDataWithKey.length} dari{" "}
-                {dataWithKey.length} records
+                Menampilkan {filteredDataWithKey.length} dari {dataWithKey.length} records
               </p>
             )}
           </div>
@@ -821,15 +782,10 @@ export default function AttendanceUploadPage() {
               ></path>
             </svg>
             <div>
-              <p className="font-medium">
-                Tidak ada hasil untuk &quot;{searchTerm}&quot;
-              </p>
+              <p className="font-medium">Tidak ada hasil untuk &quot;{searchTerm}&quot;</p>
               <p className="text-sm opacity-75">
-                Coba gunakan kata kunci yang berbeda atau{" "}
-                <button
-                  onClick={() => setSearchTerm("")}
-                  className="link link-primary"
-                >
+                Coba gunakan kata kunci yang berbeda atau{' '}
+                <button onClick={() => setSearchTerm('')} className="link link-primary">
                   hapus pencarian
                 </button>
               </p>
@@ -860,11 +816,7 @@ export default function AttendanceUploadPage() {
                   fixedHeaderScrollHeight="520px"
                   persistTableHead
                   responsive
-                  noDataComponent={
-                    <div className="py-8 text-base-content/70">
-                      Tidak ada data.
-                    </div>
-                  }
+                  noDataComponent={<div className="py-8 text-base-content/70">Tidak ada data.</div>}
                 />
               )}
             </div>

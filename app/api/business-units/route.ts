@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
-import { BACKEND_URL } from "@/utils/absensiProxy";
-import { authHeaders } from "@/lib/apiProxy";
+import { NextRequest, NextResponse } from 'next/server';
+import { BACKEND_URL } from '@/utils/absensiProxy';
+import { authHeaders } from '@/lib/apiProxy';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  const token = request.cookies.get("auth_token")?.value;
+  const token = request.cookies.get('auth_token')?.value;
   if (!token) {
-    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
   }
 
   const url = new URL(`${BACKEND_URL}/api/master/sips-businessunit`);
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const errorText = await response.text();
     return NextResponse.json(
       { ok: false, error: `Upstream error: ${response.status} - ${errorText}` },
-      { status: response.status },
+      { status: response.status }
     );
   }
 

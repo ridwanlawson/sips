@@ -1,21 +1,21 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { cookieStore } from "@/utils/cookieStore";
-import { useTranslations } from "next-intl";
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { cookieStore } from '@/utils/cookieStore';
+import { useTranslations } from 'next-intl';
 
 export const LanguageSwitcher = () => {
-  const t = useTranslations("Navbar");
+  const t = useTranslations('Navbar');
   const router = useRouter();
-  const [locale, setLocale] = useState("en");
+  const [locale, setLocale] = useState('en');
 
   useEffect(() => {
     setLocale(cookieStore.getLocale());
   }, []);
 
   const handleLanguageChange = (newLocale: string) => {
-    cookieStore.setCookie("NEXT_LOCALE", newLocale);
+    cookieStore.setCookie('NEXT_LOCALE', newLocale);
     setLocale(newLocale);
     router.refresh(); // Refresh the page to apply the new locale
   };
@@ -26,7 +26,7 @@ export const LanguageSwitcher = () => {
         tabIndex={0}
         role="button"
         className="flex items-center gap-2 px-2 py-1 btn btn-ghost btn-xs focus-visible:ring-2 focus-visible:ring-primary"
-        aria-label={t("languageMenu")}
+        aria-label={t('languageMenu')}
       >
         <span className="uppercase font-medium text-xs">{locale}</span>
         <svg
@@ -45,16 +45,16 @@ export const LanguageSwitcher = () => {
       >
         <li>
           <button
-            className={`btn btn-sm btn-block btn-ghost justify-start ${locale === "en" ? "btn-active" : ""}`}
-            onClick={() => handleLanguageChange("en")}
+            className={`btn btn-sm btn-block btn-ghost justify-start ${locale === 'en' ? 'btn-active' : ''}`}
+            onClick={() => handleLanguageChange('en')}
           >
             English (EN)
           </button>
         </li>
         <li>
           <button
-            className={`btn btn-sm btn-block btn-ghost justify-start ${locale === "id" ? "btn-active" : ""}`}
-            onClick={() => handleLanguageChange("id")}
+            className={`btn btn-sm btn-block btn-ghost justify-start ${locale === 'id' ? 'btn-active' : ''}`}
+            onClick={() => handleLanguageChange('id')}
           >
             Indonesia (ID)
           </button>
