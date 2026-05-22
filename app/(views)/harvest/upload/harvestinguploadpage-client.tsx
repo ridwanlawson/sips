@@ -8,6 +8,7 @@ import { AccessDenied } from "@/app/components/access-denied";
 import { useLocale } from "@/hooks/useLocale";
 import { useUploadPage } from "@/hooks/useUploadPage";
 import { useBatchSubmit } from "@/hooks/useBatchSubmit";
+import { formatPerfDate, formatPerfNumber } from "@/utils/perf-formatter";
 
 interface HarvestingUploadData {
   spbno?: string;
@@ -202,21 +203,21 @@ export default function HarvestingUploadPage() {
     { name: "Field Code", selector: (r) => r.fieldcode || "-", sortable: true, width: "110px" },
     {
       name: "Reception Date", sortable: true, width: "130px",
-      selector: (r) => { try { return r.receptiondate ? new Date(r.receptiondate).toLocaleDateString(localeTag) : "-"; } catch { return r.receptiondate || "-"; } },
+      selector: (r) => formatPerfDate(r.receptiondate || "", localeTag) || "-",
     },
     {
       name: "Harvest Date", sortable: true, width: "130px",
-      selector: (r) => { try { return r.harvestdate ? new Date(r.harvestdate).toLocaleDateString(localeTag) : "-"; } catch { return r.harvestdate || "-"; } },
+      selector: (r) => formatPerfDate(r.harvestdate || "", localeTag) || "-",
     },
     { name: "Vehicle", selector: (r) => r.vehicle || "-", sortable: true, width: "110px" },
     { name: "Driver", selector: (r) => r.driver || "-", sortable: true, width: "110px" },
     { name: "Mill", selector: (r) => r.mill || "-", sortable: true, width: "100px" },
     { name: "Crop Code", selector: (r) => r.cropcode || "-", sortable: true, width: "110px" },
     { name: "Product Code", selector: (r) => r.productcode || "-", sortable: true, width: "120px" },
-    { name: "Bunch", selector: (r) => (Number(r.bunch) || 0).toLocaleString(localeTag), sortable: true, width: "100px" },
-    { name: "Estate Weight (kg)", selector: (r) => (Number(r.bunch_estateweight) || 0).toLocaleString(localeTag), sortable: true, width: "140px" },
-    { name: "Mill Weight Bruto", selector: (r) => (Number(r.mill_weight_bruto) || 0).toLocaleString(localeTag), sortable: true, width: "140px" },
-    { name: "Mill Weight Netto", selector: (r) => (Number(r.mill_weight_netto) || 0).toLocaleString(localeTag), sortable: true, width: "140px" },
+    { name: "Bunch", selector: (r) => formatPerfNumber(r.bunch || 0, localeTag), sortable: true, width: "100px" },
+    { name: "Estate Weight (kg)", selector: (r) => formatPerfNumber(r.bunch_estateweight || 0, localeTag), sortable: true, width: "140px" },
+    { name: "Mill Weight Bruto", selector: (r) => formatPerfNumber(r.mill_weight_bruto || 0, localeTag), sortable: true, width: "140px" },
+    { name: "Mill Weight Netto", selector: (r) => formatPerfNumber(r.mill_weight_netto || 0, localeTag), sortable: true, width: "140px" },
     { name: "FCBA", selector: (r) => r.fcba || "-", sortable: true, width: "100px" },
     { name: "Keterangan", selector: (r) => r.keterangan || "-", sortable: true, width: "150px" },
     { name: "Last Update", selector: (r) => r.lastupdate || "-", sortable: true, width: "150px" },
@@ -224,7 +225,7 @@ export default function HarvestingUploadPage() {
 
   const handleSubmitHarvesting = async () => {
     if (data.length === 0) { setError("Tidak ada data untuk dikirim."); return; }
-    if (!window.confirm(`Yakin ingin mengirim ${data.length} record harvesting ke SIPS?\n\nTotal Bunch: ${summary.totalBunch}\nTotal Estate Weight: ${summary.totalEstateWeight.toLocaleString(localeTag)} kg`)) return;
+    if (!window.confirm(`Yakin ingin mengirim ${data.length} record harvesting ke SIPS?\n\nTotal Bunch: ${summary.totalBunch}\nTotal Estate Weight: ${formatPerfNumber(summary.totalEstateWeight, localeTag)} kg`)) return;
 
     setError(null);
     const { successCount, failMessages, successList } = await submit(data, {
@@ -235,7 +236,7 @@ export default function HarvestingUploadPage() {
 
     const totalRecords = data.length;
     if (successCount === totalRecords) {
-      alert(`✓ Sukses! Semua ${successCount} data harvesting berhasil dikirim ke SIPS.\n\nTotal Bunch: ${summary.totalBunch}\nTotal Estate Weight: ${summary.totalEstateWeight.toLocaleString(localeTag)} kg`);
+      alert(`✓ Sukses! Semua ${successCount} data harvesting berhasil dikirim ke SIPS.\n\nTotal Bunch: ${summary.totalBunch}\nTotal Estate Weight: ${formatPerfNumber(summary.totalEstateWeight, localeTag)} kg`);
       setData([]);
     } else {
       let msg = `⚠️ Selesai dengan catatan.\nBerhasil: ${successCount}\nGagal: ${totalRecords - successCount}`;
@@ -317,7 +318,7 @@ export default function HarvestingUploadPage() {
         {data.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
             <div className="bg-primary/10 rounded-lg p-4 border border-primary/20"><div className="text-sm text-base-content/60">Total SPB</div><div className="text-2xl font-bold text-primary">{summary.count}</div></div>
-            <div className="bg-success/10 rounded-lg p-4 border border-success/20"><div className="text-sm text-base-content/60">Total Bunch</div><div className="text-2xl font-bold text-success">{summary.totalBunch.toLocaleString("id-ID")}</div></div>
+            <div className="bg-success/10 rounded-lg p-4 border border-success/20"><div className="text-sm text-base-content/60">Total Bunch</div><div className="text-2xl font-bold text-success">{formatPerfNumber(summary.totalBunch, localeTag)}</div></div>
             <div className="bg-info/10 rounded-lg p-4 border border-info/20"><div className="text-sm text-base-content/60">Avg Bunch/SPB</div><div className="text-2xl font-bold text-info">{Number(summary.avgBunch).toFixed(1)}</div></div>
             <div className="bg-warning/10 rounded-lg p-4 border border-warning/20"><div className="text-sm text-base-content/60">Total Estate Wt</div><div className="text-2xl font-bold text-warning">{(summary.totalEstateWeight / 1000).toFixed(1)}T</div></div>
           </div>
