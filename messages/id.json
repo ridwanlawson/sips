@@ -18,7 +18,8 @@
     "languageMenu": "Pilih bahasa",
     "openSidebar": "Buka sidebar",
     "userAvatar": "Avatar pengguna",
-    "theme": "Tema"
+    "theme": "Tema",
+    "scrollToTop": "Kembali ke atas"
   },
   "Auth": {
     "login": "Masuk",
