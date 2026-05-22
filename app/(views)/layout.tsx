@@ -10,7 +10,9 @@ export default function UserLayout({
   return (
     <div className="flex flex-col min-h-screen">
       <NavbarWrapper />
-      <main className="flex-grow">{children}</main>
+      <main id="main-content" tabIndex={-1} className="flex-grow focus:outline-none">
+        {children}
+      </main>
       <ScrollToTop />
       <Footer />
     </div>

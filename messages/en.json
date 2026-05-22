@@ -19,7 +19,8 @@
     "openSidebar": "Open sidebar",
     "userAvatar": "User avatar",
     "theme": "Theme",
-    "scrollToTop": "Scroll to top"
+    "scrollToTop": "Scroll to top",
+    "skipToContent": "Skip to main content"
   },
   "Auth": {
     "login": "Login",

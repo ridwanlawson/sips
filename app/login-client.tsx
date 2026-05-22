@@ -157,7 +157,11 @@ export default function Home() {
       )}
 
       {/* Konten utama */}
-      <main className="relative z-10 flex flex-col sm:flex-row gap-10 sm:gap-16 row-start-2 items-center sm:items-center">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="relative z-10 flex flex-col sm:flex-row gap-10 sm:gap-16 row-start-2 items-center sm:items-center focus:outline-none"
+      >
         {/* Left side text / highlight */}
         <section className="hidden sm:flex flex-col gap-3 max-w-xs animate-fadeIn [animation-duration:700ms]">
           <p className="text-xs font-semibold tracking-[0.2em] text-primary/80 uppercase">
@@ -179,7 +183,7 @@ export default function Home() {
           <button
             type="button"
             onClick={handleDownload}
-            className={`mt-4 inline-flex items-center gap-3 rounded-2xl bg-base-100/80 px-3 py-2 shadow-md animate-bounce transition hover:bg-base-200 cursor-pointer ${isCheckingDownload ? 'opacity-60 cursor-not-allowed' : ''}`}
+            className={`mt-4 inline-flex items-center gap-3 rounded-2xl bg-base-100/80 px-3 py-2 shadow-md animate-bounce transition hover:bg-base-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary outline-none ${isCheckingDownload ? 'opacity-60 cursor-not-allowed' : ''}`}
             disabled={isCheckingDownload}
           >
             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">

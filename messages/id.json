@@ -19,7 +19,8 @@
     "openSidebar": "Buka sidebar",
     "userAvatar": "Avatar pengguna",
     "theme": "Tema",
-    "scrollToTop": "Kembali ke atas"
+    "scrollToTop": "Kembali ke atas",
+    "skipToContent": "Lanjut ke konten utama"
   },
   "Auth": {
     "login": "Masuk",
