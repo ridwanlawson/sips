@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { SkeletonTable } from '@/app/components/skeletons';
 import { centerHeaderStyle } from '@/utils/tableHelper';
+import { exportJsonToCsv } from '@/utils/exportCsv';
 /* =========================
    T Y P E S
 ========================= */
@@ -924,7 +925,7 @@ export default function Attendance() {
       setSelGang('');
     }
     setForm(s => ({ ...s, kode_karyawan: '' }));
-  }, [form.attendance_type, homeFcba, homeSection, userLevel, isEditing]);
+  }, [form.attendance_type, homeFcba, homeSection, homeGang, userLevel, isEditing]);
 
   /* ===== Options ===== */
   const fcbaOptions = useMemo(() => {
@@ -1843,11 +1844,7 @@ export default function Attendance() {
       Status: r.status_attendance || '-',
     }));
 
-    const xlsx = await import('xlsx');
-    const ws = xlsx.utils.json_to_sheet(dataToExport);
-    const wb = xlsx.utils.book_new();
-    xlsx.utils.book_append_sheet(wb, ws, 'Attendance');
-    xlsx.writeFile(wb, `Attendance_${filters.tanggal}_${filters.tanggal_end}.xlsx`);
+    exportJsonToCsv(dataToExport, `Attendance_${filters.tanggal}_${filters.tanggal_end}.csv`);
   };
 
   /* ===== Quick search lokal ===== */

@@ -2,7 +2,6 @@
  * Shared download utility extracted from duplicated code in login-client.tsx and navbar.tsx.
  */
 import { cookieStore } from '@/utils/cookieStore';
-import { backendApiUrl } from '@/utils/backendConfig';
 import toast from 'react-hot-toast';
 
 interface DownloadCheckResponse {
@@ -17,7 +16,7 @@ export async function checkAndDownloadApp() {
     cookieStore.getCookie('access_token') ||
     '';
 
-  const endpoint = backendApiUrl('/app-update/check');
+  const endpoint = '/api/app-update/check';
 
   try {
     const response = await fetch(endpoint, {

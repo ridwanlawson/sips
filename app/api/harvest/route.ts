@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { buildFilteredUrl, getTokenFromCookie, safeJson, BACKEND_URL } from "@/utils/absensiProxy";
 import { applyUserDataScope } from "@/utils/requestScope";
-import { authHeaders, isRecord, extractMessage, parseJsonSafe } from "@/lib/apiProxy";
+import { authHeaders, isRecord, parseJsonSafe } from "@/lib/apiProxy";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

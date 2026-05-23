@@ -11,6 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { SkeletonTable } from '@/app/components/skeletons';
 import { centerHeaderStyle } from '@/utils/tableHelper';
 import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/authHelper';
+import { exportJsonToCsv } from '@/utils/exportCsv';
 
 /* =========================
    Searchable Select Component
@@ -1434,13 +1435,9 @@ export default function HarvestPage() {
       Lokasi: r.location || '-',
     }));
 
-    const xlsx = await import('xlsx');
-    const ws = xlsx.utils.json_to_sheet(dataToExport);
-    const wb = xlsx.utils.book_new();
-    xlsx.utils.book_append_sheet(wb, ws, 'Harvesting');
-    xlsx.writeFile(
-      wb,
-      `Harvesting_${filters.tanggal || 'all'}_${filters.tanggal_end || 'all'}.xlsx`
+    exportJsonToCsv(
+      dataToExport,
+      `Harvesting_${filters.tanggal || 'all'}_${filters.tanggal_end || 'all'}.csv`
     );
   };
 

@@ -14,18 +14,16 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@ducanh2912/next-pwa": "^10.2.9",
     "@tanstack/react-query": "^5.90.20",
     "@types/crypto-js": "^4.2.2",
     "crypto-js": "^4.2.0",
     "daisyui": "^5.1.13",
-    "next": "15.5.7",
+    "next": "^15.5.18",
     "next-intl": "^4.8.1",
     "react": "19.1.0",
     "react-data-table-component": "^7.7.0",
     "react-dom": "19.1.0",
     "react-hot-toast": "^2.6.0",
-    "xlsx": "^0.18.5",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -40,12 +38,15 @@
     "@vitejs/plugin-react": "^5.1.2",
     "@vitest/coverage-v8": "^4.1.6",
     "eslint": "^9",
-    "eslint-config-next": "15.5.7",
+    "eslint-config-next": "^15.5.18",
     "jsdom": "^27.4.0",
     "prettier": "^3.8.3",
     "tailwindcss": "^4.1.13",
     "typescript": "^5",
     "vitest": "^4.0.18"
+  },
+  "overrides": {
+    "postcss": "^8.5.10"
   },
   "browserslist": "> 1%"
 }

@@ -60,9 +60,9 @@ Open `http://localhost:3000`.
 Required environment variables:
 
 ```env
-NEXT_PUBLIC_BACKEND_URL=http://your-backend-url:82
-BACKEND_URL=http://your-backend-url:82
-ABSENSI_BASE=http://your-backend-url:82/api/apps/absensis
+NEXT_PUBLIC_BACKEND_URL=http://your-backend-url
+BACKEND_URL=http://your-backend-url
+ABSENSI_BASE=http://your-backend-url/api/apps/absensis
 ```
 
 ## Common Commands

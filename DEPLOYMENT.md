@@ -5,9 +5,9 @@
 Set these values in the deployment environment:
 
 ```env
-NEXT_PUBLIC_BACKEND_URL=http://your-backend-url:82
-BACKEND_URL=http://your-backend-url:82
-ABSENSI_BASE=http://your-backend-url:82/api/apps/absensis
+NEXT_PUBLIC_BACKEND_URL=http://your-backend-url
+BACKEND_URL=http://your-backend-url
+ABSENSI_BASE=http://your-backend-url/api/apps/absensis
 ```
 
 `NEXT_PUBLIC_BACKEND_URL` is available to client-side bundles. `BACKEND_URL` is used by server-side routes and configuration.

@@ -9,6 +9,7 @@ import { SkeletonTable } from '@/app/components/skeletons';
 import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/authHelper';
 import { getTodayISO, formatDateDMY, getYesterdayISO } from '@/utils/datetime';
 import { centerHeaderStyle } from '@/utils/tableHelper';
+import { exportJsonToCsv } from '@/utils/exportCsv';
 
 /* =========================
    T Y P E h
@@ -411,11 +412,7 @@ export default function Lhm() {
       'Last Time': r.lasttime || '-',
     }));
 
-    const xlsx = await import('xlsx');
-    const ws = xlsx.utils.json_to_sheet(dataToExport, { cellDates: true });
-    const wb = xlsx.utils.book_new();
-    xlsx.utils.book_append_sheet(wb, ws, 'LHM');
-    xlsx.writeFile(wb, `LHM_${filters.fddate}_${filters.fddate_end}.xlsx`);
+    exportJsonToCsv(dataToExport, `LHM_${filters.fddate}_${filters.fddate_end}.csv`);
   };
 
   /* ===== Columns ===== */
