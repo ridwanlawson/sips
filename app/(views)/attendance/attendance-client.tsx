@@ -16,6 +16,10 @@ import { exportJsonToCsv } from '@/utils/exportCsv';
 ========================= */
 type Absensi = {
   _rowKey?: string;
+  // ⚡ Bolt Optimization: cached display and search values
+  _displayDate?: string;
+  _dateOnly?: string;
+  _searchContent?: string;
   id: string;
   tanggal: string;
   kemandoran: string;
@@ -596,16 +600,48 @@ export default function Attendance() {
 
       const seen = new Set<string>();
       return dataRaw.map((it, idx) => {
-        const candidate = [
-          it.id || '',
-          it.kode_karyawan || '',
-          (it.tanggal || '').split(' ')[0],
-          String(idx),
-        ].join('|');
+        const dateOnly = (it.tanggal || '').split(' ')[0];
+        const displayDate = formatDateDMY(dateOnly);
+
+        // ⚡ Bolt Optimization: pre-calculate search content string
+        const searchContent = [
+          it.kemandoran,
+          it.namakaryawan,
+          it.kode_karyawan,
+          it.kode_karyawan_mandor,
+          it.fcba,
+          it.fcba_destination,
+          it.section_destination,
+          it.section,
+          it.gang,
+          it.attendance_type,
+          it.attendance,
+          it.no_ba_exca,
+          it.id_device,
+          it.mac_address,
+          it.location_in,
+          it.location_out,
+          it.pengancakan,
+          it.mandays,
+          dateOnly,
+          displayDate,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        const candidate = [it.id || '', it.kode_karyawan || '', dateOnly, String(idx)].join('|');
         let key = candidate;
         while (seen.has(key)) key = `${key}_`;
         seen.add(key);
-        return { ...it, _rowKey: key };
+
+        return {
+          ...it,
+          _rowKey: key,
+          _dateOnly: dateOnly,
+          _displayDate: displayDate,
+          _searchContent: searchContent,
+        };
       });
     },
     enabled: !!homeFcba || userLevel === 'ADM', // Wait until bootstrap is done
@@ -1593,13 +1629,10 @@ export default function Attendance() {
       },
       {
         name: <span title="Tanggal absensi (DD-MM-YYYY)">Tanggal</span>,
-        selector: r => (r.tanggal || '').split(' ')[0],
+        selector: r => r._dateOnly ?? '',
         sortable: true,
         width: '100px',
-        cell: r => {
-          const raw = (r.tanggal || '').split(' ')[0];
-          return <span title={raw}>{formatDateDMY(raw)}</span>;
-        },
+        cell: r => <span title={r._dateOnly}>{r._displayDate}</span>,
       },
       {
         name: <span title="Kemandoran">Kemandoran</span>,
@@ -1869,30 +1902,8 @@ export default function Attendance() {
   const filtered = useMemo(() => {
     if (!q.trim()) return items;
     const s = q.toLowerCase();
-    return items.filter(it =>
-      [
-        it.kemandoran,
-        it.namakaryawan,
-        it.kode_karyawan,
-        it.kode_karyawan_mandor,
-        it.fcba,
-        it.fcba_destination,
-        it.section_destination,
-        it.section,
-        it.gang,
-        it.attendance_type,
-        it.attendance,
-        it.no_ba_exca,
-        it.id_device,
-        it.mac_address,
-        it.location_in,
-        it.location_out,
-        it.pengancakan,
-        it.mandays,
-      ]
-        .filter(Boolean)
-        .some(v => String(v).toLowerCase().includes(s))
-    );
+    // ⚡ Bolt Optimization: Use pre-calculated search content for O(1) string check per row
+    return items.filter(it => it._searchContent?.includes(s));
   }, [q, items]);
 
   const disableUnlessAllowed = (allowed: boolean) => (isEditing ? !allowed : false);
