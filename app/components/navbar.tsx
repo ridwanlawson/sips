@@ -2,6 +2,7 @@
 
 import { useEffect, useState, memo, useCallback } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Drawer } from './drawer';
 import { Theme } from './theme';
@@ -93,7 +94,13 @@ export default memo(function Navbar() {
 
       <div className="navbar-center">
         {/* The logo is the likely LCP element on this page. */}
-        <Image src="/logo.svg" alt="SIPS" width={50} height={50} priority />
+        <Link
+          href="/dashboard"
+          aria-label={t('dashboard')}
+          className="hover:opacity-80 transition-opacity focus-visible:ring-2 focus-visible:ring-primary rounded-lg outline-none"
+        >
+          <Image src="/logo.svg" alt="SIPS" width={50} height={50} priority />
+        </Link>
       </div>
 
       <div className="navbar-end gap-2">
