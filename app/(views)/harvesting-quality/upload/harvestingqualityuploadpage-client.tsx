@@ -6,6 +6,7 @@ import type { TableColumn } from 'react-data-table-component';
 import { SkeletonTable } from '@/app/components/skeletons';
 import { AccessDenied } from '@/app/components/access-denied';
 import { useLocale } from '@/hooks/useLocale';
+import { formatPerfDate, formatPerfNumber } from '@/utils/perf-formatter';
 import { useUploadPage } from '@/hooks/useUploadPage';
 import { useBatchSubmit } from '@/hooks/useBatchSubmit';
 
@@ -173,37 +174,41 @@ export default function HarvestingQualityUploadPage() {
     setFormParams(isAdmin ? EMPTY_PARAMS : { ...EMPTY_PARAMS, fcba: userFcba });
   };
 
-  const dataWithKey = useMemo(
-    () =>
-      data.map((item, idx) => ({
-        ...item,
-        _rowKey: `${item.empcode}-${item.fddate}-${item.fieldcode}-${item.documentno}-${idx}`,
-      })),
-    [data]
-  );
+  const { filteredDataWithKey, summary } = useMemo(() => {
+    const search = searchTerm.trim().toLowerCase();
+    const filtered: (HarvestingQualityUploadData & { _rowKey: string })[] = [];
+    const stats = {
+      count: 0,
+      totalUnderripe: 0,
+      totalOverripe: 0,
+      totalAbnormal: 0,
+    };
 
-  const filteredDataWithKey = useMemo(() => {
-    if (!searchTerm.trim()) return dataWithKey;
-    const search = searchTerm.toLowerCase();
-    return dataWithKey.filter(
-      r =>
-        r.empcode?.toLowerCase().includes(search) ||
-        r.fddate?.toLowerCase().includes(search) ||
-        r.fieldcode?.toLowerCase().includes(search) ||
-        r.fcba?.toLowerCase().includes(search) ||
-        r.documentno?.toLowerCase().includes(search)
-    );
-  }, [dataWithKey, searchTerm]);
+    for (let i = 0; i < data.length; i++) {
+      const item = data[i];
+      const _rowKey = `${item.empcode}-${item.fddate}-${item.fieldcode}-${item.documentno}-${i}`;
 
-  const summary = useMemo(
-    () => ({
-      count: filteredDataWithKey.length,
-      totalUnderripe: filteredDataWithKey.reduce((s, r) => s + (Number(r.under_ripe) || 0), 0),
-      totalOverripe: filteredDataWithKey.reduce((s, r) => s + (Number(r.overripe) || 0), 0),
-      totalAbnormal: filteredDataWithKey.reduce((s, r) => s + (Number(r.abnormal) || 0), 0),
-    }),
-    [filteredDataWithKey]
-  );
+      const matchesSearch =
+        !search ||
+        item.empcode?.toLowerCase().includes(search) ||
+        item.fddate?.toLowerCase().includes(search) ||
+        item.fieldcode?.toLowerCase().includes(search) ||
+        item.fcba?.toLowerCase().includes(search) ||
+        item.documentno?.toString().toLowerCase().includes(search);
+
+      if (matchesSearch) {
+        const enrichedItem = { ...item, _rowKey };
+        filtered.push(enrichedItem);
+
+        stats.count++;
+        stats.totalUnderripe += Number(item.under_ripe) || 0;
+        stats.totalOverripe += Number(item.overripe) || 0;
+        stats.totalAbnormal += Number(item.abnormal) || 0;
+      }
+    }
+
+    return { filteredDataWithKey: filtered, summary: stats };
+  }, [data, searchTerm]);
 
   const columns: TableColumn<HarvestingQualityUploadData>[] = useMemo(
     () => [
@@ -218,103 +223,97 @@ export default function HarvestingQualityUploadPage() {
         name: 'FD Date',
         sortable: true,
         width: '120px',
-        selector: r => {
-          try {
-            return r.fddate ? new Date(r.fddate).toLocaleDateString(localeTag) : '-';
-          } catch {
-            return r.fddate || '-';
-          }
-        },
+        selector: r => formatPerfDate(r.fddate, localeTag) || '-',
       },
       { name: 'Field Code', selector: r => r.fieldcode || '-', sortable: true, width: '110px' },
       { name: 'Document No', selector: r => r.documentno || '-', sortable: true, width: '120px' },
       {
         name: 'Under Ripe',
-        selector: r => (Number(r.under_ripe) || 0).toLocaleString(localeTag),
+        selector: r => formatPerfNumber(r.under_ripe || 0, localeTag),
         sortable: true,
         width: '110px',
       },
       {
         name: 'Overripe',
-        selector: r => (Number(r.overripe) || 0).toLocaleString(localeTag),
+        selector: r => formatPerfNumber(r.overripe || 0, localeTag),
         sortable: true,
         width: '110px',
       },
       {
         name: 'Abnormal',
-        selector: r => (Number(r.abnormal) || 0).toLocaleString(localeTag),
+        selector: r => formatPerfNumber(r.abnormal || 0, localeTag),
         sortable: true,
         width: '110px',
       },
       {
         name: 'Long Stalk',
-        selector: r => (Number(r.long_stalk) || 0).toLocaleString(localeTag),
+        selector: r => formatPerfNumber(r.long_stalk || 0, localeTag),
         sortable: true,
         width: '110px',
       },
       {
         name: 'Eaten by Rat',
-        selector: r => (Number(r.eaten_by_rat) || 0).toLocaleString(localeTag),
+        selector: r => formatPerfNumber(r.eaten_by_rat || 0, localeTag),
         sortable: true,
         width: '120px',
       },
       {
         name: 'Unharvest FFB',
-        selector: r => (Number(r.unharvest_ffb) || 0).toLocaleString(localeTag),
+        selector: r => formatPerfNumber(r.unharvest_ffb || 0, localeTag),
         sortable: true,
         width: '120px',
       },
       {
         name: 'Uncollect LF Circle',
-        selector: r => (Number(r.uncollect_lf_circle) || 0).toLocaleString(localeTag),
+        selector: r => formatPerfNumber(r.uncollect_lf_circle || 0, localeTag),
         sortable: true,
         width: '140px',
       },
       {
         name: 'Uncollect LF Piece',
-        selector: r => (Number(r.uncollect_lf_piece) || 0).toLocaleString(localeTag),
+        selector: r => formatPerfNumber(r.uncollect_lf_piece || 0, localeTag),
         sortable: true,
         width: '135px',
       },
       {
         name: 'Unarrange FFB',
-        selector: r => (Number(r.unarrange_ffb) || 0).toLocaleString(localeTag),
+        selector: r => formatPerfNumber(r.unarrange_ffb || 0, localeTag),
         sortable: true,
         width: '125px',
       },
       {
         name: 'Unprune Frond',
-        selector: r => (Number(r.unprune_frond) || 0).toLocaleString(localeTag),
+        selector: r => formatPerfNumber(r.unprune_frond || 0, localeTag),
         sortable: true,
         width: '125px',
       },
       {
         name: 'QE 1 - Pelepah',
-        selector: r => (Number(r.qe_1_pelepah_tidak_disusun) || 0).toLocaleString(localeTag),
+        selector: r => formatPerfNumber(r.qe_1_pelepah_tidak_disusun || 0, localeTag),
         sortable: true,
         width: '125px',
       },
       {
         name: 'QE 2 - Buah Matahari',
-        selector: r => (Number(r.qe_2_buah_matahari) || 0).toLocaleString(localeTag),
+        selector: r => formatPerfNumber(r.qe_2_buah_matahari || 0, localeTag),
         sortable: true,
         width: '140px',
       },
       {
         name: 'QE 3 - Buah Busuk',
-        selector: r => (Number(r.qe_3_buah_busuk) || 0).toLocaleString(localeTag),
+        selector: r => formatPerfNumber(r.qe_3_buah_busuk || 0, localeTag),
         sortable: true,
         width: '125px',
       },
       {
         name: 'QE 4 - Mentah Diperam',
-        selector: r => (Number(r.qe_4_buah_mentah_diperam) || 0).toLocaleString(localeTag),
+        selector: r => formatPerfNumber(r.qe_4_buah_mentah_diperam || 0, localeTag),
         sortable: true,
         width: '145px',
       },
       {
         name: 'QE 5 - Over Pruning',
-        selector: r => (Number(r.qe_5_over_pruning) || 0).toLocaleString(localeTag),
+        selector: r => formatPerfNumber(r.qe_5_over_pruning || 0, localeTag),
         sortable: true,
         width: '135px',
       },
@@ -481,19 +480,19 @@ export default function HarvestingQualityUploadPage() {
             <div className="bg-success/10 rounded-lg p-4 border border-success/20">
               <div className="text-sm text-base-content/60">Total Underripe</div>
               <div className="text-2xl font-bold text-success">
-                {summary.totalUnderripe.toLocaleString('id-ID')}
+                {formatPerfNumber(summary.totalUnderripe, localeTag)}
               </div>
             </div>
             <div className="bg-info/10 rounded-lg p-4 border border-info/20">
               <div className="text-sm text-base-content/60">Total Overripe</div>
               <div className="text-2xl font-bold text-info">
-                {summary.totalOverripe.toLocaleString('id-ID')}
+                {formatPerfNumber(summary.totalOverripe, localeTag)}
               </div>
             </div>
             <div className="bg-warning/10 rounded-lg p-4 border border-warning/20">
               <div className="text-sm text-base-content/60">Total Abnormal</div>
               <div className="text-2xl font-bold text-warning">
-                {summary.totalAbnormal.toLocaleString('id-ID')}
+                {formatPerfNumber(summary.totalAbnormal, localeTag)}
               </div>
             </div>
           </div>

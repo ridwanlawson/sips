@@ -12,6 +12,7 @@ import {
 import { SkeletonTable } from '@/app/components/skeletons';
 import { AccessDenied } from '@/app/components/access-denied';
 import { useLocale } from '@/hooks/useLocale';
+import { formatPerfDate } from '@/utils/perf-formatter';
 import { useUploadPage } from '@/hooks/useUploadPage';
 
 const EMPTY_PARAMS: AttendanceUploadParams = {
@@ -177,13 +178,7 @@ export default function AttendanceUploadPage() {
       },
       {
         name: 'Date',
-        selector: row => {
-          try {
-            return new Date(row.fddate).toLocaleDateString(localeTag);
-          } catch {
-            return row.fddate || '-';
-          }
-        },
+        selector: row => formatPerfDate(row.fddate, localeTag) || '-',
         sortable: true,
         width: '120px',
       },
