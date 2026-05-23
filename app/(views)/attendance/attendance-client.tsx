@@ -18,6 +18,7 @@ type Absensi = {
   _rowKey?: string;
   id: string;
   tanggal: string;
+  kemandoran: string;
   kode_karyawan_mandor?: string | null;
   kode_karyawan: string;
   time_in?: string | null; // "YYYY-MM-DD HH:mm:ss"
@@ -48,13 +49,14 @@ type Absensi = {
 type FormState = {
   id?: string;
   tanggal: string; // "YYYY-MM-DD"
+  kemandoran: string;
   kode_karyawan_mandor: string;
   kode_karyawan: string;
   time_in: string; // "HH:MM"
   time_out: string; // "HH:MM"
   location_in: string;
   location_out: string;
-  pengancakan: string; // dari NOANlAK
+  pengancakan: string; // dari NOANCAK
   total_late_time: string; // H:MM (readOnly)
   go_home_early: string; // H:MM (readOnly)
   attendance_type: 'REGULAR' | 'ASSISTENSI';
@@ -77,6 +79,7 @@ type FormState = {
 const initialForm: FormState = {
   id: undefined,
   tanggal: '',
+  kemandoran: '',
   kode_karyawan_mandor: '',
   kode_karyawan: '',
   time_in: '',
@@ -105,6 +108,7 @@ const initialForm: FormState = {
 type Filters = Partial<{
   tanggal: string;
   tanggal_end: string;
+  kemandoran: string;
   kode_karyawan_mandor: string;
   kode_karyawan: string;
   fcba: string;
@@ -449,6 +453,7 @@ export default function Attendance() {
     return {
       tanggal: yesterday,
       tanggal_end: today,
+      kemandoran: '',
       kode_karyawan_mandor: '',
       kode_karyawan: '',
       fcba: '',
@@ -469,13 +474,15 @@ export default function Attendance() {
   const [selGang, setSelGang] = useState<string>('');
   const [homeFcba, setHomeFcba] = useState<string>('');
   const [homeSection, setHomeSection] = useState<string>('');
-  const [homeGang, setHomeGang] = useState<string>('');
+  const [homeKemandoran, setHomeKemandoran] = useState<string>('');
   const [userFcbaCookie, setUserFcbaCookie] = useState<string>('');
   const [userAfdelingCookie, setUserAfdelingCookie] = useState<string>('');
   const [userLevel, setUserLevel] = useState<UserLevel>('OTHER');
   const [destFcba, setDestFcba] = useState<string>('');
   const [destSection, setDestSection] = useState<string>('');
   const [optFcba, setOptFcba] = useState<string[]>([]);
+
+  const isKemandoranScopedUser = (level: UserLevel) => ['MDP', 'KRT', 'KRP'].includes(level);
 
   const getScopedFilters = useCallback(
     (baseFilters: Filters): Filters => {
@@ -486,7 +493,7 @@ export default function Attendance() {
           level: userLevel,
           fcba: userFcbaCookie || homeFcba,
           afdeling: userAfdelingCookie || homeSection,
-          gang: homeGang,
+          gang: homeKemandoran,
         },
         'attendance'
       );
@@ -494,18 +501,21 @@ export default function Attendance() {
       // Apply the filter criteria to base filters
       if (filterCriteria.fcba) scopedFilters.fcba = filterCriteria.fcba;
       if (filterCriteria.afdeling) scopedFilters.afdeling = filterCriteria.afdeling;
-      if (filterCriteria.kemandoran) scopedFilters.gang = filterCriteria.kemandoran;
+      if (filterCriteria.kemandoran) scopedFilters.kemandoran = filterCriteria.kemandoran;
+
+      if (isKemandoranScopedUser(userLevel)) {
+        scopedFilters.gang = '';
+      }
 
       return scopedFilters;
     },
-    [userLevel, homeFcba, homeSection, homeGang, userFcbaCookie, userAfdelingCookie]
+    [userLevel, homeFcba, homeSection, homeKemandoran, userFcbaCookie, userAfdelingCookie]
   );
 
   const { isFcbaLocked, isAfdelingLocked, isKemandoranLocked } = useMemo(
     () => getLockedFields(userLevel, 'attendance'),
     [userLevel]
   );
-  const isGangLocked = isKemandoranLocked;
 
   useEffect(() => {
     setFilters(current => getScopedFilters(current));
@@ -517,7 +527,7 @@ export default function Attendance() {
     isLoading: loading,
     error: queryError,
   } = useQuery({
-    queryKey: ['attendance', filters, userLevel, homeFcba, homeSection, homeGang],
+    queryKey: ['attendance', filters, userLevel, homeFcba, homeSection, homeKemandoran],
     queryFn: async () => {
       const base = filters;
       let start = (base.tanggal ?? '').trim();
@@ -769,7 +779,7 @@ export default function Attendance() {
   useEffect(() => {
     setHomeFcba(cookieStore.getFcba());
     setHomeSection(cookieStore.getSection());
-    setHomeGang(cookieStore.getGang());
+    setHomeKemandoran(cookieStore.getGang());
     setUserFcbaCookie(
       cookieStore.getCookie('user_Fcba') || cookieStore.getCookie('user_fcba') || ''
     );
@@ -872,7 +882,7 @@ export default function Attendance() {
         if (!fccode) continue;
         if (!mapSmp.has(fccode)) {
           const noancakValue =
-            (it as { noancak?: unknown }).noancak ?? (it as { NOANlAK?: unknown }).NOANlAK;
+            (it as { noancak?: unknown }).noancak ?? (it as { NOANCAK?: unknown }).NOANCAK;
           const noancak = typeof noancakValue === 'string' ? noancakValue.trim() : undefined;
 
           mapSmp.set(fccode, {
@@ -911,7 +921,7 @@ export default function Attendance() {
       // KRT: fcba + afdeling + gang locked
       setSelSection(homeSection || '');
       setForm(s => ({ ...s, section: homeSection || '' }));
-      setSelGang(homeGang || '');
+      setSelGang(homeKemandoran || '');
     } else if (userLevel === 'MD1') {
       // MD1: fcba + afdeling locked
       setSelSection(homeSection || '');
@@ -925,7 +935,7 @@ export default function Attendance() {
       setSelGang('');
     }
     setForm(s => ({ ...s, kode_karyawan: '' }));
-  }, [form.attendance_type, homeFcba, homeSection, homeGang, userLevel, isEditing]);
+  }, [form.attendance_type, homeFcba, homeSection, homeKemandoran, userLevel, isEditing]);
 
   /* ===== Options ===== */
   const fcbaOptions = useMemo(() => {
@@ -1452,6 +1462,7 @@ export default function Attendance() {
         const filled: FormState = {
           id: d.id,
           tanggal: (d.tanggal || '').split(' ')[0],
+          kemandoran: d.kemandoran || '',
           kode_karyawan_mandor: d.kode_karyawan_mandor || '',
           kode_karyawan: d.kode_karyawan || '',
           time_in: toHM(d.time_in) || '06:00',
@@ -1591,6 +1602,12 @@ export default function Attendance() {
         },
       },
       {
+        name: <span title="Kemandoran">Kemandoran</span>,
+        selector: r => r.kemandoran ?? '-',
+        sortable: true,
+        width: '100px',
+      },
+      {
         name: <span title="Nama dan kode karyawan">Karyawan</span>,
         style: { flexGrow: 2 as number, minWidth: '220px' },
         width: '240px',
@@ -1692,7 +1709,7 @@ export default function Attendance() {
         width: '100px',
       },
       {
-        name: <span title="Pengancakan diambil dari NOANlAK karyawan">Pengancakan</span>,
+        name: <span title="Pengancakan diambil dari NOANCAK karyawan">Pengancakan</span>,
         selector: r => r.pengancakan || '-',
         sortable: true,
         style: { flexGrow: 1.1 as number, minWidth: '145px' },
@@ -1828,8 +1845,9 @@ export default function Attendance() {
     const dataToExport = filtered.map((r, idx) => ({
       No: idx + 1,
       Tanggal: (r.tanggal || '').split(' ')[0],
-      Nama: r.namakaryawan || '-',
+      Kemandoran: r.kemandoran || '-',
       Kode: r.kode_karyawan || '-',
+      Nama: r.namakaryawan || '-',
       Mandor: r.kode_karyawan_mandor || '-',
       FCBA: r.fcba || '-',
       Section: r.section || '-',
@@ -1853,6 +1871,7 @@ export default function Attendance() {
     const s = q.toLowerCase();
     return items.filter(it =>
       [
+        it.kemandoran,
         it.namakaryawan,
         it.kode_karyawan,
         it.kode_karyawan_mandor,
@@ -1968,6 +1987,14 @@ export default function Attendance() {
               />
               <input
                 className="input input-bordered w-full"
+                placeholder="Kemandoran"
+                value={filters.kemandoran ?? ''}
+                onChange={e => setFilters(s => ({ ...s, kemandoran: e.target.value }))}
+                title="Filter berdasarkan Kemandoran"
+                disabled={isKemandoranLocked}
+              />
+              <input
+                className="input input-bordered w-full"
                 placeholder="Kode Karyawan"
                 value={filters.kode_karyawan ?? ''}
                 onChange={e => setFilters(s => ({ ...s, kode_karyawan: e.target.value }))}
@@ -2007,7 +2034,6 @@ export default function Attendance() {
                 value={filters.gang ?? ''}
                 onChange={e => setFilters(s => ({ ...s, gang: e.target.value }))}
                 title="Filter berdasarkan kode Gang"
-                disabled={isGangLocked}
               />
               <select
                 className="select select-bordered w-full"
@@ -2096,6 +2122,7 @@ export default function Attendance() {
                   const resetFilters: Filters = {
                     tanggal: '',
                     tanggal_end: '',
+                    kemandoran: '',
                     kode_karyawan_mandor: '',
                     kode_karyawan: '',
                     fcba: '',
@@ -2289,6 +2316,19 @@ export default function Attendance() {
                     />
                   </fieldset>
                 )}
+
+                {/* Mandor */}
+                <fieldset className="fieldset col-span-12 md:col-span-4">
+                  <legend className="fieldset-legend">Kemandoran (opsional)</legend>
+                  <SearchSelect
+                    options={mandorOptions}
+                    value={form.kemandoran ?? ''}
+                    onChange={v => setForm(s => ({ ...s, kemandoran: v }))}
+                    placeholder={isLoadingSmp ? 'Memuat Kemandoran...' : 'Pilih Kemandoran'}
+                    small
+                    disabled={disableUnlessAllowed(false) || isLoadingSmp}
+                  />
+                </fieldset>
 
                 {/* Mandor */}
                 <fieldset className="fieldset col-span-12 md:col-span-4">
