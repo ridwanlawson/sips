@@ -17,8 +17,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   if (!response.ok) {
     const errorText = await response.text();
+    // SECURITY: Log detailed upstream error server-side but return generic message
+    // to client to prevent information leakage (CWE-209).
+    console.error('[BUSINESS_UNITS_GET_ERROR]', { status: response.status, errorText });
     return NextResponse.json(
-      { ok: false, error: `Upstream error: ${response.status} - ${errorText}` },
+      { ok: false, error: 'Failed to fetch business units' },
       { status: response.status }
     );
   }
