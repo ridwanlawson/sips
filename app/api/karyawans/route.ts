@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BACKEND_URL } from '@/utils/absensiProxy';
 import { authHeaders, extractDataArray } from '@/lib/apiProxy';
+import { applyUserDataScope } from '@/utils/requestScope';
 
 interface KaryawanRow {
   fcba?: string | number | null;
@@ -31,6 +32,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     if (value) upstreamParams.append(param, value);
   }
 
+  applyUserDataScope(req, upstreamParams);
+
   const url = `${BACKEND_URL}/api/apps/karyawans${upstreamParams.toString() ? `?${upstreamParams}` : ''}`;
 
   const upstream = await fetch(url, {
@@ -39,16 +42,18 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   });
 
   if (!upstream.ok) {
-    let errorMessage = `Upstream returned ${upstream.status} ${upstream.statusText}`;
-    try {
-      if (upstream.headers.get('content-type')?.includes('application/json')) {
-        const raw = await upstream.json();
-        errorMessage = raw?.message || errorMessage;
-      }
-    } catch {
-      /* keep default */
-    }
-    return NextResponse.json({ ok: false, error: errorMessage }, { status: upstream.status });
+    // SECURITY: Log original error details server-side but return generic message
+    // to client to prevent information leakage (CWE-209).
+    const errorText = await upstream.text();
+    console.error('[KARYAWANS_ERROR]', {
+      status: upstream.status,
+      statusText: upstream.statusText,
+      error: errorText,
+    });
+    return NextResponse.json(
+      { ok: false, error: 'Failed to fetch employee data' },
+      { status: upstream.status }
+    );
   }
 
   const raw = await upstream.json();
