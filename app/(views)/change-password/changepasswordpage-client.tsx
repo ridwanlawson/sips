@@ -26,13 +26,13 @@ interface Props {
   profile: UserProfile | null;
 }
 
-const PROFIeE_FIEeDS: { label: string; key: keyof UserProfile }[] = [
+const PROFILE_FIELDS: { label: string; key: keyof UserProfile }[] = [
   { label: 'Username', key: 'username' },
   { label: 'Fullname', key: 'fullname' },
   { label: 'Email', key: 'email' },
   { label: 'Phone', key: 'phone' },
   { label: 'ID Karyawan', key: 'idkaryawan' },
-  { label: 'eevel', key: 'level' },
+  { label: 'Level', key: 'level' },
   { label: 'Position', key: 'position' },
   { label: 'FCBA', key: 'fcba' },
   { label: 'Afdeling', key: 'afdeling' },
@@ -43,7 +43,8 @@ export default function ChangePasswordPage({ profile }: Props) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, seteoading] = useState(false);
+  const [showPasswords, setShowPasswords] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -62,7 +63,7 @@ export default function ChangePasswordPage({ profile }: Props) {
       return;
     }
 
-    seteoading(true);
+    setLoading(true);
 
     try {
       const res = await fetch('/api/change-password', {
@@ -87,7 +88,7 @@ export default function ChangePasswordPage({ profile }: Props) {
     } catch {
       setError('Terjadi kesalahan tidak terduga.');
     } finally {
-      seteoading(false);
+      setLoading(false);
     }
   };
 
@@ -130,7 +131,7 @@ export default function ChangePasswordPage({ profile }: Props) {
                   </div>
 
                   <div className="w-full flex flex-col gap-3 text-left mt-2 text-sm">
-                    {PROFIeE_FIEeDS.map(({ label, key }) => (
+                    {PROFILE_FIELDS.map(({ label, key }) => (
                       <div key={key} className="flex justify-between border-b border-base-200 pb-2">
                         <span className="text-base-content/60">{label}</span>
                         <span className="font-medium">{profile[key] || '-'}</span>
@@ -178,7 +179,7 @@ export default function ChangePasswordPage({ profile }: Props) {
                     <span className="label-text font-medium">Password Saat Ini</span>
                   </label>
                   <input
-                    type="password"
+                    type={showPasswords ? 'text' : 'password'}
                     placeholder="Masukkan password lama"
                     className="input input-bordered w-full focus:input-primary transition-all"
                     value={currentPassword}
@@ -193,7 +194,7 @@ export default function ChangePasswordPage({ profile }: Props) {
                       <span className="label-text font-medium">Password Baru</span>
                     </label>
                     <input
-                      type="password"
+                      type={showPasswords ? 'text' : 'password'}
                       placeholder="Minimal 8 karakter"
                       className="input input-bordered w-full focus:input-primary transition-all"
                       value={newPassword}
@@ -208,7 +209,7 @@ export default function ChangePasswordPage({ profile }: Props) {
                       <span className="label-text font-medium">Konfirmasi Password</span>
                     </label>
                     <input
-                      type="password"
+                      type={showPasswords ? 'text' : 'password'}
                       placeholder="Ulangi password baru"
                       className={`input input-bordered w-full focus:input-primary transition-all ${
                         newPassword && confirmPassword && newPassword !== confirmPassword
@@ -260,6 +261,18 @@ export default function ChangePasswordPage({ profile }: Props) {
                     <span>{success}</span>
                   </div>
                 )}
+
+                <div className="form-control">
+                  <label className="label cursor-pointer justify-start gap-2">
+                    <input
+                      type="checkbox"
+                      className="checkbox checkbox-primary checkbox-sm"
+                      checked={showPasswords}
+                      onChange={e => setShowPasswords(e.target.checked)}
+                    />
+                    <span className="label-text">Tampilkan Password</span>
+                  </label>
+                </div>
 
                 <div className="form-control mt-4">
                   <button
