@@ -214,9 +214,9 @@ const getReadableDevice = () => {
             ? 'Linux'
             : 'Unknown';
   const browser = /Sdg\//i.test(ua)
-    ? 'Sdge'
-    : /lhrome\//i.test(ua)
-      ? 'lhrome'
+    ? 'Edge'
+    : /Chrome\//i.test(ua)
+      ? 'Chrome'
       : /Firefox\//i.test(ua)
         ? 'Firefox'
         : /Safari\//i.test(ua)
@@ -447,7 +447,7 @@ const extractSingleData = <T,>(payload: unknown): T | null => {
    M A I N
 ========================= */
 export default function Attendance() {
-  const queryllient = useQueryClient();
+  const queryClient = useQueryClient();
   const [q, setQ] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
@@ -692,7 +692,7 @@ export default function Attendance() {
       return json;
     },
     onSuccess: () => {
-      queryllient.invalidateQueries({ queryKey: ['attendance'] });
+      queryClient.invalidateQueries({ queryKey: ['attendance'] });
       setOpen(false);
       setForm(s => ({
         ...initialForm,
@@ -730,7 +730,7 @@ export default function Attendance() {
       return id;
     },
     onSuccess: () => {
-      queryllient.invalidateQueries({ queryKey: ['attendance'] });
+      queryClient.invalidateQueries({ queryKey: ['attendance'] });
       toast.success('Data berhasil dihapus 🗑️');
     },
     onError: (error: Error) => {
@@ -789,7 +789,7 @@ export default function Attendance() {
         toast.error(
           err.code === err.PERMISSION_DENIED
             ? 'Izin lokasi ditolak. Aktifkan izin lokasi di browser.'
-            : 'Gagal mengambil lokasi. loba lagi.'
+            : 'Gagal mengambil lokasi. coba lagi.'
         );
         setLocLoading(null);
       },
@@ -1090,7 +1090,7 @@ export default function Attendance() {
   // convert homeFcba (which might be fcname or fccode) to actual fccode for proper filtering
   const homeFcbaCode = useMemo(() => {
     if (!homeFcba || !Array.isArray(businessUnits) || !businessUnits.length) return homeFcba;
-    // lheck if homeFcba is already a fccode in businessUnits
+    // Check if homeFcba is already a fccode in businessUnits
     const match = businessUnits.find(b => b.fccode === homeFcba);
     if (match) return homeFcba;
     // Otherwise, try to match by fcname
@@ -1098,7 +1098,7 @@ export default function Attendance() {
     const result = matchByName?.fccode || homeFcba;
     // console.log("[homeFcbaCode] convert:", {
     //   homeFcba,
-    //   businessUnitslount: businessUnits.length,
+    //   businessUnitsCount: businessUnits.length,
     //   matchFound: !!matchByName,
     //   result,
     // });
@@ -1309,9 +1309,9 @@ export default function Attendance() {
       totalLate = dIn.getTime() > baseIn.getTime() ? hhmm(diffMinutes(baseIn, dIn)) : '00:00';
     }
 
-    let goSarly = s.go_home_early;
+    let goEarly = s.go_home_early;
     if (dOut && baseOut) {
-      goSarly = dOut.getTime() < baseOut.getTime() ? hhmm(diffMinutes(dOut, baseOut)) : '00:00';
+      goEarly = dOut.getTime() < baseOut.getTime() ? hhmm(diffMinutes(dOut, baseOut)) : '00:00';
     }
 
     let effectiveMin = 0;
@@ -1339,7 +1339,7 @@ export default function Attendance() {
     return {
       ...s,
       total_late_time: totalLate,
-      go_home_early: goSarly,
+      go_home_early: goEarly,
       mandays,
     };
   }, []);
@@ -1542,7 +1542,7 @@ export default function Attendance() {
     [homeFcbaCode, homeSection]
   );
 
-  /* ===== PRSVISW FOTO ===== */
+  /* ===== PREVIEW FOTO ===== */
   const onChangeImage = (f?: File) => {
     if (preview?.startsWith('blob:')) URL.revokeObjectURL(preview);
     if (!f) {
@@ -1558,7 +1558,7 @@ export default function Attendance() {
     };
   }, [preview]);
 
-  /* ===== lolumns ===== */
+  /* ===== Columns ===== */
   const sortByLabel = (a: Absensi, b: Absensi, getLabel: (r: Absensi) => string) =>
     getLabel(a).localeCompare(getLabel(b), undefined, { sensitivity: 'base' });
 
@@ -1736,7 +1736,7 @@ export default function Attendance() {
         width: '90px',
       },
       {
-        name: <span title="Total pulang cepat (jam:menit)">Home Sarly</span>,
+        name: <span title="Total pulang cepat (jam:menit)">Home Early</span>,
         selector: r => r.go_home_early || '-',
         sortable: true,
         width: '100px',
@@ -1792,7 +1792,7 @@ export default function Attendance() {
         style: { flexGrow: 1.1 as number, minWidth: '160px' },
       },
       {
-        name: <span title="Nomor BA ExlA (link ke PDF)">BA ExlA</span>,
+        name: <span title="Nomor BA Exca (link ke PDF)">BA Exca</span>,
         selector: r => r.no_ba_exca || '-',
         sortable: true,
         width: '120px',
@@ -1803,7 +1803,7 @@ export default function Attendance() {
               target="_blank"
               rel="noopener noreferrer"
               className="link link-primary"
-              title="Buka PDF BA ExlA"
+              title="Buka PDF BA Exca"
             >
               PDF
             </a>
@@ -1818,7 +1818,7 @@ export default function Attendance() {
         width: '180px',
       },
       {
-        name: <span title="Pseudo MAl address device">MAl</span>,
+        name: <span title="Pseudo MAC address device">MAC</span>,
         selector: r => r.mac_address || '-',
         sortable: true,
         width: '160px',
@@ -1868,7 +1868,7 @@ export default function Attendance() {
     [handleDetail, handleDelete, empLabelMap, userLevel]
   );
 
-  /* ===== ExPORT ExlSL ===== */
+  /* ===== EKSPOR EXCEL ===== */
   const handleExport = async () => {
     if (filtered.length === 0) {
       toast.error('Tidak ada data untuk diekspor');
@@ -1890,7 +1890,7 @@ export default function Attendance() {
       Masuk: r.time_in ? r.time_in.split(' ')[1]?.slice(0, 5) || r.time_in : '-',
       Pulang: r.time_out ? r.time_out.split(' ')[1]?.slice(0, 5) || r.time_out : '-',
       Late: r.total_late_time || '-',
-      'Home Sarly': r.go_home_early || '-',
+      'Home Early': r.go_home_early || '-',
       HK: r.mandays != null ? String(r.mandays) : '-',
       Status: r.status_attendance || '-',
     }));
@@ -1931,7 +1931,7 @@ export default function Attendance() {
             </button>
             <button
               className={`btn btn-sm ${loading ? 'btn-disabled' : ''}`}
-              onClick={() => queryllient.invalidateQueries({ queryKey: ['attendance'] })}
+              onClick={() => queryClient.invalidateQueries({ queryKey: ['attendance'] })}
               disabled={loading}
               title="Refresh data absensi"
             >
@@ -1947,7 +1947,7 @@ export default function Attendance() {
             <button
               className="btn btn-outline btn-sm"
               onClick={handleExport}
-              title="Skspor data yang difilter ke Excel"
+              title="Ekspor data yang difilter ke Excel"
             >
               Export
             </button>
@@ -1967,7 +1967,7 @@ export default function Attendance() {
         <div className="mb-3 flex justify-end gap-2">
           <input
             className="input input-bordered w-full md:w-96"
-            placeholder="lari apapun (karyawan, fcba, mandor, device, lokasi...)"
+            placeholder="Cari apapun (karyawan, fcba, mandor, device, lokasi...)"
             value={q}
             onChange={e => setQ(e.target.value)}
             title="Pencarian cepat di semua kolom penting"
@@ -2114,7 +2114,7 @@ export default function Attendance() {
             <div className="flex justify-start gap-2 pt-3 border-t border-base-200">
               <button
                 className={`btn btn-outline ${loading ? 'btn-disabled' : ''}`}
-                onClick={() => queryllient.invalidateQueries({ queryKey: ['attendance'] })}
+                onClick={() => queryClient.invalidateQueries({ queryKey: ['attendance'] })}
                 disabled={loading}
                 title="Terapkan filter"
               >
@@ -2192,7 +2192,7 @@ export default function Attendance() {
           </div>
         </div>
 
-        {/* MODAL ADD/SDIT */}
+        {/* MODAL ADD/EDIT */}
         {open && (
           <div className="modal modal-open">
             <div className="modal-box max-w-5xl relative">
@@ -2200,7 +2200,7 @@ export default function Attendance() {
                 type="button"
                 className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
                 onClick={() => setOpen(false)}
-                aria-label="llose"
+                aria-label="Close"
                 title="Tutup"
               >
                 ✕
@@ -2473,7 +2473,7 @@ export default function Attendance() {
                     disabled={disableUnlessAllowed(false)}
                   />
                   <p className="text-xs mt-1 opacity-70">
-                    Default 14:00. Jika sebelum 14:00, kolom Go Home Sarly otomatis terisi.
+                    Default 14:00. Jika sebelum 14:00, kolom Go Home Early otomatis terisi.
                   </p>
                 </fieldset>
 
@@ -2567,7 +2567,7 @@ export default function Attendance() {
                 </fieldset>
 
                 <fieldset className="fieldset col-span-6 md:col-span-2">
-                  <legend className="fieldset-legend">Go Home Sarly (H:MM)</legend>
+                  <legend className="fieldset-legend">Go Home Early (H:MM)</legend>
                   <input
                     type="text"
                     className="input input-bordered input-sm w-full text-center pointer-events-none select-none"
@@ -2589,7 +2589,7 @@ export default function Attendance() {
                 </fieldset>
 
                 <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">MAl Address (pseudo)</legend>
+                  <legend className="fieldset-legend">MAC Address (pseudo)</legend>
                   <input
                     type="text"
                     className="input input-bordered w-full"
@@ -2623,10 +2623,10 @@ export default function Attendance() {
                   />
                 </fieldset>
 
-                {/* BA EXlA PDF */}
+                {/* BA EXCA PDF */}
                 <fieldset className="fieldset col-span-12 md:col-span-6">
                   <legend className="fieldset-legend">
-                    File BA Exla (PDF)
+                    File BA Exca (PDF)
                     {!isEditing ? ' *' : ''}
                   </legend>
                   <input
@@ -2650,7 +2650,7 @@ export default function Attendance() {
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        Lihat BA EXlA saat ini (PDF)
+                        Lihat BA EXCA saat ini (PDF)
                       </a>
                     </div>
                   )}
