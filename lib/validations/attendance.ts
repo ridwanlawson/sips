@@ -5,6 +5,7 @@ export const attendanceFilterSchema = z.object({
   tanggal_end: z.string().optional(),
   fcba: z.string().optional(),
   afdeling: z.string().optional(),
+  gang: z.string().optional(),
   employeecode: z.string().optional(),
 });
 
