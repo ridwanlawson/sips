@@ -10,12 +10,16 @@ import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/authHelper';
 import { getTodayISO, formatDateDMY, getYesterdayISO } from '@/utils/datetime';
 import { centerHeaderStyle } from '@/utils/tableHelper';
 import { exportJsonToCsv } from '@/utils/exportCsv';
+import { formatPerfNumber } from '@/utils/perf-formatter';
+import { useLocale } from '@/hooks/useLocale';
 
 /* =========================
    T Y P E h
 ========================= */
 type LhmData = {
   _rowKey?: string;
+  // ⚡ Bolt Optimization: cached search values
+  _searchContent?: string;
 
   id: string;
   rowdata: string;
@@ -138,6 +142,7 @@ import { getFilterCriteria, getLockedFields } from '@/utils/filterHelper';
    M A I N
    ========================= */
 export default function Lhm() {
+  const localeTag = useLocale();
   const [q, setQ] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
@@ -275,7 +280,27 @@ export default function Lhm() {
             let key = candidate;
             while (seen.has(key)) key = `${key}_`;
             seen.add(key);
-            return { ...it, _rowKey: key };
+
+            // ⚡ Bolt Optimization: pre-calculate search content string
+            const searchContent = [
+              it.employeecode,
+              it.nama,
+              it.fddate,
+              it.kemandoran,
+              it.blok,
+              it.fcba,
+              it.afdeling,
+              it.attendance,
+              it.tahuntanam,
+              it.documentno,
+              it.fcentry,
+              it.lastupdate,
+            ]
+              .filter(Boolean)
+              .join(' ')
+              .toLowerCase();
+
+            return { ...it, _rowKey: key, _searchContent: searchContent };
           });
           setItems(data);
         }
@@ -303,27 +328,13 @@ export default function Lhm() {
   const filtered = useMemo(() => {
     if (!q.trim()) return items;
     const s = q.toLowerCase();
-    const filteredItems = items.filter(it =>
-      [
-        it.employeecode,
-        it.nama,
-        it.fddate,
-        it.kemandoran,
-        it.blok,
-        it.fcba,
-        it.afdeling,
-        it.attendance,
-        it.tahuntanam,
-        it.documentno,
-        it.fcentry,
-        it.lastupdate,
-      ]
-        .filter(Boolean)
-        .some(v => String(v).toLowerCase().includes(s))
-    );
+    // ⚡ Bolt Optimization: Use pre-calculated search content for O(1) string check per row
+    const filteredItems = items.filter(it => it._searchContent?.includes(s));
+
     // Jika pencarian attendance tidak ditemukan, tampilkan error
     if (q && items.length > 0) {
-      const attendanceExists = items.some(item =>
+      // ⚡ Bolt Optimization: Reuse searchContent logic for consistency and performance
+      const attendanceExists = filteredItems.some(item =>
         (item.attendance || '').toLowerCase().includes(s)
       );
       if (!attendanceExists) {
@@ -416,11 +427,13 @@ export default function Lhm() {
   };
 
   /* ===== Columns ===== */
-  const formatNumber = useCallback((val: string | null | undefined) => {
-    const num = Number(val ?? '0');
-    if (isNaN(num)) return '0';
-    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  }, []);
+  const formatNumber = useCallback(
+    (val: string | null | undefined) => {
+      // ⚡ Bolt Optimization: Use cached Intl.NumberFormat via formatPerfNumber
+      return formatPerfNumber(val ?? '0', localeTag);
+    },
+    [localeTag]
+  );
 
   const numCell = useCallback(
     (val: string | null | undefined) => {
