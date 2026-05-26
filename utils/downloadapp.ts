@@ -26,7 +26,7 @@ export async function checkAndDownloadApp() {
         'Content-Type': 'application/json',
         Accept: 'application/json',
       },
-      body: JSON.stringify({ platform: 'android', app_name: 'sipsmobile' }),
+      body: JSON.stringify({ action: 'check', platform: 'android', app_name: 'sipsmobile' }),
     });
 
     const data: DownloadCheckResponse = await response.json();

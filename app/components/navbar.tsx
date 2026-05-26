@@ -133,18 +133,18 @@ export default memo(function Navbar() {
               <span className="font-bold">{fullNameDisplay ?? t('pengguna')}</span>
             </li>
             <li>
-              <button
-                onClick={handleDownload}
+              <Theme />
+            </li>
+            <li>
+              <a
+                target="_blank"
+                rel="noopener noreferrer"
+                href="https://skj.my.id/app_archive.asp"
                 className="w-full text-left justify-between flex items-center"
-                disabled={isCheckingDownload}
               >
-                <span>SIPS Mobile</span>
-                {isCheckingDownload ? (
-                  <span className="loading loading-spinner loading-xs" />
-                ) : (
-                  <span className="badge">{t('download')}</span>
-                )}
-              </button>
+                <span>SIPS Apps </span>
+                <span className="badge">{t('download')}</span>
+              </a>
             </li>
             <li>
               <a
@@ -155,9 +155,6 @@ export default memo(function Navbar() {
               >
                 SIPS <span className="badge">{t('visit')}</span>
               </a>
-            </li>
-            <li>
-              <Theme />
             </li>
             <li>
               <button

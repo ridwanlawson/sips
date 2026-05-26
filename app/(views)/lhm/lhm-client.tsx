@@ -233,7 +233,7 @@ export default function Lhm() {
         }
       });
 
-      const res = await fetch(`/api/approval/lhm${params.toString() ? `?${params}` : ''}`, {
+      const res = await fetch(`/api/lhm${params.toString() ? `?${params}` : ''}`, {
         credentials: 'include',
       });
 
@@ -929,7 +929,7 @@ export default function Lhm() {
                 pagination
                 customStyles={centerHeaderStyle}
                 paginationPerPage={100}
-                paginationRowsPerPageOptions={[10, 30, 100, 500]}
+                paginationRowsPerPageOptions={[100, 500, 1000]}
                 dense
                 highlightOnHover
                 fixedHeader

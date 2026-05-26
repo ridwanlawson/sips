@@ -103,6 +103,7 @@ type Filters = Partial<{
   blok: string;
   attendance: string;
   level_user: string;
+  upload: string;
 }>;
 
 type UserLevel = 'ADM' | 'MGR' | 'KSI' | 'AST' | 'MD1' | 'MDP' | 'KRA' | 'KRT' | 'KRP' | 'OTHER';
@@ -145,6 +146,7 @@ const getEmptyFilters = (): Filters => {
     tahuntanam: '',
     blok: '',
     attendance: '',
+    upload: 'N',
   };
 };
 
@@ -1082,7 +1084,7 @@ export default function Approval() {
                 progressPending={loading}
                 pagination
                 customStyles={centerHeaderStyle}
-                paginationPerPage={200}
+                paginationPerPage={100}
                 paginationRowsPerPageOptions={[100, 500, 1000]}
                 dense
                 highlightOnHover

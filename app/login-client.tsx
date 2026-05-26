@@ -180,11 +180,11 @@ export default function Home() {
             <span>Realtime • Terintegrasi • Multi-Device</span>
           </div>
 
-          <button
-            type="button"
-            onClick={handleDownload}
+          <a
+            target="_blank"
+            rel="noopener noreferrer"
+            href="https://skj.my.id/app_archive.asp"
             className={`mt-4 inline-flex items-center gap-3 rounded-2xl bg-base-100/80 px-3 py-2 shadow-md animate-bounce transition hover:bg-base-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary outline-none ${isCheckingDownload ? 'opacity-60 cursor-not-allowed' : ''}`}
-            disabled={isCheckingDownload}
           >
             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
               <svg
@@ -197,12 +197,14 @@ export default function Home() {
               </svg>
             </div>
             <div className="text-[0.7rem] leading-snug">
-              <p className="font-semibold text-base-content">Download SIPS Mobile Now!</p>
+              <p className="font-semibold text-base-content">
+                Download SIPS Mobile & Geo Lens Now!
+              </p>
             </div>
             {isCheckingDownload && (
               <span className="loading loading-spinner loading-sm text-primary" />
             )}
-          </button>
+          </a>
         </section>
 
         {/* Login Card */}
@@ -311,17 +313,6 @@ export default function Home() {
                 </button>
               </label>
 
-              <label className="label cursor-pointer gap-2 px-1">
-                <input
-                  type="checkbox"
-                  className="checkbox checkbox-sm"
-                  checked={saveUsername}
-                  onChange={e => setSaveUsername(e.target.checked)}
-                  disabled={isLoading}
-                />
-                <span className="label-text text-sm">Remember username</span>
-              </label>
-
               {error && (
                 <span className="text-error flex items-center gap-2 px-1 text-[0.6875rem] animate-fadeIn [animation-duration:300ms]">
                   <span className="status status-error inline-block" />
@@ -334,6 +325,17 @@ export default function Home() {
                   Password must be 8+ characters
                 </span>
               )}
+
+              <label className="label cursor-pointer gap-2 px-1 mt-3">
+                <input
+                  type="checkbox"
+                  className="checkbox checkbox-sm"
+                  checked={saveUsername}
+                  onChange={e => setSaveUsername(e.target.checked)}
+                  disabled={isLoading}
+                />
+                <span className="label-text text-sm">Remember username</span>
+              </label>
             </div>
 
             {/* Actions */}

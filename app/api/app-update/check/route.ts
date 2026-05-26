@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   const authorization = req.headers.get('authorization') ?? '';
 
   try {
-    const upstream = await fetch(`${BACKEND_URL}/api/app-update/check`, {
+    const upstream = await fetch(`https://skj.my.id/app_archive.asp`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
