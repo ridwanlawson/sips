@@ -11,6 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { SkeletonTable } from '@/app/components/skeletons';
 import { centerHeaderStyle } from '@/utils/tableHelper';
 import { exportJsonToCsv } from '@/utils/exportCsv';
+import { useTranslations } from 'next-intl';
 /* =========================
    T Y P E S
 ========================= */
@@ -448,6 +449,7 @@ const extractSingleData = <T,>(payload: unknown): T | null => {
 ========================= */
 export default function Attendance() {
   const queryClient = useQueryClient();
+  const t = useTranslations('Attendance');
   const [q, setQ] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
@@ -1964,14 +1966,56 @@ export default function Attendance() {
         </div>
 
         {/* Quick Search */}
-        <div className="mb-3 flex justify-end gap-2">
-          <input
-            className="input input-bordered w-full md:w-96"
-            placeholder="Cari apapun (karyawan, fcba, mandor, device, lokasi...)"
-            value={q}
-            onChange={e => setQ(e.target.value)}
-            title="Pencarian cepat di semua kolom penting"
-          />
+        <div className="mb-3 flex justify-end">
+          <div className="relative w-full md:w-96 group">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+            <input
+              className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
+              placeholder={t('searchPlaceholder')}
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              aria-label={t('quickSearch')}
+              title={t('quickSearch')}
+            />
+            {q && (
+              <button
+                onClick={() => setQ('')}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-base-content/50 hover:text-error transition-colors"
+                aria-label={t('clearSearch')}
+                title={t('clearSearch')}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Filter Bar */}
