@@ -26,5 +26,10 @@
     "login": "Masuk",
     "username": "Nama Pengguna",
     "password": "Kata Sandi"
+  },
+  "Attendance": {
+    "quickSearch": "Pencarian Cepat",
+    "clearSearch": "Hapus pencarian",
+    "searchPlaceholder": "Cari apapun (karyawan, fcba, mandor, device, lokasi...)"
   }
 }
