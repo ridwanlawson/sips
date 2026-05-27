@@ -45,16 +45,24 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   });
 
   if (!upstream.ok) {
-    let errorMessage = `Upstream returned ${upstream.status} ${upstream.statusText}`;
+    // SECURITY: Log original error details server-side but return generic message
+    // to client to prevent information leakage (CWE-209).
+    let errorDetail = `Upstream returned ${upstream.status} ${upstream.statusText}`;
     try {
       if (upstream.headers.get('content-type')?.includes('application/json')) {
         const raw = await upstream.json();
-        errorMessage = raw?.message || errorMessage;
+        errorDetail = JSON.stringify(raw);
+      } else {
+        errorDetail = await upstream.text();
       }
     } catch {
-      /* keep default */
+      /* ignore */
     }
-    return NextResponse.json({ ok: false, error: errorMessage }, { status: upstream.status });
+    console.error('[TPH_GET_ERROR]', {
+      status: upstream.status,
+      error: errorDetail,
+    });
+    return NextResponse.json({ ok: false, error: 'Failed to fetch TPH data' }, { status: upstream.status });
   }
 
   const raw = await upstream.json();
