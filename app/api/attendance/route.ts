@@ -6,7 +6,7 @@ import {
   safeJson,
 } from "@/utils/absensiProxy";
 import { attendanceFilterSchema, attendanceApiResponseSchema } from "@/lib/validations/attendance";
-// import { applyUserDataScope } from "@/utils/requestScope";
+import { applyUserDataScope } from "@/utils/requestScope";
 
 export const dynamic = "force-dynamic"; // no cache
 export const runtime = "nodejs";
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   }
 
   const sp = new URLSearchParams(req.nextUrl.searchParams.toString());
-  // applyUserDataScope(req, sp, { gangParam: "gang" });
+  applyUserDataScope(req, sp, { gangParam: "gang" });
 
   // Build URL final ke API absensi upstream
   const upstreamUrl = buildFilteredUrl(ABSENSI_BASE, sp);
@@ -64,11 +64,14 @@ export async function GET(req: NextRequest) {
     }
 
     if (!upstream.ok) {
-      const message = (rawData && typeof rawData === 'object' && 'message' in rawData) 
-        ? String(rawData.message) 
-        : "Fetch failed";
+      // SECURITY: Log original error details server-side but return generic message
+      // to client to prevent information leakage (CWE-209).
+      console.error("[API_ATTENDANCE_GET_ERROR]", {
+        status: upstream.status,
+        data: rawData,
+      });
       return NextResponse.json(
-        { ok: false, error: message },
+        { ok: false, error: "Failed to fetch attendance data" },
         { status: upstream.status }
       );
     }
