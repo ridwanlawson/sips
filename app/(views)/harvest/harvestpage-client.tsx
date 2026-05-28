@@ -12,6 +12,8 @@ import { SkeletonTable } from '@/app/components/skeletons';
 import { centerHeaderStyle } from '@/utils/tableHelper';
 import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/authHelper';
 import { exportJsonToCsv } from '@/utils/exportCsv';
+import { formatPerfNumber } from '@/utils/perf-formatter';
+import { useLocale } from '@/hooks/useLocale';
 
 /* =========================
    Searchable Select Component
@@ -125,6 +127,8 @@ const SearchSelect: React.FC<{
 type Harvest = {
   _rowKey?: string;
   _index?: number;
+  // ⚡ Bolt Optimization: cached search values
+  _searchContent?: string;
   id: string;
   nodokumen: string;
   tanggal: string;
@@ -412,12 +416,13 @@ const toNumber = (value: string | number | null | undefined): number => {
 };
 
 const formatTotal = (value: number, localeTag = 'id-ID'): string =>
-  value.toLocaleString(localeTag, { maximumFractionDigits: 2 });
+  formatPerfNumber(value, localeTag, { maximumFractionDigits: 2 });
 
 /* =========================
    M A I N
 ========================= */
 export default function HarvestPage() {
+  const localeTag = useLocale();
   const queryClient = useQueryClient();
   const [q, setQ] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -611,16 +616,29 @@ export default function HarvestPage() {
 
       const seen = new Set<string>();
       return dataRaw.map((it, idx) => {
-        const candidate = [
-          it.id || '',
-          it.nodokumen || '',
-          (it.tanggal || '').split(' ')[0],
-          String(idx),
-        ].join('|');
+        const dateOnly = (it.tanggal || '').split(' ')[0];
+        // ⚡ Bolt Optimization: pre-calculate search content string
+        const searchContent = [
+          it.nodokumen,
+          it.kode_karyawan,
+          it.nama_karyawan,
+          it.fcba,
+          it.afdeling,
+          it.tph,
+          it.fieldcode,
+          it.status_harvesting,
+          it.kemandoran,
+          dateOnly,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        const candidate = [it.id || '', it.nodokumen || '', dateOnly, String(idx)].join('|');
         let key = candidate;
         while (seen.has(key)) key = `${key}_`;
         seen.add(key);
-        return { ...it, _rowKey: key };
+        return { ...it, _rowKey: key, _searchContent: searchContent };
       });
     },
     enabled: !!homeFcba || userLevel === 'ADM',
@@ -1346,26 +1364,10 @@ export default function HarvestPage() {
 
   /* ===== Quick search ===== */
   const filtered = useMemo(() => {
-    let res = items;
-    if (q.trim()) {
-      const s = q.toLowerCase();
-      res = items.filter(it =>
-        [
-          it.nodokumen,
-          it.kode_karyawan,
-          it.nama_karyawan,
-          it.fcba,
-          it.afdeling,
-          it.tph,
-          it.fieldcode,
-          it.status_harvesting,
-          it.kemandoran,
-        ]
-          .filter(Boolean)
-          .some(v => String(v).toLowerCase().includes(s))
-      );
-    }
-    return res;
+    if (!q.trim()) return items;
+    const s = q.toLowerCase();
+    // ⚡ Bolt Optimization: Use pre-calculated search content for O(1) string check per row
+    return items.filter(it => it._searchContent?.includes(s));
   }, [q, items]);
 
   const harvestTotals = useMemo(
@@ -1442,9 +1444,10 @@ export default function HarvestPage() {
   };
 
   /* ===== Columns ===== */
-  const columns: TableColumn<Harvest>[] = [
-    {
-      name: <span title="Aksi edit/hapus data panen">Aksi</span>,
+  const columns: TableColumn<Harvest>[] = useMemo(
+    () => [
+      {
+        name: <span title="Aksi edit/hapus data panen">Aksi</span>,
       width: '120px',
       cell: (row: Harvest) => {
         const status = (row.status_harvesting || '').toLowerCase();
@@ -1566,6 +1569,9 @@ export default function HarvestPage() {
       sortable: true,
       width: '90px',
       style: { justifyContent: 'end' },
+      cell: row => (
+        <span className="text-right w-full">{formatPerfNumber(toNumber(row.output), localeTag)}</span>
+      ),
     },
     {
       name: 'Mentah',
@@ -1573,6 +1579,9 @@ export default function HarvestPage() {
       sortable: true,
       width: '90px',
       style: { justifyContent: 'end' },
+      cell: row => (
+        <span className="text-right w-full">{formatPerfNumber(toNumber(row.mentah), localeTag)}</span>
+      ),
     },
     {
       name: 'Over',
@@ -1580,6 +1589,9 @@ export default function HarvestPage() {
       sortable: true,
       width: '90px',
       style: { justifyContent: 'end' },
+      cell: row => (
+        <span className="text-right w-full">{formatPerfNumber(toNumber(row.overripe), localeTag)}</span>
+      ),
     },
     {
       name: 'Busuk',
@@ -1587,6 +1599,9 @@ export default function HarvestPage() {
       sortable: true,
       width: '90px',
       style: { justifyContent: 'end' },
+      cell: row => (
+        <span className="text-right w-full">{formatPerfNumber(toNumber(row.busuk), localeTag)}</span>
+      ),
     },
     {
       name: 'Brondol',
@@ -1594,6 +1609,9 @@ export default function HarvestPage() {
       sortable: true,
       width: '90px',
       style: { justifyContent: 'end' },
+      cell: row => (
+        <span className="text-right w-full">{formatPerfNumber(toNumber(row.brondol), localeTag)}</span>
+      ),
     },
     {
       name: (
@@ -1667,7 +1685,9 @@ export default function HarvestPage() {
         ),
       ignoreRowClick: true,
     },
-  ];
+  ],
+  [canModify, fetchDetail, handleDelete, userLevel, localeTag]
+  );
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
@@ -1752,7 +1772,7 @@ export default function HarvestPage() {
               >
                 <div className="text-[10px] opacity-70 leading-none">{card.label}</div>
                 <div className={`text-sm font-semibold ${card.className}`}>
-                  {formatTotal(card.value)}
+                  {formatTotal(card.value, localeTag)}
                 </div>
               </div>
             ))}
