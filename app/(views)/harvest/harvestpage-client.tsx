@@ -8,6 +8,7 @@ import type { TableColumn } from 'react-data-table-component';
 import Image from 'next/image';
 import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { SkeletonTable } from '@/app/components/skeletons';
 import { centerHeaderStyle } from '@/utils/tableHelper';
 import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/authHelper';
@@ -423,6 +424,7 @@ const formatTotal = (value: number, localeTag = 'id-ID'): string =>
 ========================= */
 export default function HarvestPage() {
   const localeTag = useLocale();
+  const tH = useTranslations('Harvest');
   const queryClient = useQueryClient();
   const [q, setQ] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -1691,9 +1693,9 @@ export default function HarvestPage() {
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
-      <div className="p-4 sm:p-6 max-w-screen-2xl mx-auto w-full overflow-x-hidden">
+      <div className="p-4 sm:p-6 max-w-screen-2xl mx-auto w-full overflow-x-hidden space-y-4">
         {/* Header */}
-        <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start">
+        <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start animate-slideUp">
           <h1
             className="text-2xl sm:text-3xl font-bold min-w-0 truncate"
             title="Halaman pengelolaan Harvesting (Panen)"
@@ -1762,9 +1764,9 @@ export default function HarvestPage() {
           </div>
         </div>
 
-        <div className="mb-4 flex items-center gap-3">
+        <div className="mb-4 flex flex-col md:flex-row items-center gap-4 animate-slideUp [animation-delay:100ms]">
           {/* TOTAL CARDS (di kiri) */}
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
             {totalCards.map(card => (
               <div
                 key={card.label}
@@ -1779,19 +1781,60 @@ export default function HarvestPage() {
           </div>
 
           {/* SEARCH (dorong ke kanan) */}
-          <div className="ml-auto w-full md:w-96">
+          <div className="ml-auto w-full md:w-96 group relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
             <input
-              className="input input-bordered w-full"
-              placeholder="Cari No Dokumen, Karyawan, FCBA, TPH..."
+              className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
+              placeholder={tH('searchPlaceholder')}
               value={q}
               onChange={e => setQ(e.target.value)}
+              aria-label={tH('quickSearch')}
+              title={tH('quickSearch')}
             />
+            {q && (
+              <button
+                onClick={() => setQ('')}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-base-content/50 hover:text-error transition-colors"
+                aria-label={tH('clearSearch')}
+                title={tH('clearSearch')}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
 
         {/* Filters */}
         {showFilters && (
-          <div className="bg-base-100 p-4 rounded-xl shadow-sm mb-4 border border-base-200">
+          <div className="bg-base-100 p-4 rounded-xl shadow-sm mb-4 border border-base-200 animate-fadeIn">
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
               <input
                 type="date"
@@ -1900,7 +1943,7 @@ export default function HarvestPage() {
         )}
 
         {/* Table */}
-        <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100">
+        <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100 animate-slideUp [animation-delay:200ms]">
           <div className="min-w-[900px]">
             {loading ? (
               <SkeletonTable rows={10} />
