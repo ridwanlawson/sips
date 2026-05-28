@@ -33,12 +33,14 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
+      // SECURITY: Log original error details server-side but return generic message
+      // to client to prevent information leakage (CWE-209).
+      console.error('[API_ATTENDANCE_STATUS_PATCH_ERROR]', { status: res.status, data });
       return NextResponse.json(
         {
           ok: false,
           status: res.status,
           message: 'Gagal update status absensi ke server eksternal',
-          detail: data,
         },
         { status: res.status }
       );
@@ -53,12 +55,12 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       { status: 200 }
     );
   } catch (err) {
+    // SECURITY: Log detailed crash info server-side but return generic message.
     console.error('Error PATCH /api/attendance/[id]/status:', err);
     return NextResponse.json(
       {
         ok: false,
         message: 'Terjadi kesalahan pada server API route',
-        detail: String(err),
       },
       { status: 500 }
     );
