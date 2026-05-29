@@ -31,5 +31,10 @@
     "quickSearch": "Pencarian Cepat",
     "clearSearch": "Hapus pencarian",
     "searchPlaceholder": "Cari apapun (karyawan, fcba, mandor, device, lokasi...)"
+  },
+  "Harvest": {
+    "quickSearch": "Pencarian Cepat",
+    "clearSearch": "Hapus pencarian",
+    "searchPlaceholder": "Cari No Dokumen, Karyawan, FCBA, TPH..."
   }
 }
