@@ -36,5 +36,10 @@
     "quickSearch": "Quick Search",
     "clearSearch": "Clear search",
     "searchPlaceholder": "Search No Dokumen, Karyawan, FCBA, TPH..."
+  },
+  "Transport": {
+    "quickSearch": "Quick Search",
+    "clearSearch": "Clear search",
+    "searchPlaceholder": "Search No Pengangkutan, SPB, Driver, FCBA..."
   }
 }

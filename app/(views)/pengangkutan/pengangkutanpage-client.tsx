@@ -5,6 +5,9 @@ import Image from 'next/image';
 import DataTable from '@/app/components/dynamic-data-table';
 import type { TableColumn } from 'react-data-table-component';
 import { getProxiedImageUrl, PLACEHOLDER_IMAGE } from '@/utils/imageHelper';
+import { useLocale } from '@/hooks/useLocale';
+import { formatPerfDate } from '@/utils/perf-formatter';
+import { useTranslations } from 'next-intl';
 import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/authHelper';
 import { cookieStore } from '@/utils/cookieStore';
 import { getFilterCriteria, getLockedFields } from '@/utils/filterHelper';
@@ -13,6 +16,8 @@ import { getFilterCriteria, getLockedFields } from '@/utils/filterHelper';
    T Y P E S
 ========================= */
 type Pengangkutan = {
+  // ⚡ Bolt Optimization: cached search values
+  _searchContent?: string;
   id: string;
   nopengangkutan: string;
   nospb?: string | null;
@@ -81,16 +86,6 @@ const getTodayISO = (): string => {
   return `${yyyy}-${mm}-${dd}`;
 };
 
-const formatDateDMY = (raw: string | null | undefined): string => {
-  if (!raw) return '-';
-  const trimmed = raw.trim();
-  if (!trimmed) return '-';
-  const onlyDate = trimmed.split(' ')[0];
-  const parts = onlyDate.split('-');
-  if (parts.length !== 3) return trimmed;
-  const [y, m, d] = parts;
-  return `${d.padStart(2, '0')}-${m.padStart(2, '0')}-${y}`;
-};
 
 const getUserScope = () => ({
   level: cookieStore.getLevel(),
@@ -131,6 +126,8 @@ const applyClientUserScope = (params: URLSearchParams) => {
    M A I N
 ========================= */
 export default function PengangkutanPage() {
+  const localeTag = useLocale();
+  const t = useTranslations('Transport');
   const [items, setItems] = useState<Pengangkutan[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -268,8 +265,40 @@ export default function PengangkutanPage() {
         }
         // Example API returns { success: true, data: [...] }
         if (json && (json.success === true || json.ok === true)) {
-          const data = json.data || json.rows || [];
-          setItems(data as Pengangkutan[]);
+          const raw = (json.data || json.rows || []) as Pengangkutan[];
+
+          // ⚡ Bolt Optimization: pre-calculate search content string
+          const processed = raw.map(it => {
+            const dateOnly = (it.tanggal || '').split(' ')[0];
+            const displayDate = formatPerfDate(it.tanggal || '', localeTag);
+
+            const searchContent = [
+              it.nopengangkutan,
+              it.nospb,
+              it.nodokumen,
+              it.kode_karyawan_kerani,
+              it.nama_karyawan_kerani,
+              it.kode_karyawan_driver,
+              it.nama_karyawan_driver,
+              it.fcba,
+              it.afdeling,
+              it.status_pengangkutan,
+              it.kode_kendaraan,
+              it.card_id,
+              dateOnly,
+              displayDate,
+            ]
+              .filter(Boolean)
+              .join(' ')
+              .toLowerCase();
+
+            return {
+              ...it,
+              _searchContent: searchContent,
+            };
+          });
+
+          setItems(processed);
         } else {
           showAlert(json.message || json.error || 'Gagal mengambil data', 'error');
         }
@@ -280,7 +309,7 @@ export default function PengangkutanPage() {
         setLoading(false);
       }
     },
-    [filters]
+    [filters, localeTag]
   );
 
   useEffect(() => {
@@ -289,29 +318,15 @@ export default function PengangkutanPage() {
 
   /* ===== Quick search lokal ===== */
   const filtered = useMemo(() => {
-    let res = items;
-    if (q.trim()) {
-      const s = q.toLowerCase();
-      res = items.filter(it =>
-        [
-          it.nopengangkutan,
-          it.nospb,
-          it.nodokumen,
-          it.kode_karyawan_kerani,
-          it.nama_karyawan_kerani,
-          it.kode_karyawan_driver,
-          it.nama_karyawan_driver,
-          it.fcba,
-          it.afdeling,
-          it.status_pengangkutan,
-          it.kode_kendaraan,
-          it.card_id,
-        ]
-          .filter(Boolean)
-          .some(v => String(v).toLowerCase().includes(s))
-      );
+    if (!q.trim()) {
+      return items.map((item, index) => ({ ...item, _index: index + 1 }));
     }
-    return res.map((item, index) => ({ ...item, _index: index + 1 }));
+
+    const s = q.toLowerCase();
+    // ⚡ Bolt Optimization: Use pre-calculated search content for O(1) string check per row
+    return items
+      .filter(it => it._searchContent?.includes(s))
+      .map((item, index) => ({ ...item, _index: index + 1 }));
   }, [q, items]);
 
   const columns: TableColumn<Pengangkutan & { _index: number }>[] = [
@@ -341,7 +356,7 @@ export default function PengangkutanPage() {
     {
       name: <span title="Tanggal pengangkutan (DD-MM-YYYY)">Tanggal</span>,
       selector: r => r.tanggal || '-',
-      format: r => formatDateDMY(r.tanggal),
+      format: r => formatPerfDate(r.tanggal || '', localeTag) || '-',
       sortable: true,
       width: '120px',
     },
@@ -527,13 +542,57 @@ export default function PengangkutanPage() {
           </div>
         </div>
 
-        <div className="mb-3 flex justify-end gap-2">
-          <input
-            className="input input-bordered w-full md:w-96"
-            placeholder="Cari (no pengangkutan, SPB, driver, fcba...)"
-            value={q}
-            onChange={e => setQ(e.target.value)}
-          />
+        {/* Quick Search */}
+        <div className="mb-3 flex justify-end">
+          <div className="relative w-full md:w-96 group">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+            <input
+              className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
+              placeholder={t('searchPlaceholder')}
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              aria-label={t('quickSearch')}
+              title={t('quickSearch')}
+            />
+            {q && (
+              <button
+                onClick={() => setQ('')}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-base-content/50 hover:text-error transition-colors"
+                aria-label={t('clearSearch')}
+                title={t('clearSearch')}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
 
         {showFilters && (
