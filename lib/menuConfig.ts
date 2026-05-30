@@ -71,9 +71,16 @@ export const MenuConfig: MenuItem[] = [
   {
     id: 'approval',
     label: 'approvalLhm',
-    href: '/approval',
+    href: '/approval/lhm',
     icon: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z',
     requiredLevel: ['ADM', 'MDP', 'MD1', 'AST', 'KSI', 'MGR'],
+  },
+  {
+    id: 'openLhm',
+    label: 'openLhm',
+    href: '/open/lhm',
+    icon: 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-6 11h-2v-2h2v2zm0-4h-2V8h2v2zm4 4h-2v-2h2v2zm0-4h-2V8h2v2z',
+    requiredLevel: ['ADM', 'KSI'],
   },
 ];
 

@@ -324,7 +324,7 @@ export default function PengangkutanPage() {
       name: <span title="Nomor pengangkutan">No Pengangkutan</span>,
       selector: r => r.nopengangkutan,
       sortable: true,
-      width: '220px',
+      width: '200px',
     },
     {
       name: <span title="Nomor SPB">No SPB</span>,

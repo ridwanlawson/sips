@@ -66,7 +66,7 @@ export function middleware(request: NextRequest) {
   };
 
   // Restrict LHM approval access to permitted roles.
-  if (pathname.startsWith('/approval')) {
+  if (pathname.startsWith('/approval/lhm')) {
     if (
       level !== UserLevel.ADMIN &&
       level !== UserLevel.MANDOR &&
@@ -74,6 +74,15 @@ export function middleware(request: NextRequest) {
       level !== UserLevel.ASISTEN &&
       level !== UserLevel.KSI &&
       level !== UserLevel.MANAGER
+    ) {
+      return redirectForbidden();
+    }
+  }
+
+  if (pathname.startsWith('/open/lhm')) {
+    if (
+      level !== UserLevel.ADMIN &&
+      level !== UserLevel.KSI 
     ) {
       return redirectForbidden();
     }

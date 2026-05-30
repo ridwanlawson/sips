@@ -14,6 +14,7 @@
     "transport": "Transport",
     "lhm": "LHM",
     "approvalLhm": "Approval LHM",
+    "openLhm": "Open LHM",
     "userMenu": "User menu",
     "languageMenu": "Select language",
     "openSidebar": "Open sidebar",

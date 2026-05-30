@@ -78,7 +78,7 @@ type FormState = {
   mac_address: string;
   images: File | undefined;
 
-  mandays: string; // readOnly “0 – 1”
+  mandays: string; // readOnly "0 – 1"
 };
 
 const initialForm: FormState = {
@@ -214,7 +214,7 @@ const getReadableDevice = () => {
           : /Linux/i.test(ua)
             ? 'Linux'
             : 'Unknown';
-  const browser = /Sdg\//i.test(ua)
+  const browser = /Edg\//i.test(ua) // Fixed: was 'Sdg\//' changed to 'Edg\//' for Edge browser detection
     ? 'Edge'
     : /Chrome\//i.test(ua)
       ? 'Chrome'
@@ -415,7 +415,7 @@ const SearchSelect: React.FC<{
 };
 
 /* =========================
-   T Y P S  G U A R D S
+   T Y P E S  G U A R D S
 ========================= */
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
 
@@ -713,7 +713,7 @@ export default function Attendance() {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/attendance/${id}`, {
-        method: 'DSLSTS',
+        method: 'DELETE',
         credentials: 'include',
       });
       if (res.status === 401) {
@@ -733,7 +733,7 @@ export default function Attendance() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
-      toast.success('Data berhasil dihapus 🗑️');
+      toast.success('Data berhasil dihapus 🗑️');
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -1063,8 +1063,7 @@ export default function Attendance() {
   }, [employees, selFcba, selSection, selGang, businessUnits]);
 
   const employeeOptions: Option[] = useMemo(() => {
-    if (!selFcba || !selSection || !selGang) return [];
-    // Get the actual fcba name for matching employees
+    if (!selFcba || !selSection) return [];
     let fcbaName = selFcba;
     const buMatch = Array.isArray(businessUnits)
       ? businessUnits.find(b => b.fccode === selFcba)
@@ -1075,7 +1074,7 @@ export default function Attendance() {
       e =>
         (e.fcba || '') === fcbaName &&
         (e.sectionname || '') === selSection &&
-        (e.gangcode || '') === selGang
+        (!selGang || (e.gangcode || '') === selGang)
     );
     const map = new Map<string, string>();
     for (const e of pool) {
@@ -1121,107 +1120,119 @@ export default function Attendance() {
 
   // destination select options should include every Fcba except the user's current one
   const destOptions = useMemo(() => {
-    // Use opt_fcba from cookie as primary source
+    if (businessUnits && businessUnits.length > 0) {
+      return businessUnits
+        .filter(bu => {
+          if (!currentFcbaForForm) return true;
+          return bu.fccode !== currentFcbaForForm && bu.fcname !== currentFcbaForForm;
+        })
+        .map(bu => ({
+          value: bu.fccode,
+          label: bu.fcname ? `${bu.fccode} - ${bu.fcname}` : bu.fccode,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+    }
+
     if (optFcba && optFcba.length > 0) {
-      const filtered = optFcba
+      return optFcba
         .filter(fcba => !currentFcbaForForm || fcba !== currentFcbaForForm)
         .map(fcba => ({
           value: fcba,
           label: fcba,
         }))
         .sort((a, b) => a.label.localeCompare(b.label));
-
-      // console.log("[destOptions] From opt_fcba:", {
-      //   optFcbalount: optFcba.length,
-      //   currentFcbaForForm,
-      //   filteredlount: filtered.length,
-      //   filtered,
-      // });
-      return filtered;
     }
 
-    // Fallback to businessUnits if opt_fcba not available
-    if (businessUnits && businessUnits.length > 0) {
-      const filtered = businessUnits
-        .filter(bu => !currentFcbaForForm || bu.fccode !== currentFcbaForForm)
-        .map(bu => ({
-          value: bu.fccode,
-          label: bu.fcname ? `${bu.fccode} - ${bu.fcname}` : bu.fccode,
-        }))
-        .sort((a, b) => a.label.localeCompare(b.label));
-
-      // console.log("[destOptions] From businessUnits:", {
-      //   businessUnitlount: businessUnits.length,
-      //   currentFcbaForForm,
-      //   filteredlount: filtered.length,
-      //   filtered,
-      // });
-      return filtered;
-    }
-
-    // Fallback to fcbaOptions if business units not available
-    const fallback = fcbaOptions.filter(o => !currentFcbaForForm || o.value !== currentFcbaForForm);
-    // console.log("[destOptions] Fallback to fcbaOptions:", {
-    //   fcbaOptionslount: fcbaOptions.length,
-    //   currentFcbaForForm,
-    //   fallbacklount: fallback.length,
-    //   fallback,
-    // });
-    return fallback;
+    return fcbaOptions.filter(o => !currentFcbaForForm || o.value !== currentFcbaForForm);
   }, [optFcba, fcbaOptions, businessUnits, currentFcbaForForm]);
+
+  const destSectionOptions: Option[] = useMemo(() => {
+    if (!destFcba || !triplets.length) return [];
+
+    let fcbaName = destFcba;
+    const buMatch = Array.isArray(businessUnits)
+      ? businessUnits.find(b => b.fccode === destFcba)
+      : undefined;
+    if (buMatch) fcbaName = buMatch.fcname || destFcba;
+
+    return Array.from(
+      new Set(
+        triplets
+          .filter(t => t.fcba === fcbaName)
+          .map(t => t.sectionname)
+          .filter(Boolean)
+      )
+    )
+      .sort()
+      .map(v => ({ value: v, label: v }));
+  }, [destFcba, triplets, businessUnits]);
 
   const mandorOptions: Option[] = useMemo(() => {
     let pool: Employee[] = [];
     let fcbaName = '';
+    const section = selSection || homeSection || '';
 
     if (userLevel === 'ADM') {
       const fc = selFcba || homeFcbaCode || '';
-      // convert fccode to fcba name if needed
       if (fc) {
         const buMatch = Array.isArray(businessUnits)
           ? businessUnits.find(b => b.fccode === fc)
           : undefined;
         fcbaName = buMatch ? buMatch.fcname || fc : fc;
       }
-      pool = employees.filter(e => (e.fcba || '') === fcbaName);
+      pool = employees.filter(
+        e => (e.fcba || '') === fcbaName && (!section || (e.sectionname || '') === section)
+      );
     } else if (userLevel === 'MGR' || userLevel === 'KSI') {
       fcbaName = homeFcba || '';
-      pool = employees.filter(e => (e.fcba || '') === fcbaName);
-    } else if (userLevel === 'AST' || userLevel === 'KRA') {
-      fcbaName = homeFcba || '';
-      const sec = homeSection || '';
       pool = employees.filter(
-        e => (e.fcba || '') === fcbaName && (!sec || (e.sectionname || '') === sec)
+        e => (e.fcba || '') === fcbaName && (!section || (e.sectionname || '') === section)
       );
-    } else if (userLevel === 'MD1' || userLevel === 'KRT') {
+    } else if (
+      userLevel === 'AST' ||
+      userLevel === 'KRA' ||
+      userLevel === 'MD1' ||
+      userLevel === 'KRT'
+    ) {
       fcbaName = homeFcba || '';
-      const sec = homeSection || '';
       pool = employees.filter(
-        e => (e.fcba || '') === fcbaName && (!sec || (e.sectionname || '') === sec)
+        e => (e.fcba || '') === fcbaName && (!section || (e.sectionname || '') === section)
       );
     } else {
       const fc = homeFcbaCode || selFcba || '';
-      // convert fccode to fcba name if needed
       if (fc) {
         const buMatch = Array.isArray(businessUnits)
           ? businessUnits.find(b => b.fccode === fc)
           : undefined;
         fcbaName = buMatch ? buMatch.fcname || fc : fc;
       }
-      pool = employees.filter(e => (e.fcba || '') === fcbaName);
+      pool = employees.filter(
+        e => (e.fcba || '') === fcbaName && (!section || (e.sectionname || '') === section)
+      );
     }
 
     const map = new Map<string, string>();
     for (const e of pool) {
       const value = (e.fccode || '').trim();
       if (!value) continue;
-      const label = e.fullname ? `${value} - ${e.fullname}` : value;
+      const gangLabel = (e.gangcode || '').trim();
+      const fullname = e.fullname ? ` - ${e.fullname}` : '';
+      const label = gangLabel ? `${gangLabel} • ${value}${fullname}` : `${value}${fullname}`;
       if (!map.has(value)) map.set(value, label);
     }
     return Array.from(map, ([value, label]) => ({ value, label })).sort((a, b) =>
       a.label.localeCompare(b.label)
     );
-  }, [employees, selFcba, homeFcbaCode, homeFcba, homeSection, userLevel, businessUnits]);
+  }, [
+    employees,
+    selFcba,
+    homeFcbaCode,
+    homeFcba,
+    homeSection,
+    selSection,
+    userLevel,
+    businessUnits,
+  ]);
 
   const empLabelMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -1233,6 +1244,20 @@ export default function Attendance() {
     }
     return map;
   }, [employees]);
+
+  const selectedMandorGang = useMemo(() => {
+    const mandor = employees.find(e => e.fccode === form.kode_karyawan_mandor);
+    return mandor?.gangcode || form.kemandoran || '';
+  }, [employees, form.kode_karyawan_mandor, form.kemandoran]);
+
+  const onChangeMandor = (fccode: string) => {
+    const mandor = employees.find(e => e.fccode === fccode);
+    setForm(s => ({
+      ...s,
+      kode_karyawan_mandor: fccode,
+      kemandoran: mandor?.gangcode || '',
+    }));
+  };
 
   const onChangeSection = (v: string) => {
     setSelSection(v);
@@ -1254,7 +1279,10 @@ export default function Attendance() {
     }));
   };
 
-  const onChangeDestFcba = (v: string) => setDestFcba(v);
+  const onChangeDestFcba = (v: string) => {
+    setDestFcba(v);
+    setDestSection('');
+  };
   const onChangeDestSection = (v: string) => setDestSection(v);
 
   /* ===== Defaults for add mode ===== */
@@ -1298,8 +1326,8 @@ export default function Attendance() {
     }, 0);
   };
 
-  /* ===== AUTO lOMPUTS LATS / SARLY / MANDAYS ===== */
-  const recomputelomputedFields = useCallback((s: FormState): FormState => {
+  /* ===== AUTO COMPUTE LATE / EARLY / MANDAYS ===== */
+  const recomputeComputedFields = useCallback((s: FormState): FormState => {
     const dIn = combineToDate(s.tanggal, s.time_in);
     const dOut = combineToDate(s.tanggal, s.time_out);
 
@@ -1347,8 +1375,8 @@ export default function Attendance() {
   }, []);
 
   useEffect(() => {
-    setForm(s => recomputelomputedFields(s));
-  }, [form.tanggal, form.time_in, form.time_out, form.attendance, recomputelomputedFields]);
+    setForm(s => recomputeComputedFields(s));
+  }, [form.tanggal, form.time_in, form.time_out, form.attendance, recomputeComputedFields]);
 
   /* ===== SUBMIT ===== */
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -1389,7 +1417,7 @@ export default function Attendance() {
       }
 
       if (baExcaRequired && !hasUploadedPdf && !hasExistingPdf) {
-        throw new Error('No BA ExlA (PDF) wajib diisi.');
+        throw new Error('No BA Exca (PDF) wajib diisi.'); // Fixed: was 'No BA ExlA' changed to 'No BA Exca'
       }
 
       const timeInApi = combineToApiString(form.tanggal, form.time_in);
@@ -1411,6 +1439,7 @@ export default function Attendance() {
       if (trimmedException) fd.append('exception_case', trimmedException);
       if (finalSection) fd.append('section', finalSection);
       if (form.gang) fd.append('gang', form.gang);
+      if (form.kemandoran) fd.append('kemandoran', form.kemandoran);
 
       if (form.mandays) fd.append('mandays', form.mandays);
 
@@ -1422,6 +1451,7 @@ export default function Attendance() {
         if (!destFcba) throw new Error('Fcba Destination wajib diisi untuk ASSISTENSI');
         if (destFcba === currentFcbaForForm)
           throw new Error('Fcba Destination tidak boleh sama dengan FCBA akun');
+        if (!destSection) throw new Error('Section Destination wajib diisi untuk ASSISTENSI');
 
         // Validate that the destination FCBA exists in opt_fcba or business units
         const destExistsInOptFcba = optFcba.length > 0 && optFcba.includes(destFcba);
@@ -1463,7 +1493,7 @@ export default function Attendance() {
     }
   };
 
-  /* ===== DSLSTS ===== */
+  /* ===== DELETE ===== */
   // wrap in useCallback so memoized columns don't re-create on every render
   const handleDelete = useCallback(
     (id: string) => {
@@ -1473,7 +1503,7 @@ export default function Attendance() {
     [deleteMutation]
   );
 
-  /* ===== DSTAIL ===== */
+  /* ===== DETAIL ===== */
   const handleDetail = useCallback(
     async (id: string) => {
       setIsEditing(true);
@@ -1838,7 +1868,7 @@ export default function Attendance() {
             >
               {/*
                 Changed: use container with fixed size and Image fill to avoid aspect ratio warnings.
-                - lontainer is 40x40 with rounded corners and ring
+                - Container is 40x40 with rounded corners and ring
                 - Image fills container with object-cover for cropping
                 - Maintains aspect ratio by cropping instead of distorting
               */}
@@ -1870,7 +1900,7 @@ export default function Attendance() {
     [handleDetail, handleDelete, empLabelMap, userLevel]
   );
 
-  /* ===== EKSPOR EXCEL ===== */
+  /* ===== EXPORT EXCEL ===== */
   const handleExport = async () => {
     if (filtered.length === 0) {
       toast.error('Tidak ada data untuk diekspor');
@@ -2295,6 +2325,46 @@ export default function Attendance() {
                   />
                 </fieldset>
 
+                {/* FCBA Dest */}
+                {form.attendance_type === 'ASSISTENSI' && (
+                  <fieldset className="fieldset col-span-12 md:col-span-3">
+                    <legend className="fieldset-legend">FCBA Destination *</legend>
+                    <SearchSelect
+                      options={destOptions}
+                      value={destFcba ?? ''}
+                      onChange={onChangeDestFcba}
+                      placeholder={
+                        isLoadingBU
+                          ? 'Memuat...'
+                          : currentFcbaForForm
+                            ? 'Pilih FCBA tujuan'
+                            : 'Pilih FCBA dulu'
+                      }
+                      disabled={!currentFcbaForForm || disableUnlessAllowed(false) || isLoadingBU}
+                    />
+                  </fieldset>
+                )}
+
+                {/* Section Dest */}
+                {form.attendance_type === 'ASSISTENSI' && (
+                  <fieldset className="fieldset col-span-12 md:col-span-3">
+                    <legend className="fieldset-legend">Section Destination *</legend>
+                    <SearchSelect
+                      options={destSectionOptions}
+                      value={destSection ?? ''}
+                      onChange={onChangeDestSection}
+                      placeholder={
+                        isLoadingBU
+                          ? 'Memuat...'
+                          : destFcba
+                            ? 'Pilih Section tujuan'
+                            : 'Pilih FCBA tujuan dulu'
+                      }
+                      disabled={!destFcba || disableUnlessAllowed(false) || isLoadingBU}
+                    />
+                  </fieldset>
+                )}
+
                 {/* FCBA */}
                 <fieldset className="fieldset col-span-12 md:col-span-3">
                   <legend className="fieldset-legend">
@@ -2332,74 +2402,8 @@ export default function Attendance() {
                   )}
                 </fieldset>
 
-                {/* FCBA Dest */}
-                {form.attendance_type === 'ASSISTENSI' && (
-                  <fieldset className="fieldset col-span-12 md:col-span-3">
-                    <legend className="fieldset-legend">FCBA Destination *</legend>
-                    <SearchSelect
-                      options={destOptions}
-                      value={destFcba ?? ''}
-                      onChange={onChangeDestFcba}
-                      placeholder={
-                        isLoadingBU
-                          ? 'Memuat...'
-                          : currentFcbaForForm
-                            ? 'Pilih FCBA tujuan'
-                            : 'Pilih FCBA dulu'
-                      }
-                      disabled={!currentFcbaForForm || disableUnlessAllowed(false) || isLoadingBU}
-                    />
-                  </fieldset>
-                )}
-
-                {/* Section Dest */}
-                {form.attendance_type === 'ASSISTENSI' && (
-                  <fieldset className="fieldset col-span-12 md:col-span-3">
-                    <legend className="fieldset-legend">Section Destination *</legend>
-                    <SearchSelect
-                      options={destOptions}
-                      value={destSection ?? ''}
-                      onChange={onChangeDestSection}
-                      placeholder={
-                        isLoadingBU
-                          ? 'Memuat...'
-                          : currentFcbaForForm
-                            ? 'Pilih Section tujuan'
-                            : 'Pilih Section dulu'
-                      }
-                      disabled={!currentFcbaForForm || disableUnlessAllowed(false) || isLoadingBU}
-                    />
-                  </fieldset>
-                )}
-
-                {/* Mandor */}
-                <fieldset className="fieldset col-span-12 md:col-span-4">
-                  <legend className="fieldset-legend">Kemandoran (opsional)</legend>
-                  <SearchSelect
-                    options={mandorOptions}
-                    value={form.kemandoran ?? ''}
-                    onChange={v => setForm(s => ({ ...s, kemandoran: v }))}
-                    placeholder={isLoadingSmp ? 'Memuat Kemandoran...' : 'Pilih Kemandoran'}
-                    small
-                    disabled={disableUnlessAllowed(false) || isLoadingSmp}
-                  />
-                </fieldset>
-
-                {/* Mandor */}
-                <fieldset className="fieldset col-span-12 md:col-span-4">
-                  <legend className="fieldset-legend">Mandor (opsional)</legend>
-                  <SearchSelect
-                    options={mandorOptions}
-                    value={form.kode_karyawan_mandor ?? ''}
-                    onChange={v => setForm(s => ({ ...s, kode_karyawan_mandor: v }))}
-                    placeholder={isLoadingSmp ? 'Memuat Mandor...' : 'Pilih Mandor'}
-                    small
-                    disabled={disableUnlessAllowed(false) || isLoadingSmp}
-                  />
-                </fieldset>
-
                 {/* Section / Gang / Karyawan */}
-                <fieldset className="fieldset col-span-12 md:col-span-4">
+                <fieldset className="fieldset col-span-12 md:col-span-3">
                   <legend className="fieldset-legend">Afdeling (Section)</legend>
                   <SearchSelect
                     options={sectionOptions}
@@ -2435,7 +2439,33 @@ export default function Attendance() {
                   />
                 </fieldset>
 
-                <fieldset className="fieldset  col-span-12 md:col-span-6">
+                {/* Mandor */}
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">Mandor (opsional)</legend>
+                  <SearchSelect
+                    options={mandorOptions}
+                    value={form.kode_karyawan_mandor ?? ''}
+                    onChange={onChangeMandor}
+                    placeholder={isLoadingSmp ? 'Memuat Mandor...' : 'Pilih Mandor'}
+                    small
+                    disabled={disableUnlessAllowed(false) || isLoadingSmp}
+                  />
+                </fieldset>
+
+                {/* Kemandoran */}
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">Kemandoran (otomatis)</legend>
+                  <input
+                    type="text"
+                    className="input input-bordered w-full"
+                    value={selectedMandorGang}
+                    readOnly
+                    disabled
+                    title="Kemandoran otomatis dari Mandor yang dipilih"
+                  />
+                </fieldset>
+
+                <fieldset className="fieldset col-span-12 md:col-span-4">
                   <legend className="fieldset-legend">Karyawan *</legend>
                   <SearchSelect
                     options={employeeOptions}
@@ -2449,6 +2479,25 @@ export default function Attendance() {
                           : 'Pilih Gang dulu'
                     }
                     disabled={!selGang || disableUnlessAllowed(false) || isLoadingSmp}
+                  />
+                </fieldset>
+
+                {/* Pengancakan */}
+                <fieldset className="fieldset col-span-12 md:col-span-2">
+                  <legend className="fieldset-legend">Pengancakan (No Ancak)</legend>
+                  <SearchSelect
+                    options={pengancakanOptions}
+                    value={form.pengancakan ?? ''}
+                    onChange={v => setForm(s => ({ ...s, pengancakan: v }))}
+                    placeholder={
+                      isLoadingSmp
+                        ? 'Memuat...'
+                        : selGang
+                          ? 'Pilih Pengancakan'
+                          : 'Pilih Gang/Karyawan dulu'
+                    }
+                    disabled={!selGang || disableUnlessAllowed(false) || isLoadingSmp}
+                    small
                   />
                 </fieldset>
 
@@ -2469,25 +2518,6 @@ export default function Attendance() {
                     }
                     small
                     disabled={disableUnlessAllowed(false)}
-                  />
-                </fieldset>
-
-                {/* Pengancakan */}
-                <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">Pengancakan (No Ancak)</legend>
-                  <SearchSelect
-                    options={pengancakanOptions}
-                    value={form.pengancakan ?? ''}
-                    onChange={v => setForm(s => ({ ...s, pengancakan: v }))}
-                    placeholder={
-                      isLoadingSmp
-                        ? 'Memuat...'
-                        : selGang
-                          ? 'Pilih Pengancakan'
-                          : 'Pilih Gang/Karyawan dulu'
-                    }
-                    disabled={!selGang || disableUnlessAllowed(false) || isLoadingSmp}
-                    small
                   />
                 </fieldset>
 

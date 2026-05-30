@@ -1450,245 +1450,267 @@ export default function HarvestPage() {
     () => [
       {
         name: <span title="Aksi edit/hapus data panen">Aksi</span>,
-      width: '120px',
-      cell: (row: Harvest) => {
-        const status = (row.status_harvesting || '').toLowerCase();
-        const isPlanned = status === 'planned';
-        const canEditRole = canModify;
-        const canEdit = canEditRole && isPlanned;
-        const canDelete = userLevel === 'ADM' && status !== 'approved' && status !== '';
+        width: '120px',
+        cell: (row: Harvest) => {
+          const status = (row.status_harvesting || '').toLowerCase();
+          const isPlanned = status === 'planned';
+          const canEditRole = canModify;
+          const canEdit = canEditRole && isPlanned;
+          const canDelete = userLevel === 'ADM' && status !== 'approved' && status !== '';
 
-        return (
-          <div className="space-x-1 whitespace-nowrap overflow-visible">
-            {canEditRole && (
-              <button
-                className={`btn btn-xs ${canEdit ? 'btn-outline' : 'btn-disabled'}`}
-                onClick={() => canEdit && fetchDetail(row.id)}
-                disabled={!canEdit}
-                title={canEdit ? 'Edit' : 'Hanya bisa edit saat Planned'}
-              >
-                Edit
-              </button>
-            )}
+          return (
+            <div className="space-x-1 whitespace-nowrap overflow-visible">
+              {canEditRole && (
+                <button
+                  className={`btn btn-xs ${canEdit ? 'btn-outline' : 'btn-disabled'}`}
+                  onClick={() => canEdit && fetchDetail(row.id)}
+                  disabled={!canEdit}
+                  title={canEdit ? 'Edit' : 'Hanya bisa edit saat Planned'}
+                >
+                  Edit
+                </button>
+              )}
 
-            {canDelete && (
-              <button
-                className="btn btn-xs btn-error"
-                onClick={() => handleDelete(row.id)}
-                title="Hapus (hanya ADM & belum Approved)"
-              >
-                Hapus
-              </button>
-            )}
-          </div>
-        );
-      },
-      ignoreRowClick: true,
-    },
-    {
-      name: <span title="Status persetujuan panen (Planned/Approved/dll)">Status</span>,
-      selector: r => r.status_harvesting ?? '-',
-      sortable: true,
-      width: '120px',
-      cell: r => (
-        <span
-          className={`badge ${
-            (r.status_harvesting || '').toLowerCase() === 'planned'
-              ? 'badge-warning'
-              : (r.status_harvesting || '').toLowerCase() === 'approved'
-                ? 'badge-success'
-                : 'badge-ghost'
-          }`}
-        >
-          {r.status_harvesting ?? '-'}
-        </span>
-      ),
-    },
-    {
-      name: <span title="Nomor urut baris">#</span>,
-      width: '56px',
-      cell: (_r, i) => <span>{i + 1}</span>,
-      ignoreRowClick: true,
-    },
-    {
-      name: 'No Dokumen',
-      selector: row => row.nodokumen,
-      sortable: true,
-      width: '250px',
-    },
-    {
-      name: 'Tanggal',
-      selector: row => row.tanggal,
-      format: row => formatDateDMY(row.tanggal),
-      sortable: true,
-      width: '100px',
-    },
-    {
-      name: 'Karyawan',
-      selector: row => row.nama_karyawan || row.kode_karyawan,
-      sortable: true,
-      width: '180px',
-      cell: row => (
-        <div>
-          <div className="font-medium">{row.nama_karyawan}</div>
-          <div className="text-xs text-gray-500">{row.kode_karyawan}</div>
-        </div>
-      ),
-    },
-    {
-      name: 'Kemandoran',
-      selector: row => row.kemandoran || '-',
-      sortable: true,
-      width: '120px',
-    },
-    {
-      name: 'FCBA',
-      selector: row => row.fcba,
-      sortable: true,
-      width: '80px',
-    },
-    {
-      name: 'Afd',
-      selector: row => row.afdeling,
-      sortable: true,
-      width: '80px',
-    },
-    {
-      name: 'TPH',
-      selector: row => row.tph,
-      sortable: true,
-      width: '80px',
-    },
-    {
-      name: 'Field',
-      selector: row => row.fieldcode,
-      sortable: true,
-      width: '80px',
-    },
-    {
-      name: 'Output',
-      selector: row => row.output,
-      sortable: true,
-      width: '90px',
-      style: { justifyContent: 'end' },
-      cell: row => (
-        <span className="text-right w-full">{formatPerfNumber(toNumber(row.output), localeTag)}</span>
-      ),
-    },
-    {
-      name: 'Mentah',
-      selector: row => row.mentah,
-      sortable: true,
-      width: '90px',
-      style: { justifyContent: 'end' },
-      cell: row => (
-        <span className="text-right w-full">{formatPerfNumber(toNumber(row.mentah), localeTag)}</span>
-      ),
-    },
-    {
-      name: 'Over',
-      selector: row => row.overripe,
-      sortable: true,
-      width: '90px',
-      style: { justifyContent: 'end' },
-      cell: row => (
-        <span className="text-right w-full">{formatPerfNumber(toNumber(row.overripe), localeTag)}</span>
-      ),
-    },
-    {
-      name: 'Busuk',
-      selector: row => row.busuk,
-      sortable: true,
-      width: '90px',
-      style: { justifyContent: 'end' },
-      cell: row => (
-        <span className="text-right w-full">{formatPerfNumber(toNumber(row.busuk), localeTag)}</span>
-      ),
-    },
-    {
-      name: 'Brondol',
-      selector: row => row.brondol,
-      sortable: true,
-      width: '90px',
-      style: { justifyContent: 'end' },
-      cell: row => (
-        <span className="text-right w-full">{formatPerfNumber(toNumber(row.brondol), localeTag)}</span>
-      ),
-    },
-    {
-      name: (
-        <span title="Lokasi panen" className="text-center">
-          Lokasi
-        </span>
-      ),
-      selector: row => row.location || '',
-      width: '140px',
-      cell: row => (
-        <LocationButton loc={row.location} tanggal={row.tanggal} nodokumen={row.nodokumen} />
-      ),
-    },
-    {
-      name: <span title="Exception Case (alasan/keterangan khusus)">Exception Case</span>,
-      selector: row => row.exception_case || '-',
-      sortable: true,
-      style: { flexGrow: 1.1 as number, minWidth: '160px' },
-    },
-    {
-      name: <span title="Lampiran BA EXCA atau file pendukung">Lampiran</span>,
-      selector: row => row.no_ba_exca || '-',
-      sortable: true,
-      width: '120px',
-      cell: row =>
-        row.no_ba_exca ? (
-          <a
-            href={row.no_ba_exca}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="link link-primary"
-            title="Buka lampiran"
-          >
-            PDF
-          </a>
-        ) : (
-          '-'
-        ),
-    },
-    {
-      name: <span title="Foto pendukung panen (bila ada)">Foto</span>,
-      width: '90px',
-      cell: (r: Harvest) =>
-        r.images ? (
-          <a
-            href={getProxiedImageUrl(r.images)}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Buka foto"
-          >
-            <div className="relative w-10 h-10 rounded-lg ring-1 ring-base-300 bg-base-200 overflow-hidden">
-              <Image
-                src={getProxiedImageUrl(r.images)}
-                alt="foto"
-                fill
-                className="object-cover"
-                loading="lazy"
-                onError={e => {
-                  const img = e?.currentTarget as HTMLImageElement | null;
-                  if (img) {
-                    img.onerror = null;
-                    img.src = PLACEHOLDER_IMAGE;
-                  }
-                }}
-                unoptimized
-              />
+              {canDelete && (
+                <button
+                  className="btn btn-xs btn-error"
+                  onClick={() => handleDelete(row.id)}
+                  title="Hapus (hanya ADM & belum Approved)"
+                >
+                  Hapus
+                </button>
+              )}
             </div>
-          </a>
-        ) : (
-          '-'
+          );
+        },
+        ignoreRowClick: true,
+      },
+      {
+        name: <span title="Status persetujuan panen (Planned/Approved/dll)">Status</span>,
+        selector: r => r.status_harvesting ?? '-',
+        sortable: true,
+        width: '120px',
+        cell: r => (
+          <span
+            className={`badge ${
+              (r.status_harvesting || '').toLowerCase() === 'planned'
+                ? 'badge-warning'
+                : (r.status_harvesting || '').toLowerCase() === 'approved'
+                  ? 'badge-success'
+                  : 'badge-ghost'
+            }`}
+          >
+            {r.status_harvesting ?? '-'}
+          </span>
         ),
-      ignoreRowClick: true,
-    },
-  ],
-  [canModify, fetchDetail, handleDelete, userLevel, localeTag]
+      },
+      {
+        name: <span title="Nomor urut baris">#</span>,
+        width: '56px',
+        cell: (_r, i) => <span>{i + 1}</span>,
+        ignoreRowClick: true,
+      },
+      {
+        name: 'No Dokumen',
+        selector: row => row.nodokumen,
+        sortable: true,
+        width: '250px',
+      },
+      {
+        name: 'Tanggal',
+        selector: row => row.tanggal,
+        format: row => formatDateDMY(row.tanggal),
+        sortable: true,
+        width: '100px',
+      },
+      {
+        name: 'Karyawan',
+        selector: row => row.nama_karyawan || row.kode_karyawan,
+        sortable: true,
+        width: '180px',
+        cell: row => (
+          <div>
+            <div className="font-medium">{row.nama_karyawan}</div>
+            <div className="text-xs text-gray-500">{row.kode_karyawan}</div>
+          </div>
+        ),
+      },
+      {
+        name: 'Kemandoran',
+        selector: row => row.kemandoran || '-',
+        sortable: true,
+        width: '120px',
+      },
+      {
+        name: 'FCBA',
+        selector: row => row.fcba,
+        sortable: true,
+        width: '80px',
+      },
+      {
+        name: 'Afd',
+        selector: row => row.afdeling,
+        sortable: true,
+        width: '80px',
+      },
+      {
+        name: 'TPH',
+        selector: row => row.tph,
+        sortable: true,
+        width: '80px',
+      },
+      {
+        name: 'Field',
+        selector: row => row.fieldcode,
+        sortable: true,
+        width: '80px',
+      },
+      {
+        name: 'Output',
+        selector: row => row.output,
+        sortable: true,
+        width: '90px',
+        style: { justifyContent: 'end' },
+        cell: row => (
+          <span className="text-right w-full">
+            {formatPerfNumber(toNumber(row.output), localeTag)}
+          </span>
+        ),
+      },
+      {
+        name: 'Mentah',
+        selector: row => row.mentah,
+        sortable: true,
+        width: '90px',
+        style: { justifyContent: 'end' },
+        cell: row => (
+          <span className="text-right w-full">
+            {formatPerfNumber(toNumber(row.mentah), localeTag)}
+          </span>
+        ),
+      },
+      {
+        name: 'Over',
+        selector: row => row.overripe,
+        sortable: true,
+        width: '90px',
+        style: { justifyContent: 'end' },
+        cell: row => (
+          <span className="text-right w-full">
+            {formatPerfNumber(toNumber(row.overripe), localeTag)}
+          </span>
+        ),
+      },
+      {
+        name: 'Busuk',
+        selector: row => row.busuk,
+        sortable: true,
+        width: '90px',
+        style: { justifyContent: 'end' },
+        cell: row => (
+          <span className="text-right w-full">
+            {formatPerfNumber(toNumber(row.busuk), localeTag)}
+          </span>
+        ),
+      },
+      {
+        name: 'Busuk 2',
+        selector: row => row.busuk2,
+        sortable: true,
+        width: '90px',
+        style: { justifyContent: 'end' },
+        cell: row => (
+          <span className="text-right w-full">
+            {formatPerfNumber(toNumber(row.busuk2), localeTag)}
+          </span>
+        ),
+      },
+      {
+        name: 'Brondol',
+        selector: row => row.brondol,
+        sortable: true,
+        width: '90px',
+        style: { justifyContent: 'end' },
+        cell: row => (
+          <span className="text-right w-full">
+            {formatPerfNumber(toNumber(row.brondol), localeTag)}
+          </span>
+        ),
+      },
+      {
+        name: (
+          <span title="Lokasi panen" className="text-center">
+            Lokasi
+          </span>
+        ),
+        selector: row => row.location || '',
+        width: '140px',
+        cell: row => (
+          <LocationButton loc={row.location} tanggal={row.tanggal} nodokumen={row.nodokumen} />
+        ),
+      },
+      {
+        name: <span title="Exception Case (alasan/keterangan khusus)">Exception Case</span>,
+        selector: row => row.exception_case || '-',
+        sortable: true,
+        style: { flexGrow: 1.1 as number, minWidth: '160px' },
+      },
+      {
+        name: <span title="Lampiran BA EXCA atau file pendukung">Lampiran</span>,
+        selector: row => row.no_ba_exca || '-',
+        sortable: true,
+        width: '120px',
+        cell: row =>
+          row.no_ba_exca ? (
+            <a
+              href={row.no_ba_exca}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="link link-primary"
+              title="Buka lampiran"
+            >
+              PDF
+            </a>
+          ) : (
+            '-'
+          ),
+      },
+      {
+        name: <span title="Foto pendukung panen (bila ada)">Foto</span>,
+        width: '90px',
+        cell: (r: Harvest) =>
+          r.images ? (
+            <a
+              href={getProxiedImageUrl(r.images)}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Buka foto"
+            >
+              <div className="relative w-10 h-10 rounded-lg ring-1 ring-base-300 bg-base-200 overflow-hidden">
+                <Image
+                  src={getProxiedImageUrl(r.images)}
+                  alt="foto"
+                  fill
+                  className="object-cover"
+                  loading="lazy"
+                  onError={e => {
+                    const img = e?.currentTarget as HTMLImageElement | null;
+                    if (img) {
+                      img.onerror = null;
+                      img.src = PLACEHOLDER_IMAGE;
+                    }
+                  }}
+                  unoptimized
+                />
+              </div>
+            </a>
+          ) : (
+            '-'
+          ),
+        ignoreRowClick: true,
+      },
+    ],
+    [canModify, fetchDetail, handleDelete, userLevel, localeTag]
   );
 
   return (
