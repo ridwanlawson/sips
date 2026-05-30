@@ -31,7 +31,11 @@
   "Attendance": {
     "quickSearch": "Quick Search",
     "clearSearch": "Clear search",
-    "searchPlaceholder": "Search anything (employee, fcba, mandor, device, location...)"
+    "searchPlaceholder": "Search anything (employee, fcba, mandor, device, location...)",
+    "close": "Close",
+    "noData": "No data",
+    "select": "Select...",
+    "typeToSearch": "Type to search..."
   },
   "Harvest": {
     "quickSearch": "Quick Search",
