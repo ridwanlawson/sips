@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import DataTable from '@/app/components/dynamic-data-table';
 import type { TableColumn } from 'react-data-table-component';
 import toast from 'react-hot-toast';
+import { useTranslations } from 'next-intl';
 import { SkeletonTable } from '@/app/components/skeletons';
 import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/authHelper';
 import { getTodayISO, formatDateDMY, getYesterdayISO } from '@/utils/datetime';
@@ -143,6 +144,7 @@ import { getFilterCriteria, getLockedFields } from '@/utils/filterHelper';
    ========================= */
 export default function Lhm() {
   const localeTag = useLocale();
+  const tL = useTranslations('Lhm');
   const [q, setQ] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
@@ -600,7 +602,7 @@ export default function Lhm() {
         cell: r => numCell(r.emptybunchrp),
       },
       {
-        name: <span title="Jumlah aenda">Jumlah (Rp)</span>,
+        name: <span title="Jumlah Denda">Jumlah (Rp)</span>,
         selector: r => r.jumlahdenda,
         sortable: true,
         width: '85px',
@@ -782,15 +784,57 @@ export default function Lhm() {
           </div>
         </div>
 
-        {/* Quick hearch */}
-        <div className="mb-3 flex justify-end gap-2">
-          <input
-            className="input input-bordered w-full md:w-96"
-            placeholder="Cari apapun (karyawan, blok, fcba, document no...)"
-            value={q}
-            onChange={e => setQ(e.target.value)}
-            title="Pencarian cepat di semua kolom penting"
-          />
+        {/* Quick Search */}
+        <div className="mb-3 flex justify-end">
+          <div className="relative w-full md:w-96 group">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+            <input
+              className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
+              placeholder={tL('searchPlaceholder')}
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              aria-label={tL('quickSearch')}
+              title={tL('quickSearch')}
+            />
+            {q && (
+              <button
+                onClick={() => setQ('')}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-base-content/50 hover:text-error transition-colors"
+                aria-label={tL('clearSearch')}
+                title={tL('clearSearch')}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Filter Bar */}

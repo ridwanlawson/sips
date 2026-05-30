@@ -36,5 +36,10 @@
     "quickSearch": "Quick Search",
     "clearSearch": "Clear search",
     "searchPlaceholder": "Search No Dokumen, Karyawan, FCBA, TPH..."
+  },
+  "Lhm": {
+    "quickSearch": "Quick Search",
+    "clearSearch": "Clear search",
+    "searchPlaceholder": "Search employee, block, fcba, document no..."
   }
 }
