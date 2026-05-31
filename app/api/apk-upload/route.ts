@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
+import { UserLevel } from '@/lib/constants';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-
-const EXTERNAL_API_BASE = BACKEND_URL;
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,7 +13,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'No token' }, { status: 401 });
     }
 
-    const externalUrl = `${EXTERNAL_API_BASE}/api/app/apk`;
+    // SECURITY: Restricted to ADMIN/ADM only (CWE-285)
+    // Only administrators are allowed to upload APKs.
+    // Verification is done against the upstream backend profile.
+    const userId = (await cookies()).get('log_id')?.value;
+    if (!userId) {
+      return NextResponse.json({ success: false, message: 'User ID missing' }, { status: 400 });
+    }
+
+    const profileRes = await fetch(`${BACKEND_URL}/api/user/${encodeURIComponent(userId)}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
+      },
+    });
+
+    if (!profileRes.ok) {
+      return NextResponse.json(
+        { success: false, message: 'Failed to verify permissions' },
+        { status: 500 }
+      );
+    }
+
+    const profileData = await profileRes.json();
+    const level = (profileData?.level || '').toUpperCase();
+
+    if (level !== UserLevel.ADMIN && level !== 'ADMIN') {
+      return NextResponse.json(
+        { success: false, message: 'Forbidden: Admin access required' },
+        { status: 403 }
+      );
+    }
+
+    const externalUrl = `${BACKEND_URL}/api/app/apk`;
 
     // Forward request body stream langsung ke Laravel
     const headers = new Headers();
