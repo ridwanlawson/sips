@@ -31,7 +31,8 @@
   "Attendance": {
     "quickSearch": "Pencarian Cepat",
     "clearSearch": "Hapus pencarian",
-    "searchPlaceholder": "Cari apapun (karyawan, fcba, mandor, device, lokasi...)"
+    "searchPlaceholder": "Cari apapun (karyawan, fcba, mandor, device, lokasi...)",
+    "typeToSearch": "Ketik untuk mencari..."
   },
   "Harvest": {
     "quickSearch": "Pencarian Cepat",

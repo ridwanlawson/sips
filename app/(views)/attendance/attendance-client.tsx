@@ -323,6 +323,7 @@ const SearchSelect: React.FC<{
   name?: string;
   small?: boolean;
 }> = ({ options, value, onChange, placeholder, disabled, required, name, small }) => {
+  const t = useTranslations('Attendance');
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const boxRef = useRef<HTMLDivElement | null>(null);
@@ -376,13 +377,56 @@ const SearchSelect: React.FC<{
       {open && !disabled && (
         <div className="absolute z-50 mt-1 w-full rounded-xl border border-base-300 bg-base-100 shadow-lg">
           <div className="p-2">
-            <input
-              autoFocus
-              className="input input-bordered w-full"
-              placeholder="Ketik untuk mencari..."
-              value={q}
-              onChange={e => setQ(e.target.value)}
-            />
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </div>
+              <input
+                autoFocus
+                className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+                placeholder={t('typeToSearch')}
+                value={q}
+                onChange={e => setQ(e.target.value)}
+                aria-label={t('typeToSearch')}
+              />
+              {q && (
+                <button
+                  type="button"
+                  onClick={() => setQ('')}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-base-content/50 hover:text-error transition-colors"
+                  aria-label={t('clearSearch')}
+                  title={t('clearSearch')}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
           <ul className="max-h-64 overflow-auto">
             {filtered.length === 0 && <li className="p-3 text-base-content/60">Tidak ada data</li>}
