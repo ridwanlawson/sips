@@ -4,11 +4,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import DataTable from '@/app/components/dynamic-data-table';
 import type { TableColumn } from 'react-data-table-component';
 import toast from 'react-hot-toast';
+import { useTranslations } from 'next-intl';
 import { SkeletonTable } from '@/app/components/skeletons';
 import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/authHelper';
 import { getTodayISO, formatDateDMY, getYesterdayISO } from '@/utils/datetime';
 import { centerHeaderStyle } from '@/utils/tableHelper';
 import { exportJsonToCsv } from '@/utils/exportCsv';
+import { formatPerfNumber } from '@/utils/perf-formatter';
+import { useLocale } from '@/hooks/useLocale';
 
 /* =========================
    T Y P E S
@@ -16,6 +19,11 @@ import { exportJsonToCsv } from '@/utils/exportCsv';
 type LhmData = {
   _rowKey?: string;
   _selected?: boolean;
+  // ⚡ Bolt Optimization: cached search and display values
+  _searchContent?: string;
+  _displayDate?: string;
+  _dateOnly?: string;
+
   id: string;
   rowdata: string;
   fddate: string;
@@ -159,6 +167,8 @@ import { cookieStore } from '@/utils/cookieStore';
    M A I N
 ========================= */
 export default function Approval() {
+  const localeTag = useLocale();
+  const tL = useTranslations('Lhm');
   const [q, setQ] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedRows, setSelectedRows] = useState<LhmData[]>([]);
@@ -298,10 +308,13 @@ export default function Approval() {
         } else {
           const seen = new Set<string>();
           const data = json.data.map((it: LhmData, idx: number) => {
+            const dateOnly = (it.fddate || '').split(' ')[0];
+            const displayDate = formatDateDMY(dateOnly);
+
             const candidate = [
               it.employeecode || '',
               it.kemandoran || '',
-              (it.fddate || '').split(' ')[0],
+              dateOnly,
               it.blok || '',
               it.fcba || '',
               it.afdeling || '',
@@ -310,7 +323,36 @@ export default function Approval() {
             let key = candidate;
             while (seen.has(key)) key = `${key}_`;
             seen.add(key);
-            return { ...it, _rowKey: key };
+
+            // ⚡ Bolt Optimization: pre-calculate search content string
+            const searchContent = [
+              it.employeecode,
+              it.nama,
+              it.fddate,
+              dateOnly,
+              displayDate,
+              it.kemandoran,
+              it.blok,
+              it.fcba,
+              it.afdeling,
+              it.level_user,
+              it.attendance,
+              it.tahuntanam,
+              it.documentno,
+              it.fcentry,
+              it.lastupdate,
+            ]
+              .filter(Boolean)
+              .join(' ')
+              .toLowerCase();
+
+            return {
+              ...it,
+              _rowKey: key,
+              _dateOnly: dateOnly,
+              _displayDate: displayDate,
+              _searchContent: searchContent,
+            };
           });
           setItems(data);
         }
@@ -346,28 +388,12 @@ export default function Approval() {
   const filtered = useMemo(() => {
     if (!q.trim()) return items;
     const s = q.toLowerCase();
-    const filteredItems = items.filter(it =>
-      [
-        it.employeecode,
-        it.nama,
-        it.fddate,
-        it.kemandoran,
-        it.blok,
-        it.fcba,
-        it.afdeling,
-        it.level_user,
-        it.attendance,
-        it.tahuntanam,
-        it.documentno,
-        it.fcentry,
-        it.lastupdate,
-      ]
-        .filter(Boolean)
-        .some(v => String(v).toLowerCase().includes(s))
-    );
+    // ⚡ Bolt Optimization: Use pre-calculated search content for O(1) string check per row
+    const filteredItems = items.filter(it => it._searchContent?.includes(s));
+
     // Jika pencarian attendance tidak ditemukan, tampilkan error
     if (q && items.length > 0) {
-      const attendanceExists = items.some(item =>
+      const attendanceExists = filteredItems.some(item =>
         (item.attendance || '').toLowerCase().includes(s)
       );
       if (!attendanceExists) {
@@ -529,11 +555,13 @@ export default function Approval() {
   };
 
   /* ===== Columns ===== */
-  const formatNumber = useCallback((val: string | null | undefined) => {
-    const num = Number(val ?? '0');
-    if (isNaN(num)) return '0';
-    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  }, []);
+  const formatNumber = useCallback(
+    (val: string | null | undefined) => {
+      // ⚡ Bolt Optimization: Use cached Intl.NumberFormat via formatPerfNumber
+      return formatPerfNumber(val ?? '0', localeTag);
+    },
+    [localeTag]
+  );
 
   const numCell = useCallback(
     (val: string | null | undefined) => {
@@ -590,13 +618,10 @@ export default function Approval() {
       },
       {
         name: <span title="Tanggal panen">Tanggal</span>,
-        selector: r => (r.fddate || '').split(' ')[0],
+        selector: r => r._dateOnly ?? '',
         sortable: true,
         width: '125px',
-        cell: r => {
-          const raw = (r.fddate || '').split(' ')[0];
-          return <span title={raw}>{formatDateDMY(raw)}</span>;
-        },
+        cell: r => <span title={r._dateOnly}>{r._displayDate}</span>,
       },
       {
         name: <span title="Kemandoran">Kemandoran</span>,
@@ -939,14 +964,56 @@ export default function Approval() {
         )}
 
         {/* Quick Search */}
-        <div className="mb-3 flex justify-end gap-2">
-          <input
-            className="input input-bordered w-full md:w-96"
-            placeholder="Cari apapun (karyawan, blok, fcba, document no...)"
-            value={q}
-            onChange={e => setQ(e.target.value)}
-            title="Pencarian cepat di semua kolom penting"
-          />
+        <div className="mb-3 flex justify-end">
+          <div className="relative w-full md:w-96 group">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+            <input
+              className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
+              placeholder={tL('searchPlaceholder')}
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              aria-label={tL('quickSearch')}
+              title={tL('quickSearch')}
+            />
+            {q && (
+              <button
+                onClick={() => setQ('')}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-base-content/50 hover:text-error transition-colors"
+                aria-label={tL('clearSearch')}
+                title={tL('clearSearch')}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Filter Bar */}
