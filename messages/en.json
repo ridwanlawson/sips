@@ -40,7 +40,11 @@
   "Harvest": {
     "quickSearch": "Quick Search",
     "clearSearch": "Clear search",
-    "searchPlaceholder": "Search No Dokumen, Karyawan, FCBA, TPH..."
+    "searchPlaceholder": "Search No Dokumen, Karyawan, FCBA, TPH...",
+    "close": "Close",
+    "noData": "No data",
+    "select": "Select...",
+    "typeToSearch": "Type to search..."
   },
   "Lhm": {
     "quickSearch": "Quick Search",

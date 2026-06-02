@@ -40,7 +40,11 @@
   "Harvest": {
     "quickSearch": "Pencarian Cepat",
     "clearSearch": "Hapus pencarian",
-    "searchPlaceholder": "Cari No Dokumen, Karyawan, FCBA, TPH..."
+    "searchPlaceholder": "Cari No Dokumen, Karyawan, FCBA, TPH...",
+    "close": "Tutup",
+    "noData": "Tidak ada data",
+    "select": "Pilih...",
+    "typeToSearch": "Ketik untuk mencari..."
   },
   "Lhm": {
     "quickSearch": "Pencarian Cepat",

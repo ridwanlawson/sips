@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -16,6 +16,7 @@ import {
 } from "@/app/components/skeletons";
 import { formatPerfNumber } from "@/utils/perf-formatter";
 import { useLocale } from "@/hooks/useLocale";
+import { SearchSelect, type Option } from "@/app/components/search-select";
 
 /* =========================
    T Y P E S
@@ -126,11 +127,6 @@ interface Triplet {
   fcba: string;
   sectionname: string;
   gangcode: string;
-}
-
-interface Option {
-  value: string;
-  label: string;
 }
 
 type DetailMode = "perHari" | "perBaris";
@@ -300,125 +296,6 @@ const extractTriplets = (payload: unknown): Triplet[] => {
     }
   }
   return [];
-};
-
-/* =========================
-   S E A R C H  S E L E C T
-========================= */
-
-const SearchSelect: React.FC<{
-  options: Option[];
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  disabled?: boolean;
-  small?: boolean;
-}> = ({ options, value, onChange, placeholder, disabled, small }) => {
-  const [open, setOpen] = useState(false);
-  const [q, setQ] = useState("");
-  const boxRef = useRef<HTMLDivElement | null>(null);
-
-  const filtered = useMemo(() => {
-    if (!q.trim()) return options;
-    const s = q.toLowerCase();
-    return options.filter(
-      (o) =>
-        o.label.toLowerCase().includes(s) || o.value.toLowerCase().includes(s),
-    );
-  }, [q, options]);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (!boxRef.current) return;
-      const target = e.target as Node | null;
-      if (target && !boxRef.current.contains(target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  const currentLabel =
-    options.find((o) => o.value === value)?.label || value || "";
-
-  const handleToggle = () => {
-    if (disabled) return;
-    setOpen((s) => !s);
-  };
-
-  // posisi dropdown fixed agar tidak kepotong
-  const dropdownStyle = useMemo(() => {
-    if (!open || !boxRef.current) return undefined;
-    const rect = boxRef.current.getBoundingClientRect();
-    return {
-      width: rect.width,
-      left: rect.left,
-      top: rect.bottom + 4,
-    };
-  }, [open]);
-
-  return (
-    <div className="relative overflow-visible" ref={boxRef}>
-      <button
-        type="button"
-        className={`input input-bordered w-full flex items-center justify-between whitespace-nowrap overflow-hidden ${small ? "input-sm" : ""
-          } ${disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
-        onClick={handleToggle}
-        disabled={disabled}
-        title={currentLabel || placeholder}
-      >
-        <span className={`truncate ${!value ? "text-base-content/50" : ""}`}>
-          {currentLabel || placeholder || "Pilih..."}
-        </span>
-        <span className="ml-2">▾</span>
-      </button>
-
-      {open && !disabled && (
-        <div
-          className="fixed z-[999] rounded-xl border border-base-300 bg-base-100 shadow-xl"
-          style={dropdownStyle}
-        >
-          <div className="p-2">
-            <input
-              autoFocus
-              className="input input-bordered w-full input-sm"
-              placeholder="Ketik untuk mencari..."
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-          </div>
-          <ul className="max-h-64 overflow-auto">
-            {filtered.length === 0 && (
-              <li className="p-3 text-base-content/60 text-sm">
-                Tidak ada data
-              </li>
-            )}
-            {filtered.map((opt) => (
-              <li key={opt.value}>
-                <button
-                  type="button"
-                  className={`w-full text-left px-3 py-2 hover:bg-base-200 text-sm ${opt.value === value ? "bg-base-200" : ""
-                    }`}
-                  onClick={() => {
-                    onChange(opt.value);
-                    setOpen(false);
-                    setQ("");
-                  }}
-                  title={opt.label}
-                >
-                  <div className="font-medium truncate">{opt.label}</div>
-                  {opt.label !== opt.value && (
-                    <div className="text-xs opacity-70 truncate">
-                      {opt.value}
-                    </div>
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
 };
 
 /* =========================
@@ -1449,6 +1326,7 @@ export default function UserDashboard() {
                       }}
                       placeholder="Pilih FCBA / ALL"
                       small
+                      useFixedPositioning
                     />
                   </div>
                 )}
@@ -1463,6 +1341,7 @@ export default function UserDashboard() {
                       placeholder="Pilih Afdeling (opsional)"
                       small
                       disabled={afdelingOptions.length === 0}
+                      useFixedPositioning
                     />
                   </div>
                 )}
