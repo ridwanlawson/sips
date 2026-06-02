@@ -93,11 +93,23 @@ export const Drawer = () => {
               }
             }}
           >
-            <summary className="flex items-center justify-between">
+            <summary className="flex items-center justify-between cursor-pointer hover:bg-base-300 focus-visible:ring-2 focus-visible:ring-primary rounded-lg transition-colors list-none [&::-webkit-details-marker]:hidden">
               <div className="flex items-center gap-3">
                 {renderIcon(item.icon)}
                 <span>{t(item.label)}</span>
               </div>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className={`h-4 w-4 opacity-60 transition-transform duration-200 ${
+                  dropdownStates[item.id] ? 'rotate-180' : ''
+                }`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
             </summary>
             <ul className="menu menu-sm">
               {item.children.map(child => renderMenuItem(child, true))}
