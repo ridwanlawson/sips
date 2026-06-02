@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import { SkeletonTable } from '@/app/components/skeletons';
 
-const Approval = dynamic(() => import('./openLhm-client'), {
+const Open = dynamic(() => import('./openLhm-client'), {
   ssr: false,
   loading: () => (
     <div className="p-6">
@@ -12,6 +12,6 @@ const Approval = dynamic(() => import('./openLhm-client'), {
   ),
 });
 
-export default function ApprovalWrapper() {
-  return <Approval />;
+export default function OpenWrapper() {
+  return <Open />;
 }

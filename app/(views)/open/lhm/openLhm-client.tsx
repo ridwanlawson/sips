@@ -89,7 +89,6 @@ type LhmData = {
   qe_16_buah_mentah_kerani: string;
   qe_17_buah_mentah_mandor: string;
   documentno: string;
-  level_user: string;
 };
 
 type Filters = Partial<{
@@ -102,7 +101,6 @@ type Filters = Partial<{
   tahuntanam: string;
   blok: string;
   attendance: string;
-  level_user: string;
   upload: string;
 }>;
 
@@ -158,7 +156,7 @@ import { cookieStore } from '@/utils/cookieStore';
 /* =========================
    M A I N
 ========================= */
-export default function Approval() {
+export default function Open() {
   const [q, setQ] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedRows, setSelectedRows] = useState<LhmData[]>([]);
@@ -178,12 +176,6 @@ export default function Approval() {
   const getScopedFilters = useCallback(
     (baseFilters: Filters): Filters => {
       const scopedFilters: Filters = { ...baseFilters };
-
-      if (userLevel !== 'ADM' && userLevel !== 'OTHER') {
-        scopedFilters.level_user = userLevel;
-      } else {
-        delete scopedFilters.level_user;
-      }
 
       if (userLevel === 'MDP') {
         scopedFilters.fcba = homeFcba;
@@ -355,7 +347,6 @@ export default function Approval() {
         it.blok,
         it.fcba,
         it.afdeling,
-        it.level_user,
         it.attendance,
         it.tahuntanam,
         it.documentno,
@@ -466,7 +457,7 @@ export default function Approval() {
         toast.error(msg);
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Terjadi kesalahan saat approval';
+      const msg = err instanceof Error ? err.message : 'Terjadi kesalahan saat open';
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -523,7 +514,7 @@ export default function Approval() {
       'Last Time': r.lasttime || '-',
     }));
 
-    exportJsonToCsv(dataToExport, `Approval_LHM_${filters.fddate}_${filters.fddate_end}.csv`);
+    exportJsonToCsv(dataToExport, `Opening_LHM_${filters.fddate}_${filters.fddate_end}.csv`);
   };
 
   /* ===== Columns ===== */
@@ -864,7 +855,7 @@ export default function Approval() {
         <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start">
           <h1
             className="text-2xl sm:text-3xl font-bold min-w-0 truncate"
-            title="Halaman Approval LHM (Laporan Harian Mandor)"
+            title="Halaman Open LHM (Laporan Harian Mandor)"
           >
             Open LHM
           </h1>
@@ -907,10 +898,10 @@ export default function Approval() {
               {submitting ? (
                 <>
                   <span className="loading loading-spinner loading-xs" />
-                  Approving...
+                  Opening...
                 </>
               ) : (
-                `✅ Open (${selectedRows.length})`
+                `🔓 Open (${selectedRows.length})`
               )}
             </button>
           </div>
@@ -921,7 +912,7 @@ export default function Approval() {
           <div className="mb-3">
             <div className="badge badge-lg badge-success gap-2">
               <span>{selectedRows.length}</span>
-              <span>data dipilih untuk approval</span>
+              <span>data dipilih untuk open</span>
               <button
                 className="btn btn-ghost btn-xs"
                 onClick={() => {
