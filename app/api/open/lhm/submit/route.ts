@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
-import { authHeaders, parseJsonSafe, extractMessage, unauthorizedResponse } from '@/lib/apiProxy';
+import { authHeaders, parseJsonSafe, unauthorizedResponse } from '@/lib/apiProxy';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -27,11 +27,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   if (!response.ok) {
+    // SECURITY: Log original error details server-side but return generic message
+    // to client to prevent information leakage (CWE-209).
+    console.error('[API_OPEN_LHM_SUBMIT_POST_ERROR]', { status: response.status, data });
     return NextResponse.json(
       {
         success: false,
-        message: extractMessage(data, 'Submit failed'),
-        error: (data as Record<string, unknown>)?.error,
+        message: 'Submit failed',
       },
       { status: response.status }
     );

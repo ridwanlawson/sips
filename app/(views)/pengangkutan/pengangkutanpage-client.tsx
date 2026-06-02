@@ -8,11 +8,18 @@ import { getProxiedImageUrl, PLACEHOLDER_IMAGE } from '@/utils/imageHelper';
 import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/authHelper';
 import { cookieStore } from '@/utils/cookieStore';
 import { getFilterCriteria, getLockedFields } from '@/utils/filterHelper';
+import { formatPerfNumber, formatPerfDate } from '@/utils/perf-formatter';
+import { useLocale } from '@/hooks/useLocale';
 
 /* =========================
    T Y P E S
 ========================= */
 type Pengangkutan = {
+  _rowKey?: string;
+  // ⚡ Bolt Optimization: cached display and search values
+  _displayDate?: string;
+  _searchContent?: string;
+
   id: string;
   nopengangkutan: string;
   nospb?: string | null;
@@ -81,17 +88,6 @@ const getTodayISO = (): string => {
   return `${yyyy}-${mm}-${dd}`;
 };
 
-const formatDateDMY = (raw: string | null | undefined): string => {
-  if (!raw) return '-';
-  const trimmed = raw.trim();
-  if (!trimmed) return '-';
-  const onlyDate = trimmed.split(' ')[0];
-  const parts = onlyDate.split('-');
-  if (parts.length !== 3) return trimmed;
-  const [y, m, d] = parts;
-  return `${d.padStart(2, '0')}-${m.padStart(2, '0')}-${y}`;
-};
-
 const getUserScope = () => ({
   level: cookieStore.getLevel(),
   fcba: cookieStore.getFcba(),
@@ -131,6 +127,7 @@ const applyClientUserScope = (params: URLSearchParams) => {
    M A I N
 ========================= */
 export default function PengangkutanPage() {
+  const localeTag = useLocale();
   const [items, setItems] = useState<Pengangkutan[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -268,8 +265,47 @@ export default function PengangkutanPage() {
         }
         // Example API returns { success: true, data: [...] }
         if (json && (json.success === true || json.ok === true)) {
-          const data = json.data || json.rows || [];
-          setItems(data as Pengangkutan[]);
+          const raw = (json.data || json.rows || []) as Pengangkutan[];
+          const seen = new Set<string>();
+          const data = raw.map((it, idx) => {
+            const dateOnly = (it.tanggal || '').split(' ')[0];
+            // ⚡ Bolt Optimization: pre-calculate display date using cached formatter
+            const displayDate = dateOnly ? formatPerfDate(dateOnly, localeTag) : '-';
+
+            // ⚡ Bolt Optimization: pre-calculate search content string
+            const searchContent = [
+              it.nopengangkutan,
+              it.nospb,
+              it.nodokumen,
+              it.kode_karyawan_kerani,
+              it.nama_karyawan_kerani,
+              it.kode_karyawan_driver,
+              it.nama_karyawan_driver,
+              it.fcba,
+              it.afdeling,
+              it.status_pengangkutan,
+              it.kode_kendaraan,
+              it.card_id,
+              dateOnly,
+              displayDate,
+            ]
+              .filter(Boolean)
+              .join(' ')
+              .toLowerCase();
+
+            const candidate = [it.nopengangkutan || '', dateOnly, String(idx)].join('|');
+            let key = candidate;
+            while (seen.has(key)) key = `${key}_`;
+            seen.add(key);
+
+            return {
+              ...it,
+              _rowKey: key,
+              _displayDate: displayDate,
+              _searchContent: searchContent,
+            };
+          });
+          setItems(data);
         } else {
           showAlert(json.message || json.error || 'Gagal mengambil data', 'error');
         }
@@ -280,7 +316,7 @@ export default function PengangkutanPage() {
         setLoading(false);
       }
     },
-    [filters]
+    [filters, localeTag]
   );
 
   useEffect(() => {
@@ -289,37 +325,21 @@ export default function PengangkutanPage() {
 
   /* ===== Quick search lokal ===== */
   const filtered = useMemo(() => {
-    let res = items;
-    if (q.trim()) {
-      const s = q.toLowerCase();
-      res = items.filter(it =>
-        [
-          it.nopengangkutan,
-          it.nospb,
-          it.nodokumen,
-          it.kode_karyawan_kerani,
-          it.nama_karyawan_kerani,
-          it.kode_karyawan_driver,
-          it.nama_karyawan_driver,
-          it.fcba,
-          it.afdeling,
-          it.status_pengangkutan,
-          it.kode_kendaraan,
-          it.card_id,
-        ]
-          .filter(Boolean)
-          .some(v => String(v).toLowerCase().includes(s))
-      );
-    }
-    return res.map((item, index) => ({ ...item, _index: index + 1 }));
+    if (!q.trim()) return items.map((it, idx) => ({ ...it, _index: idx + 1 }));
+    const s = q.toLowerCase();
+    // ⚡ Bolt Optimization: Use pre-calculated search content for O(1) string check per row
+    return items
+      .filter(it => it._searchContent?.includes(s))
+      .map((it, idx) => ({ ...it, _index: idx + 1 }));
   }, [q, items]);
 
-  const columns: TableColumn<Pengangkutan & { _index: number }>[] = [
-    {
-      name: <span title="Nomor urut baris">#</span>,
-      selector: r => r._index,
-      width: '60px',
-    },
+  const columns: TableColumn<Pengangkutan & { _index: number }>[] = useMemo(
+    () => [
+      {
+        name: <span title="Nomor urut baris">#</span>,
+        selector: r => r._index,
+        width: '60px',
+      },
     {
       name: <span title="Nomor pengangkutan">No Pengangkutan</span>,
       selector: r => r.nopengangkutan,
@@ -341,7 +361,7 @@ export default function PengangkutanPage() {
     {
       name: <span title="Tanggal pengangkutan (DD-MM-YYYY)">Tanggal</span>,
       selector: r => r.tanggal || '-',
-      format: r => formatDateDMY(r.tanggal),
+      cell: r => r._displayDate || '-',
       sortable: true,
       width: '120px',
     },
@@ -417,6 +437,9 @@ export default function PengangkutanPage() {
       sortable: true,
       width: '120px',
       style: { justifyContent: 'center' },
+      cell: r => (
+        <span className="text-center w-full">{formatPerfNumber(r.totaljanjang || '0', localeTag)}</span>
+      ),
     },
     {
       name: 'Output',
@@ -424,6 +447,9 @@ export default function PengangkutanPage() {
       sortable: true,
       width: '100px',
       style: { justifyContent: 'center' },
+      cell: r => (
+        <span className="text-center w-full">{formatPerfNumber(r.output || '0', localeTag)}</span>
+      ),
     },
     {
       name: <span title="Janjang Normal">Janjang Normal</span>,
@@ -431,6 +457,11 @@ export default function PengangkutanPage() {
       sortable: true,
       width: '120px',
       style: { justifyContent: 'center' },
+      cell: r => (
+        <span className="text-center w-full">
+          {formatPerfNumber(r.janjangnormal || '0', localeTag)}
+        </span>
+      ),
     },
     {
       name: <span title="Brondolan">Brondolan</span>,
@@ -438,6 +469,9 @@ export default function PengangkutanPage() {
       sortable: true,
       width: '100px',
       style: { justifyContent: 'center' },
+      cell: r => (
+        <span className="text-center w-full">{formatPerfNumber(r.brondolan || '0', localeTag)}</span>
+      ),
     },
     {
       name: <span title="Status pengangkutan (Planned/Approved/...)">Status</span>,
@@ -483,7 +517,9 @@ export default function PengangkutanPage() {
         ),
       ignoreRowClick: true,
     },
-  ];
+    ],
+    [localeTag]
+  );
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
@@ -672,6 +708,7 @@ export default function PengangkutanPage() {
         <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100">
           <div className="min-w-[900px] md:min-w-0">
             <DataTable
+              keyField="_rowKey"
               columns={columns}
               data={filtered}
               progressPending={loading}

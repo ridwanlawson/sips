@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
+import { applyUserDataScope } from '@/utils/requestScope';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const searchParams = req.nextUrl.searchParams;
+    const searchParams = applyUserDataScope(req, new URLSearchParams(req.nextUrl.searchParams));
     const fcba = searchParams.get('fcba') || '';
     const afdeling = searchParams.get('afdeling') || '';
     const kemandoran = searchParams.get('kemandoran') || '';
@@ -95,7 +96,10 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Internal Server Error';
-    return NextResponse.json({ success: false, message: msg, data: {} }, { status: 500 });
+    console.error('❌ Signatures fetch crash:', error);
+    return NextResponse.json(
+      { success: false, message: 'Failed to fetch signatures', data: {} },
+      { status: 500 }
+    );
   }
 }

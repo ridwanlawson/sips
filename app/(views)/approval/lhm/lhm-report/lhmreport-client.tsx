@@ -42,6 +42,7 @@ export default function LhmReport() {
   }
 
   type LhmData = {
+    _rowNo?: number | string;
     fddate: string;
     fcba: string;
     afdeling: string;
@@ -159,13 +160,27 @@ export default function LhmReport() {
         const json = await res.json();
         if (json.success && Array.isArray(json.data)) {
           // Filter data sesuai parameter
-          const filtered = json.data.filter(
-            (row: LhmData) =>
-              row.fcba === fcba &&
-              row.afdeling === afdeling &&
-              row.kemandoran === kemandoran &&
-              (row.fddate || '').split(' ')[0] === tanggal
-          );
+          // ⚡ Bolt Optimization: Use single-pass filter and O(N) row number calculation
+          let currentUniqueCount = 0;
+          let lastCode: string | null = null;
+
+          const filtered = json.data
+            .filter(
+              (row: LhmData) =>
+                row.fcba === fcba &&
+                row.afdeling === afdeling &&
+                row.kemandoran === kemandoran &&
+                (row.fddate || '').split(' ')[0] === tanggal
+            )
+            .map((row: LhmData) => {
+              const isNew = row.employeecode !== lastCode;
+              if (isNew) {
+                currentUniqueCount++;
+                lastCode = row.employeecode;
+              }
+              return { ...row, _rowNo: isNew ? currentUniqueCount : '' };
+            });
+
           setData(filtered);
         } else {
           setError('Data tidak ditemukan.');
@@ -444,17 +459,9 @@ export default function LhmReport() {
               ) : (
                 <>
                   {data.map((row, idx) => {
-                    const prevCode = idx > 0 ? data[idx - 1].employeecode : null;
-                    const isNew = row.employeecode !== prevCode;
-                    const rowNo = isNew
-                      ? data
-                          .slice(0, idx)
-                          .filter((r, i) => i === 0 || r.employeecode !== data[i - 1].employeecode)
-                          .length + 1
-                      : '';
                     return (
                       <tr key={row.employeecode + idx}>
-                        <td>{rowNo}</td>
+                        <td>{row._rowNo}</td>
                         <td className="text-center whitespace-nowrap">{row.employeecode}</td>
                         <td className="whitespace-nowrap">{row.nama}</td>
                         <td className="text-center">{row.attendance}</td>

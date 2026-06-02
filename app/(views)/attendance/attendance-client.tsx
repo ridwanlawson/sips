@@ -12,6 +12,8 @@ import { SkeletonTable } from '@/app/components/skeletons';
 import { centerHeaderStyle } from '@/utils/tableHelper';
 import { exportJsonToCsv } from '@/utils/exportCsv';
 import { useTranslations } from 'next-intl';
+import { SearchSelect, type Option } from '@/app/components/search-select';
+
 /* =========================
    T Y P E S
 ========================= */
@@ -163,8 +165,6 @@ type Employee = {
   noancak?: string;
 };
 
-type Option = { value: string; label: string };
-
 type EmployeesApiRow = {
   [key: string]: unknown;
   fccode?: unknown;
@@ -308,110 +308,6 @@ const normalizeHM = (input: string) => {
     return `${String(H).padStart(2, '0')}:${String(Math.min(59, M)).padStart(2, '0')}`;
   }
   return s;
-};
-
-/* =========================
-   Searchable Select
-========================= */
-const SearchSelect: React.FC<{
-  options: Option[];
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  disabled?: boolean;
-  required?: boolean;
-  name?: string;
-  small?: boolean;
-}> = ({ options, value, onChange, placeholder, disabled, required, name, small }) => {
-  const [open, setOpen] = useState(false);
-  const [q, setQ] = useState('');
-  const boxRef = useRef<HTMLDivElement | null>(null);
-
-  const filtered = useMemo(() => {
-    if (!q.trim()) return options;
-    const s = q.toLowerCase();
-    return options.filter(
-      o => o.label.toLowerCase().includes(s) || o.value.toLowerCase().includes(s)
-    );
-  }, [q, options]);
-
-  useEffect(() => {
-    const onDoc = (e: MouseEvent) => {
-      if (!boxRef.current) return;
-      const target = e.target as Node | null;
-      if (target && !boxRef.current.contains(target)) setOpen(false);
-    };
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
-  }, []);
-
-  const currentLabel = options.find(o => o.value === value)?.label || value || '';
-
-  return (
-    <div className="relative min-w-0" ref={boxRef}>
-      {name ? <input type="hidden" name={name} value={value} /> : null}
-
-      <button
-        type="button"
-        className={`input input-bordered w-full flex items-center justify-between whitespace-nowrap overflow-hidden ${
-          small ? 'input-sm' : ''
-        } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
-        onClick={() => !disabled && setOpen(s => !s)}
-        aria-expanded={open}
-        title={currentLabel || placeholder}
-        disabled={disabled}
-      >
-        <span className={`truncate ${!value ? 'text-base-content/50' : ''}`}>
-          {currentLabel || placeholder || 'Pilih...'}
-        </span>
-        <span className="ml-2">▾</span>
-      </button>
-
-      {required && !value && (
-        <span className="sr-only" aria-live="polite">
-          required
-        </span>
-      )}
-
-      {open && !disabled && (
-        <div className="absolute z-50 mt-1 w-full rounded-xl border border-base-300 bg-base-100 shadow-lg">
-          <div className="p-2">
-            <input
-              autoFocus
-              className="input input-bordered w-full"
-              placeholder="Ketik untuk mencari..."
-              value={q}
-              onChange={e => setQ(e.target.value)}
-            />
-          </div>
-          <ul className="max-h-64 overflow-auto">
-            {filtered.length === 0 && <li className="p-3 text-base-content/60">Tidak ada data</li>}
-            {filtered.map(opt => (
-              <li key={`ss-${opt.value}`}>
-                <button
-                  type="button"
-                  className={`w-full text-left p-2 hover:bg-base-200 ${
-                    opt.value === value ? 'bg-base-200' : ''
-                  }`}
-                  onClick={() => {
-                    onChange(opt.value);
-                    setOpen(false);
-                    setQ('');
-                  }}
-                  title={opt.label}
-                >
-                  <div className="font-medium truncate">{opt.label}</div>
-                  {opt.label !== opt.value && (
-                    <div className="text-xs opacity-70 truncate">{opt.value}</div>
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
 };
 
 /* =========================
@@ -2274,8 +2170,8 @@ export default function Attendance() {
                 type="button"
                 className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
                 onClick={() => setOpen(false)}
-                aria-label="Close"
-                title="Tutup"
+                aria-label={t('close')}
+                title={t('close')}
               >
                 ✕
               </button>
