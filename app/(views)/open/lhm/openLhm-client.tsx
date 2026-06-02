@@ -384,16 +384,14 @@ export default function Approval() {
     setSelectedRows(state.selectedRows);
   }, []);
 
-  /* ===== Approve (submit to upstream) ===== */
-  const handleApprove = async () => {
+  /* ===== Open (submit to upstream) ===== */
+  const handleOpen = async () => {
     if (selectedRows.length === 0) {
-      toast.error('Pilih data yang akan di-approve terlebih dahulu');
+      toast.error('Pilih data yang akan di-open terlebih dahulu');
       return;
     }
 
-    const confirmed = confirm(
-      `Apakah Anda yakin ingin meng-approve ${selectedRows.length} data LHM?`
-    );
+    const confirmed = confirm(`Apakah Anda yakin ingin meng-open ${selectedRows.length} data LHM?`);
     if (!confirmed) return;
 
     setSubmitting(true);
@@ -459,12 +457,12 @@ export default function Approval() {
       const json = await res.json();
 
       if (json.success) {
-        toast.success(`${selectedRows.length} data LHM berhasil di-approve ✅`);
+        toast.success(`${selectedRows.length} data LHM berhasil di-open ✅`);
         setSelectedRows([]);
         setToggledClearRows(prev => !prev);
         fetchData();
       } else {
-        const msg = json.message || 'Gagal meng-approve data';
+        const msg = json.message || 'Gagal meng-open data';
         toast.error(msg);
       }
     } catch (err) {
@@ -902,9 +900,9 @@ export default function Approval() {
             </button>
             <button
               className={`btn btn-primary btn-sm ${submitting ? 'btn-disabled' : ''}`}
-              onClick={handleApprove}
+              onClick={handleOpen}
               disabled={selectedRows.length === 0 || submitting}
-              title="Approve data LHM yang dipilih"
+              title="Open data LHM yang dipilih"
             >
               {submitting ? (
                 <>
@@ -912,7 +910,7 @@ export default function Approval() {
                   Approving...
                 </>
               ) : (
-                `✅ Approve (${selectedRows.length})`
+                `✅ Open (${selectedRows.length})`
               )}
             </button>
           </div>

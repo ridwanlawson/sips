@@ -1626,6 +1626,42 @@ export default function HarvestPage() {
         ),
       },
       {
+        name: 'Buah Kecil',
+        selector: row => row.buahkecil,
+        sortable: true,
+        width: '110px',
+        style: { justifyContent: 'end' },
+        cell: row => (
+          <span className="text-right w-full">
+            {formatPerfNumber(toNumber(row.buahkecil), localeTag)}
+          </span>
+        ),
+      },
+      {
+        name: 'Parte No',
+        selector: row => row.parteno,
+        sortable: true,
+        width: '100px',
+        style: { justifyContent: 'end' },
+        cell: row => (
+          <span className="text-right w-full">
+            {formatPerfNumber(toNumber(row.parteno), localeTag)}
+          </span>
+        ),
+      },
+      {
+        name: 'Parte No 50%+',
+        selector: row => row.parteno50plus,
+        sortable: true,
+        width: '130px',
+        style: { justifyContent: 'end' },
+        cell: row => (
+          <span className="text-right w-full">
+            {formatPerfNumber(toNumber(row.parteno50plus), localeTag)}
+          </span>
+        ),
+      },
+      {
         name: 'Brondol',
         selector: row => row.brondol,
         sortable: true,
@@ -1634,6 +1670,30 @@ export default function HarvestPage() {
         cell: row => (
           <span className="text-right w-full">
             {formatPerfNumber(toNumber(row.brondol), localeTag)}
+          </span>
+        ),
+      },
+      {
+        name: 'Al. Brondol',
+        selector: row => row.alasbrondol,
+        sortable: true,
+        width: '110px',
+        style: { justifyContent: 'end' },
+        cell: row => (
+          <span className="text-right w-full">
+            {formatPerfNumber(toNumber(row.alasbrondol), localeTag)}
+          </span>
+        ),
+      },
+      {
+        name: 'T.Panjang',
+        selector: row => row.tangkaipanjang,
+        sortable: true,
+        width: '100px',
+        style: { justifyContent: 'end' },
+        cell: row => (
+          <span className="text-right w-full">
+            {formatPerfNumber(toNumber(row.tangkaipanjang), localeTag)}
           </span>
         ),
       },
