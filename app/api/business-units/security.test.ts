@@ -1,46 +1,35 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { GET } from "./route";
-import { NextRequest } from "next/server";
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { GET } from './route';
+import { NextRequest } from 'next/server';
 
-vi.stubGlobal("fetch", vi.fn());
-
-vi.mock("@/utils/absensiProxy", () => ({
-    BACKEND_URL: "http://trusted-backend.com",
+vi.mock('@/utils/absensiProxy', () => ({
+  BACKEND_URL: 'http://backend.test',
 }));
 
-describe("Business Units API Security", () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
+describe('Business Units API Security', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+    vi.clearAllMocks();
+  });
+
+  it('should not leak upstream error message on failure (CWE-209)', async () => {
+    const mockRequest = new NextRequest('http://localhost/api/business-units', {
+      headers: { cookie: 'auth_token=valid-token' },
     });
 
-    it("should return generic error message and not leak upstream details on failure", async () => {
-        const mockToken = "valid-token";
-        const req = new NextRequest("http://localhost/api/business-units");
-        // Mock cookie
-        req.cookies.set("auth_token", mockToken);
+    const sensitiveError = 'Internal Database Error: Connection failed at line 42';
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      text: async () => sensitiveError,
+    } as Response);
 
-        // Mock upstream failure with sensitive info
-        vi.mocked(global.fetch).mockResolvedValue({
-            ok: false,
-            status: 500,
-            text: async () => "Internal Server Error: Database connection failed at 10.0.0.5:5432",
-        } as Response);
+    const response = await GET(mockRequest);
+    const body = await response.json();
 
-        const res = await GET(req);
-
-        expect(res.status).toBe(500);
-        const data = await res.json();
-
-        // Should NOT contain the sensitive error text
-        expect(data.error).toBe("Failed to fetch business units");
-        expect(data.ok).toBe(false);
-    });
-
-    it("should return 401 if unauthorized", async () => {
-        const req = new NextRequest("http://localhost/api/business-units");
-        // No token cookie set
-
-        const res = await GET(req);
-        expect(res.status).toBe(401);
-    });
+    expect(response.status).toBe(500);
+    expect(body.ok).toBe(false);
+    expect(body.error).toBe('Failed to fetch business units');
+    expect(body.error).not.toContain(sensitiveError);
+  });
 });

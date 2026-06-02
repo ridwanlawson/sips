@@ -84,7 +84,12 @@ export const SearchSelect: React.FC<SearchSelectProps> = ({
         <span className={`truncate ${!value ? 'text-base-content/50' : ''}`}>
           {currentLabel || placeholder || t('select')}
         </span>
-        <span className="ml-2 opacity-60 transition-transform duration-200" style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</span>
+        <span
+          className="ml-2 opacity-60 transition-transform duration-200"
+          style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
+        >
+          ▾
+        </span>
       </button>
 
       {required && !value && (
@@ -153,7 +158,9 @@ export const SearchSelect: React.FC<SearchSelectProps> = ({
             </div>
           </div>
           <ul className="max-h-64 overflow-auto py-1">
-            {filtered.length === 0 && <li className="p-3 text-base-content/60 text-sm text-center">{t('noData')}</li>}
+            {filtered.length === 0 && (
+              <li className="p-3 text-base-content/60 text-sm text-center">{t('noData')}</li>
+            )}
             {filtered.map(opt => (
               <li key={`ss-${opt.value}`}>
                 <button
@@ -170,7 +177,9 @@ export const SearchSelect: React.FC<SearchSelectProps> = ({
                 >
                   <div className="font-medium truncate text-sm">{opt.label}</div>
                   {opt.label !== opt.value && (
-                    <div className="text-[10px] opacity-70 truncate uppercase tracking-wider">{opt.value}</div>
+                    <div className="text-[10px] opacity-70 truncate uppercase tracking-wider">
+                      {opt.value}
+                    </div>
                   )}
                 </button>
               </li>

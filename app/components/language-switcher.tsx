@@ -1,21 +1,21 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { cookieStore } from "@/utils/cookieStore";
-import { useTranslations } from "next-intl";
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { cookieStore } from '@/utils/cookieStore';
+import { useTranslations } from 'next-intl';
 
 export const LanguageSwitcher = () => {
-  const t = useTranslations("Navbar");
+  const t = useTranslations('Navbar');
   const router = useRouter();
-  const [locale, setLocale] = useState("en");
+  const [locale, setLocale] = useState('en');
 
   useEffect(() => {
     setLocale(cookieStore.getLocale());
   }, []);
 
   const handleLanguageChange = (newLocale: string) => {
-    cookieStore.setCookie("NEXT_LOCALE", newLocale);
+    cookieStore.setCookie('NEXT_LOCALE', newLocale);
     setLocale(newLocale);
     router.refresh(); // Refresh the page to apply the new locale
   };
@@ -26,8 +26,8 @@ export const LanguageSwitcher = () => {
         tabIndex={0}
         role="button"
         className="flex items-center gap-2 px-2 py-1 btn btn-ghost btn-xs focus-visible:ring-2 focus-visible:ring-primary"
-        aria-label={t("languageMenu")}
-        title={t("languageMenu")}
+        aria-label={t('languageMenu')}
+        title={t('languageMenu')}
       >
         <span className="uppercase font-medium text-xs">{locale}</span>
         <svg
@@ -47,12 +47,12 @@ export const LanguageSwitcher = () => {
       >
         <li>
           <button
-            className={`flex items-center justify-between focus-visible:ring-2 focus-visible:ring-primary ${locale === "en" ? "active" : ""}`}
-            onClick={() => handleLanguageChange("en")}
-            aria-current={locale === "en" ? "true" : undefined}
+            className={`flex items-center justify-between focus-visible:ring-2 focus-visible:ring-primary ${locale === 'en' ? 'active' : ''}`}
+            onClick={() => handleLanguageChange('en')}
+            aria-current={locale === 'en' ? 'true' : undefined}
           >
             <span>English (EN)</span>
-            {locale === "en" && (
+            {locale === 'en' && (
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-4 w-4"
@@ -73,12 +73,12 @@ export const LanguageSwitcher = () => {
         </li>
         <li>
           <button
-            className={`flex items-center justify-between focus-visible:ring-2 focus-visible:ring-primary ${locale === "id" ? "active" : ""}`}
-            onClick={() => handleLanguageChange("id")}
-            aria-current={locale === "id" ? "true" : undefined}
+            className={`flex items-center justify-between focus-visible:ring-2 focus-visible:ring-primary ${locale === 'id' ? 'active' : ''}`}
+            onClick={() => handleLanguageChange('id')}
+            aria-current={locale === 'id' ? 'true' : undefined}
           >
             <span>Indonesia (ID)</span>
-            {locale === "id" && (
+            {locale === 'id' && (
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-4 w-4"

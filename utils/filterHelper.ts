@@ -3,7 +3,17 @@
  * Handles filter logic based on user level for Attendance, Transport, and LHM menus
  */
 
-export type UserLevel = 'ADM' | 'MGR' | 'KSI' | 'MD1' | 'AST' | 'KRT' | 'KRA' | 'KRP' | 'MDP' | 'OTHER';
+export type UserLevel =
+  | 'ADM'
+  | 'MGR'
+  | 'KSI'
+  | 'MD1'
+  | 'AST'
+  | 'KRT'
+  | 'KRA'
+  | 'KRP'
+  | 'MDP'
+  | 'OTHER';
 
 export type MenuType = 'attendance' | 'transport' | 'lhm';
 
@@ -22,23 +32,20 @@ interface UserScope {
 
 /**
  * Determines which filters should be applied based on user level and menu type
- * 
+ *
  * Attendance menu:
  * - ADM: No filter (free)
  * - MGR, KSI: Filter by FCBA
  * - AST, KRA, MD1: Filter by FCBA and AFDELING
  * - MDP, KRT, KRP: Filter by FCBA, AFDELING, and KEMANDORAN
- * 
+ *
  * Transport & LHM menus:
  * - ADM: No filter (free)
  * - MGR, KSI: Filter by FCBA
  * - AST, KRA, KRT, MD1: Filter by FCBA and AFDELING
  * - MDP, KRP: Filter by FCBA, AFDELING, and KEMANDORAN
  */
-export function getFilterCriteria(
-  userScope: UserScope,
-  menuType: MenuType
-): FilterCriteria {
+export function getFilterCriteria(userScope: UserScope, menuType: MenuType): FilterCriteria {
   const { level, fcba, afdeling, gang } = userScope;
 
   // ADM has no filter restrictions
@@ -119,7 +126,7 @@ export function getLockedFields(
       userLevel === 'KSI' ||
       userLevel === 'OTHER'
     );
-    isKemandoranLocked = (['MDP', 'KRT', 'KRP'].includes(userLevel));
+    isKemandoranLocked = ['MDP', 'KRT', 'KRP'].includes(userLevel);
   } else {
     // Transport and LHM
     isAfdelingLocked = !(

@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 export async function POST(req: NextRequest) {
   if (!BACKEND_URL) {
     return NextResponse.json(
-      { message: 'Missing backend URL. Set NEXT_PUBLIC_BACKEND_URL or BACKEND_URL.' },
+      { message: 'Terjadi kesalahan internal (konfigurasi).' },
       { status: 500 }
     );
   }
@@ -27,11 +27,29 @@ export async function POST(req: NextRequest) {
     });
 
     const data = await upstream.text();
+
+    if (!upstream.ok) {
+      // SECURITY: Log original error details server-side but return generic message
+      // to client to prevent information leakage (CWE-209).
+      console.error('[APP_UPDATE_CHECK_ERROR]', {
+        status: upstream.status,
+        error: data.length > 1000 ? data.substring(0, 1000) + '...' : data,
+      });
+      return NextResponse.json(
+        { message: 'Terjadi kesalahan saat memeriksa update aplikasi.' },
+        { status: upstream.status }
+      );
+    }
+
     let json;
     try {
       json = data ? JSON.parse(data) : null;
     } catch {
-      json = { message: data };
+      console.error('[APP_UPDATE_CHECK_PARSE_ERROR]', { data });
+      return NextResponse.json(
+        { message: 'Terjadi kesalahan saat memproses data update.' },
+        { status: 502 }
+      );
     }
 
     return NextResponse.json(json, { status: upstream.status });

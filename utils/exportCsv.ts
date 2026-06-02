@@ -12,9 +12,7 @@ export function exportJsonToCsv(data: Array<Record<string, unknown>>, fileName: 
   }
 
   const headers = Object.keys(data[0]);
-  const rows = data.map(row =>
-    headers.map(header => escapeCsvValue(row[header])).join(',')
-  );
+  const rows = data.map(row => headers.map(header => escapeCsvValue(row[header])).join(','));
 
   const csvContent = [headers.map(escapeCsvValue).join(','), ...rows].join('\r\n');
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
