@@ -11,7 +11,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const body = await req.json();
 
-  const response = await fetch(`${BACKEND_URL}/api/uploads/lhm_data/mobile`, {
+  const response = await fetch(`${BACKEND_URL}/api/uploads/open_lhm_data/mobile`, {
     method: 'POST',
     headers: authHeaders(token),
     body: JSON.stringify(body),
