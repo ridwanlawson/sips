@@ -1,28 +1,20 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  SimpleBarChart,
-  SimplePieChart,
-  SimpleLineChart,
-} from "@/app/components/dashboard-chart";
-import { isUnauthenticatedJson, logoutAndRedirect } from "@/utils/authHelper";
-import {
-  SkeletonCard,
-  SkeletonTable,
-  SkeletonChart,
-} from "@/app/components/skeletons";
-import { formatPerfNumber } from "@/utils/perf-formatter";
-import { useLocale } from "@/hooks/useLocale";
-import { SearchSelect, type Option } from "@/app/components/search-select";
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { SimpleBarChart, SimplePieChart, SimpleLineChart } from '@/app/components/dashboard-chart';
+import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/authHelper';
+import { SkeletonCard, SkeletonTable, SkeletonChart } from '@/app/components/skeletons';
+import { formatPerfNumber } from '@/utils/perf-formatter';
+import { useLocale } from '@/hooks/useLocale';
+import { SearchSelect, type Option } from '@/app/components/search-select';
 
 /* =========================
    T Y P E S
 ========================= */
 
-type UserLevel = "ADM" | "MGR" | "AST" | "OTHER";
+type UserLevel = 'ADM' | 'MGR' | 'AST' | 'OTHER';
 
 interface UserProfile {
   id?: string | number;
@@ -86,7 +78,7 @@ interface PengangkutanRecord {
   berat?: string | number;
 }
 
-type Timeframe = "daily" | "weekly" | "monthly" | "yearly";
+type Timeframe = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
 interface DailyGroupKey {
   date: string;
@@ -129,29 +121,28 @@ interface Triplet {
   gangcode: string;
 }
 
-type DetailMode = "perHari" | "perBaris";
+type DetailMode = 'perHari' | 'perBaris';
 
 /* =========================
    U T I L S
 ========================= */
 
-const isRecord = (v: unknown): v is Record<string, unknown> =>
-  typeof v === "object" && v !== null;
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
 
 const readCookie = (name: string): string | null => {
-  if (typeof document === "undefined") return null;
-  const m = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
+  if (typeof document === 'undefined') return null;
+  const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
   return m ? decodeURIComponent(m.pop() as string) : null;
 };
 
 const toTitleCase = (str: string | undefined | null): string => {
-  if (!str) return "";
+  if (!str) return '';
   return str
     .toLowerCase()
-    .split(" ")
+    .split(' ')
     .filter(Boolean)
-    .map((w) => w[0]?.toUpperCase() + w.slice(1))
-    .join(" ");
+    .map(w => w[0]?.toUpperCase() + w.slice(1))
+    .join(' ');
 };
 
 // Range tanggal utk filter FRONTEND
@@ -160,18 +151,18 @@ const getDateRange = (frame: Timeframe): { from: string; to: string } => {
   const dateTo = new Date(today);
   const dateFrom = new Date(today);
 
-  if (frame === "daily") {
+  if (frame === 'daily') {
     // hanya hari ini
-  } else if (frame === "weekly") {
+  } else if (frame === 'weekly') {
     dateFrom.setDate(today.getDate() - 6);
-  } else if (frame === "monthly") {
+  } else if (frame === 'monthly') {
     dateFrom.setDate(1);
-  } else if (frame === "yearly") {
+  } else if (frame === 'yearly') {
     dateFrom.setMonth(0, 1);
     dateTo.setMonth(11, 31);
   }
 
-  const toISO = (d: Date) => d.toISOString().split("T")[0];
+  const toISO = (d: Date) => d.toISOString().split('T')[0];
   return { from: toISO(dateFrom), to: toISO(dateTo) };
 };
 
@@ -179,7 +170,7 @@ const parseDateOnly = (raw?: string | null): string | null => {
   if (!raw) return null;
   const trimmed = raw.trim();
   if (!trimmed) return null;
-  const onlyDate = trimmed.split(" ")[0];
+  const onlyDate = trimmed.split(' ')[0];
   if (!onlyDate) return null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(onlyDate)) return null;
   return onlyDate;
@@ -187,20 +178,20 @@ const parseDateOnly = (raw?: string | null): string | null => {
 
 // ⚡ Bolt Optimization: Reuse Intl.DateTimeFormat instances to avoid expensive re-creation
 // creating an Intl object on every call to toLocaleDateString() is a known bottleneck.
-const dayFormatter = new Intl.DateTimeFormat("id-ID", {
-  weekday: "short",
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
+const dayFormatter = new Intl.DateTimeFormat('id-ID', {
+  weekday: 'short',
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
 });
 
-const monthFormatter = new Intl.DateTimeFormat("id-ID", {
-  month: "long",
-  year: "numeric",
+const monthFormatter = new Intl.DateTimeFormat('id-ID', {
+  month: 'long',
+  year: 'numeric',
 });
 
 const formatDateID = (yyyyMmDd: string): string => {
-  const d = new Date(yyyyMmDd + "T00:00:00");
+  const d = new Date(yyyyMmDd + 'T00:00:00');
   if (Number.isNaN(+d)) return yyyyMmDd;
   return dayFormatter.format(d);
 };
@@ -217,30 +208,24 @@ const formatYearID = (year: number): string => {
 // Klasifikasi berdasarkan KODE + total_late_time + go_home_early
 // HADIR = semua kode kecuali MK dan P1 (tidak peduli telat/pulang awal)
 // TEPAT_WAKTU = hadir tanpa telat dan tanpa pulang awal
-type ClassifiedStatus =
-  | "HADIR"
-  | "TEPAT_WAKTU"
-  | "TELAT"
-  | "PULANG_AWAL"
-  | "ALPHA"
-  | "OTHER";
+type ClassifiedStatus = 'HADIR' | 'TEPAT_WAKTU' | 'TELAT' | 'PULANG_AWAL' | 'ALPHA' | 'OTHER';
 
 const isNonZeroTime = (raw?: string | null): boolean => {
   if (!raw) return false;
   const t = raw.trim();
   if (!t) return false;
-  if (t === "0" || t === "00:00" || t === "0:00") return false;
+  if (t === '0' || t === '00:00' || t === '0:00') return false;
   return true;
 };
 
 const classifyStatus = (record: AttendanceRecord): ClassifiedStatus => {
-  const code = (record.attendance || "").toUpperCase().trim();
+  const code = (record.attendance || '').toUpperCase().trim();
   const lateRaw = record.total_late_time;
   const goHomeRaw = record.go_home_early;
 
   // ALPHA hanya untuk MK dan P1
-  const isAlphaCode = ["P1", "MK"].includes(code);
-  if (isAlphaCode) return "ALPHA";
+  const isAlphaCode = ['P1', 'MK'].includes(code);
+  if (isAlphaCode) return 'ALPHA';
 
   // Semua kode lainnya dianggap HADIR
   // Tapi kita tetap klasifikasi detail untuk TEPAT_WAKTU, TELAT, PULANG_AWAL
@@ -249,22 +234,18 @@ const classifyStatus = (record: AttendanceRecord): ClassifiedStatus => {
 
   // Selalu return HADIR untuk total count
   // Tapi untuk detail breakdown:
-  if (isEarly) return "PULANG_AWAL";
-  if (isLate) return "TELAT";
-  return "TEPAT_WAKTU"; // Tepat waktu (tidak telat, tidak pulang awal)
+  if (isEarly) return 'PULANG_AWAL';
+  if (isLate) return 'TELAT';
+  return 'TEPAT_WAKTU'; // Tepat waktu (tidak telat, tidak pulang awal)
 };
 
 // Ekstrak array data dari response API (ok + data / data.data)
 const extractAttendanceArray = (payload: unknown): AttendanceRecord[] => {
   if (!isRecord(payload)) return [];
-  if ("ok" in payload && payload.ok === true && "data" in payload) {
+  if ('ok' in payload && payload.ok === true && 'data' in payload) {
     const d = (payload as { data: unknown }).data;
     if (Array.isArray(d)) return d as AttendanceRecord[];
-    if (
-      isRecord(d) &&
-      "data" in d &&
-      Array.isArray((d as { data: unknown }).data)
-    ) {
+    if (isRecord(d) && 'data' in d && Array.isArray((d as { data: unknown }).data)) {
       return (d as { data: AttendanceRecord[] }).data;
     }
   }
@@ -273,25 +254,21 @@ const extractAttendanceArray = (payload: unknown): AttendanceRecord[] => {
 
 const extractTriplets = (payload: unknown): Triplet[] => {
   if (!isRecord(payload)) return [];
-  if ("ok" in payload && payload.ok === true && "data" in payload) {
+  if ('ok' in payload && payload.ok === true && 'data' in payload) {
     const d = (payload as { data: unknown }).data;
     if (Array.isArray(d)) {
       return d
-        .map((row) => {
+        .map(row => {
           if (!isRecord(row)) return null;
-          const fcba = String(row.fcba ?? "").trim();
-          const sectionname = String(row.sectionname ?? "").trim();
-          const gangcode = String(row.gangcode ?? "").trim();
+          const fcba = String(row.fcba ?? '').trim();
+          const sectionname = String(row.sectionname ?? '').trim();
+          const gangcode = String(row.gangcode ?? '').trim();
           if (!fcba && !sectionname && !gangcode) return null;
           return { fcba, sectionname, gangcode };
         })
         .filter((v): v is Triplet => v !== null);
     }
-    if (
-      isRecord(d) &&
-      "data" in d &&
-      Array.isArray((d as { data: unknown }).data)
-    ) {
+    if (isRecord(d) && 'data' in d && Array.isArray((d as { data: unknown }).data)) {
       return extractTriplets({ ok: true, data: (d as { data: unknown }).data });
     }
   }
@@ -306,17 +283,17 @@ export default function UserDashboard() {
   const localeTag = useLocale();
   const queryClient = useQueryClient();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [userLevel, setUserLevel] = useState<UserLevel>("OTHER");
+  const [userLevel, setUserLevel] = useState<UserLevel>('OTHER');
 
-  const [timeframe, setTimeframe] = useState<Timeframe>("monthly");
+  const [timeframe, setTimeframe] = useState<Timeframe>('monthly');
 
-  const [filterFcba, setFilterFcba] = useState<string>("ALL");
-  const [filterAfdeling, setFilterAfdeling] = useState<string>("");
+  const [filterFcba, setFilterFcba] = useState<string>('ALL');
+  const [filterAfdeling, setFilterAfdeling] = useState<string>('');
 
   const [showFilters, setShowFilters] = useState(false);
 
   // Mode tampilan riwayat: per hari (rekap) / per baris (detail)
-  const [detailMode, setDetailMode] = useState<DetailMode>("perHari");
+  const [detailMode, setDetailMode] = useState<DetailMode>('perHari');
 
   // State untuk mengatasi hydration mismatch
   const [isClient, setIsClient] = useState(false);
@@ -331,16 +308,18 @@ export default function UserDashboard() {
 
     // Prefetch triplets (data master yang jarang berubah)
     queryClient.prefetchQuery({
-      queryKey: ["triplets"],
+      queryKey: ['triplets'],
       queryFn: async () => {
-        const ckTrip = readCookie("opt_triplets");
+        const ckTrip = readCookie('opt_triplets');
         if (ckTrip) {
           try {
             const arr = JSON.parse(ckTrip) as Triplet[];
             if (Array.isArray(arr) && arr.length > 0) return arr;
-          } catch { /* ignore */ }
+          } catch {
+            /* ignore */
+          }
         }
-        const res = await fetch("/api/karyawans", { credentials: "include" });
+        const res = await fetch('/api/karyawans', { credentials: 'include' });
         if (!res.ok) return [];
         const json = await res.json();
         return extractTriplets(json);
@@ -350,16 +329,16 @@ export default function UserDashboard() {
 
     // Prefetch user profile
     queryClient.prefetchQuery({
-      queryKey: ["userProfile"],
+      queryKey: ['userProfile'],
       queryFn: async () => {
-        const res = await fetch("/api/user/profile", {
-          method: "GET",
-          headers: { Accept: "application/json" },
-          credentials: "include",
+        const res = await fetch('/api/user/profile', {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+          credentials: 'include',
         });
         if (!res.ok) return null;
         const json = await res.json();
-        if (json.ok && typeof json.data === "object" && json.data !== null) {
+        if (json.ok && typeof json.data === 'object' && json.data !== null) {
           const data = json.data as Record<string, unknown>;
           return data.data ? data.data : data;
         }
@@ -371,18 +350,19 @@ export default function UserDashboard() {
 
   // combine userProfile fields into a single stable dependency key
   const userProfileKey = useMemo(() => {
-    return `${userProfile?.fcba || ""}|${userProfile?.afdeling || ""}|${userProfile?.section || ""
-      }`;
+    return `${userProfile?.fcba || ''}|${userProfile?.afdeling || ''}|${
+      userProfile?.section || ''
+    }`;
   }, [userProfile?.fcba, userProfile?.afdeling, userProfile?.section]);
 
   /* ===== Queries ===== */
 
   // 1. Triplets Query
   const { data: triplets = [] } = useQuery({
-    queryKey: ["triplets"],
+    queryKey: ['triplets'],
     queryFn: async () => {
       // Cek cookie dulu
-      const ckTrip = readCookie("opt_triplets");
+      const ckTrip = readCookie('opt_triplets');
       if (ckTrip) {
         try {
           const arr = JSON.parse(ckTrip) as Triplet[];
@@ -392,7 +372,7 @@ export default function UserDashboard() {
         }
       }
 
-      const res = await fetch("/api/karyawans", { credentials: "include" });
+      const res = await fetch('/api/karyawans', { credentials: 'include' });
       if (!res.ok) {
         if (res.status === 401) {
           await logoutAndRedirect();
@@ -413,12 +393,12 @@ export default function UserDashboard() {
 
   // 2. User Profile Query
   const { data: profileData } = useQuery<UserProfile | null>({
-    queryKey: ["userProfile"],
+    queryKey: ['userProfile'],
     queryFn: async () => {
-      const res = await fetch("/api/user/profile", {
-        method: "GET",
-        headers: { Accept: "application/json" },
-        credentials: "include",
+      const res = await fetch('/api/user/profile', {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        credentials: 'include',
       });
       if (!res.ok) {
         if (res.status === 401) {
@@ -431,7 +411,7 @@ export default function UserDashboard() {
         await logoutAndRedirect();
         return null;
       }
-      if (json.ok && typeof json.data === "object" && json.data !== null) {
+      if (json.ok && typeof json.data === 'object' && json.data !== null) {
         const data = json.data as Record<string, unknown>;
         const inner = data.data ? data.data : data;
         return inner as UserProfile;
@@ -445,17 +425,17 @@ export default function UserDashboard() {
 
   useEffect(() => {
     if (profileData) {
-      setUserProfile((prev) => ({ ...(prev || {}), ...profileData }));
-      const lvl2 = (profileData.level || "").toUpperCase();
-      if (lvl2 === "ADM" || lvl2 === "MGR" || lvl2 === "AST") {
+      setUserProfile(prev => ({ ...(prev || {}), ...profileData }));
+      const lvl2 = (profileData.level || '').toUpperCase();
+      if (lvl2 === 'ADM' || lvl2 === 'MGR' || lvl2 === 'AST') {
         setUserLevel(lvl2 as UserLevel);
-        if (lvl2 === "ADM") {
-          setFilterFcba("ALL");
-        } else if (lvl2 === "MGR") {
-          setFilterFcba(profileData.fcba || "");
-        } else if (lvl2 === "AST") {
-          setFilterFcba(profileData.fcba || "");
-          setFilterAfdeling(profileData.afdeling || profileData.section || "");
+        if (lvl2 === 'ADM') {
+          setFilterFcba('ALL');
+        } else if (lvl2 === 'MGR') {
+          setFilterFcba(profileData.fcba || '');
+        } else if (lvl2 === 'AST') {
+          setFilterFcba(profileData.fcba || '');
+          setFilterAfdeling(profileData.afdeling || profileData.section || '');
         }
       }
     }
@@ -467,51 +447,36 @@ export default function UserDashboard() {
     isLoading: loading,
     error: attendanceError,
   } = useQuery({
-    queryKey: [
-      "attendance",
-      timeframe,
-      filterFcba,
-      filterAfdeling,
-      userLevel,
-      userProfileKey,
-    ],
+    queryKey: ['attendance', timeframe, filterFcba, filterAfdeling, userLevel, userProfileKey],
     queryFn: async () => {
       // ⚡ Bolt Optimization: Use server-side filtering for attendance data.
       // By passing 'tanggal' and 'tanggal_end', we reduce network payload
       // and client-side processing by ~75% (depending on timeframe).
       const { from, to } = getDateRange(timeframe);
       const params = new URLSearchParams();
-      params.set("tanggal", from);
-      params.set("tanggal_end", to);
+      params.set('tanggal', from);
+      params.set('tanggal_end', to);
 
-      const homeFcba = userProfile?.fcba || readCookie("user_Fcba") || "";
+      const homeFcba = userProfile?.fcba || readCookie('user_Fcba') || '';
       const homeAfdeling =
-        userProfile?.afdeling ||
-        userProfile?.section ||
-        readCookie("user_Section") ||
-        "";
+        userProfile?.afdeling || userProfile?.section || readCookie('user_Section') || '';
 
-      if (userLevel === "ADM") {
-        if (filterFcba && filterFcba !== "ALL")
-          params.set("fcba", filterFcba.trim());
-        if (filterAfdeling.trim())
-          params.set("afdeling", filterAfdeling.trim());
-      } else if (userLevel === "MGR") {
-        if (homeFcba) params.set("fcba", homeFcba.trim());
-        if (filterAfdeling.trim())
-          params.set("afdeling", filterAfdeling.trim());
-      } else if (userLevel === "AST") {
-        if (homeFcba) params.set("fcba", homeFcba.trim());
-        if (homeAfdeling) params.set("afdeling", homeAfdeling.trim());
+      if (userLevel === 'ADM') {
+        if (filterFcba && filterFcba !== 'ALL') params.set('fcba', filterFcba.trim());
+        if (filterAfdeling.trim()) params.set('afdeling', filterAfdeling.trim());
+      } else if (userLevel === 'MGR') {
+        if (homeFcba) params.set('fcba', homeFcba.trim());
+        if (filterAfdeling.trim()) params.set('afdeling', filterAfdeling.trim());
+      } else if (userLevel === 'AST') {
+        if (homeFcba) params.set('fcba', homeFcba.trim());
+        if (homeAfdeling) params.set('afdeling', homeAfdeling.trim());
       }
 
-      const res = await fetch(`/api/attendance?${params.toString()}`,
-        {
-          method: "GET",
-          headers: { Accept: "application/json" },
-          credentials: "include",
-        },
-      );
+      const res = await fetch(`/api/attendance?${params.toString()}`, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        credentials: 'include',
+      });
 
       if (!res.ok) {
         if (res.status === 404) return [];
@@ -544,41 +509,30 @@ export default function UserDashboard() {
     },
     isLoading: loadingHarvesting,
   } = useQuery({
-    queryKey: [
-      "harvesting",
-      timeframe,
-      filterFcba,
-      filterAfdeling,
-      userLevel,
-      userProfileKey,
-    ],
+    queryKey: ['harvesting', timeframe, filterFcba, filterAfdeling, userLevel, userProfileKey],
     queryFn: async () => {
       const { from, to } = getDateRange(timeframe);
       const p = new URLSearchParams();
-      p.set("tanggal", from);
-      p.set("tanggal_end", to);
+      p.set('tanggal', from);
+      p.set('tanggal_end', to);
 
-      const homeFcba = userProfile?.fcba || readCookie("user_Fcba") || "";
+      const homeFcba = userProfile?.fcba || readCookie('user_Fcba') || '';
       const homeAfdeling =
-        userProfile?.afdeling ||
-        userProfile?.section ||
-        readCookie("user_Section") ||
-        "";
+        userProfile?.afdeling || userProfile?.section || readCookie('user_Section') || '';
 
-      if (userLevel === "ADM") {
-        if (filterFcba && filterFcba !== "ALL")
-          p.set("fcba", filterFcba.trim());
-        if (filterAfdeling.trim()) p.set("afdeling", filterAfdeling.trim());
-      } else if (userLevel === "MGR") {
-        if (homeFcba) p.set("fcba", homeFcba.trim());
-        if (filterAfdeling.trim()) p.set("afdeling", filterAfdeling.trim());
-      } else if (userLevel === "AST") {
-        if (homeFcba) p.set("fcba", homeFcba.trim());
-        if (homeAfdeling) p.set("afdeling", homeAfdeling.trim());
+      if (userLevel === 'ADM') {
+        if (filterFcba && filterFcba !== 'ALL') p.set('fcba', filterFcba.trim());
+        if (filterAfdeling.trim()) p.set('afdeling', filterAfdeling.trim());
+      } else if (userLevel === 'MGR') {
+        if (homeFcba) p.set('fcba', homeFcba.trim());
+        if (filterAfdeling.trim()) p.set('afdeling', filterAfdeling.trim());
+      } else if (userLevel === 'AST') {
+        if (homeFcba) p.set('fcba', homeFcba.trim());
+        if (homeAfdeling) p.set('afdeling', homeAfdeling.trim());
       }
 
       const res = await fetch(`/api/harvest?${p.toString()}`, {
-        credentials: "include",
+        credentials: 'include',
       });
       if (res.status === 401) {
         await logoutAndRedirect();
@@ -597,8 +551,8 @@ export default function UserDashboard() {
         rows = json;
       } else if (
         json &&
-        typeof json === "object" &&
-        "data" in json &&
+        typeof json === 'object' &&
+        'data' in json &&
         Array.isArray((json as Record<string, unknown>).data)
       ) {
         rows = (json as Record<string, unknown>).data as unknown[];
@@ -608,16 +562,13 @@ export default function UserDashboard() {
       return {
         total: harvestRows.length,
         totalOutput: harvestRows.reduce(
-          (sum: number, r: HarvestingRecord) =>
-            sum + (parseInt(String(r.output || 0)) || 0),
-          0,
+          (sum: number, r: HarvestingRecord) => sum + (parseInt(String(r.output || 0)) || 0),
+          0
         ),
-        approved: harvestRows.filter(
-          (r: HarvestingRecord) => r.status_harvesting === "Approved",
-        ).length,
-        planned: harvestRows.filter(
-          (r: HarvestingRecord) => r.status_harvesting === "Planned",
-        ).length,
+        approved: harvestRows.filter((r: HarvestingRecord) => r.status_harvesting === 'Approved')
+          .length,
+        planned: harvestRows.filter((r: HarvestingRecord) => r.status_harvesting === 'Planned')
+          .length,
       };
     },
     enabled: isClient,
@@ -636,41 +587,30 @@ export default function UserDashboard() {
     },
     isLoading: loadingPengangkutan,
   } = useQuery({
-    queryKey: [
-      "pengangkutans",
-      timeframe,
-      filterFcba,
-      filterAfdeling,
-      userLevel,
-      userProfileKey,
-    ],
+    queryKey: ['pengangkutans', timeframe, filterFcba, filterAfdeling, userLevel, userProfileKey],
     queryFn: async () => {
       const { from, to } = getDateRange(timeframe);
       const p = new URLSearchParams();
-      p.set("tanggal", from);
-      p.set("tanggal_end", to);
+      p.set('tanggal', from);
+      p.set('tanggal_end', to);
 
-      const homeFcba = userProfile?.fcba || readCookie("user_Fcba") || "";
+      const homeFcba = userProfile?.fcba || readCookie('user_Fcba') || '';
       const homeAfdeling =
-        userProfile?.afdeling ||
-        userProfile?.section ||
-        readCookie("user_Section") ||
-        "";
+        userProfile?.afdeling || userProfile?.section || readCookie('user_Section') || '';
 
-      if (userLevel === "ADM") {
-        if (filterFcba && filterFcba !== "ALL")
-          p.set("fcba", filterFcba.trim());
-        if (filterAfdeling.trim()) p.set("afdeling", filterAfdeling.trim());
-      } else if (userLevel === "MGR") {
-        if (homeFcba) p.set("fcba", homeFcba.trim());
-        if (filterAfdeling.trim()) p.set("afdeling", filterAfdeling.trim());
-      } else if (userLevel === "AST") {
-        if (homeFcba) p.set("fcba", homeFcba.trim());
-        if (homeAfdeling) p.set("afdeling", homeAfdeling.trim());
+      if (userLevel === 'ADM') {
+        if (filterFcba && filterFcba !== 'ALL') p.set('fcba', filterFcba.trim());
+        if (filterAfdeling.trim()) p.set('afdeling', filterAfdeling.trim());
+      } else if (userLevel === 'MGR') {
+        if (homeFcba) p.set('fcba', homeFcba.trim());
+        if (filterAfdeling.trim()) p.set('afdeling', filterAfdeling.trim());
+      } else if (userLevel === 'AST') {
+        if (homeFcba) p.set('fcba', homeFcba.trim());
+        if (homeAfdeling) p.set('afdeling', homeAfdeling.trim());
       }
 
       const res = await fetch(`/api/pengangkutans?${p.toString()}`, {
-        credentials: "include",
+        credentials: 'include',
       });
       if (res.status === 401) {
         await logoutAndRedirect();
@@ -707,44 +647,34 @@ export default function UserDashboard() {
         rows = json;
       } else if (
         json &&
-        typeof json === "object" &&
-        "data" in json &&
+        typeof json === 'object' &&
+        'data' in json &&
         Array.isArray((json as Record<string, unknown>).data)
       ) {
         rows = (json as Record<string, unknown>).data as unknown[];
       }
       const pengangkutanRows = rows as PengangkutanRecord[];
 
-      const totalOutput = pengangkutanRows.reduce(
-        (sum: number, r: PengangkutanRecord) => {
-          const candidates = [
-            r.output,
-            r.jjg,
-            r.jumlah,
-            r.quantity,
-            r.tonase,
-            r.berat,
-          ];
-          for (const c of candidates) {
-            if (c === null || c === undefined || c === "") continue;
-            const n = parseInt(String(c).replace(/[^0-9-]/g, ""), 10);
-            if (!Number.isNaN(n)) return sum + n;
-          }
-          return sum;
-        },
-        0,
-      );
+      const totalOutput = pengangkutanRows.reduce((sum: number, r: PengangkutanRecord) => {
+        const candidates = [r.output, r.jjg, r.jumlah, r.quantity, r.tonase, r.berat];
+        for (const c of candidates) {
+          if (c === null || c === undefined || c === '') continue;
+          const n = parseInt(String(c).replace(/[^0-9-]/g, ''), 10);
+          if (!Number.isNaN(n)) return sum + n;
+        }
+        return sum;
+      }, 0);
 
       return {
         total: pengangkutanRows.length,
         approved: pengangkutanRows.filter(
-          (r: PengangkutanRecord) => r.status_pengangkutan === "Approved",
+          (r: PengangkutanRecord) => r.status_pengangkutan === 'Approved'
         ).length,
         planned: pengangkutanRows.filter(
-          (r: PengangkutanRecord) => r.status_pengangkutan === "Planned",
+          (r: PengangkutanRecord) => r.status_pengangkutan === 'Planned'
         ).length,
         completed: pengangkutanRows.filter(
-          (r: PengangkutanRecord) => r.status_pengangkutan === "Completed",
+          (r: PengangkutanRecord) => r.status_pengangkutan === 'Completed'
         ).length,
         totalOutput,
       };
@@ -754,47 +684,38 @@ export default function UserDashboard() {
     gcTime: 6 * 60 * 1000,
   });
 
-  const error = attendanceError ? "Gagal memuat data dashboard" : null;
+  const error = attendanceError ? 'Gagal memuat data dashboard' : null;
 
   /* ===== Bootstrap user dari cookies ===== */
   useEffect(() => {
     const cookieFullname =
-      readCookie("user_FullName") ||
-      readCookie("user_fullname") ||
-      readCookie("user_Name") ||
-      readCookie("user_name") ||
-      "";
+      readCookie('user_FullName') ||
+      readCookie('user_fullname') ||
+      readCookie('user_Name') ||
+      readCookie('user_name') ||
+      '';
     const cookieLevelRaw =
-      readCookie("user_Level") ||
-      readCookie("user_LEVEL") ||
-      readCookie("user_level") ||
-      "";
+      readCookie('user_Level') || readCookie('user_LEVEL') || readCookie('user_level') || '';
     const cookieFcba =
-      readCookie("user_Fcba") ||
-      readCookie("user_FCBA") ||
-      readCookie("user_fcba") ||
-      "";
+      readCookie('user_Fcba') || readCookie('user_FCBA') || readCookie('user_fcba') || '';
     const cookieSection =
-      readCookie("user_Section") ||
-      readCookie("user_SECTION") ||
-      readCookie("user_section") ||
-      readCookie("user_Afdeling") ||
-      readCookie("user_afdeling") ||
-      "";
+      readCookie('user_Section') ||
+      readCookie('user_SECTION') ||
+      readCookie('user_section') ||
+      readCookie('user_Afdeling') ||
+      readCookie('user_afdeling') ||
+      '';
     const cookieGang =
-      readCookie("user_Gang") ||
-      readCookie("user_gang") ||
-      readCookie("user_GANG") ||
-      "";
+      readCookie('user_Gang') || readCookie('user_gang') || readCookie('user_GANG') || '';
 
-    let lvl: UserLevel = "OTHER";
+    let lvl: UserLevel = 'OTHER';
     const upperLvl = cookieLevelRaw.toUpperCase();
-    if (upperLvl === "ADM" || upperLvl === "MGR" || upperLvl === "AST") {
+    if (upperLvl === 'ADM' || upperLvl === 'MGR' || upperLvl === 'AST') {
       lvl = upperLvl;
     }
 
     setUserLevel(lvl);
-    setUserProfile((prev) => ({
+    setUserProfile(prev => ({
       ...(prev || {}),
       fullname: cookieFullname || prev?.fullname,
       level: upperLvl || prev?.level,
@@ -803,54 +724,44 @@ export default function UserDashboard() {
       gang: cookieGang || prev?.gang,
     }));
 
-    if (lvl === "ADM") {
-      setFilterFcba("ALL");
-      setFilterAfdeling("");
-    } else if (lvl === "MGR") {
-      setFilterFcba(cookieFcba || "");
-      setFilterAfdeling("");
-    } else if (lvl === "AST") {
-      setFilterFcba(cookieFcba || "");
-      setFilterAfdeling(cookieSection || "");
+    if (lvl === 'ADM') {
+      setFilterFcba('ALL');
+      setFilterAfdeling('');
+    } else if (lvl === 'MGR') {
+      setFilterFcba(cookieFcba || '');
+      setFilterAfdeling('');
+    } else if (lvl === 'AST') {
+      setFilterFcba(cookieFcba || '');
+      setFilterAfdeling(cookieSection || '');
     }
   }, []);
 
   /* ===== Options FCBA & Afdeling (chain) ===== */
   const fcbaOptions: Option[] = useMemo(() => {
-    const uniq = Array.from(
-      new Set(triplets.map((t) => t.fcba).filter(Boolean)),
-    ).sort();
+    const uniq = Array.from(new Set(triplets.map(t => t.fcba).filter(Boolean))).sort();
 
-    const base = uniq.map((v) => ({ value: v, label: v }));
-    if (userLevel === "ADM") {
-      return [{ value: "ALL", label: "ALL FCBA" }, ...base];
+    const base = uniq.map(v => ({ value: v, label: v }));
+    if (userLevel === 'ADM') {
+      return [{ value: 'ALL', label: 'ALL FCBA' }, ...base];
     }
     return base;
   }, [triplets, userLevel]);
 
   const afdelingOptions: Option[] = useMemo(() => {
     // Always include an option to select all afdeling (empty value means no afdeling filter)
-    if (!filterFcba || filterFcba === "ALL") {
-      const uniq = Array.from(
-        new Set(triplets.map((t) => t.sectionname).filter(Boolean)),
-      ).sort();
-      return [
-        { value: "", label: "Semua Afdeling" },
-        ...uniq.map((v) => ({ value: v, label: v })),
-      ];
+    if (!filterFcba || filterFcba === 'ALL') {
+      const uniq = Array.from(new Set(triplets.map(t => t.sectionname).filter(Boolean))).sort();
+      return [{ value: '', label: 'Semua Afdeling' }, ...uniq.map(v => ({ value: v, label: v }))];
     }
     const uniq = Array.from(
       new Set(
         triplets
-          .filter((t) => t.fcba === filterFcba)
-          .map((t) => t.sectionname)
-          .filter(Boolean),
-      ),
+          .filter(t => t.fcba === filterFcba)
+          .map(t => t.sectionname)
+          .filter(Boolean)
+      )
     ).sort();
-    return [
-      { value: "", label: "Semua Afdeling" },
-      ...uniq.map((v) => ({ value: v, label: v })),
-    ];
+    return [{ value: '', label: 'Semua Afdeling' }, ...uniq.map(v => ({ value: v, label: v }))];
   }, [triplets, filterFcba]);
 
   /* ===== Options FCBA & Afdeling (chain) ===== */
@@ -909,31 +820,31 @@ export default function UserDashboard() {
       rowDetailsWithDates.push({ record: r, date: dateOnly });
 
       // 1. Update Global Stats
-      if (cls === "TEPAT_WAKTU") {
+      if (cls === 'TEPAT_WAKTU') {
         stats.totalTepatWaktu += 1;
         stats.totalHadir += 1;
-      } else if (cls === "TELAT") {
+      } else if (cls === 'TELAT') {
         stats.totalTelat += 1;
         stats.totalHadir += 1;
-      } else if (cls === "PULANG_AWAL") {
+      } else if (cls === 'PULANG_AWAL') {
         stats.totalPulangAwal += 1;
         stats.totalHadir += 1;
-      } else if (cls === "ALPHA") {
+      } else if (cls === 'ALPHA') {
         stats.totalAlpa += 1;
       }
 
       // 2. Aggregasi Harian
       let keyObj: DailyGroupKey;
-      if (userLevel === "ADM") {
+      if (userLevel === 'ADM') {
         keyObj = {
           date: dateOnly,
-          fcba: r.fcba || "-",
-          afdeling: r.section || "-",
+          fcba: r.fcba || '-',
+          afdeling: r.section || '-',
         };
-      } else if (userLevel === "MGR") {
+      } else if (userLevel === 'MGR') {
         keyObj = {
           date: dateOnly,
-          afdeling: r.section || "-",
+          afdeling: r.section || '-',
         };
       } else {
         keyObj = { date: dateOnly };
@@ -942,7 +853,7 @@ export default function UserDashboard() {
       const keyParts = [keyObj.date];
       if (keyObj.fcba) keyParts.push(`FCBA:${keyObj.fcba}`);
       if (keyObj.afdeling) keyParts.push(`AFD:${keyObj.afdeling}`);
-      const dailyKey = keyParts.join("|");
+      const dailyKey = keyParts.join('|');
 
       let dSummary = dailyMap.get(dailyKey);
       if (!dSummary) {
@@ -958,23 +869,23 @@ export default function UserDashboard() {
         dailyMap.set(dailyKey, dSummary);
       }
 
-      if (cls === "TEPAT_WAKTU") {
+      if (cls === 'TEPAT_WAKTU') {
         dSummary.tepatWaktu += 1;
         dSummary.hadir += 1;
-      } else if (cls === "TELAT") {
+      } else if (cls === 'TELAT') {
         dSummary.telat += 1;
         dSummary.hadir += 1;
-      } else if (cls === "PULANG_AWAL") {
+      } else if (cls === 'PULANG_AWAL') {
         dSummary.pulangAwal += 1;
         dSummary.hadir += 1;
-      } else if (cls === "ALPHA") {
+      } else if (cls === 'ALPHA') {
         dSummary.alpa += 1;
       }
 
       // 3. Aggregasi Bulanan (hanya jika monthly/yearly)
-      if (timeframe === "monthly" || timeframe === "yearly") {
-        const [year, month] = dateOnly.split("-").map(Number);
-        const monthKey = `${year}-${month.toString().padStart(2, "0")}`;
+      if (timeframe === 'monthly' || timeframe === 'yearly') {
+        const [year, month] = dateOnly.split('-').map(Number);
+        const monthKey = `${year}-${month.toString().padStart(2, '0')}`;
 
         let mSummary = monthlyMap.get(monthKey);
         if (!mSummary) {
@@ -991,23 +902,23 @@ export default function UserDashboard() {
           monthlyMap.set(monthKey, mSummary);
         }
 
-        if (cls === "TEPAT_WAKTU") {
+        if (cls === 'TEPAT_WAKTU') {
           mSummary.tepatWaktu += 1;
           mSummary.hadir += 1;
-        } else if (cls === "TELAT") {
+        } else if (cls === 'TELAT') {
           mSummary.telat += 1;
           mSummary.hadir += 1;
-        } else if (cls === "PULANG_AWAL") {
+        } else if (cls === 'PULANG_AWAL') {
           mSummary.pulangAwal += 1;
           mSummary.hadir += 1;
-        } else if (cls === "ALPHA") {
+        } else if (cls === 'ALPHA') {
           mSummary.alpa += 1;
         }
       }
 
       // 4. Aggregasi Tahunan (hanya jika yearly)
-      if (timeframe === "yearly") {
-        const year = parseInt(dateOnly.split("-")[0]);
+      if (timeframe === 'yearly') {
+        const year = parseInt(dateOnly.split('-')[0]);
         let ySummary = yearlyMap.get(year);
         if (!ySummary) {
           ySummary = {
@@ -1021,16 +932,16 @@ export default function UserDashboard() {
           yearlyMap.set(year, ySummary);
         }
 
-        if (cls === "TEPAT_WAKTU") {
+        if (cls === 'TEPAT_WAKTU') {
           ySummary.tepatWaktu += 1;
           ySummary.hadir += 1;
-        } else if (cls === "TELAT") {
+        } else if (cls === 'TELAT') {
           ySummary.telat += 1;
           ySummary.hadir += 1;
-        } else if (cls === "PULANG_AWAL") {
+        } else if (cls === 'PULANG_AWAL') {
           ySummary.pulangAwal += 1;
           ySummary.hadir += 1;
-        } else if (cls === "ALPHA") {
+        } else if (cls === 'ALPHA') {
           ySummary.alpa += 1;
         }
       }
@@ -1038,18 +949,16 @@ export default function UserDashboard() {
 
     // Final Sorts
     const dailySummaries = Array.from(dailyMap.values()).sort((a, b) =>
-      b.date.localeCompare(a.date),
+      b.date.localeCompare(a.date)
     );
     const monthlySummaries = Array.from(monthlyMap.values()).sort((a, b) => {
       if (a.year !== b.year) return b.year - a.year;
       return b.month - a.month;
     });
-    const yearlySummaries = Array.from(yearlyMap.values()).sort(
-      (a, b) => b.year - a.year,
-    );
+    const yearlySummaries = Array.from(yearlyMap.values()).sort((a, b) => b.year - a.year);
     const sortedRowDetails = rowDetailsWithDates
       .sort((a, b) => b.date.localeCompare(a.date))
-      .map((item) => item.record);
+      .map(item => item.record);
 
     return {
       stats,
@@ -1065,32 +974,32 @@ export default function UserDashboard() {
 
   const barChartData = useMemo(
     () => [
-      { label: "Hadir (Total)", value: stats.totalHadir },
-      { label: "Tepat Waktu", value: stats.totalTepatWaktu },
-      { label: "Telat", value: stats.totalTelat },
-      { label: "Pulang Awal", value: stats.totalPulangAwal },
-      { label: "Alpha", value: stats.totalAlpa },
+      { label: 'Hadir (Total)', value: stats.totalHadir },
+      { label: 'Tepat Waktu', value: stats.totalTepatWaktu },
+      { label: 'Telat', value: stats.totalTelat },
+      { label: 'Pulang Awal', value: stats.totalPulangAwal },
+      { label: 'Alpha', value: stats.totalAlpa },
     ],
-    [stats],
+    [stats]
   );
 
   const pieChartData = useMemo(
     () => [
-      { label: "Tepat Waktu", value: stats.totalTepatWaktu, color: "#10b981" },
-      { label: "Telat", value: stats.totalTelat, color: "#f59e0b" },
-      { label: "Pulang Awal", value: stats.totalPulangAwal, color: "#ef4444" },
-      { label: "Alpha", value: stats.totalAlpa, color: "#000000" },
+      { label: 'Tepat Waktu', value: stats.totalTepatWaktu, color: '#10b981' },
+      { label: 'Telat', value: stats.totalTelat, color: '#f59e0b' },
+      { label: 'Pulang Awal', value: stats.totalPulangAwal, color: '#ef4444' },
+      { label: 'Alpha', value: stats.totalAlpa, color: '#000000' },
     ],
-    [stats],
+    [stats]
   );
 
   // 🔥 Data untuk Line Chart berdasarkan timeframe (sekarang sudah ada Pulang Awal)
   const lineChartData = useMemo(() => {
-    if (timeframe === "daily" || timeframe === "weekly") {
+    if (timeframe === 'daily' || timeframe === 'weekly') {
       return dailySummaries
         .slice()
         .reverse()
-        .map((d) => ({
+        .map(d => ({
           label: d._displayDate || d.date,
           hadir: d.hadir,
           tepatWaktu: d.tepatWaktu,
@@ -1098,11 +1007,11 @@ export default function UserDashboard() {
           pulangAwal: d.pulangAwal,
           alpa: d.alpa,
         }));
-    } else if (timeframe === "monthly") {
+    } else if (timeframe === 'monthly') {
       return monthlySummaries
         .slice()
         .reverse()
-        .map((m) => ({
+        .map(m => ({
           label: m.monthName,
           hadir: m.hadir,
           tepatWaktu: m.tepatWaktu,
@@ -1110,11 +1019,11 @@ export default function UserDashboard() {
           pulangAwal: m.pulangAwal,
           alpa: m.alpa,
         }));
-    } else if (timeframe === "yearly") {
+    } else if (timeframe === 'yearly') {
       return yearlySummaries
         .slice()
         .reverse()
-        .map((y) => ({
+        .map(y => ({
           label: formatYearID(y.year),
           hadir: y.hadir,
           tepatWaktu: y.tepatWaktu,
@@ -1127,22 +1036,12 @@ export default function UserDashboard() {
   }, [timeframe, dailySummaries, monthlySummaries, yearlySummaries]);
 
   // Memoize secondary metrics (percentages) to avoid redundant calculations
-  const {
-    pctHadir,
-    pctTepatWaktu,
-    pctTelat,
-    pctPulangAwal,
-    pctAlpa,
-  } = useMemo(() => {
+  const { pctHadir, pctTepatWaktu, pctTelat, pctPulangAwal, pctAlpa } = useMemo(() => {
     // grandTotal is the sum of mutually-exclusive categories: TepatWaktu, Telat, PulangAwal, Alpa
     const total =
-      stats.totalTepatWaktu +
-      stats.totalTelat +
-      stats.totalPulangAwal +
-      stats.totalAlpa;
+      stats.totalTepatWaktu + stats.totalTelat + stats.totalPulangAwal + stats.totalAlpa;
 
-    const calculatePct = (value: number) =>
-      total ? Math.round((value / total) * 100) : 0;
+    const calculatePct = (value: number) => (total ? Math.round((value / total) * 100) : 0);
 
     return {
       pctHadir: calculatePct(stats.totalHadir),
@@ -1157,50 +1056,46 @@ export default function UserDashboard() {
 
   const displayName =
     toTitleCase(
-      userProfile?.fullname ||
-      readCookie("user_FullName") ||
-      userProfile?.username ||
-      "",
-    ) || "User";
+      userProfile?.fullname || readCookie('user_FullName') || userProfile?.username || ''
+    ) || 'User';
 
-  const displayLevel = (userProfile?.level || "").toUpperCase() || userLevel;
+  const displayLevel = (userProfile?.level || '').toUpperCase() || userLevel;
 
-  const displayFcba = userProfile?.fcba || "-";
-  const displayAfdeling = userProfile?.afdeling || userProfile?.section || "-";
-  const displayGang = userProfile?.gang || "-";
+  const displayFcba = userProfile?.fcba || '-';
+  const displayAfdeling = userProfile?.afdeling || userProfile?.section || '-';
+  const displayGang = userProfile?.gang || '-';
 
   const timeframeLabel = (tf: Timeframe): string => {
     switch (tf) {
-      case "daily":
-        return "Per Hari";
-      case "weekly":
-        return "7 Hari Terakhir";
-      case "monthly":
-        return "Per Bulan (bulan ini)";
-      case "yearly":
-        return "Per Tahun (tahun ini)";
+      case 'daily':
+        return 'Per Hari';
+      case 'weekly':
+        return '7 Hari Terakhir';
+      case 'monthly':
+        return 'Per Bulan (bulan ini)';
+      case 'yearly':
+        return 'Per Tahun (tahun ini)';
       default:
-        return "";
+        return '';
     }
   };
 
   const getTrendLabel = (): string => {
     switch (timeframe) {
-      case "daily":
-        return "Per Hari";
-      case "weekly":
-        return "Per Hari (7 Hari Terakhir)";
-      case "monthly":
-        return "Per Bulan";
-      case "yearly":
-        return "Per Tahun";
+      case 'daily':
+        return 'Per Hari';
+      case 'weekly':
+        return 'Per Hari (7 Hari Terakhir)';
+      case 'monthly':
+        return 'Per Bulan';
+      case 'yearly':
+        return 'Per Tahun';
       default:
-        return "Per Hari";
+        return 'Per Hari';
     }
   };
 
-  const detailModeLabel =
-    detailMode === "perHari" ? "Per Hari (Rekap)" : "Per Baris (Detail)";
+  const detailModeLabel = detailMode === 'perHari' ? 'Per Hari (Rekap)' : 'Per Baris (Detail)';
 
   /* =========================
      R E N D E R
@@ -1246,9 +1141,7 @@ export default function UserDashboard() {
             </h1>
             <div className="mt-2 text-sm text-base-content/70 space-y-1">
               <div className="flex flex-wrap gap-2 items-center">
-                <span className="badge badge-primary badge-lg">
-                  Level : {displayLevel}
-                </span>
+                <span className="badge badge-primary badge-lg">Level : {displayLevel}</span>
                 <span className="badge badge-outline badge-lg">
                   FCBA :<span className="ml-1">{displayFcba}</span>
                 </span>
@@ -1267,21 +1160,18 @@ export default function UserDashboard() {
             <span className="text-xs uppercase tracking-wide text-base-content/60">
               Periode Data:
             </span>
-            {(["daily", "weekly", "monthly", "yearly"] as Timeframe[]).map(
-              (tf) => (
-                <button
-                  key={tf}
-                  type="button"
-                  className={`btn btn-xs md:btn-sm ${timeframe === tf
-                    ? "btn-primary"
-                    : "btn-ghost border border-base-300"
-                    }`}
-                  onClick={() => setTimeframe(tf)}
-                >
-                  {timeframeLabel(tf)}
-                </button>
-              ),
-            )}
+            {(['daily', 'weekly', 'monthly', 'yearly'] as Timeframe[]).map(tf => (
+              <button
+                key={tf}
+                type="button"
+                className={`btn btn-xs md:btn-sm ${
+                  timeframe === tf ? 'btn-primary' : 'btn-ghost border border-base-300'
+                }`}
+                onClick={() => setTimeframe(tf)}
+              >
+                {timeframeLabel(tf)}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -1299,30 +1189,30 @@ export default function UserDashboard() {
               <h2 className="card-title text-sm md:text-base">
                 🎯 Filter Data
                 <span className="text-xs font-normal text-base-content/60">
-                  {" "}
+                  {' '}
                   (sesuai level & periode)
                 </span>
               </h2>
               <button
                 type="button"
                 className="btn btn-xs md:btn-sm btn-ghost"
-                onClick={() => setShowFilters((s) => !s)}
+                onClick={() => setShowFilters(s => !s)}
               >
-                {showFilters ? "Sembunyikan Filter" : "Tampilkan Filter"}
+                {showFilters ? 'Sembunyikan Filter' : 'Tampilkan Filter'}
               </button>
             </div>
 
             {showFilters && (
               <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
-                {userLevel === "ADM" && (
+                {userLevel === 'ADM' && (
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold">FCBA</label>
                     <SearchSelect
                       options={fcbaOptions}
                       value={filterFcba}
-                      onChange={(v) => {
+                      onChange={v => {
                         setFilterFcba(v);
-                        setFilterAfdeling("");
+                        setFilterAfdeling('');
                       }}
                       placeholder="Pilih FCBA / ALL"
                       small
@@ -1331,13 +1221,13 @@ export default function UserDashboard() {
                   </div>
                 )}
 
-                {(userLevel === "ADM" || userLevel === "MGR") && (
+                {(userLevel === 'ADM' || userLevel === 'MGR') && (
                   <div className="flex flex-col gap-1">
                     <label className="text-xs font-semibold">Afdeling</label>
                     <SearchSelect
                       options={afdelingOptions}
                       value={filterAfdeling}
-                      onChange={(v) => setFilterAfdeling(v)}
+                      onChange={v => setFilterAfdeling(v)}
                       placeholder="Pilih Afdeling (opsional)"
                       small
                       disabled={afdelingOptions.length === 0}
@@ -1349,12 +1239,11 @@ export default function UserDashboard() {
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-semibold">Keterangan</label>
                   <p className="text-xs text-base-content/60">
-                    • <b>HADIR</b> = Semua kode kecuali MK dan P1 <br />•{" "}
-                    <b>TEPAT WAKTU</b> = Hadir tanpa telat & tanpa pulang awal{" "}
-                    <br />• <b>TELAT</b> = <code>total_late_time</code> lebih
-                    dari 0 <br />• <b>PULANG AWAL</b> ={" "}
-                    <code>go_home_early</code> lebih dari 0 <br />• <b>ALPHA</b>{" "}
-                    = P1 (izin) atau MK (mangkir)
+                    • <b>HADIR</b> = Semua kode kecuali MK dan P1 <br />• <b>TEPAT WAKTU</b> = Hadir
+                    tanpa telat & tanpa pulang awal <br />• <b>TELAT</b> ={' '}
+                    <code>total_late_time</code> lebih dari 0 <br />• <b>PULANG AWAL</b> ={' '}
+                    <code>go_home_early</code> lebih dari 0 <br />• <b>ALPHA</b> = P1 (izin) atau MK
+                    (mangkir)
                   </p>
                 </div>
               </div>
@@ -1379,9 +1268,7 @@ export default function UserDashboard() {
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="stat place-items-center p-3 bg-base-200 rounded">
                     <div className="stat-title text-xs">Total</div>
-                    <div className="stat-value text-2xl font-bold">
-                      {harvestingStats.total}
-                    </div>
+                    <div className="stat-value text-2xl font-bold">{harvestingStats.total}</div>
                   </div>
                   <div className="stat place-items-center p-3 bg-base-200 rounded">
                     <div className="stat-title text-xs">Panen (JJG)</div>
@@ -1427,16 +1314,13 @@ export default function UserDashboard() {
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="stat place-items-center p-3 bg-base-200 rounded">
                     <div className="stat-title text-xs">Total</div>
-                    <div className="stat-value text-2xl font-bold">
-                      {pengangkutanStats.total}
-                    </div>
+                    <div className="stat-value text-2xl font-bold">{pengangkutanStats.total}</div>
                   </div>
                   <div className="stat place-items-center p-3 bg-base-200 rounded">
                     <div className="stat-title text-xs">JJG</div>
                     <div className="stat-value text-2xl font-bold text-primary">
                       {/* ⚡ Bolt Optimization: use cached formatters from formatPerfNumber (~50x faster than toLocaleString) */}
-                      {pengangkutanStats.totalOutput &&
-                        pengangkutanStats.totalOutput > 0
+                      {pengangkutanStats.totalOutput && pengangkutanStats.totalOutput > 0
                         ? formatPerfNumber(pengangkutanStats.totalOutput, localeTag)
                         : pengangkutanStats.total}
                     </div>
@@ -1478,9 +1362,7 @@ export default function UserDashboard() {
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="stat place-items-center p-3 bg-base-200 rounded">
                     <div className="stat-title text-xs">Hadir</div>
-                    <div className="stat-value text-2xl font-bold">
-                      {stats.totalHadir}
-                    </div>
+                    <div className="stat-value text-2xl font-bold">{stats.totalHadir}</div>
                   </div>
                   <div className="stat place-items-center p-3 bg-success/20 rounded">
                     <div className="stat-title text-xs">Tepat Waktu</div>
@@ -1517,14 +1399,9 @@ export default function UserDashboard() {
           <div className="card bg-base-100 shadow-md border border-base-300 animate-slideUp">
             <div className="card-body">
               <h2 className="card-title text-sm md:text-lg">
-                🧭 Komposisi TEPAT WAKTU / TELAT / PULANG AWAL / ALPHA (
-                {timeframeLabel(timeframe)})
+                🧭 Komposisi TEPAT WAKTU / TELAT / PULANG AWAL / ALPHA ({timeframeLabel(timeframe)})
               </h2>
-              {loading ? (
-                <SkeletonChart />
-              ) : (
-                <SimplePieChart data={pieChartData} />
-              )}
+              {loading ? <SkeletonChart /> : <SimplePieChart data={pieChartData} />}
             </div>
           </div>
 
@@ -1535,8 +1412,8 @@ export default function UserDashboard() {
                 📊 Ringkasan Absensi ({timeframeLabel(timeframe)})
               </h2>
               <p className="text-xs text-base-content/60 mt-1">
-                Angka di bawah ini adalah <b>total frekuensi</b> untuk periode
-                yang dipilih, bukan jumlah karyawan unik.
+                Angka di bawah ini adalah <b>total frekuensi</b> untuk periode yang dipilih, bukan
+                jumlah karyawan unik.
               </p>
               {loading ? (
                 <SkeletonChart />
@@ -1551,9 +1428,7 @@ export default function UserDashboard() {
         <div className="card bg-base-100 shadow-md border border-base-300 animate-slideUp">
           <div className="card-body">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
-              <h2 className="card-title text-sm md:text-lg">
-                📈 Tren Absensi ({getTrendLabel()})
-              </h2>
+              <h2 className="card-title text-sm md:text-lg">📈 Tren Absensi ({getTrendLabel()})</h2>
               <div className="flex flex-wrap gap-2 text-xs">
                 <span className="badge badge-primary gap-1">
                   Hadir (Total) {stats.totalHadir} ({pctHadir}%)
@@ -1572,11 +1447,7 @@ export default function UserDashboard() {
                 </span>
               </div>
             </div>
-            {loading ? (
-              <SkeletonChart />
-            ) : (
-              <SimpleLineChart data={lineChartData} />
-            )}
+            {loading ? <SkeletonChart /> : <SimpleLineChart data={lineChartData} />}
           </div>
         </div>
 
@@ -1584,30 +1455,24 @@ export default function UserDashboard() {
         <div className="card bg-base-100 shadow-md border border-base-300 animate-slideUp">
           <div className="card-body">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
-              <h2 className="card-title text-sm md:text-lg">
-                📋 Riwayat Absensi Detail
-              </h2>
+              <h2 className="card-title text-sm md:text-lg">📋 Riwayat Absensi Detail</h2>
               <div className="flex flex-wrap gap-2 items-center">
-                <span className="text-xs text-base-content/60">
-                  Mode tampilan:
-                </span>
+                <span className="text-xs text-base-content/60">Mode tampilan:</span>
                 <button
                   type="button"
-                  className={`btn btn-xs md:btn-sm ${detailMode === "perHari"
-                    ? "btn-primary"
-                    : "btn-ghost border border-base-300"
-                    }`}
-                  onClick={() => setDetailMode("perHari")}
+                  className={`btn btn-xs md:btn-sm ${
+                    detailMode === 'perHari' ? 'btn-primary' : 'btn-ghost border border-base-300'
+                  }`}
+                  onClick={() => setDetailMode('perHari')}
                 >
                   Per Hari (Rekap)
                 </button>
                 <button
                   type="button"
-                  className={`btn btn-xs md:btn-sm ${detailMode === "perBaris"
-                    ? "btn-primary"
-                    : "btn-ghost border border-base-300"
-                    }`}
-                  onClick={() => setDetailMode("perBaris")}
+                  className={`btn btn-xs md:btn-sm ${
+                    detailMode === 'perBaris' ? 'btn-primary' : 'btn-ghost border border-base-300'
+                  }`}
+                  onClick={() => setDetailMode('perBaris')}
                 >
                   Per Baris (Detail)
                 </button>
@@ -1615,13 +1480,11 @@ export default function UserDashboard() {
             </div>
 
             <p className="text-xs text-base-content/60 mb-3">
-              Periode: <b>{timeframeLabel(timeframe)}</b> • Mode:{" "}
-              <b>{detailModeLabel}</b> • Data mengikuti pola level login:
-              {userLevel === "ADM" && " ADM melihat per FCBA & Afdeling."}
-              {userLevel === "MGR" &&
-                " MGR melihat per Afdeling dalam FCBA-nya."}
-              {userLevel === "AST" &&
-                " AST melihat data sesuai FCBA & Afdeling akun login."}
+              Periode: <b>{timeframeLabel(timeframe)}</b> • Mode: <b>{detailModeLabel}</b> • Data
+              mengikuti pola level login:
+              {userLevel === 'ADM' && ' ADM melihat per FCBA & Afdeling.'}
+              {userLevel === 'MGR' && ' MGR melihat per Afdeling dalam FCBA-nya.'}
+              {userLevel === 'AST' && ' AST melihat data sesuai FCBA & Afdeling akun login.'}
             </p>
 
             {loading ? (
@@ -1633,18 +1496,18 @@ export default function UserDashboard() {
             ) : (
               <div className="overflow-x-auto">
                 {/* MODE PER HARI (REKAP) */}
-                {detailMode === "perHari" && (
+                {detailMode === 'perHari' && (
                   <table className="table table-sm w-full text-xs md:text-sm">
                     <thead>
                       <tr className="border-b border-base-300">
                         <th>Tanggal</th>
-                        {userLevel === "ADM" && (
+                        {userLevel === 'ADM' && (
                           <>
                             <th>FCBA</th>
                             <th>Afdeling</th>
                           </>
                         )}
-                        {userLevel === "MGR" && <th>Afdeling</th>}
+                        {userLevel === 'MGR' && <th>Afdeling</th>}
                         <th className="text-center">Hadir</th>
                         <th className="text-center">Tepat Waktu</th>
                         <th className="text-center">Telat</th>
@@ -1655,58 +1518,49 @@ export default function UserDashboard() {
                     <tbody>
                       {dailySummaries.map((d, idx) => (
                         <tr
-                          key={`${d.date}-${d.fcba ?? ""}-${d.afdeling ?? ""
-                            }-${idx}`}
+                          key={`${d.date}-${d.fcba ?? ''}-${d.afdeling ?? ''}-${idx}`}
                           className="hover:bg-base-200"
                         >
                           <td className="whitespace-nowrap font-medium">
                             {d._displayDate || d.date}
                           </td>
-                          {userLevel === "ADM" && (
+                          {userLevel === 'ADM' && (
                             <>
                               <td>
                                 <span className="badge badge-ghost badge-sm font-mono">
-                                  {d.fcba || "-"}
+                                  {d.fcba || '-'}
                                 </span>
                               </td>
                               <td>
                                 <span className="badge badge-ghost badge-sm font-mono">
-                                  {d.afdeling || "-"}
+                                  {d.afdeling || '-'}
                                 </span>
                               </td>
                             </>
                           )}
-                          {userLevel === "MGR" && (
+                          {userLevel === 'MGR' && (
                             <td>
                               <span className="badge badge-ghost badge-sm font-mono">
-                                {d.afdeling || "-"}
+                                {d.afdeling || '-'}
                               </span>
                             </td>
                           )}
                           <td className="text-center">
-                            <span className="badge badge-primary badge-sm">
-                              {d.hadir}
-                            </span>
+                            <span className="badge badge-primary badge-sm">{d.hadir}</span>
                           </td>
                           <td className="text-center">
-                            <span className="badge badge-success badge-sm">
-                              {d.tepatWaktu}
-                            </span>
+                            <span className="badge badge-success badge-sm">{d.tepatWaktu}</span>
                           </td>
                           <td className="text-center">
-                            <span className="badge badge-warning badge-sm">
-                              {d.telat}
-                            </span>
+                            <span className="badge badge-warning badge-sm">{d.telat}</span>
                           </td>
                           <td className="text-center">
-                            <span className="badge badge-error badge-sm">
-                              {d.pulangAwal}
-                            </span>
+                            <span className="badge badge-error badge-sm">{d.pulangAwal}</span>
                           </td>
                           <td className="text-center">
                             <span
                               className="badge badge-sm"
-                              style={{ backgroundColor: "#000", color: "#fff" }}
+                              style={{ backgroundColor: '#000', color: '#fff' }}
                             >
                               {d.alpa}
                             </span>
@@ -1718,25 +1572,25 @@ export default function UserDashboard() {
                 )}
 
                 {/* MODE PER BARIS (DETAIL) */}
-                {detailMode === "perBaris" && (
+                {detailMode === 'perBaris' && (
                   <table className="table table-sm w-full text-xs md:text-sm">
                     <thead>
                       <tr className="border-b border-base-300">
                         <th>Tanggal</th>
-                        {userLevel === "ADM" && (
+                        {userLevel === 'ADM' && (
                           <>
                             <th>FCBA</th>
                             <th>Afdeling</th>
                             <th>Gang</th>
                           </>
                         )}
-                        {userLevel === "MGR" && (
+                        {userLevel === 'MGR' && (
                           <>
                             <th>Afdeling</th>
                             <th>Gang</th>
                           </>
                         )}
-                        {userLevel === "AST" && (
+                        {userLevel === 'AST' && (
                           <>
                             <th>FCBA</th>
                             <th>Afdeling</th>
@@ -1756,68 +1610,64 @@ export default function UserDashboard() {
 
                         // FIX DUPLICATE KEY: gabungkan id + index
                         const keyBase =
-                          r.id !== undefined && r.id !== null
-                            ? String(r.id)
-                            : `${r.tanggal}`;
+                          r.id !== undefined && r.id !== null ? String(r.id) : `${r.tanggal}`;
                         const rowKey = `${keyBase}-${idx}`;
 
                         return (
                           <tr key={rowKey} className="hover:bg-base-200">
-                            <td className="whitespace-nowrap">
-                              {r._displayDate || "-"}
-                            </td>
+                            <td className="whitespace-nowrap">{r._displayDate || '-'}</td>
 
                             {/* Kolom lokasi disesuaikan level */}
-                            {userLevel === "ADM" && (
+                            {userLevel === 'ADM' && (
                               <>
                                 <td>
                                   <span className="badge badge-ghost badge-sm font-mono">
-                                    {r.fcba || "-"}
+                                    {r.fcba || '-'}
                                   </span>
                                 </td>
                                 <td>
                                   <span className="badge badge-ghost badge-sm font-mono">
-                                    {r.section || "-"}
+                                    {r.section || '-'}
                                   </span>
                                 </td>
                                 <td>
                                   <span className="badge badge-ghost badge-sm font-mono">
-                                    {r.gang || "-"}
+                                    {r.gang || '-'}
                                   </span>
                                 </td>
                               </>
                             )}
 
-                            {userLevel === "MGR" && (
+                            {userLevel === 'MGR' && (
                               <>
                                 <td>
                                   <span className="badge badge-ghost badge-sm font-mono">
-                                    {r.section || "-"}
+                                    {r.section || '-'}
                                   </span>
                                 </td>
                                 <td>
                                   <span className="badge badge-ghost badge-sm font-mono">
-                                    {r.gang || "-"}
+                                    {r.gang || '-'}
                                   </span>
                                 </td>
                               </>
                             )}
 
-                            {userLevel === "AST" && (
+                            {userLevel === 'AST' && (
                               <>
                                 <td>
                                   <span className="badge badge-ghost badge-sm font-mono">
-                                    {r.fcba || "-"}
+                                    {r.fcba || '-'}
                                   </span>
                                 </td>
                                 <td>
                                   <span className="badge badge-ghost badge-sm font-mono">
-                                    {r.section || "-"}
+                                    {r.section || '-'}
                                   </span>
                                 </td>
                                 <td>
                                   <span className="badge badge-ghost badge-sm font-mono">
-                                    {r.gang || "-"}
+                                    {r.gang || '-'}
                                   </span>
                                 </td>
                               </>
@@ -1825,59 +1675,45 @@ export default function UserDashboard() {
 
                             <td>
                               <span className="badge badge-outline badge-sm font-mono">
-                                {r.attendance || "-"}
+                                {r.attendance || '-'}
                               </span>
                             </td>
                             <td>
-                              {status === "TEPAT_WAKTU" && (
-                                <span className="badge badge-success badge-sm">
-                                  TEPAT WAKTU
-                                </span>
+                              {status === 'TEPAT_WAKTU' && (
+                                <span className="badge badge-success badge-sm">TEPAT WAKTU</span>
                               )}
-                              {status === "HADIR" && (
-                                <span className="badge badge-primary badge-sm">
-                                  HADIR
-                                </span>
+                              {status === 'HADIR' && (
+                                <span className="badge badge-primary badge-sm">HADIR</span>
                               )}
-                              {status === "TELAT" && (
-                                <span className="badge badge-warning badge-sm">
-                                  TELAT
-                                </span>
+                              {status === 'TELAT' && (
+                                <span className="badge badge-warning badge-sm">TELAT</span>
                               )}
-                              {status === "PULANG_AWAL" && (
-                                <span className="badge badge-error badge-sm">
-                                  PULANG AWAL
-                                </span>
+                              {status === 'PULANG_AWAL' && (
+                                <span className="badge badge-error badge-sm">PULANG AWAL</span>
                               )}
-                              {status === "ALPHA" && (
+                              {status === 'ALPHA' && (
                                 <span
                                   className="badge badge-sm"
                                   style={{
-                                    backgroundColor: "#000",
-                                    color: "#fff",
+                                    backgroundColor: '#000',
+                                    color: '#fff',
                                   }}
                                 >
                                   ALPHA
                                 </span>
                               )}
-                              {status === "OTHER" && (
-                                <span className="badge badge-ghost badge-sm">
-                                  OTHER
-                                </span>
+                              {status === 'OTHER' && (
+                                <span className="badge badge-ghost badge-sm">OTHER</span>
                               )}
                             </td>
                             <td className="text-center">
                               <span className="badge badge-ghost badge-sm font-mono">
-                                {isNonZeroTime(r.total_late_time)
-                                  ? r.total_late_time
-                                  : "-"}
+                                {isNonZeroTime(r.total_late_time) ? r.total_late_time : '-'}
                               </span>
                             </td>
                             <td className="text-center">
                               <span className="badge badge-ghost badge-sm font-mono">
-                                {isNonZeroTime(r.go_home_early)
-                                  ? r.go_home_early
-                                  : "-"}
+                                {isNonZeroTime(r.go_home_early) ? r.go_home_early : '-'}
                               </span>
                             </td>
                           </tr>

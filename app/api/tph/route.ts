@@ -62,7 +62,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       status: upstream.status,
       error: errorDetail,
     });
-    return NextResponse.json({ ok: false, error: 'Failed to fetch TPH data' }, { status: upstream.status });
+    return NextResponse.json(
+      { ok: false, error: 'Failed to fetch TPH data' },
+      { status: upstream.status }
+    );
   }
 
   const raw = await upstream.json();
