@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ABSENSI_BASE, buildFilteredUrl, getTokenFromCookie, safeJson } from '@/utils/absensiProxy';
 import { attendanceFilterSchema, attendanceApiResponseSchema } from '@/lib/validations/attendance';
+import { applyUserDataScope } from '@/utils/requestScope';
 
 export const dynamic = 'force-dynamic'; // no cache
 export const runtime = 'nodejs';
@@ -23,7 +24,15 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const sp = new URLSearchParams(req.nextUrl.searchParams.toString());
+  // SECURITY: Use validated filter data to build the upstream request (CWE-20)
+  // This prevents unvalidated parameters from leaking to the backend.
+  const sp = new URLSearchParams();
+  Object.entries(validatedFilters.data).forEach(([key, value]) => {
+    if (value !== undefined) sp.append(key, String(value));
+  });
+
+  // SECURITY: Enforce data scoping (CWE-285)
+  applyUserDataScope(req, sp, { gangParam: 'gang' });
 
   // Build URL final ke API absensi upstream
   const upstreamUrl = buildFilteredUrl(ABSENSI_BASE, sp);
