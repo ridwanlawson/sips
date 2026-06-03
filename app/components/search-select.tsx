@@ -84,12 +84,17 @@ export const SearchSelect: React.FC<SearchSelectProps> = ({
         <span className={`truncate ${!value ? 'text-base-content/50' : ''}`}>
           {currentLabel || placeholder || t('select')}
         </span>
-        <span
-          className="ml-2 opacity-60 transition-transform duration-200"
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="ml-2 h-4 w-4 opacity-60 transition-transform duration-200"
           style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          aria-hidden="true"
         >
-          ▾
-        </span>
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+        </svg>
       </button>
 
       {required && !value && (
