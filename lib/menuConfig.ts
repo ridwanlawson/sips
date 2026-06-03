@@ -73,7 +73,7 @@ export const MenuConfig: MenuItem[] = [
     label: 'approvalLhm',
     href: '/approval/lhm',
     icon: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z',
-    requiredLevel: ['ADM', 'MDP', 'MD1', 'AST', 'KSI', 'MGR'],
+    requiredLevel: ['ADM', 'MDP', 'MD1', 'AST', 'MGR'],
   },
   {
     id: 'openLhm',
