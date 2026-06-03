@@ -153,12 +153,14 @@ export default function PengangkutanPage() {
       flag: '',
     };
   });
+  const [appliedFilters, setAppliedFilters] = useState<Filters | null>(null);
 
   const [q, setQ] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [userLevel, setUserLevel] = useState<
     'ADM' | 'MGR' | 'KSI' | 'MD1' | 'AST' | 'KRT' | 'KRA' | 'KRP' | 'MDP' | 'OTHER'
   >('OTHER');
+  const [scopeReady, setScopeReady] = useState(false);
   const [homeFcba, setHomeFcba] = useState<string>('');
   const [homeSection, setHomeSection] = useState<string>('');
   const [homeGang, setHomeGang] = useState<string>('');
@@ -187,9 +189,12 @@ export default function PengangkutanPage() {
           ? (level as 'MGR' | 'KSI' | 'MD1' | 'AST' | 'KRT' | 'KRA' | 'KRP' | 'MDP')
           : 'OTHER';
     setUserLevel(resolvedLevel);
+    setScopeReady(true);
   }, []);
 
   useEffect(() => {
+    if (!scopeReady) return;
+
     const filterCriteria = getFilterCriteria(
       {
         level: userLevel,
@@ -205,8 +210,12 @@ export default function PengangkutanPage() {
     if (filterCriteria.afdeling) newFilters.afdeling = filterCriteria.afdeling;
     if (filterCriteria.kemandoran) newFilters.kemandoran = filterCriteria.kemandoran;
 
-    setFilters(f => ({ ...f, ...newFilters }));
-  }, [userLevel, homeFcba, homeSection, homeGang]);
+    const nextFilters = { ...filters, ...newFilters };
+    setFilters(nextFilters);
+    setAppliedFilters(nextFilters);
+    // Only run when the account scope changes. Filter field edits are applied by the button.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scopeReady, userLevel, homeFcba, homeSection, homeGang]);
 
   // Lock states based on user level
   const { isFcbaLocked, isAfdelingLocked, isKemandoranLocked } = useMemo(
@@ -215,10 +224,9 @@ export default function PengangkutanPage() {
   );
 
   const fetchData = useCallback(
-    async (overrideFilters?: Filters) => {
+    async (current: Filters) => {
       setLoading(true);
       try {
-        const current = overrideFilters || filters;
         const p = new URLSearchParams();
         if (current.tanggal) p.set('tanggal', current.tanggal as string);
         if (current.tanggal_end) p.set('tanggal_end', current.tanggal_end as string);
@@ -316,12 +324,13 @@ export default function PengangkutanPage() {
         setLoading(false);
       }
     },
-    [filters, localeTag]
+    [localeTag]
   );
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (!appliedFilters) return;
+    fetchData(appliedFilters);
+  }, [appliedFilters, fetchData]);
 
   /* ===== Quick search lokal ===== */
   const filtered = useMemo(() => {
@@ -558,7 +567,7 @@ export default function PengangkutanPage() {
             </button>
             <button
               className="btn btn-sm"
-              onClick={() => fetchData()}
+              onClick={() => fetchData(appliedFilters ?? filters)}
               title="Refresh data pengangkutan"
               disabled={loading}
             >
@@ -676,7 +685,7 @@ export default function PengangkutanPage() {
             </div>
 
             <div className="flex justify-start gap-2 pt-3 border-t border-base-200">
-              <button className="btn btn-outline" onClick={() => fetchData()}>
+              <button className="btn btn-outline" onClick={() => setAppliedFilters({ ...filters })}>
                 Terapkan Filter
               </button>
               <button
@@ -700,7 +709,7 @@ export default function PengangkutanPage() {
                   if (isAfdelingLocked && homeSection) reset.afdeling = homeSection;
                   if (isKemandoranLocked && homeGang) reset.kemandoran = homeGang;
                   setFilters(reset);
-                  fetchData(reset);
+                  setAppliedFilters(reset);
                 }}
               >
                 Reset
@@ -717,8 +726,8 @@ export default function PengangkutanPage() {
               data={filtered}
               progressPending={loading}
               pagination
-              paginationPerPage={10}
-              paginationRowsPerPageOptions={[10, 30, 100, 500]}
+              paginationPerPage={100}
+              paginationRowsPerPageOptions={[100, 500, 1000, 5000]}
               highlightOnHover
               pointerOnHover
               fixedHeader

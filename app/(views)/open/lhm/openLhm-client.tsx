@@ -164,6 +164,7 @@ export default function Open() {
   const [submitting, setSubmitting] = useState(false);
 
   const [filters, setFilters] = useState<Filters>(() => getEmptyFilters());
+  const [appliedFilters, setAppliedFilters] = useState<Filters | null>(null);
 
   const [homeFcba, setHomeFcba] = useState<string>('');
   const [homeAfdeling, setHomeAfdeling] = useState<string>('');
@@ -235,7 +236,11 @@ export default function Open() {
   }, []);
 
   useEffect(() => {
-    setFilters(current => getScopedFilters(current));
+    setFilters(current => {
+      const next = getScopedFilters(current);
+      setAppliedFilters(prev => prev ?? next);
+      return JSON.stringify(next) === JSON.stringify(current) ? current : next;
+    });
   }, [getScopedFilters]);
 
   /* ===== Fetch LHM data ===== */
@@ -243,96 +248,103 @@ export default function Open() {
   const [loading, setLoading] = useState(false);
   const [, setError] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    setItems([]);
-    setSelectedRows([]);
-    setToggledClearRows(prev => !prev);
+  const fetchData = useCallback(
+    async (currentFilters: Filters) => {
+      setLoading(true);
+      setError(null);
+      setItems([]);
+      setSelectedRows([]);
+      setToggledClearRows(prev => !prev);
 
-    try {
-      const params = new URLSearchParams();
-      const f = getScopedFilters(filters);
+      try {
+        const params = new URLSearchParams();
+        const f = getScopedFilters(currentFilters);
 
-      Object.entries(f).forEach(([k, v]) => {
-        if (v !== undefined && v !== null && v !== '') {
-          params.append(k, v as string);
+        Object.entries(f).forEach(([k, v]) => {
+          if (v !== undefined && v !== null && v !== '') {
+            params.append(k, v as string);
+          }
+        });
+
+        const res = await fetch(`/api/approval/lhm${params.toString() ? `?${params}` : ''}`, {
+          credentials: 'include',
+        });
+
+        if (res.status === 401) {
+          await logoutAndRedirect();
+          return;
         }
-      });
 
-      const res = await fetch(`/api/approval/lhm${params.toString() ? `?${params}` : ''}`, {
-        credentials: 'include',
-      });
+        const json = await res.json();
+        if (isUnauthenticatedJson(json)) {
+          await logoutAndRedirect();
+          return;
+        }
 
-      if (res.status === 401) {
-        await logoutAndRedirect();
-        return;
-      }
-
-      const json = await res.json();
-      if (isUnauthenticatedJson(json)) {
-        await logoutAndRedirect();
-        return;
-      }
-
-      if (!res.ok) {
-        const msg = json.message || `HTTP ${res.status}`;
-        setError(msg);
-        setItems([]);
-        return;
-      }
-
-      if (json.success && Array.isArray(json.data)) {
-        if (json.data.length === 0) {
-          // Data kosong, tampilkan message dari API
-          setError(json.message || 'Data tidak ditemukan.');
+        if (!res.ok) {
+          const msg = json.message || `HTTP ${res.status}`;
+          setError(msg);
           setItems([]);
-        } else {
-          const seen = new Set<string>();
-          const data = json.data.map((it: LhmData, idx: number) => {
-            const candidate = [
-              it.employeecode || '',
-              it.kemandoran || '',
-              (it.fddate || '').split(' ')[0],
-              it.blok || '',
-              it.fcba || '',
-              it.afdeling || '',
-              String(idx),
-            ].join('|');
-            let key = candidate;
-            while (seen.has(key)) key = `${key}_`;
-            seen.add(key);
-            return { ...it, _rowKey: key };
-          });
-          setItems(data);
+          return;
         }
-      } else {
-        const msg = json.message || 'Gagal mengambil data';
+
+        if (json.success && Array.isArray(json.data)) {
+          if (json.data.length === 0) {
+            // Data kosong, tampilkan message dari API
+            setError(json.message || 'Data tidak ditemukan.');
+            setItems([]);
+          } else {
+            const seen = new Set<string>();
+            const data = json.data.map((it: LhmData, idx: number) => {
+              const candidate = [
+                it.employeecode || '',
+                it.kemandoran || '',
+                (it.fddate || '').split(' ')[0],
+                it.blok || '',
+                it.fcba || '',
+                it.afdeling || '',
+                String(idx),
+              ].join('|');
+              let key = candidate;
+              while (seen.has(key)) key = `${key}_`;
+              seen.add(key);
+              return { ...it, _rowKey: key };
+            });
+            setItems(data);
+          }
+        } else {
+          const msg = json.message || 'Gagal mengambil data';
+          setError(msg);
+          setItems([]);
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Terjadi kesalahan';
         setError(msg);
-        setItems([]);
+        toast.error(msg);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Terjadi kesalahan';
-      setError(msg);
-      toast.error(msg);
-    } finally {
-      setLoading(false);
-    }
-  }, [filters, getScopedFilters]);
+    },
+    [getScopedFilters]
+  );
 
   useEffect(() => {
     if (
-      userLevel === 'ADM' ||
-      userLevel === 'OTHER' ||
-      ((userLevel === 'MGR' || userLevel === 'KSI') && homeFcba) ||
-      ((userLevel === 'AST' || userLevel === 'MD1' || userLevel === 'KRA' || userLevel === 'KRT') &&
-        homeFcba &&
-        homeAfdeling) ||
-      ((userLevel === 'MDP' || userLevel === 'KRP') && homeFcba && homeAfdeling && homeGang)
+      appliedFilters &&
+      (userLevel === 'ADM' ||
+        userLevel === 'OTHER' ||
+        ((userLevel === 'MGR' || userLevel === 'KSI') && homeFcba) ||
+        ((userLevel === 'AST' ||
+          userLevel === 'MD1' ||
+          userLevel === 'KRA' ||
+          userLevel === 'KRT') &&
+          homeFcba &&
+          homeAfdeling) ||
+        ((userLevel === 'MDP' || userLevel === 'KRP') && homeFcba && homeAfdeling && homeGang))
     ) {
-      fetchData();
+      fetchData(appliedFilters);
     }
-  }, [filters, userLevel, homeFcba, homeAfdeling, homeGang, fetchData]);
+  }, [appliedFilters, userLevel, homeFcba, homeAfdeling, homeGang, fetchData]);
 
   /* ===== Quick search ===== */
   const filtered = useMemo(() => {
@@ -451,7 +463,7 @@ export default function Open() {
         toast.success(`${selectedRows.length} data LHM berhasil di-open ✅`);
         setSelectedRows([]);
         setToggledClearRows(prev => !prev);
-        fetchData();
+        if (appliedFilters) fetchData(appliedFilters);
       } else {
         const msg = json.message || 'Gagal meng-open data';
         toast.error(msg);
@@ -869,7 +881,7 @@ export default function Open() {
             </button>
             <button
               className={`btn btn-sm ${loading ? 'btn-disabled' : ''}`}
-              onClick={fetchData}
+              onClick={() => fetchData(appliedFilters ?? getScopedFilters(filters))}
               disabled={loading}
               title="Refresh data LHM"
             >
@@ -1021,7 +1033,7 @@ export default function Open() {
             <div className="flex justify-start gap-2 pt-3 border-t border-base-200">
               <button
                 className={`btn btn-outline ${loading ? 'btn-disabled' : ''}`}
-                onClick={fetchData}
+                onClick={() => setAppliedFilters(getScopedFilters(filters))}
                 disabled={loading}
                 title="Terapkan filter"
               >
@@ -1037,7 +1049,9 @@ export default function Open() {
               <button
                 className={`btn ${loading ? 'btn-disabled' : ''}`}
                 onClick={() => {
-                  setFilters(getScopedFilters(getEmptyFilters()));
+                  const scopedResetFilters = getScopedFilters(getEmptyFilters());
+                  setFilters(scopedResetFilters);
+                  setAppliedFilters(scopedResetFilters);
                 }}
                 disabled={loading}
                 title="Reset semua filter"
@@ -1074,7 +1088,7 @@ export default function Open() {
                 pagination
                 customStyles={centerHeaderStyle}
                 paginationPerPage={100}
-                paginationRowsPerPageOptions={[100, 500, 1000]}
+                paginationRowsPerPageOptions={[100, 500, 1000, 5000]}
                 dense
                 highlightOnHover
                 fixedHeader

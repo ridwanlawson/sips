@@ -420,7 +420,10 @@ export default function Attendance() {
   );
 
   useEffect(() => {
-    setFilters(current => getScopedFilters(current));
+    setFilters(current => {
+      const next = getScopedFilters(current);
+      return JSON.stringify(next) === JSON.stringify(current) ? current : next;
+    });
   }, [getScopedFilters]);
 
   // Query for attendance list
@@ -444,16 +447,16 @@ export default function Attendance() {
         end = tmp;
       }
 
-      const isAnyDateFilled = !!(start || end);
-      const isRange = !!(start && end && start !== end);
-
       const f: Filters = getScopedFilters(base);
 
       delete f.tanggal;
       delete f.tanggal_end;
 
-      if (isAnyDateFilled && !isRange) {
+      if (start) {
         f.tanggal = start;
+      }
+      if (end && end !== start) {
+        f.tanggal_end = end;
       }
 
       const params = new URLSearchParams();
@@ -2149,7 +2152,7 @@ export default function Attendance() {
                 pagination
                 customStyles={centerHeaderStyle}
                 paginationPerPage={100}
-                paginationRowsPerPageOptions={[10, 30, 100, 500]}
+                paginationRowsPerPageOptions={[100, 500, 1000, 5000]}
                 dense
                 highlightOnHover
                 fixedHeader

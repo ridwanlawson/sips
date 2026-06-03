@@ -453,7 +453,10 @@ export default function HarvestPage() {
   const isKemandoranLocked = userLevel === 'MDP' || userLevel === 'KRP';
 
   useEffect(() => {
-    setFilters(current => getScopedFilters(current));
+    setFilters(current => {
+      const next = getScopedFilters(current);
+      return JSON.stringify(next) === JSON.stringify(current) ? current : next;
+    });
   }, [getScopedFilters]);
 
   /* ===== Sync selFcba/selSection with user cookies ===== */
@@ -1931,7 +1934,7 @@ export default function HarvestPage() {
                 pagination
                 customStyles={centerHeaderStyle}
                 paginationPerPage={100}
-                paginationRowsPerPageOptions={[10, 30, 100, 500]}
+                paginationRowsPerPageOptions={[100, 500, 1000, 5000]}
                 highlightOnHover
                 pointerOnHover
                 fixedHeader
