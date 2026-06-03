@@ -340,183 +340,187 @@ export default function PengangkutanPage() {
         selector: r => r._index,
         width: '60px',
       },
-    {
-      name: <span title="Nomor pengangkutan">No Pengangkutan</span>,
-      selector: r => r.nopengangkutan,
-      sortable: true,
-      width: '200px',
-    },
-    {
-      name: <span title="Nomor SPB">No SPB</span>,
-      selector: r => r.nospb || '-',
-      sortable: true,
-      width: '180px',
-    },
-    {
-      name: <span title="Nomor dokumen">No Dokumen</span>,
-      selector: r => r.nodokumen || '-',
-      sortable: true,
-      width: '250px',
-    },
-    {
-      name: <span title="Tanggal pengangkutan (DD-MM-YYYY)">Tanggal</span>,
-      selector: r => r.tanggal || '-',
-      cell: r => r._displayDate || '-',
-      sortable: true,
-      width: '120px',
-    },
-    {
-      name: <span title="Kerani (nama dan kode)">Kerani</span>,
-      selector: r => r.nama_karyawan_kerani || r.kode_karyawan_kerani || '-',
-      sortable: true,
-      width: '220px',
-      cell: r => (
-        <div>
-          <div className="font-bold">{r.nama_karyawan_kerani}</div>
-          <div className="text-xs text-gray-500">{r.kode_karyawan_kerani}</div>
-        </div>
-      ),
-    },
-    {
-      name: <span title="Driver (nama dan kode)">Driver</span>,
-      selector: r => r.nama_karyawan_driver || r.kode_karyawan_driver || '-',
-      sortable: true,
-      width: '220px',
-      cell: r => (
-        <div>
-          <div className="font-bold">{r.nama_karyawan_driver}</div>
-          <div className="text-xs text-gray-500">{r.kode_karyawan_driver}</div>
-        </div>
-      ),
-    },
-    {
-      name: <span title="Tipe pengangkutan">Type</span>,
-      selector: r => String(r.type_pengangkutan || ''),
-      sortable: true,
-      width: '90px',
-    },
-    {
-      name: <span title="Kode / Nama kendaraan">Kendaraan</span>,
-      selector: r => r.nama_kendaraan || r.kode_kendaraan || '-',
-      sortable: true,
-      width: '160px',
-    },
-    {
-      name: <span title="FCBA asal (kebun/estate)">FCBA</span>,
-      selector: r => r.fcba || '-',
-      sortable: true,
-      width: '100px',
-    },
-    {
-      name: <span title="Pabrik tujuan">Pabrik</span>,
-      selector: r => r.pabrik_tujuan || '-',
-      sortable: true,
-      width: '100px',
-    },
-    {
-      name: <span title="Afdeling / Section">Afdeling</span>,
-      selector: r => r.afdeling || '-',
-      sortable: true,
-      width: '100px',
-    },
-    {
-      name: <span title="TPH (Tempat Penampungan Hasil)">TPH</span>,
-      selector: r => r.tph || '-',
-      sortable: true,
-      width: '80px',
-    },
-    {
-      name: <span title="Field code">Field</span>,
-      selector: r => r.fieldcode || '-',
-      sortable: true,
-      width: '110px',
-    },
-    {
-      name: 'Total Janjang',
-      selector: r => r.totaljanjang || '-',
-      sortable: true,
-      width: '120px',
-      style: { justifyContent: 'center' },
-      cell: r => (
-        <span className="text-center w-full">{formatPerfNumber(r.totaljanjang || '0', localeTag)}</span>
-      ),
-    },
-    {
-      name: 'Output',
-      selector: r => r.output || '-',
-      sortable: true,
-      width: '100px',
-      style: { justifyContent: 'center' },
-      cell: r => (
-        <span className="text-center w-full">{formatPerfNumber(r.output || '0', localeTag)}</span>
-      ),
-    },
-    {
-      name: <span title="Janjang Normal">Janjang Normal</span>,
-      selector: r => r.janjangnormal || '-',
-      sortable: true,
-      width: '120px',
-      style: { justifyContent: 'center' },
-      cell: r => (
-        <span className="text-center w-full">
-          {formatPerfNumber(r.janjangnormal || '0', localeTag)}
-        </span>
-      ),
-    },
-    {
-      name: <span title="Brondolan">Brondolan</span>,
-      selector: r => r.brondolan || '-',
-      sortable: true,
-      width: '100px',
-      style: { justifyContent: 'center' },
-      cell: r => (
-        <span className="text-center w-full">{formatPerfNumber(r.brondolan || '0', localeTag)}</span>
-      ),
-    },
-    {
-      name: <span title="Status pengangkutan (Planned/Approved/...)">Status</span>,
-      selector: r => r.status_pengangkutan || '-',
-      sortable: true,
-      width: '120px',
-      cell: r => (
-        <span
-          className={`badge ${r.status_pengangkutan === 'Planned' ? 'badge-info' : 'badge-ghost'}`}
-        >
-          {r.status_pengangkutan}
-        </span>
-      ),
-    },
-    {
-      name: 'Card ID',
-      selector: r => r.card_id || '-',
-      sortable: true,
-      width: '150px',
-    },
-    {
-      name: <span title="Foto pendukung pengangkutan (bila ada)">Foto</span>,
-      width: '90px',
-      cell: r =>
-        r.images ? (
-          <a
-            href={getProxiedImageUrl(r.images)}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Buka foto"
-          >
-            <Image
-              src={getProxiedImageUrl(r.images) || PLACEHOLDER_IMAGE}
-              alt="foto"
-              width={40}
-              height={40}
-              className="rounded-lg ring-1 ring-base-300 object-cover w-10 h-10 bg-base-200"
-              unoptimized
-            />
-          </a>
-        ) : (
-          '-'
+      {
+        name: <span title="Nomor pengangkutan">No Pengangkutan</span>,
+        selector: r => r.nopengangkutan,
+        sortable: true,
+        width: '200px',
+      },
+      {
+        name: <span title="Nomor SPB">No SPB</span>,
+        selector: r => r.nospb || '-',
+        sortable: true,
+        width: '180px',
+      },
+      {
+        name: <span title="Nomor dokumen">No Dokumen</span>,
+        selector: r => r.nodokumen || '-',
+        sortable: true,
+        width: '250px',
+      },
+      {
+        name: <span title="Tanggal pengangkutan (DD-MM-YYYY)">Tanggal</span>,
+        selector: r => r.tanggal || '-',
+        cell: r => r._displayDate || '-',
+        sortable: true,
+        width: '120px',
+      },
+      {
+        name: <span title="Kerani (nama dan kode)">Kerani</span>,
+        selector: r => r.nama_karyawan_kerani || r.kode_karyawan_kerani || '-',
+        sortable: true,
+        width: '220px',
+        cell: r => (
+          <div>
+            <div className="font-bold">{r.nama_karyawan_kerani}</div>
+            <div className="text-xs text-gray-500">{r.kode_karyawan_kerani}</div>
+          </div>
         ),
-      ignoreRowClick: true,
-    },
+      },
+      {
+        name: <span title="Driver (nama dan kode)">Driver</span>,
+        selector: r => r.nama_karyawan_driver || r.kode_karyawan_driver || '-',
+        sortable: true,
+        width: '220px',
+        cell: r => (
+          <div>
+            <div className="font-bold">{r.nama_karyawan_driver}</div>
+            <div className="text-xs text-gray-500">{r.kode_karyawan_driver}</div>
+          </div>
+        ),
+      },
+      {
+        name: <span title="Tipe pengangkutan">Type</span>,
+        selector: r => String(r.type_pengangkutan || ''),
+        sortable: true,
+        width: '90px',
+      },
+      {
+        name: <span title="Kode / Nama kendaraan">Kendaraan</span>,
+        selector: r => r.nama_kendaraan || r.kode_kendaraan || '-',
+        sortable: true,
+        width: '160px',
+      },
+      {
+        name: <span title="FCBA asal (kebun/estate)">FCBA</span>,
+        selector: r => r.fcba || '-',
+        sortable: true,
+        width: '100px',
+      },
+      {
+        name: <span title="Pabrik tujuan">Pabrik</span>,
+        selector: r => r.pabrik_tujuan || '-',
+        sortable: true,
+        width: '100px',
+      },
+      {
+        name: <span title="Afdeling / Section">Afdeling</span>,
+        selector: r => r.afdeling || '-',
+        sortable: true,
+        width: '100px',
+      },
+      {
+        name: <span title="TPH (Tempat Penampungan Hasil)">TPH</span>,
+        selector: r => r.tph || '-',
+        sortable: true,
+        width: '80px',
+      },
+      {
+        name: <span title="Field code">Field</span>,
+        selector: r => r.fieldcode || '-',
+        sortable: true,
+        width: '110px',
+      },
+      {
+        name: 'Total Janjang',
+        selector: r => r.totaljanjang || '-',
+        sortable: true,
+        width: '120px',
+        style: { justifyContent: 'center' },
+        cell: r => (
+          <span className="text-center w-full">
+            {formatPerfNumber(r.totaljanjang || '0', localeTag)}
+          </span>
+        ),
+      },
+      {
+        name: 'Output',
+        selector: r => r.output || '-',
+        sortable: true,
+        width: '100px',
+        style: { justifyContent: 'center' },
+        cell: r => (
+          <span className="text-center w-full">{formatPerfNumber(r.output || '0', localeTag)}</span>
+        ),
+      },
+      {
+        name: <span title="Janjang Normal">Janjang Normal</span>,
+        selector: r => r.janjangnormal || '-',
+        sortable: true,
+        width: '120px',
+        style: { justifyContent: 'center' },
+        cell: r => (
+          <span className="text-center w-full">
+            {formatPerfNumber(r.janjangnormal || '0', localeTag)}
+          </span>
+        ),
+      },
+      {
+        name: <span title="Brondolan">Brondolan</span>,
+        selector: r => r.brondolan || '-',
+        sortable: true,
+        width: '100px',
+        style: { justifyContent: 'center' },
+        cell: r => (
+          <span className="text-center w-full">
+            {formatPerfNumber(r.brondolan || '0', localeTag)}
+          </span>
+        ),
+      },
+      {
+        name: <span title="Status pengangkutan (Planned/Approved/...)">Status</span>,
+        selector: r => r.status_pengangkutan || '-',
+        sortable: true,
+        width: '120px',
+        cell: r => (
+          <span
+            className={`badge ${r.status_pengangkutan === 'Planned' ? 'badge-info' : 'badge-ghost'}`}
+          >
+            {r.status_pengangkutan}
+          </span>
+        ),
+      },
+      {
+        name: 'Card ID',
+        selector: r => r.card_id || '-',
+        sortable: true,
+        width: '150px',
+      },
+      {
+        name: <span title="Foto pendukung pengangkutan (bila ada)">Foto</span>,
+        width: '90px',
+        cell: r =>
+          r.images ? (
+            <a
+              href={getProxiedImageUrl(r.images)}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Buka foto"
+            >
+              <Image
+                src={getProxiedImageUrl(r.images) || PLACEHOLDER_IMAGE}
+                alt="foto"
+                width={40}
+                height={40}
+                className="rounded-lg ring-1 ring-base-300 object-cover w-10 h-10 bg-base-200"
+                unoptimized
+              />
+            </a>
+          ) : (
+            '-'
+          ),
+        ignoreRowClick: true,
+      },
     ],
     [localeTag]
   );

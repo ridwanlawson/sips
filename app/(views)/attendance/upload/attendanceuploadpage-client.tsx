@@ -635,9 +635,7 @@ export default function AttendanceUploadPage() {
                     <ol className="list-decimal ml-4 space-y-1">
                       <li>Tekan F12 → buka tab &quot;Console&quot;</li>
                       <li>Cari log dengan prefix &quot;ATTENDANCE UPLOAD DEBUG&quot;</li>
-                      <li>
-                        Buka tab &quot;Network&quot; → cari request ke /api/attendance/upload
-                      </li>
+                      <li>Buka tab &quot;Network&quot; → cari request ke /api/attendance/upload</li>
                       <li>Cek response details dan error message</li>
                       <li>Jika perlu login ulang: refresh halaman & login kembali</li>
                     </ol>

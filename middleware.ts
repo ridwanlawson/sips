@@ -80,10 +80,7 @@ export function middleware(request: NextRequest) {
   }
 
   if (pathname.startsWith('/open/lhm')) {
-    if (
-      level !== UserLevel.ADMIN &&
-      level !== UserLevel.KSI 
-    ) {
+    if (level !== UserLevel.ADMIN && level !== UserLevel.KSI) {
       return redirectForbidden();
     }
   }

@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { formatPerfDate, formatPerfNumber, getCachedDateTimeFormat, getCachedNumberFormat } from './perf-formatter';
+import {
+  formatPerfDate,
+  formatPerfNumber,
+  getCachedDateTimeFormat,
+  getCachedNumberFormat,
+} from './perf-formatter';
 
 describe('perf-formatter', () => {
   describe('getCachedDateTimeFormat', () => {

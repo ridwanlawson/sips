@@ -93,7 +93,7 @@ export const Drawer = () => {
               }
             }}
           >
-            <summary className="flex items-center justify-between">
+            <summary className="flex items-center justify-between cursor-pointer hover:bg-base-300 focus-visible:ring-2 focus-visible:ring-primary rounded-lg transition-colors list-none [&::-webkit-details-marker]:hidden">
               <div className="flex items-center gap-3">
                 {renderIcon(item.icon)}
                 <span>{t(item.label)}</span>

@@ -48,7 +48,7 @@ export function formatPerfDate(
   locale: string,
   options?: Intl.DateTimeFormatOptions
 ): string {
-  if (!date) return "";
+  if (!date) return '';
   const d = date instanceof Date ? date : new Date(date);
   if (isNaN(d.getTime())) return String(date);
   return getCachedDateTimeFormat(locale, options).format(d);
@@ -62,7 +62,7 @@ export function formatPerfNumber(
   locale: string,
   options?: Intl.NumberFormatOptions
 ): string {
-  const n = typeof num === "number" ? num : Number(num);
+  const n = typeof num === 'number' ? num : Number(num);
   if (isNaN(n)) return String(num);
   return getCachedNumberFormat(locale, options).format(n);
 }
