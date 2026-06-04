@@ -75,15 +75,25 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
   return NextResponse.json({ ok: true, data });
 }
 
-export async function DELETE(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const params = await Promise.resolve(context.params);
   const id = params.id;
   const token = await getTokenFromCookie();
   if (!token) return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
 
+  const incoming = await req.formData();
+  const baDeleted = incoming.get('ba_deleted');
+  if (!(baDeleted instanceof File)) {
+    return NextResponse.json({ ok: false, error: 'BA delete PDF wajib diisi' }, { status: 400 });
+  }
+
+  const form = new FormData();
+  form.append('ba_deleted', baDeleted, baDeleted.name);
+
   const upstream = await fetch(`${ABSENSI_BASE}/${encodeURIComponent(String(id))}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    body: form,
   });
 
   const data = await safeJson(upstream);
@@ -97,4 +107,50 @@ export async function DELETE(_req: NextRequest, context: { params: Promise<{ id:
     );
   }
   return NextResponse.json({ ok: true, data });
+}
+
+// Accept POST with _method override so clients can upload files (Laravel expects multipart POST)
+export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const params = await Promise.resolve(context.params);
+  const id = params.id;
+  const token = await getTokenFromCookie();
+  if (!token) return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
+
+  const incoming = await req.formData();
+  const methodOverride = (incoming.get('_method') as string | null) || '';
+
+  if (methodOverride.toUpperCase() === 'DELETE') {
+    const baDeleted = incoming.get('ba_deleted');
+    if (!(baDeleted instanceof File)) {
+      return NextResponse.json({ ok: false, error: 'BA delete PDF wajib diisi' }, { status: 400 });
+    }
+
+    // Rebuild FormData to ensure files have filenames when proxied
+    const form = new FormData();
+    for (const [k, v] of incoming.entries()) {
+      if (typeof v === 'string') {
+        form.append(k, v);
+      } else {
+        form.append(k, v, v.name);
+      }
+    }
+
+    const upstream = await fetch(`${ABSENSI_BASE}/${encodeURIComponent(String(id))}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      body: form,
+    });
+
+    const data = await safeJson(upstream);
+    if (!upstream.ok) {
+      console.error('[API_ATTENDANCE_ID_POST_DELETE_ERROR]', { status: upstream.status, data });
+      return NextResponse.json(
+        { ok: false, error: 'Failed to delete attendance record' },
+        { status: upstream.status }
+      );
+    }
+    return NextResponse.json({ ok: true, data });
+  }
+
+  return NextResponse.json({ ok: false, error: 'Method Not Allowed' }, { status: 405 });
 }

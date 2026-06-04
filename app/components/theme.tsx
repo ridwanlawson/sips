@@ -8,7 +8,14 @@ export const Theme = () => {
   const { theme, changeTheme } = useTheme();
 
   const handleThemeChange = (
-    newTheme: 'light' | 'dark' | 'retro' | 'cyberpunk' | 'valentine' | 'aqua'
+    newTheme:
+      | 'light'
+      | 'dark'
+      | 'retro'
+      | 'cyberpunk'
+      | 'valentine'
+      | 'aqua'
+      | 'plant'
   ) => {
     changeTheme(newTheme);
     // Close the dropdown after selection
@@ -24,6 +31,7 @@ export const Theme = () => {
     { value: 'cyberpunk', label: 'Cyberpunk' },
     { value: 'valentine', label: 'Valentine' },
     { value: 'aqua', label: 'Aqua' },
+    { value: 'plant', label: 'Plant' },
   ] as const;
 
   return (

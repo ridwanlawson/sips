@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from 'react';
 
-type Theme = 'light' | 'dark' | 'retro' | 'cyberpunk' | 'valentine' | 'aqua';
+type Theme =
+  | 'light'
+  | 'dark'
+  | 'retro'
+  | 'cyberpunk'
+  | 'valentine'
+  | 'aqua'
+  | 'plant';
 
 export const useTheme = () => {
   const [theme, setTheme] = useState<Theme>('light');

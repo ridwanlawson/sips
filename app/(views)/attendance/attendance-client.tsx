@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { BusinessUnit } from '../../../utils/businessUnitService';
 import { fetchBusinessUnits } from '../../../utils/businessUnitService';
+import type { SectionMaster } from '../../../utils/masterDataService';
+import { fetchGangs, fetchSections } from '../../../utils/masterDataService';
 import Image from 'next/image';
 import DataTable from '@/app/components/dynamic-data-table';
 import type { TableColumn } from 'react-data-table-component';
@@ -172,6 +174,40 @@ type EmployeesApiRow = {
   fcba?: unknown;
   sectionname?: unknown;
   gangcode?: unknown;
+};
+
+const resolveBusinessUnitCode = (value: string, businessUnits: BusinessUnit[]): string => {
+  if (!value) return '';
+  const directMatch = businessUnits.find(b => b.fccode === value);
+  if (directMatch) return directMatch.fccode;
+
+  const nameMatch = businessUnits.find(b => b.fcname?.toLowerCase() === value.toLowerCase());
+  return nameMatch?.fccode || value;
+};
+
+const resolveBusinessUnitName = (value: string, businessUnits: BusinessUnit[]): string => {
+  if (!value) return '';
+  const directMatch = businessUnits.find(b => b.fccode === value);
+  if (directMatch) return directMatch.fcname || directMatch.fccode;
+  return value;
+};
+
+const matchesEmployeeFcba = (
+  employeeFcba: string | undefined,
+  selectedFcba: string,
+  businessUnits: BusinessUnit[]
+): boolean => {
+  const employeeValue = (employeeFcba || '').trim();
+  if (!employeeValue || !selectedFcba) return false;
+
+  const selectedCode = resolveBusinessUnitCode(selectedFcba, businessUnits);
+  const selectedName = resolveBusinessUnitName(selectedFcba, businessUnits);
+
+  return (
+    employeeValue === selectedFcba ||
+    employeeValue === selectedCode ||
+    employeeValue === selectedName
+  );
 };
 
 /* =========================
@@ -610,9 +646,15 @@ export default function Attendance() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, file }: { id: string; file: File }) => {
+      const body = new FormData();
+      // Laravel expects file uploads to come via multipart POST; use _method override
+      body.append('ba_deleted', file);
+      body.append('_method', 'DELETE');
+
       const res = await fetch(`/api/attendance/${id}`, {
-        method: 'DELETE',
+        method: 'POST',
+        body,
         credentials: 'include',
       });
       if (res.status === 401) {
@@ -625,7 +667,12 @@ export default function Attendance() {
         throw new Error('Unauthorized');
       }
       if (!res.ok || !json.ok) {
-        const errorMsg = typeof json.error === 'string' ? json.error : 'Gagal hapus';
+        const errorMsg =
+          typeof json.message === 'string'
+            ? json.message
+            : typeof json.error === 'string'
+              ? json.error
+              : 'Gagal hapus';
         throw new Error(errorMsg);
       }
       return id;
@@ -643,6 +690,9 @@ export default function Attendance() {
   const [open, setOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState('');
+  const [deleteFile, setDeleteFile] = useState<File | undefined>(undefined);
 
   // Close the modal with Escape
   useEffect(() => {
@@ -662,6 +712,7 @@ export default function Attendance() {
   const [preview, setPreview] = useState<string>('');
   const imgRef = useRef<HTMLInputElement | null>(null);
   const pdfRef = useRef<HTMLInputElement | null>(null);
+  const deletePdfRef = useRef<HTMLInputElement | null>(null);
 
   // loading ambil lokasi (in/out)
   const [locLoading, setLocLoading] = useState<'in' | 'out' | null>(null);
@@ -773,6 +824,54 @@ export default function Attendance() {
     },
     staleTime: 30 * 60 * 1000, // 30 menit - data master jarang berubah
     gcTime: 60 * 60 * 1000, // 1 jam cache di memori
+  });
+
+  const selectedFcbaCodeForMaster = useMemo(
+    () => resolveBusinessUnitCode(selFcba || homeFcba || '', businessUnits),
+    [selFcba, homeFcba, businessUnits]
+  );
+
+  const selectedDestFcbaCodeForMaster = useMemo(
+    () => resolveBusinessUnitCode(destFcba || '', businessUnits),
+    [destFcba, businessUnits]
+  );
+
+  const { data: masterSections = [], isLoading: isLoadingSections } = useQuery({
+    queryKey: ['masterSections'],
+    queryFn: async () => {
+      try {
+        const rows = await fetchSections();
+        localStorage.setItem('master_sections', JSON.stringify(rows));
+        return rows;
+      } catch (err) {
+        console.warn('failed to fetch master sections:', err);
+        const cached = localStorage.getItem('master_sections');
+        if (cached) {
+          try {
+            return JSON.parse(cached) as SectionMaster[];
+          } catch {
+            return [];
+          }
+        }
+        return [];
+      }
+    },
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+  });
+
+  const { data: masterGangs = [], isLoading: isLoadingGangs } = useQuery({
+    queryKey: ['masterGangs', selectedFcbaCodeForMaster, selSection],
+    queryFn: async () => {
+      if (!selectedFcbaCodeForMaster || !selSection) return [];
+      return fetchGangs({
+        fcba: selectedFcbaCodeForMaster,
+        afdeling: selSection,
+      });
+    },
+    enabled: !!selectedFcbaCodeForMaster && !!selSection,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
   });
 
   // Employees query - runs in parallel, depends on cookies only
@@ -890,8 +989,32 @@ export default function Attendance() {
       .map(v => ({ value: v, label: v }));
   }, [triplets, businessUnits]);
 
+  // convert homeFcba (which might be fcname or fccode) to actual fccode for proper filtering
+  const homeFcbaCode = useMemo(() => {
+    return resolveBusinessUnitCode(homeFcba, businessUnits);
+  }, [homeFcba, businessUnits]);
+
+  const currentFcbaForForm = useMemo(() => {
+    return userLevel === 'ADM' ? selFcba || homeFcbaCode || '' : homeFcbaCode || selFcba || '';
+  }, [userLevel, selFcba, homeFcbaCode]);
+
   const sectionOptions: Option[] = useMemo(() => {
     if (!selFcba) return [];
+    const fcbaCode = resolveBusinessUnitCode(selFcba, businessUnits);
+    const sectionsFromMaster = masterSections
+      .filter(section => section.fcba === fcbaCode)
+      .filter(section => section.fccode !== destSection)
+      .map(section => ({
+        value: section.fccode,
+        label:
+          section.fcname && section.fcname !== section.fccode
+            ? `${section.fccode} - ${section.fcname}`
+            : section.fccode,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+
+    if (sectionsFromMaster.length) return sectionsFromMaster;
+
     // Match by fcba field in triplets (triplets use fcba name, not fccode)
     // Need to handle both cases: selFcba being fccode or fcba name
     return Array.from(
@@ -908,15 +1031,28 @@ export default function Attendance() {
             return false;
           })
           .map(t => t.sectionname)
+          .filter(section => section !== destSection)
           .filter(Boolean)
       )
     )
       .sort()
       .map(v => ({ value: v, label: v }));
-  }, [triplets, selFcba, businessUnits]);
+  }, [triplets, selFcba, businessUnits, masterSections, destSection]);
 
   const gangOptions: Option[] = useMemo(() => {
     if (!selFcba || !selSection) return [];
+    const gangsFromMaster = masterGangs
+      .map(gang => ({
+        value: gang.fccode,
+        label:
+          gang.fcname && gang.fcname !== gang.fccode
+            ? `${gang.fccode} - ${gang.fcname}`
+            : gang.fccode,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+
+    if (gangsFromMaster.length) return gangsFromMaster;
+
     // Get the actual fcba name for matching triplets
     let fcbaName = selFcba;
     const buMatch = Array.isArray(businessUnits)
@@ -934,20 +1070,15 @@ export default function Attendance() {
     )
       .sort()
       .map(v => ({ value: v, label: v }));
-  }, [triplets, selFcba, selSection, businessUnits]);
+  }, [triplets, selFcba, selSection, businessUnits, masterGangs]);
 
   const pengancakanOptions: Option[] = useMemo(() => {
     if (!selFcba || !selSection || !selGang) return [];
-    // Get the actual fcba name for matching employees
-    let fcbaName = selFcba;
-    const buMatch = Array.isArray(businessUnits)
-      ? businessUnits.find(b => b.fccode === selFcba)
-      : undefined;
-    if (buMatch) fcbaName = buMatch.fcname || selFcba;
+    const fcba = currentFcbaForForm || form.fcba || selFcba;
 
     const pool = employees.filter(
       e =>
-        (e.fcba || '') === fcbaName &&
+        matchesEmployeeFcba(e.fcba, fcba, businessUnits) &&
         (e.sectionname || '') === selSection &&
         (e.gangcode || '') === selGang
     );
@@ -959,72 +1090,34 @@ export default function Attendance() {
     return Array.from(set)
       .sort()
       .map(v => ({ value: v, label: v }));
-  }, [employees, selFcba, selSection, selGang, businessUnits]);
+  }, [employees, selFcba, selSection, selGang, businessUnits, currentFcbaForForm, form.fcba]);
 
   const employeeOptions: Option[] = useMemo(() => {
-    if (!selFcba || !selSection) return [];
-    let fcbaName = selFcba;
-    const buMatch = Array.isArray(businessUnits)
-      ? businessUnits.find(b => b.fccode === selFcba)
-      : undefined;
-    if (buMatch) fcbaName = buMatch.fcname || selFcba;
+    if (!selFcba || !selSection || !selGang) return [];
+    const fcba = currentFcbaForForm || form.fcba || selFcba;
 
     const pool = employees.filter(
       e =>
-        (e.fcba || '') === fcbaName &&
+        matchesEmployeeFcba(e.fcba, fcba, businessUnits) &&
         (e.sectionname || '') === selSection &&
-        (!selGang || (e.gangcode || '') === selGang)
+        (e.gangcode || '') === selGang
     );
     const map = new Map<string, string>();
     for (const e of pool) {
       const value = (e.fccode || '').trim();
       if (!value) continue;
-      const label = e.fullname ? `${value} - ${e.fullname}` : value;
+      const label = e.fullname ? `${e.fullname}` : value;
       if (!map.has(value)) map.set(value, label);
     }
     return Array.from(map, ([value, label]) => ({ value, label })).sort((a, b) =>
       a.label.localeCompare(b.label)
     );
-  }, [employees, selFcba, selSection, selGang, businessUnits]);
+  }, [employees, selFcba, selSection, selGang, businessUnits, currentFcbaForForm, form.fcba]);
 
-  // convert homeFcba (which might be fcname or fccode) to actual fccode for proper filtering
-  const homeFcbaCode = useMemo(() => {
-    if (!homeFcba || !Array.isArray(businessUnits) || !businessUnits.length) return homeFcba;
-    // Check if homeFcba is already a fccode in businessUnits
-    const match = businessUnits.find(b => b.fccode === homeFcba);
-    if (match) return homeFcba;
-    // Otherwise, try to match by fcname
-    const matchByName = businessUnits.find(b => b.fcname?.toLowerCase() === homeFcba.toLowerCase());
-    const result = matchByName?.fccode || homeFcba;
-    // console.log("[homeFcbaCode] convert:", {
-    //   homeFcba,
-    //   businessUnitsCount: businessUnits.length,
-    //   matchFound: !!matchByName,
-    //   result,
-    // });
-    return result;
-  }, [homeFcba, businessUnits]);
-
-  const currentFcbaForForm = useMemo(() => {
-    const result =
-      userLevel === 'ADM' ? selFcba || homeFcbaCode || '' : homeFcbaCode || selFcba || '';
-    // console.log("[currentFcbaForForm]", {
-    //   userLevel,
-    //   selFcba,
-    //   homeFcbaCode,
-    //   result,
-    // });
-    return result;
-  }, [userLevel, selFcba, homeFcbaCode]);
-
-  // destination select options should include every Fcba except the user's current one
+  // destination select options should include every FCBA, including the user's current FCBA.
   const destOptions = useMemo(() => {
     if (businessUnits && businessUnits.length > 0) {
       return businessUnits
-        .filter(bu => {
-          if (!currentFcbaForForm) return true;
-          return bu.fccode !== currentFcbaForForm && bu.fcname !== currentFcbaForForm;
-        })
         .map(bu => ({
           value: bu.fccode,
           label: bu.fcname ? `${bu.fccode} - ${bu.fcname}` : bu.fccode,
@@ -1034,7 +1127,6 @@ export default function Attendance() {
 
     if (optFcba && optFcba.length > 0) {
       return optFcba
-        .filter(fcba => !currentFcbaForForm || fcba !== currentFcbaForForm)
         .map(fcba => ({
           value: fcba,
           label: fcba,
@@ -1042,11 +1134,27 @@ export default function Attendance() {
         .sort((a, b) => a.label.localeCompare(b.label));
     }
 
-    return fcbaOptions.filter(o => !currentFcbaForForm || o.value !== currentFcbaForForm);
-  }, [optFcba, fcbaOptions, businessUnits, currentFcbaForForm]);
+    return fcbaOptions;
+  }, [optFcba, fcbaOptions, businessUnits]);
 
   const destSectionOptions: Option[] = useMemo(() => {
-    if (!destFcba || !triplets.length) return [];
+    if (!destFcba) return [];
+
+    const sectionsFromMaster = masterSections
+      .filter(section => section.fcba === selectedDestFcbaCodeForMaster)
+      .filter(section => section.fccode !== selSection)
+      .map(section => ({
+        value: section.fccode,
+        label:
+          section.fcname && section.fcname !== section.fccode
+            ? `${section.fccode} - ${section.fcname}`
+            : section.fccode,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+
+    if (sectionsFromMaster.length) return sectionsFromMaster;
+
+    if (!triplets.length) return [];
 
     let fcbaName = destFcba;
     const buMatch = Array.isArray(businessUnits)
@@ -1059,56 +1167,28 @@ export default function Attendance() {
         triplets
           .filter(t => t.fcba === fcbaName)
           .map(t => t.sectionname)
+          .filter(section => section !== selSection)
           .filter(Boolean)
       )
     )
       .sort()
       .map(v => ({ value: v, label: v }));
-  }, [destFcba, triplets, businessUnits]);
+  }, [
+    destFcba,
+    triplets,
+    businessUnits,
+    masterSections,
+    selectedDestFcbaCodeForMaster,
+    selSection,
+  ]);
 
   const mandorOptions: Option[] = useMemo(() => {
-    let pool: Employee[] = [];
-    let fcbaName = '';
-    const section = selSection || homeSection || '';
+    const fcba = currentFcbaForForm || form.fcba || homeFcbaCode || homeFcba || '';
+    const section = selSection || form.section || homeSection || '';
 
-    if (userLevel === 'ADM') {
-      const fc = selFcba || homeFcbaCode || '';
-      if (fc) {
-        const buMatch = Array.isArray(businessUnits)
-          ? businessUnits.find(b => b.fccode === fc)
-          : undefined;
-        fcbaName = buMatch ? buMatch.fcname || fc : fc;
-      }
-      pool = employees.filter(
-        e => (e.fcba || '') === fcbaName && (!section || (e.sectionname || '') === section)
-      );
-    } else if (userLevel === 'MGR' || userLevel === 'KSI') {
-      fcbaName = homeFcba || '';
-      pool = employees.filter(
-        e => (e.fcba || '') === fcbaName && (!section || (e.sectionname || '') === section)
-      );
-    } else if (
-      userLevel === 'AST' ||
-      userLevel === 'KRA' ||
-      userLevel === 'MD1' ||
-      userLevel === 'KRT'
-    ) {
-      fcbaName = homeFcba || '';
-      pool = employees.filter(
-        e => (e.fcba || '') === fcbaName && (!section || (e.sectionname || '') === section)
-      );
-    } else {
-      const fc = homeFcbaCode || selFcba || '';
-      if (fc) {
-        const buMatch = Array.isArray(businessUnits)
-          ? businessUnits.find(b => b.fccode === fc)
-          : undefined;
-        fcbaName = buMatch ? buMatch.fcname || fc : fc;
-      }
-      pool = employees.filter(
-        e => (e.fcba || '') === fcbaName && (!section || (e.sectionname || '') === section)
-      );
-    }
+    const pool = employees.filter(
+      e => matchesEmployeeFcba(e.fcba, fcba, businessUnits) && (e.sectionname || '') === section
+    );
 
     const map = new Map<string, string>();
     for (const e of pool) {
@@ -1117,19 +1197,21 @@ export default function Attendance() {
       const gangLabel = (e.gangcode || '').trim();
       const fullname = e.fullname ? ` - ${e.fullname}` : '';
       const label = gangLabel ? `${gangLabel} • ${value}${fullname}` : `${value}${fullname}`;
-      if (!map.has(value)) map.set(value, label);
+      const name = (e.fullname || '').trim();
+      if (!map.has(value)) map.set(value, gangLabel ? `${gangLabel} - ${name || value}` : label);
     }
     return Array.from(map, ([value, label]) => ({ value, label })).sort((a, b) =>
       a.label.localeCompare(b.label)
     );
   }, [
     employees,
-    selFcba,
+    currentFcbaForForm,
+    form.fcba,
     homeFcbaCode,
     homeFcba,
     homeSection,
     selSection,
-    userLevel,
+    form.section,
     businessUnits,
   ]);
 
@@ -1161,6 +1243,7 @@ export default function Attendance() {
   const onChangeSection = (v: string) => {
     setSelSection(v);
     setSelGang('');
+    if (destSection === v) setDestSection('');
     setForm(s => ({ ...s, section: v, kode_karyawan: '', pengancakan: '' }));
   };
 
@@ -1182,7 +1265,13 @@ export default function Attendance() {
     setDestFcba(v);
     setDestSection('');
   };
-  const onChangeDestSection = (v: string) => setDestSection(v);
+  const onChangeDestSection = (v: string) => {
+    if (v && v === selSection) {
+      toast.error('Section Destination tidak boleh sama dengan Afdeling (Section)');
+      return;
+    }
+    setDestSection(v);
+  };
 
   /* ===== Defaults for add mode ===== */
   const setDefaultsForAdd = () => {
@@ -1348,9 +1437,10 @@ export default function Attendance() {
 
       if (form.attendance_type === 'ASSISTENSI') {
         if (!destFcba) throw new Error('Fcba Destination wajib diisi untuk ASSISTENSI');
-        if (destFcba === currentFcbaForForm)
-          throw new Error('Fcba Destination tidak boleh sama dengan FCBA akun');
         if (!destSection) throw new Error('Section Destination wajib diisi untuk ASSISTENSI');
+        if (finalSection && destSection === finalSection) {
+          throw new Error('Section Destination tidak boleh sama dengan Afdeling (Section)');
+        }
 
         // Validate that the destination FCBA exists in opt_fcba or business units
         const destExistsInOptFcba = optFcba.length > 0 && optFcba.includes(destFcba);
@@ -1394,13 +1484,48 @@ export default function Attendance() {
 
   /* ===== DELETE ===== */
   // wrap in useCallback so memoized columns don't re-create on every render
-  const handleDelete = useCallback(
-    (id: string) => {
-      if (!confirm('Yakin ingin menghapus data ini?')) return;
-      deleteMutation.mutate(id);
-    },
-    [deleteMutation]
-  );
+  const handleDelete = useCallback((id: string) => {
+    setDeleteTargetId(id);
+    setDeleteFile(undefined);
+    if (deletePdfRef.current) deletePdfRef.current.value = '';
+    setDeleteOpen(true);
+  }, []);
+
+  const closeDeleteModal = () => {
+    if (deleteMutation.isPending) return;
+    setDeleteOpen(false);
+    setDeleteTargetId('');
+    setDeleteFile(undefined);
+    if (deletePdfRef.current) deletePdfRef.current.value = '';
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteTargetId) return;
+    if (!deleteFile) {
+      toast.error('Lampiran BA delete PDF wajib diisi');
+      return;
+    }
+    if (deleteFile.type !== 'application/pdf') {
+      toast.error('Lampiran BA delete harus berupa file PDF');
+      return;
+    }
+    if (deleteFile.size > 2 * 1024 * 1024) {
+      toast.error('Lampiran BA delete maksimal 2 MB');
+      return;
+    }
+
+    deleteMutation.mutate(
+      { id: deleteTargetId, file: deleteFile },
+      {
+        onSuccess: () => {
+          setDeleteOpen(false);
+          setDeleteTargetId('');
+          setDeleteFile(undefined);
+          if (deletePdfRef.current) deletePdfRef.current.value = '';
+        },
+      }
+    );
+  };
 
   /* ===== DETAIL ===== */
   const handleDetail = useCallback(
@@ -1504,7 +1629,8 @@ export default function Attendance() {
           const canEditRole = userLevel === 'ADM' || userLevel === 'KSI';
           const canEdit = canEditRole && isPlanned;
 
-          const canDelete = userLevel === 'ADM' && status !== 'approved' && status !== '';
+          const canDelete =
+            (userLevel === 'ADM' || userLevel === 'KSI') && status !== 'approved' && status !== '';
 
           return (
             <div className="space-x-1 whitespace-nowrap overflow-visible">
@@ -2189,7 +2315,12 @@ export default function Attendance() {
                   </div>
                 </div>
               )}
-              <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-1">
+              <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-2">
+                <div className="col-span-12">
+                  <h4 className="text-sm font-semibold text-base-content/80">Informasi Absensi</h4>
+                  <div className="mt-1 border-t border-base-300" />
+                </div>
+
                 {/* Tanggal */}
                 <fieldset className="fieldset col-span-12 md:col-span-3">
                   <legend className="fieldset-legend">Tanggal *</legend>
@@ -2224,45 +2355,29 @@ export default function Attendance() {
                   />
                 </fieldset>
 
-                {/* FCBA Dest */}
-                {form.attendance_type === 'ASSISTENSI' && (
-                  <fieldset className="fieldset col-span-12 md:col-span-3">
-                    <legend className="fieldset-legend">FCBA Destination *</legend>
-                    <SearchSelect
-                      options={destOptions}
-                      value={destFcba ?? ''}
-                      onChange={onChangeDestFcba}
-                      placeholder={
-                        isLoadingBU
-                          ? 'Memuat...'
-                          : currentFcbaForForm
-                            ? 'Pilih FCBA tujuan'
-                            : 'Pilih FCBA dulu'
-                      }
-                      disabled={!currentFcbaForForm || disableUnlessAllowed(false) || isLoadingBU}
-                    />
-                  </fieldset>
-                )}
+                {/* Attendance */}
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">Attendance *</legend>
+                  <SearchSelect
+                    options={['KJ', 'MK', 'WH', 'WS', 'ML', 'P1', 'KB', 'OT'].map(v => ({
+                      value: v,
+                      label: v,
+                    }))}
+                    value={form.attendance ?? 'KJ'}
+                    onChange={v =>
+                      setForm(s => ({
+                        ...s,
+                        attendance: v as FormState['attendance'],
+                      }))
+                    }
+                    disabled={disableUnlessAllowed(false)}
+                  />
+                </fieldset>
 
-                {/* Section Dest */}
-                {form.attendance_type === 'ASSISTENSI' && (
-                  <fieldset className="fieldset col-span-12 md:col-span-3">
-                    <legend className="fieldset-legend">Section Destination *</legend>
-                    <SearchSelect
-                      options={destSectionOptions}
-                      value={destSection ?? ''}
-                      onChange={onChangeDestSection}
-                      placeholder={
-                        isLoadingBU
-                          ? 'Memuat...'
-                          : destFcba
-                            ? 'Pilih Section tujuan'
-                            : 'Pilih FCBA tujuan dulu'
-                      }
-                      disabled={!destFcba || disableUnlessAllowed(false) || isLoadingBU}
-                    />
-                  </fieldset>
-                )}
+                <div className="col-span-12 mt-1">
+                  <h4 className="text-sm font-semibold text-base-content/80">Asal</h4>
+                  <div className="mt-1 border-t border-base-300" />
+                </div>
 
                 {/* FCBA */}
                 <fieldset className="fieldset col-span-12 md:col-span-3">
@@ -2287,7 +2402,6 @@ export default function Attendance() {
                         }));
                       }}
                       placeholder={isLoadingBU ? 'Memuat FCBA...' : 'Pilih FCBA'}
-                      small
                       disabled={disableUnlessAllowed(false) || isLoadingBU}
                     />
                   ) : (
@@ -2309,7 +2423,7 @@ export default function Attendance() {
                     value={selSection ?? ''}
                     onChange={onChangeSection}
                     placeholder={
-                      isLoadingSmp
+                      isLoadingSections
                         ? 'Memuat...'
                         : selFcba
                           ? userLevel === 'AST'
@@ -2318,9 +2432,11 @@ export default function Attendance() {
                           : 'Pilih FCBA dulu'
                     }
                     disabled={
-                      !selFcba || disableUnlessAllowed(false) || userLevel === 'AST' || isLoadingSmp
+                      !selFcba ||
+                      disableUnlessAllowed(false) ||
+                      userLevel === 'AST' ||
+                      isLoadingSections
                     }
-                    small
                   />
                 </fieldset>
 
@@ -2331,12 +2447,67 @@ export default function Attendance() {
                     value={selGang ?? ''}
                     onChange={onChangeGang}
                     placeholder={
-                      isLoadingSmp ? 'Memuat...' : selSection ? 'Pilih Gang' : 'Pilih Afdeling dulu'
+                      isLoadingGangs
+                        ? 'Memuat...'
+                        : selSection
+                          ? 'Pilih Gang'
+                          : 'Pilih Afdeling dulu'
                     }
-                    disabled={!selSection || disableUnlessAllowed(false) || isLoadingSmp}
-                    small
+                    disabled={!selSection || disableUnlessAllowed(false) || isLoadingGangs}
                   />
                 </fieldset>
+
+                {form.attendance_type === 'ASSISTENSI' && (
+                  <div className="col-span-12 mt-1">
+                    <h4 className="text-sm font-semibold text-base-content/80">
+                      Tujuan Assistensi
+                    </h4>
+                    <div className="mt-1 border-t border-base-300" />
+                  </div>
+                )}
+
+                {/* FCBA Dest */}
+                {form.attendance_type === 'ASSISTENSI' && (
+                  <fieldset className="fieldset col-span-12 md:col-span-4">
+                    <legend className="fieldset-legend">FCBA Destination *</legend>
+                    <SearchSelect
+                      options={destOptions}
+                      value={destFcba ?? ''}
+                      onChange={onChangeDestFcba}
+                      placeholder={isLoadingBU ? 'Memuat...' : 'Pilih FCBA tujuan'}
+                      disabled={disableUnlessAllowed(false) || isLoadingBU}
+                    />
+                  </fieldset>
+                )}
+
+                {/* Section Dest */}
+                {form.attendance_type === 'ASSISTENSI' && (
+                  <fieldset className="fieldset col-span-12 md:col-span-4">
+                    <legend className="fieldset-legend">Section Destination *</legend>
+                    <SearchSelect
+                      options={destSectionOptions}
+                      value={destSection ?? ''}
+                      onChange={onChangeDestSection}
+                      placeholder={
+                        isLoadingBU
+                          ? 'Memuat...'
+                          : destFcba
+                            ? isLoadingSections
+                              ? 'Memuat Section tujuan...'
+                              : 'Pilih Section tujuan'
+                            : 'Pilih FCBA tujuan dulu'
+                      }
+                      disabled={
+                        !destFcba || disableUnlessAllowed(false) || isLoadingBU || isLoadingSections
+                      }
+                    />
+                  </fieldset>
+                )}
+
+                <div className="col-span-12 mt-1">
+                  <h4 className="text-sm font-semibold text-base-content/80">Personel</h4>
+                  <div className="mt-1 border-t border-base-300" />
+                </div>
 
                 {/* Mandor */}
                 <fieldset className="fieldset col-span-12 md:col-span-3">
@@ -2346,7 +2517,6 @@ export default function Attendance() {
                     value={form.kode_karyawan_mandor ?? ''}
                     onChange={onChangeMandor}
                     placeholder={isLoadingSmp ? 'Memuat Mandor...' : 'Pilih Mandor'}
-                    small
                     disabled={disableUnlessAllowed(false) || isLoadingSmp}
                   />
                 </fieldset>
@@ -2396,29 +2566,13 @@ export default function Attendance() {
                           : 'Pilih Gang/Karyawan dulu'
                     }
                     disabled={!selGang || disableUnlessAllowed(false) || isLoadingSmp}
-                    small
                   />
                 </fieldset>
 
-                {/* Attendance */}
-                <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">Attendance *</legend>
-                  <SearchSelect
-                    options={['KJ', 'MK', 'WH', 'WS', 'ML', 'P1', 'KB', 'OT'].map(v => ({
-                      value: v,
-                      label: v,
-                    }))}
-                    value={form.attendance ?? 'KJ'}
-                    onChange={v =>
-                      setForm(s => ({
-                        ...s,
-                        attendance: v as FormState['attendance'],
-                      }))
-                    }
-                    small
-                    disabled={disableUnlessAllowed(false)}
-                  />
-                </fieldset>
+                <div className="col-span-12 mt-1">
+                  <h4 className="text-sm font-semibold text-base-content/80">Waktu & Lokasi</h4>
+                  <div className="mt-1 border-t border-base-300" />
+                </div>
 
                 {/* Time & Location */}
                 <fieldset className="fieldset col-span-12 md:col-span-3">
@@ -2527,6 +2681,13 @@ export default function Attendance() {
                   )}
                 </fieldset>
 
+                <div className="col-span-12 mt-1">
+                  <h4 className="text-sm font-semibold text-base-content/80">
+                    Perhitungan & Perangkat
+                  </h4>
+                  <div className="mt-1 border-t border-base-300" />
+                </div>
+
                 {/* Lain-lain */}
                 <fieldset className="fieldset col-span-6 md:col-span-2">
                   <legend className="fieldset-legend">Total Late (H:MM)</legend>
@@ -2581,6 +2742,13 @@ export default function Attendance() {
                     readOnly
                   />
                 </fieldset>
+
+                <div className="col-span-12 mt-1">
+                  <h4 className="text-sm font-semibold text-base-content/80">
+                    Dokumen & Keterangan
+                  </h4>
+                  <div className="mt-1 border-t border-base-300" />
+                </div>
 
                 {/* Exception Case */}
                 <fieldset className="fieldset col-span-12 md:col-span-6">
@@ -2690,6 +2858,48 @@ export default function Attendance() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {deleteOpen && (
+          <div className="modal modal-open">
+            <div className="modal-box max-w-lg">
+              <h3 className="font-bold text-lg">Hapus Data Absensi</h3>
+              <p className="mt-2 text-sm text-base-content/70">
+                Upload lampiran BA Delete dalam format PDF sebelum menghapus data.
+              </p>
+
+              <fieldset className="fieldset mt-3">
+                <legend className="fieldset-legend">Lampiran BA Delete (PDF) *</legend>
+                <input
+                  ref={deletePdfRef}
+                  type="file"
+                  accept="application/pdf"
+                  className="file-input file-input-bordered w-full"
+                  onChange={e => setDeleteFile(e.target.files?.[0])}
+                  required
+                />
+                <p className="text-xs opacity-70">Maksimal 2 MB.</p>
+              </fieldset>
+
+              <div className="modal-action">
+                <button type="button" className="btn" onClick={closeDeleteModal}>
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-error ${deleteMutation.isPending ? 'btn-disabled' : ''}`}
+                  onClick={handleConfirmDelete}
+                  disabled={deleteMutation.isPending || !deleteFile}
+                >
+                  {deleteMutation.isPending ? (
+                    <span className="loading loading-spinner loading-sm" />
+                  ) : (
+                    'Hapus'
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         )}

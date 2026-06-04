@@ -8,6 +8,26 @@ export interface BusinessUnit {
   [key: string]: unknown;
 }
 
+type ApiWrapper = {
+  ok?: boolean;
+  success?: boolean;
+  data?: unknown;
+};
+
+function extractArray<T>(payload: unknown): T[] {
+  if (Array.isArray(payload)) return payload as T[];
+  if (!payload || typeof payload !== 'object') return [];
+
+  const wrapped = payload as ApiWrapper;
+  if (Array.isArray(wrapped.data)) return wrapped.data as T[];
+  if (wrapped.data && typeof wrapped.data === 'object') {
+    const inner = wrapped.data as ApiWrapper;
+    if (Array.isArray(inner.data)) return inner.data as T[];
+  }
+
+  return [];
+}
+
 export interface FetchBusinessUnitParams {
   fccode?: string;
   fcname?: string;
@@ -51,5 +71,5 @@ export async function fetchBusinessUnits(
   }
 
   const json = await res.json();
-  return json as BusinessUnit[];
+  return extractArray<BusinessUnit>(json);
 }
