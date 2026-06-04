@@ -50,5 +50,11 @@
     "quickSearch": "Pencarian Cepat",
     "clearSearch": "Hapus pencarian",
     "searchPlaceholder": "Cari karyawan, blok, fcba, nomor dokumen..."
+  },
+  "Transport": {
+    "quickSearch": "Pencarian Cepat",
+    "clearSearch": "Hapus pencarian",
+    "searchPlaceholder": "Cari (no pengangkutan, SPB, driver, fcba...)",
+    "noData": "Tidak ada data"
   }
 }
