@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 
 import { useSearchParams } from 'next/navigation';
 import './lhm-report-print.css';
@@ -143,6 +143,87 @@ export default function LhmReport() {
 
   const [lhaData, setLhaData] = useState<LhaData[]>([]);
   const [lhaLoading, setLhaLoading] = useState(false);
+
+  // ⚡ Bolt Optimization: Calculate table totals in O(N) using useMemo.
+  // This avoids repeated O(N) reduce calls for every column in the render loop,
+  // converting O(N*M) total complexity into O(N).
+  const mainTotals = useMemo(() => {
+    return data.reduce(
+      (acc, row) => {
+        acc.jjg += Number(row.jjg || 0);
+        acc.brd += Number(row.brd || 0);
+        acc.ha += Number(row.ha || 0);
+        acc.mentahqty += Number(row.mentahqty || 0);
+        acc.mentahrp += Number(row.mentahrp || 0);
+        acc.emptybunchqty += Number(row.emptybunchqty || 0);
+        acc.emptybunchrp += Number(row.emptybunchrp || 0);
+        acc.jumlahdenda += Number(row.jumlahdenda || 0) * -1;
+        acc.totalalljjg += Number(row.totalalljjg || 0);
+        acc.basis += Number(row.basis || 0);
+        acc.rpbasis += Number(row.rpbasis || 0);
+        acc.premilv1 += Number(row.premilv1 || 0);
+        acc.rplv1 += Number(row.rplv1 || 0);
+        acc.premilv2 += Number(row.premilv2 || 0);
+        acc.rplv2 += Number(row.rplv2 || 0);
+        acc.premilv3 += Number(row.premilv3 || 0);
+        acc.rplv3 += Number(row.rplv3 || 0);
+        acc.totalrppremi += Number(row.totalrppremi || 0);
+        acc.rphk += Number(row.rphk || 0);
+        acc.kurangbasis += Number(row.kurangbasis || 0);
+        acc.brd_rp += Number(row.brd_rp || 0);
+        acc.total += Number(row.total || 0);
+        return acc;
+      },
+      {
+        jjg: 0,
+        brd: 0,
+        ha: 0,
+        mentahqty: 0,
+        mentahrp: 0,
+        emptybunchqty: 0,
+        emptybunchrp: 0,
+        jumlahdenda: 0,
+        totalalljjg: 0,
+        basis: 0,
+        rpbasis: 0,
+        premilv1: 0,
+        rplv1: 0,
+        premilv2: 0,
+        rplv2: 0,
+        premilv3: 0,
+        rplv3: 0,
+        totalrppremi: 0,
+        rphk: 0,
+        kurangbasis: 0,
+        brd_rp: 0,
+        total: 0,
+      }
+    );
+  }, [data]);
+
+  const lhaTotals = useMemo(() => {
+    return lhaData.reduce(
+      (acc, row) => {
+        acc.luas += Number(row.luas || 0);
+        acc.output += Number(row.output || 0);
+        acc.normal += Number(row.normal || 0);
+        acc.abnormal += Number(row.abnormal || 0);
+        acc.overripe += Number(row.overripe || 0);
+        acc.empty += Number(row.empty || 0);
+        acc.mentah += Number(row.mentah || 0);
+        return acc;
+      },
+      {
+        luas: 0,
+        output: 0,
+        normal: 0,
+        abnormal: 0,
+        overripe: 0,
+        empty: 0,
+        mentah: 0,
+      }
+    );
+  }, [lhaData]);
 
   useEffect(() => {
     async function fetchData() {
@@ -522,125 +603,78 @@ export default function LhmReport() {
                       Total
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumberRounded(
-                        data.reduce((sum, row) => sum + Number(row.jjg || 0), 0)
-                      )}
+                      {formatNumberRounded(mainTotals.jjg)}
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumberRounded(
-                        data.reduce((sum, row) => sum + Number(row.brd || 0), 0)
-                      )}
+                      {formatNumberRounded(mainTotals.brd)}
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {(() => {
-                        const total = data.reduce((sum, row) => sum + Number(row.ha || 0), 0);
-                        return total === 0 ? '' : formatNumberRounded(total);
-                      })()}
+                      {mainTotals.ha === 0 ? '' : formatNumberRounded(mainTotals.ha)}
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumberRounded(
-                        data.reduce((sum, row) => sum + Number(row.mentahqty || 0), 0)
-                      )}
+                      {formatNumberRounded(mainTotals.mentahqty)}
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumberRounded(
-                        data.reduce((sum, row) => sum + Number(row.mentahrp || 0), 0)
-                      )}
+                      {formatNumberRounded(mainTotals.mentahrp)}
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumberRounded(
-                        data.reduce((sum, row) => sum + Number(row.emptybunchqty || 0), 0)
-                      )}
+                      {formatNumberRounded(mainTotals.emptybunchqty)}
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumberRounded(
-                        data.reduce((sum, row) => sum + Number(row.emptybunchrp || 0), 0)
-                      )}
+                      {formatNumberRounded(mainTotals.emptybunchrp)}
                     </td>
                     <td className="text-right">0</td>
                     <td className="text-right">0</td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumberRounded(
-                        data.reduce((sum, row) => sum + Number(row.jumlahdenda || 0) * -1, 0)
-                      )}
+                      {formatNumberRounded(mainTotals.jumlahdenda)}
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumberRounded(
-                        data.reduce((sum, row) => sum + Number(row.totalalljjg || 0), 0)
-                      )}
+                      {formatNumberRounded(mainTotals.totalalljjg)}
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumberRounded(
-                        data.reduce((sum, row) => sum + Number(row.basis || 0), 0)
-                      )}
+                      {formatNumberRounded(mainTotals.basis)}
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumberRounded(
-                        data.reduce((sum, row) => sum + Number(row.rpbasis || 0), 0)
-                      )}
+                      {formatNumberRounded(mainTotals.rpbasis)}
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumberRounded(
-                        data.reduce((sum, row) => sum + Number(row.premilv1 || 0), 0)
-                      )}
+                      {formatNumberRounded(mainTotals.premilv1)}
                     </td>
                     <td className="text-right whitespace-nowrap"></td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumberRounded(
-                        data.reduce((sum, row) => sum + Number(row.rplv1 || 0), 0)
-                      )}
+                      {formatNumberRounded(mainTotals.rplv1)}
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumberRounded(
-                        data.reduce((sum, row) => sum + Number(row.premilv2 || 0), 0)
-                      )}
+                      {formatNumberRounded(mainTotals.premilv2)}
                     </td>
                     <td className="text-right whitespace-nowrap"></td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumberRounded(
-                        data.reduce((sum, row) => sum + Number(row.rplv2 || 0), 0)
-                      )}
+                      {formatNumberRounded(mainTotals.rplv2)}
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumberRounded(
-                        data.reduce((sum, row) => sum + Number(row.premilv3 || 0), 0)
-                      )}
+                      {formatNumberRounded(mainTotals.premilv3)}
                     </td>
                     <td className="text-right whitespace-nowrap"></td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumberRounded(
-                        data.reduce((sum, row) => sum + Number(row.rplv3 || 0), 0)
-                      )}
+                      {formatNumberRounded(mainTotals.rplv3)}
                     </td>
                     <td className="text-right whitespace-nowrap">
-                      {formatNumberRounded(
-                        data.reduce((sum, row) => sum + Number(row.totalrppremi || 0), 0)
-                      )}
+                      {formatNumberRounded(mainTotals.totalrppremi)}
                     </td>
                     <td className="text-right font-bold whitespace-nowrap">
-                      {formatNumberRounded(
-                        data.reduce((sum, row) => sum + Number(row.rphk || 0), 0)
-                      )}
+                      {formatNumberRounded(mainTotals.rphk)}
                     </td>
                     <td className="text-right font-bold whitespace-nowrap">
-                      {formatNumberRounded(
-                        data.reduce((sum, row) => sum + Number(row.kurangbasis || 0), 0)
-                      )}
+                      {formatNumberRounded(mainTotals.kurangbasis)}
                     </td>
                     <td className="text-right font-bold whitespace-nowrap">
-                      {formatNumberRounded(
-                        data.reduce((sum, row) => sum + Number(row.totalrppremi || 0), 0)
-                      )}
+                      {formatNumberRounded(mainTotals.totalrppremi)}
                     </td>
                     <td className="text-right font-bold whitespace-nowrap">
-                      {formatNumberRounded(
-                        data.reduce((sum, row) => sum + Number(row.brd_rp || 0), 0)
-                      )}
+                      {formatNumberRounded(mainTotals.brd_rp)}
                     </td>
                     <td className="text-right font-bold whitespace-nowrap">
-                      {formatNumberRounded(
-                        data.reduce((sum, row) => sum + Number(row.total || 0), 0)
-                      )}
+                      {formatNumberRounded(mainTotals.total)}
                     </td>
                     <td></td>
                   </tr>
@@ -695,36 +729,24 @@ export default function LhmReport() {
               <td colSpan={2} className="text-right">
                 Total
               </td>
+              <td className="text-right whitespace-nowrap">{formatNumberRounded(lhaTotals.luas)}</td>
               <td className="text-right whitespace-nowrap">
-                {formatNumberRounded(lhaData.reduce((sum, row) => sum + Number(row.luas || 0), 0))}
+                {formatNumberRounded(lhaTotals.output)}
               </td>
               <td className="text-right whitespace-nowrap">
-                {formatNumberRounded(
-                  lhaData.reduce((sum, row) => sum + Number(row.output || 0), 0)
-                )}
+                {formatNumberRounded(lhaTotals.normal)}
               </td>
               <td className="text-right whitespace-nowrap">
-                {formatNumberRounded(
-                  lhaData.reduce((sum, row) => sum + Number(row.normal || 0), 0)
-                )}
+                {formatNumberRounded(lhaTotals.abnormal)}
               </td>
               <td className="text-right whitespace-nowrap">
-                {formatNumberRounded(
-                  lhaData.reduce((sum, row) => sum + Number(row.abnormal || 0), 0)
-                )}
+                {formatNumberRounded(lhaTotals.overripe)}
               </td>
               <td className="text-right whitespace-nowrap">
-                {formatNumberRounded(
-                  lhaData.reduce((sum, row) => sum + Number(row.overripe || 0), 0)
-                )}
+                {formatNumberRounded(lhaTotals.empty)}
               </td>
               <td className="text-right whitespace-nowrap">
-                {formatNumberRounded(lhaData.reduce((sum, row) => sum + Number(row.empty || 0), 0))}
-              </td>
-              <td className="text-right whitespace-nowrap">
-                {formatNumberRounded(
-                  lhaData.reduce((sum, row) => sum + Number(row.mentah || 0), 0)
-                )}
+                {formatNumberRounded(lhaTotals.mentah)}
               </td>
             </tr>
           </tbody>
