@@ -72,6 +72,7 @@ export const Drawer = () => {
       className={size}
       viewBox="0 0 24 24"
       fill="currentColor"
+      aria-hidden="true"
     >
       <path d={iconPath} />
     </svg>
@@ -80,12 +81,13 @@ export const Drawer = () => {
   // Render single menu item
   const renderMenuItem = (item: MenuItem, isChild: boolean = false) => {
     if (item.children && item.children.length > 0) {
+      const isOpen = dropdownStates[item.id] || false;
       // Render dropdown menu
       return (
         <li key={item.id}>
           <details
             className="[&_summary::-webkit-details-marker]:hidden"
-            open={dropdownStates[item.id] || false}
+            open={isOpen}
             onToggle={e => {
               // Only update state if user clicked, not when pathname changes
               if (e.currentTarget.open !== dropdownStates[item.id]) {
@@ -93,11 +95,21 @@ export const Drawer = () => {
               }
             }}
           >
-            <summary className="flex items-center justify-between cursor-pointer hover:bg-base-300 focus-visible:ring-2 focus-visible:ring-primary rounded-lg transition-colors list-none [&::-webkit-details-marker]:hidden">
+            <summary className="flex items-center justify-between cursor-pointer hover:bg-base-300 focus-visible:ring-2 focus-visible:ring-primary rounded-lg transition-colors list-none [&::-webkit-details-marker]:hidden after:hidden">
               <div className="flex items-center gap-3">
                 {renderIcon(item.icon)}
                 <span>{t(item.label)}</span>
               </div>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className={`h-4 w-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
             </summary>
             <ul className="menu menu-sm">
               {item.children.map(child => renderMenuItem(child, true))}
