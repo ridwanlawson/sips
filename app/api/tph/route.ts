@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { BACKEND_URL } from '@/utils/absensiProxy';
+import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
 import { authHeaders, extractDataArray } from '@/lib/apiProxy';
+import { applyUserDataScope } from '@/utils/requestScope';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -22,18 +23,24 @@ type TphRow = {
 };
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  const token = req.cookies.get('auth_token')?.value;
+  const token = await getTokenFromCookie();
   if (!token) {
     return NextResponse.json({ ok: false, error: 'Not authenticated' }, { status: 401 });
   }
 
   const { searchParams } = req.nextUrl;
   const fcba = searchParams.get('fcba');
-  if (!fcba) {
+
+  const upstreamParams = new URLSearchParams();
+  if (fcba) upstreamParams.set('fcba', fcba);
+
+  // SECURITY: Enforce role-based data scoping (CWE-285 / IDOR protection).
+  applyUserDataScope(req, upstreamParams);
+
+  if (!upstreamParams.get('fcba')) {
     return NextResponse.json({ ok: false, error: 'fcba is required' }, { status: 400 });
   }
 
-  const upstreamParams = new URLSearchParams({ fcba });
   for (const key of ['fieldcode', 'afdeling', 'ancakno', 'notph']) {
     const v = searchParams.get(key);
     if (v) upstreamParams.append(key, v);
@@ -75,7 +82,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     { ok: true, data: rows },
     {
       headers: {
-        'Cache-Control': 'public, max-age=600, s-maxage=600, stale-while-revalidate=1200',
+        // SECURITY: Use private cache for potentially sensitive scoped data (CWE-524)
+        'Cache-Control': 'private, max-age=600, stale-while-revalidate=1200',
       },
     }
   );

@@ -1,12 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GET } from './route';
 import { NextRequest } from 'next/server';
+import { getTokenFromCookie } from '@/utils/absensiProxy';
 
 vi.stubGlobal('fetch', vi.fn());
 
 vi.mock('@/utils/absensiProxy', () => ({
   BACKEND_URL: 'http://trusted-backend.com',
   getTokenFromCookie: vi.fn(() => Promise.resolve('valid-token')),
+  authHeaders: vi.fn(token => ({ Authorization: `Bearer ${token}` })),
+  extractDataArray: vi.fn(json => json.data || []),
 }));
 
 describe('TPH API Security', () => {
@@ -14,7 +17,44 @@ describe('TPH API Security', () => {
     vi.clearAllMocks();
   });
 
+  it('should return 401 if user is not authenticated', async () => {
+    vi.mocked(getTokenFromCookie).mockResolvedValue(null);
+
+    const req = new NextRequest('http://localhost/api/tph?fcba=FCBA01');
+    const res = await GET(req);
+
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(data.ok).toBe(false);
+    expect(data.error).toBe('Not authenticated');
+  });
+
+  it('should apply data scope to search parameters (IDOR protection)', async () => {
+    vi.mocked(getTokenFromCookie).mockResolvedValue('valid-token');
+
+    // Attempting to access FCBA02 while user belongs to FCBA01
+    const req = new NextRequest('http://localhost/api/tph?fcba=FCBA02');
+    req.cookies.set('auth_token', 'valid-token');
+    req.cookies.set('user_Level', 'MDP');
+    req.cookies.set('user_Fcba', 'FCBA01');
+
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ ok: true, data: [] }),
+    } as Response);
+
+    await GET(req);
+
+    const lastFetchUrl = vi.mocked(global.fetch).mock.calls[0][0] as string;
+    const url = new URL(lastFetchUrl);
+
+    // Data scope should override the requested fcba with the user's fcba
+    expect(url.searchParams.get('fcba')).toBe('FCBA01');
+  });
+
   it('should return generic error message and not leak upstream details on failure', async () => {
+    vi.mocked(getTokenFromCookie).mockResolvedValue('valid-token');
     const req = new NextRequest('http://localhost/api/tph?fcba=FCBA01');
     req.cookies.set('auth_token', 'valid-token');
 
@@ -32,7 +72,7 @@ describe('TPH API Security', () => {
     expect(res.status).toBe(500);
     const data = await res.json();
 
-    // This assertion is expected to FAIL currently as the implementation leaks the error
+    // Should return generic error
     expect(data.error).toBe('Failed to fetch TPH data');
     expect(data.ok).toBe(false);
   });
