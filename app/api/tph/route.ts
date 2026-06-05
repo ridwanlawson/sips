@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { BACKEND_URL } from '@/utils/absensiProxy';
+import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
 import { authHeaders, extractDataArray } from '@/lib/apiProxy';
 
 export const dynamic = 'force-dynamic';
@@ -22,7 +22,7 @@ type TphRow = {
 };
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
-  const token = req.cookies.get('auth_token')?.value;
+  const token = await getTokenFromCookie();
   if (!token) {
     return NextResponse.json({ ok: false, error: 'Not authenticated' }, { status: 401 });
   }
@@ -34,6 +34,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 
   const upstreamParams = new URLSearchParams({ fcba });
+
   for (const key of ['fieldcode', 'afdeling', 'ancakno', 'notph']) {
     const v = searchParams.get(key);
     if (v) upstreamParams.append(key, v);
@@ -75,7 +76,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     { ok: true, data: rows },
     {
       headers: {
-        'Cache-Control': 'public, max-age=600, s-maxage=600, stale-while-revalidate=1200',
+        // SECURITY: Use private cache for potentially sensitive scoped data (CWE-524)
+        'Cache-Control': 'private, max-age=600, stale-while-revalidate=1200',
       },
     }
   );

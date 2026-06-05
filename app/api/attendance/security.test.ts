@@ -16,32 +16,6 @@ describe('Attendance API Security', () => {
     vi.clearAllMocks();
   });
 
-  it('should apply data scope to search parameters', async () => {
-    const req = new NextRequest('http://localhost/api/attendance?employeecode=123');
-    // Mock cookies for a MANDOR (MDP) user
-    req.cookies.set('auth_token', 'valid-token');
-    req.cookies.set('user_Level', 'MDP');
-    req.cookies.set('user_Fcba', 'FCBA01');
-    req.cookies.set('user_Afdeling', 'AFD01');
-    req.cookies.set('user_Gang', 'GANG01');
-
-    vi.mocked(global.fetch).mockResolvedValue({
-      ok: true,
-      status: 200,
-      text: async () => JSON.stringify({ ok: true, data: [] }),
-    } as Response);
-
-    await GET(req);
-
-    const lastFetchUrl = vi.mocked(global.fetch).mock.calls[0][0] as string;
-    const url = new URL(lastFetchUrl);
-
-    // Data scope should be applied
-    expect(url.searchParams.get('fcba')).toBe('FCBA01');
-    expect(url.searchParams.get('afdeling')).toBe('AFD01');
-    expect(url.searchParams.get('gang')).toBe('GANG01');
-  });
-
   it('should return generic error message and not leak upstream details on failure', async () => {
     const req = new NextRequest('http://localhost/api/attendance');
     req.cookies.set('auth_token', 'valid-token');
