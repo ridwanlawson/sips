@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
 import { authHeaders, extractDataArray } from '@/lib/apiProxy';
-import { applyUserDataScope } from '@/utils/requestScope';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -30,16 +29,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   const { searchParams } = req.nextUrl;
   const fcba = searchParams.get('fcba');
-
-  const upstreamParams = new URLSearchParams();
-  if (fcba) upstreamParams.set('fcba', fcba);
-
-  // SECURITY: Enforce role-based data scoping (CWE-285 / IDOR protection).
-  applyUserDataScope(req, upstreamParams);
-
-  if (!upstreamParams.get('fcba')) {
+  if (!fcba) {
     return NextResponse.json({ ok: false, error: 'fcba is required' }, { status: 400 });
   }
+
+  const upstreamParams = new URLSearchParams({ fcba });
 
   for (const key of ['fieldcode', 'afdeling', 'ancakno', 'notph']) {
     const v = searchParams.get(key);

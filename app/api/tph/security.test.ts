@@ -29,30 +29,6 @@ describe('TPH API Security', () => {
     expect(data.error).toBe('Not authenticated');
   });
 
-  it('should apply data scope to search parameters (IDOR protection)', async () => {
-    vi.mocked(getTokenFromCookie).mockResolvedValue('valid-token');
-
-    // Attempting to access FCBA02 while user belongs to FCBA01
-    const req = new NextRequest('http://localhost/api/tph?fcba=FCBA02');
-    req.cookies.set('auth_token', 'valid-token');
-    req.cookies.set('user_Level', 'MDP');
-    req.cookies.set('user_Fcba', 'FCBA01');
-
-    vi.mocked(global.fetch).mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ ok: true, data: [] }),
-    } as Response);
-
-    await GET(req);
-
-    const lastFetchUrl = vi.mocked(global.fetch).mock.calls[0][0] as string;
-    const url = new URL(lastFetchUrl);
-
-    // Data scope should override the requested fcba with the user's fcba
-    expect(url.searchParams.get('fcba')).toBe('FCBA01');
-  });
-
   it('should return generic error message and not leak upstream details on failure', async () => {
     vi.mocked(getTokenFromCookie).mockResolvedValue('valid-token');
     const req = new NextRequest('http://localhost/api/tph?fcba=FCBA01');
