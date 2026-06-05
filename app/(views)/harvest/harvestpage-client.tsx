@@ -314,6 +314,47 @@ const toNumber = (value: string | number | null | undefined): number => {
 const formatTotal = (value: number, localeTag = 'id-ID'): string =>
   formatPerfNumber(value, localeTag, { maximumFractionDigits: 2 });
 
+const getMonthDateRange = (isoDate: string) => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const monthIndex = Number(match[2]) - 1;
+  const start = new Date(year, monthIndex, 1);
+  const end = new Date(year, monthIndex + 1, 0);
+  return { start: formatDateISO(start), end: formatDateISO(end) };
+};
+
+const formatDocDate = (isoDate: string) => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
+  if (!match) return '';
+  return `${match[3]}${match[2]}${match[1].slice(-2)}`;
+};
+
+const getRunningNumber = (nodokumen: string | null | undefined) => {
+  const match = /\/(\d{4})$/.exec((nodokumen || '').trim());
+  return match ? Number(match[1]) : 0;
+};
+
+const buildHarvestDocumentNo = ({
+  fcba,
+  afdeling,
+  fieldcode,
+  noancak,
+  tanggal,
+  running,
+}: {
+  fcba: string;
+  afdeling: string;
+  fieldcode: string;
+  noancak: string;
+  tanggal: string;
+  running: number;
+}) => {
+  const docDate = formatDocDate(tanggal);
+  if (!fcba || !afdeling || !fieldcode || !noancak || !docDate || running <= 0) return '';
+  return `${fcba}/${afdeling}/${fieldcode}-${noancak}/${docDate}/${String(running).padStart(4, '0')}`;
+};
+
 /* =========================
    M A I N
 ========================= */
@@ -350,12 +391,16 @@ export default function HarvestPage() {
   const [open, setOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState('');
+  const [deleteFile, setDeleteFile] = useState<File | undefined>(undefined);
 
   // Form states
   const [form, setForm] = useState<FormState>(initialForm);
   const [preview, setPreview] = useState<string>('');
   const imgRef = useRef<HTMLInputElement | null>(null);
   const pdfRef = useRef<HTMLInputElement | null>(null);
+  const deletePdfRef = useRef<HTMLInputElement | null>(null);
 
   // Cascading states for form
   const [triplets, setTriplets] = useState<Triplet[]>([]);
@@ -556,6 +601,96 @@ export default function HarvestPage() {
       toast.error(msg);
     }
   }, [queryError]);
+
+  const { data: nextDocumentNo = '', isFetching: isFetchingDocumentNo } = useQuery({
+    queryKey: [
+      'harvest-document-no',
+      form.tanggal,
+      form.fcba,
+      form.afdeling,
+      form.fieldcode,
+      form.noancak,
+      form.kemandoran,
+    ],
+    queryFn: async () => {
+      const range = getMonthDateRange(form.tanggal);
+      if (
+        !range ||
+        !form.fcba ||
+        !form.afdeling ||
+        !form.fieldcode ||
+        !form.noancak ||
+        !form.kemandoran
+      ) {
+        return '';
+      }
+
+      const params = new URLSearchParams({
+        tanggal: range.start,
+        tanggal_end: range.end,
+        fcba: form.fcba,
+        afdeling: form.afdeling,
+        kemandoran: form.kemandoran,
+      });
+
+      const res = await fetch(`/api/harvest?${params.toString()}`, {
+        credentials: 'include',
+      });
+      if (res.status === 401) {
+        await logoutAndRedirect();
+        return '';
+      }
+      if (!res.ok) return '';
+
+      const json: unknown = await res.json();
+      if (isUnauthenticatedJson(json)) {
+        await logoutAndRedirect();
+        return '';
+      }
+
+      const rows = extractArrayData<Harvest>(json);
+      const maxRunning = rows.reduce(
+        (max, row) => Math.max(max, getRunningNumber(row.nodokumen)),
+        0
+      );
+
+      return buildHarvestDocumentNo({
+        fcba: form.fcba,
+        afdeling: form.afdeling,
+        fieldcode: form.fieldcode,
+        noancak: form.noancak,
+        tanggal: form.tanggal,
+        running: maxRunning + 1,
+      });
+    },
+    enabled:
+      !isEditing &&
+      !!form.tanggal &&
+      !!form.fcba &&
+      !!form.afdeling &&
+      !!form.fieldcode &&
+      !!form.noancak &&
+      !!form.kemandoran,
+    staleTime: 0,
+  });
+
+  useEffect(() => {
+    if (isEditing || !nextDocumentNo) return;
+    setForm(s => (s.nodokumen === nextDocumentNo ? s : { ...s, nodokumen: nextDocumentNo }));
+  }, [isEditing, nextDocumentNo]);
+
+  useEffect(() => {
+    if (isEditing) return;
+    setForm(s => (s.nodokumen ? { ...s, nodokumen: '' } : s));
+  }, [
+    isEditing,
+    form.tanggal,
+    form.fcba,
+    form.afdeling,
+    form.fieldcode,
+    form.noancak,
+    form.kemandoran,
+  ]);
 
   /* ===== Parallel data fetching with useQuery ===== */
   // Business units query - runs in parallel
@@ -922,9 +1057,14 @@ export default function HarvestPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, file }: { id: string; file: File }) => {
+      const body = new FormData();
+      body.append('ba_deleted', file);
+      body.append('_method', 'DELETE');
+
       const res = await fetch(`/api/harvest/${id}`, {
-        method: 'DELETE',
+        method: 'POST',
+        body,
         credentials: 'include',
       });
       if (res.status === 401) {
@@ -937,7 +1077,12 @@ export default function HarvestPage() {
         throw new Error('Unauthorized');
       }
       if (!res.ok || !json.ok) {
-        const errorMsg = typeof json.error === 'string' ? json.error : 'Gagal hapus';
+        const errorMsg =
+          typeof json.message === 'string'
+            ? json.message
+            : typeof json.error === 'string'
+              ? json.error
+              : 'Gagal hapus';
         throw new Error(errorMsg);
       }
       return id;
@@ -1234,6 +1379,12 @@ export default function HarvestPage() {
       toast.error('Anda tidak memiliki akses untuk melakukan perubahan');
       return;
     }
+    if (!isEditing && !form.nodokumen) {
+      toast.error(
+        'No dokumen belum terbentuk. Lengkapi FCBA, afdeling, field, kemandoran, dan karyawan.'
+      );
+      return;
+    }
 
     const formData = new FormData();
     Object.entries(form).forEach(([key, value]) => {
@@ -1254,13 +1405,48 @@ export default function HarvestPage() {
     mutation.mutate({ url, method, body: formData });
   };
 
-  const handleDelete = useCallback(
-    (id: string) => {
-      if (!confirm('Yakin ingin menghapus data ini?')) return;
-      deleteMutation.mutate(id);
-    },
-    [deleteMutation]
-  );
+  const handleDelete = useCallback((id: string) => {
+    setDeleteTargetId(id);
+    setDeleteFile(undefined);
+    if (deletePdfRef.current) deletePdfRef.current.value = '';
+    setDeleteOpen(true);
+  }, []);
+
+  const closeDeleteModal = () => {
+    if (deleteMutation.isPending) return;
+    setDeleteOpen(false);
+    setDeleteTargetId('');
+    setDeleteFile(undefined);
+    if (deletePdfRef.current) deletePdfRef.current.value = '';
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteTargetId) return;
+    if (!deleteFile) {
+      toast.error('Lampiran BA delete PDF wajib diisi');
+      return;
+    }
+    if (deleteFile.type !== 'application/pdf') {
+      toast.error('Lampiran BA delete harus berupa file PDF');
+      return;
+    }
+    if (deleteFile.size > 2 * 1024 * 1024) {
+      toast.error('Lampiran BA delete maksimal 2 MB');
+      return;
+    }
+
+    deleteMutation.mutate(
+      { id: deleteTargetId, file: deleteFile },
+      {
+        onSuccess: () => {
+          setDeleteOpen(false);
+          setDeleteTargetId('');
+          setDeleteFile(undefined);
+          if (deletePdfRef.current) deletePdfRef.current.value = '';
+        },
+      }
+    );
+  };
 
   /* ===== Quick search ===== */
   const filtered = useMemo(() => {
@@ -1354,7 +1540,8 @@ export default function HarvestPage() {
           const isPlanned = status === 'planned';
           const canEditRole = canModify;
           const canEdit = canEditRole && isPlanned;
-          const canDelete = userLevel === 'ADM' && status !== 'approved' && status !== '';
+          const canDelete =
+            (userLevel === 'ADM' || userLevel === 'KSI') && status !== 'approved' && status !== '';
 
           return (
             <div className="space-x-1 whitespace-nowrap overflow-visible">
@@ -1997,9 +2184,17 @@ export default function HarvestPage() {
                       type="text"
                       className="input input-bordered w-full"
                       value={form.nodokumen}
-                      onChange={e => setForm(s => ({ ...s, nodokumen: e.target.value }))}
+                      readOnly
+                      placeholder={
+                        isFetchingDocumentNo && !isEditing
+                          ? 'Menghitung otomatis...'
+                          : 'Otomatis setelah FCBA, afdeling, field, kemandoran, karyawan terisi'
+                      }
                       required
                     />
+                    <p className="text-xs opacity-70">
+                      Format: FCBA/Afdeling/Field-Ancak/DDMMYY/Running bulanan per kemandoran.
+                    </p>
                   </fieldset>
 
                   {/* Tanggal */}
@@ -2494,6 +2689,49 @@ export default function HarvestPage() {
               setPreview('');
             }}
           ></div>
+        </div>
+      )}
+
+      {deleteOpen && (
+        <div className="modal modal-open">
+          <div className="modal-box max-w-lg">
+            <h3 className="font-bold text-lg">Hapus Data Panen</h3>
+            <p className="mt-2 text-sm text-base-content/70">
+              Upload lampiran BA Delete dalam format PDF sebelum menghapus data.
+            </p>
+
+            <fieldset className="fieldset mt-3">
+              <legend className="fieldset-legend">Lampiran BA Delete (PDF) *</legend>
+              <input
+                ref={deletePdfRef}
+                type="file"
+                accept="application/pdf"
+                className="file-input file-input-bordered w-full"
+                onChange={e => setDeleteFile(e.target.files?.[0])}
+                required
+              />
+              <p className="text-xs opacity-70">Maksimal 2 MB.</p>
+            </fieldset>
+
+            <div className="modal-action">
+              <button type="button" className="btn" onClick={closeDeleteModal}>
+                Batal
+              </button>
+              <button
+                type="button"
+                className={`btn btn-error ${deleteMutation.isPending ? 'btn-disabled' : ''}`}
+                onClick={handleConfirmDelete}
+                disabled={deleteMutation.isPending || !deleteFile}
+              >
+                {deleteMutation.isPending ? (
+                  <span className="loading loading-spinner loading-sm" />
+                ) : (
+                  'Hapus'
+                )}
+              </button>
+            </div>
+          </div>
+          <div className="modal-backdrop" onClick={closeDeleteModal}></div>
         </div>
       )}
     </div>

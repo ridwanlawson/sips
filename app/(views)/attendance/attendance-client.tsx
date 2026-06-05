@@ -1695,7 +1695,7 @@ export default function Attendance() {
         name: <span title="Kemandoran">Kemandoran</span>,
         selector: r => r.kemandoran ?? '-',
         sortable: true,
-        width: '100px',
+        width: '120px',
       },
       {
         name: <span title="Nama dan kode karyawan">Karyawan</span>,
@@ -2510,7 +2510,7 @@ export default function Attendance() {
                 </div>
 
                 {/* Mandor */}
-                <fieldset className="fieldset col-span-12 md:col-span-3">
+                <fieldset className="fieldset col-span-12 md:col-span-4">
                   <legend className="fieldset-legend">Mandor (opsional)</legend>
                   <SearchSelect
                     options={mandorOptions}
@@ -2522,7 +2522,7 @@ export default function Attendance() {
                 </fieldset>
 
                 {/* Kemandoran */}
-                <fieldset className="fieldset col-span-12 md:col-span-3">
+                <fieldset className="fieldset col-span-12 md:col-span-2">
                   <legend className="fieldset-legend">Kemandoran (otomatis)</legend>
                   <input
                     type="text"
