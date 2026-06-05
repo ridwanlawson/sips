@@ -1,6 +1,7 @@
 'use client';
 
 import { memo } from 'react';
+import { useTranslations } from 'next-intl';
 
 interface SimpleBarChartProps {
   data: Array<{ label: string; value: number }>;
@@ -15,12 +16,13 @@ export const SimpleBarChart = memo(function SimpleBarChart({
   color = 'bg-blue-500',
   title,
 }: SimpleBarChartProps) {
+  const t = useTranslations('Dashboard');
   const max = maxValue || Math.max(...data.map(d => d.value), 1);
 
   if (!data || data.length === 0) {
     return (
       <div className="w-full h-40 flex items-center justify-center text-base-content/60">
-        <p>📊 Tidak ada data tersedia</p>
+        <p>{t('noDataBar')}</p>
       </div>
     );
   }
@@ -39,6 +41,11 @@ export const SimpleBarChart = memo(function SimpleBarChart({
               <div
                 className={`h-full ${color} transition-all duration-500 ease-out flex items-center justify-center`}
                 style={{ width: `${(item.value / max) * 100}%` }}
+                role="progressbar"
+                aria-valuenow={item.value}
+                aria-valuemin={0}
+                aria-valuemax={max}
+                aria-label={`${item.label}: ${item.value}`}
               >
                 <span className="text-xs font-semibold text-white">
                   {Math.round((item.value / max) * 100)}%
@@ -58,12 +65,13 @@ interface PieChartProps {
 }
 
 export const SimplePieChart = memo(function SimplePieChart({ data, title }: PieChartProps) {
+  const t = useTranslations('Dashboard');
   const total = data.reduce((sum, item) => sum + item.value, 0);
 
   if (!data || data.length === 0 || total === 0) {
     return (
       <div className="w-full h-40 flex items-center justify-center text-base-content/60">
-        <p>🥧 Tidak ada data tersedia</p>
+        <p>{t('noDataPie')}</p>
       </div>
     );
   }
@@ -126,9 +134,15 @@ export const SimplePieChart = memo(function SimplePieChart({ data, title }: PieC
       <div className="flex flex-col gap-4">
         {/* SVG Pie Chart */}
         <div className="flex justify-center">
-          <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <svg
+            width={size}
+            height={size}
+            viewBox={`0 0 ${size} ${size}`}
+            role="img"
+            aria-label={`${title || 'Pie Chart'}: ${total} ${t('total')}`}
+          >
             {slices.map((slice, idx) => (
-              <g key={idx}>
+              <g key={idx} role="graphics-symbol" aria-label={`${slice.label}: ${slice.value}`}>
                 <path
                   d={slice.path}
                   fill={slice.color}
@@ -154,7 +168,7 @@ export const SimplePieChart = memo(function SimplePieChart({ data, title }: PieC
               textAnchor="middle"
               className="text-xs fill-current opacity-60"
             >
-              Total
+              {t('total')}
             </text>
           </svg>
         </div>
@@ -198,10 +212,11 @@ interface LineChartProps {
 }
 
 export const SimpleLineChart = memo(function SimpleLineChart({ data, title }: LineChartProps) {
+  const t = useTranslations('Dashboard');
   if (!data || data.length === 0) {
     return (
       <div className="w-full h-40 flex items-center justify-center text-base-content/60">
-        <p>📈 Tidak ada data tersedia</p>
+        <p>{t('noDataLine')}</p>
       </div>
     );
   }
@@ -213,16 +228,16 @@ export const SimpleLineChart = memo(function SimpleLineChart({ data, title }: Li
         <table className="table table-compact w-full text-xs">
           <thead>
             <tr>
-              <th>Periode</th>
-              <th className="text-center">Hadir</th>
-              <th className="text-center">Tepat Waktu</th>
-              <th className="text-center">Telat</th>
-              <th className="text-center">Pulang Awal</th>
-              <th className="text-center">Alpa</th>
-              <th className="text-center">% Tepat Waktu</th>
-              <th className="text-center">% Telat</th>
-              <th className="text-center">% Pulang Awal</th>
-              <th className="text-center">% Alpa</th>
+              <th>{t('period')}</th>
+              <th className="text-center">{t('present')}</th>
+              <th className="text-center">{t('onTime')}</th>
+              <th className="text-center">{t('late')}</th>
+              <th className="text-center">{t('earlyLeave')}</th>
+              <th className="text-center">{t('absent')}</th>
+              <th className="text-center">% {t('onTime')}</th>
+              <th className="text-center">% {t('late')}</th>
+              <th className="text-center">% {t('earlyLeave')}</th>
+              <th className="text-center">% {t('absent')}</th>
             </tr>
           </thead>
           <tbody>
