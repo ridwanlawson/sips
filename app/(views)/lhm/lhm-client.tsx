@@ -335,26 +335,29 @@ export default function Lhm() {
   }, [appliedFilters, userLevel, homeFcba, fetchData]);
 
   /* ===== Quick search ===== */
-  const filtered = useMemo(() => {
-    if (!q.trim()) return items;
-    const s = q.toLowerCase();
-    // ⚡ Bolt Optimization: Use pre-calculated search content for O(1) string check per row
-    const filteredItems = items.filter(it => it._searchContent?.includes(s));
+  // ⚡ Bolt Optimization: Consolidated filtering and attendance check in a single pass
+  // to avoid redundant O(N) loops.
+  const { filtered, attendanceMatch } = useMemo(() => {
+    if (!q.trim()) return { filtered: items, attendanceMatch: true };
 
-    // Jika pencarian attendance tidak ditemukan, tampilkan error
-    if (q && items.length > 0) {
-      // ⚡ Bolt Optimization: Reuse searchContent logic for consistency and performance
-      const attendanceExists = filteredItems.some(item =>
-        (item.attendance || '').toLowerCase().includes(s)
-      );
-      if (!attendanceExists) {
-        setError(`Data dengan attendance "${q}" tidak ditemukan.`);
-      } else {
-        setError(null);
-      }
-    }
-    return filteredItems;
+    const s = q.toLowerCase();
+    const result = items.filter(it => it._searchContent?.includes(s));
+    const hasAttendance = result.some(it => (it.attendance || '').toLowerCase().includes(s));
+
+    return { filtered: result, attendanceMatch: hasAttendance };
   }, [q, items]);
+
+  // ⚡ Bolt Optimization: Side-effects (setError) moved out of useMemo to useEffect
+  // to preserve existing error-reporting logic while avoiding React render-phase state updates.
+  useEffect(() => {
+    if (!q || items.length === 0) {
+      setError(null);
+    } else if (!attendanceMatch) {
+      setError(`Data dengan attendance "${q}" tidak ditemukan.`);
+    } else {
+      setError(null);
+    }
+  }, [q, items.length, attendanceMatch]);
 
   /* ===== Export Excel ===== */
   const handleExport = async () => {

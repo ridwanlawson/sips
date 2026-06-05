@@ -13,3 +13,7 @@
 ## 2026-05-31 - [O(N^2) Row Numbering Anti-pattern]
 **Learning:** Calculating unique row numbers inside a React render loop using `data.slice(0, idx).filter()` causes O(N²) complexity. This leads to severe UI lag as the number of rows (N) increases, especially in data-heavy report tables.
 **Action:** Pre-calculate row numbers or unique counters during the data processing phase (e.g., inside `fetchData` or `useMemo`) using a single-pass (O(N)) counter. Store the result on the data object itself to allow O(1) access during render.
+
+## 2026-05-31 - [O(N) Render-path Lookup Anti-pattern]
+**Learning:** Performing O(N) lookups (like `array.find()`) or repeated string operations (like `toLowerCase()`) inside a render loop or during frequent user input (e.g., in a SearchSelect) causes significant UI lag as N grows.
+**Action:** Pre-calculate a `Map` for O(1) lookups and pre-calculate search content (e.g., lowercase strings) in a `useMemo` block. This shifts the computational cost from every render/keystroke to once per data change.
