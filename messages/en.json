@@ -50,5 +50,11 @@
     "quickSearch": "Quick Search",
     "clearSearch": "Clear search",
     "searchPlaceholder": "Search employee, block, fcba, document no..."
+  },
+  "Transport": {
+    "quickSearch": "Quick Search",
+    "clearSearch": "Clear search",
+    "searchPlaceholder": "Search (transport no, SPB, driver, fcba...)",
+    "noData": "No data"
   }
 }
