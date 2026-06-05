@@ -10,6 +10,8 @@ import { cookieStore } from '@/utils/cookieStore';
 import { getFilterCriteria, getLockedFields } from '@/utils/filterHelper';
 import { formatPerfNumber, formatPerfDate } from '@/utils/perf-formatter';
 import { useLocale } from '@/hooks/useLocale';
+import { useTranslations } from 'next-intl';
+import toast from 'react-hot-toast';
 
 /* =========================
    T Y P E S
@@ -128,6 +130,7 @@ const applyClientUserScope = (params: URLSearchParams) => {
 ========================= */
 export default function PengangkutanPage() {
   const localeTag = useLocale();
+  const t = useTranslations('Transport');
   const [items, setItems] = useState<Pengangkutan[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -165,15 +168,6 @@ export default function PengangkutanPage() {
   const [homeSection, setHomeSection] = useState<string>('');
   const [homeGang, setHomeGang] = useState<string>('');
 
-  // Toast
-  const [alert, setAlert] = useState<{
-    type: 'success' | 'error';
-    msg: string;
-  } | null>(null);
-  const showAlert = (msg: string, type: 'success' | 'error' = 'success') => {
-    setAlert({ msg, type });
-    setTimeout(() => setAlert(null), 4000);
-  };
 
   // Initialize user defaults
   useEffect(() => {
@@ -315,11 +309,11 @@ export default function PengangkutanPage() {
           });
           setItems(data);
         } else {
-          showAlert(json.message || json.error || 'Gagal mengambil data', 'error');
+          toast.error(json.message || json.error || 'Gagal mengambil data');
         }
       } catch (e) {
         console.error(e);
-        showAlert('Terjadi kesalahan jaringan', 'error');
+        toast.error('Terjadi kesalahan jaringan');
       } finally {
         setLoading(false);
       }
@@ -537,20 +531,7 @@ export default function PengangkutanPage() {
   return (
     <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
       <div className="p-4 sm:p-6 max-w-screen-2xl mx-auto w-full overflow-x-hidden">
-        {/* Toast */}
-        <div className="toast toast-top right-4 z-50">
-          {alert && (
-            <div className={`alert ${alert.type === 'success' ? 'alert-success' : 'alert-error'}`}>
-              <div>
-                <span className="font-semibold">
-                  {alert.type === 'success' ? 'Berhasil' : 'Gagal'}
-                </span>
-                <span className="ml-2 whitespace-pre-line">{alert.msg}</span>
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start">
+        <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start animate-slideUp">
           <h1
             className="text-2xl sm:text-3xl font-bold min-w-0 truncate"
             title="Halaman pengelolaan Pengangkutan"
@@ -576,13 +557,59 @@ export default function PengangkutanPage() {
           </div>
         </div>
 
-        <div className="mb-3 flex justify-end gap-2">
-          <input
-            className="input input-bordered w-full md:w-96"
-            placeholder="Cari (no pengangkutan, SPB, driver, fcba...)"
-            value={q}
-            onChange={e => setQ(e.target.value)}
-          />
+        <div className="mb-3 flex justify-end animate-slideUp [animation-delay:100ms]">
+          <div className="relative w-full md:w-96 group">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+            <input
+              className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
+              placeholder={t('searchPlaceholder')}
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              aria-label={t('quickSearch')}
+              title={t('quickSearch')}
+            />
+            {q && (
+              <button
+                type="button"
+                onClick={() => setQ('')}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-base-content/50 hover:text-error transition-colors"
+                aria-label={t('clearSearch')}
+                title={t('clearSearch')}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
 
         {showFilters && (
@@ -718,7 +745,7 @@ export default function PengangkutanPage() {
           </div>
         )}
 
-        <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100">
+        <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100 animate-slideUp [animation-delay:200ms]">
           <div className="min-w-[900px] md:min-w-0">
             <DataTable
               keyField="_rowKey"
@@ -734,7 +761,7 @@ export default function PengangkutanPage() {
               fixedHeaderScrollHeight="520px"
               persistTableHead
               responsive
-              noDataComponent={<div className="py-8 text-base-content/70">Tidak ada data.</div>}
+              noDataComponent={<div className="py-8 text-base-content/70">{t('noData')}</div>}
             />
           </div>
         </div>
