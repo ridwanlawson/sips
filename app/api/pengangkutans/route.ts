@@ -93,3 +93,40 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   return NextResponse.json({ ok: true, data: [], message: 'OK' });
 }
+
+export async function POST(req: NextRequest): Promise<NextResponse> {
+  const token = await getTokenFromCookie();
+  if (!token) {
+    return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
+  }
+
+  const incoming = await req.formData();
+  const form = new FormData();
+  for (const [key, value] of incoming.entries()) {
+    if (typeof value === 'string') {
+      form.append(key, value);
+    } else {
+      form.append(key, value, value.name);
+    }
+  }
+
+  const upstream = await fetch(PENGANGKUTAN_BASE, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    body: form,
+  });
+
+  const { data, parseError } = await parseJsonSafe(upstream);
+  if (parseError) {
+    return NextResponse.json({ ok: false, error: 'Invalid response format' }, { status: 502 });
+  }
+
+  if (!upstream.ok) {
+    return NextResponse.json(
+      { ok: false, error: extractMessage(data, 'Create failed') },
+      { status: upstream.status }
+    );
+  }
+
+  return NextResponse.json({ ok: true, data });
+}
