@@ -17,3 +17,7 @@
 ## 2026-05-31 - [O(N) Render-path Lookup Anti-pattern]
 **Learning:** Performing O(N) lookups (like `array.find()`) or repeated string operations (like `toLowerCase()`) inside a render loop or during frequent user input (e.g., in a SearchSelect) causes significant UI lag as N grows.
 **Action:** Pre-calculate a `Map` for O(1) lookups and pre-calculate search content (e.g., lowercase strings) in a `useMemo` block. This shifts the computational cost from every render/keystroke to once per data change.
+
+## 2025-05-15 - [O(N) Master Data Lookup in Filter Loops]
+**Learning:** Performing O(N) array searches (like `.find()`) inside of `.filter()` or `.map()` loops over large datasets (like employees) causes O(N*M) complexity. This results in noticeable UI freezing when changing filters or typing in searchable selects.
+**Action:** Pre-calculate a lookup `Map` for master data (e.g., Business Units) and use it for O(1) resolution within the loop. Pre-resolving the current selection's properties before the loop further eliminates redundant Map lookups.
