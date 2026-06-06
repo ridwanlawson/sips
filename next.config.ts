@@ -1,7 +1,7 @@
 import type { NextConfig } from 'next';
 import createNextIntlPlugin from 'next-intl/plugin';
 
-const withNextIntl = createNextIntlPlugin();
+const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 
 const securityHeaders = [
   {
@@ -43,13 +43,13 @@ const nextConfig: NextConfig = {
       },
       ...(backendUrl
         ? [
-            {
-              protocol: backendUrl.protocol.replace(':', '') as 'http' | 'https',
-              hostname: backendUrl.hostname,
-              port: backendUrl.port || undefined,
-              pathname: '/**',
-            },
-          ]
+          {
+            protocol: backendUrl.protocol.replace(':', '') as 'http' | 'https',
+            hostname: backendUrl.hostname,
+            port: backendUrl.port || undefined,
+            pathname: '/**',
+          },
+        ]
         : []),
     ],
   },

@@ -136,14 +136,6 @@ type MasterUser = {
   [key: string]: unknown;
 };
 
-const getTodayISO = (): string => {
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-};
-
 const normalizeNonNegative = (value: string) => (value.startsWith('-') ? '0' : value);
 
 const initialForm: FormState = {
@@ -185,6 +177,7 @@ const formatDateTimeForApi = (value: string) => (value ? value.replace('T', ' ')
 /* =========================
    U T I L S
 ========================= */
+import { getTodayISO, getYesterdayISO } from '@/utils/datetime';
 const getUserScope = () => ({
   level: cookieStore.getLevel(),
   fcba: cookieStore.getFcba(),
@@ -230,9 +223,10 @@ export default function PengangkutanPage() {
   const [loading, setLoading] = useState(false);
 
   const [filters, setFilters] = useState<Filters>(() => {
+    const yesterday = getYesterdayISO();
     const today = getTodayISO();
     return {
-      tanggal: today,
+      tanggal: yesterday,
       tanggal_end: today,
       nopengangkutan: '',
       nospb: '',
@@ -998,7 +992,6 @@ export default function PengangkutanPage() {
                 </button>
               </>
             )}
-            {!canModify && <span className="text-xs text-gray-500">ADM / KSI only</span>}
           </div>
         ),
         ignoreRowClick: true,
