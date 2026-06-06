@@ -118,6 +118,7 @@ export default function LhmReport() {
     fcname: string;
     luas: string;
     output: string;
+    brondol: string;
     normal: string;
     abnormal: string;
     mentah: string;
@@ -206,6 +207,7 @@ export default function LhmReport() {
       (acc, row) => {
         acc.luas += Number(row.luas || 0);
         acc.output += Number(row.output || 0);
+        acc.brondol += Number(row.brondol || 0);
         acc.normal += Number(row.normal || 0);
         acc.abnormal += Number(row.abnormal || 0);
         acc.overripe += Number(row.overripe || 0);
@@ -216,6 +218,7 @@ export default function LhmReport() {
       {
         luas: 0,
         output: 0,
+        brondol: 0,
         normal: 0,
         abnormal: 0,
         overripe: 0,
@@ -690,6 +693,7 @@ export default function LhmReport() {
               <th>Blok</th>
               <th>Ha</th>
               <th>Jjg</th>
+              <th>Brondolan</th>
               <th>Normal (N)</th>
               <th>Abnormal (AB)</th>
               <th>Over Ripe (OR)</th>
@@ -717,6 +721,7 @@ export default function LhmReport() {
                   <td className="text-center">{row.fcname}</td>
                   <td className="text-right">{row.luas}</td>
                   <td className="text-right">{formatNumber(row.output)}</td>
+                  <td className="text-right">{formatNumber(row.brondol)}</td>
                   <td className="text-right">{formatNumber(row.normal)}</td>
                   <td className="text-right">{formatNumber(row.abnormal)}</td>
                   <td className="text-right">{formatNumber(row.overripe)}</td>
@@ -729,9 +734,14 @@ export default function LhmReport() {
               <td colSpan={2} className="text-right">
                 Total
               </td>
-              <td className="text-right whitespace-nowrap">{formatNumberRounded(lhaTotals.luas)}</td>
+              <td className="text-right whitespace-nowrap">
+                {formatNumberRounded(lhaTotals.luas)}
+              </td>
               <td className="text-right whitespace-nowrap">
                 {formatNumberRounded(lhaTotals.output)}
+              </td>
+              <td className="text-right whitespace-nowrap">
+                {formatNumberRounded(lhaTotals.brondol)}
               </td>
               <td className="text-right whitespace-nowrap">
                 {formatNumberRounded(lhaTotals.normal)}

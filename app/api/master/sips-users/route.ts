@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
 import { applyUserDataScope } from '@/utils/requestScope';
-import { authHeaders, parseJsonSafe } from '@/lib/apiProxy';
+import { authHeaders, parseJsonSafe, isRecord } from '@/lib/apiProxy';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -36,8 +36,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, data });
   }
 
-  if (data && typeof data === 'object' && 'data' in data && Array.isArray((data as any).data)) {
-    return NextResponse.json({ ok: true, data: (data as any).data });
+  if (isRecord(data) && Array.isArray(data.data)) {
+    return NextResponse.json({ ok: true, data: data.data as unknown[] });
   }
 
   return NextResponse.json({ ok: true, data: [] });

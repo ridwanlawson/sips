@@ -184,6 +184,10 @@ export default function Home() {
             target="_blank"
             rel="noopener noreferrer"
             href="https://skj.my.id/app_archive.asp"
+            onClick={e => {
+              e.preventDefault();
+              void handleDownload();
+            }}
             className={`mt-4 inline-flex items-center gap-3 rounded-2xl bg-base-100/80 px-3 py-2 shadow-md animate-bounce transition hover:bg-base-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary outline-none ${isCheckingDownload ? 'opacity-60 cursor-not-allowed' : ''}`}
           >
             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">

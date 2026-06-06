@@ -1892,7 +1892,7 @@ export default function HarvestPage() {
               onClick={handleExport}
               title="Ekspor data yang difilter ke Excel"
             >
-              📤 Export
+              Export
             </button>
             {canModify && (
               <button

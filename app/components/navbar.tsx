@@ -11,7 +11,6 @@ import { toTitleCase } from '@/utils/textManipulation';
 import { getProxiedImageUrl } from '@/utils/imageHelper';
 import { useTranslations } from 'next-intl';
 import { cookieStore } from '@/utils/cookieStore';
-import { checkAndDownloadApp } from '@/utils/downloadapp';
 
 const FALLBACK_AVATAR =
   'https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp';
@@ -25,7 +24,6 @@ export default memo(function Navbar() {
   const [fullNameDisplay, setFullNameDisplay] = useState<string | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isNavigating, setIsNavigating] = useState<string | null>(null);
-  const [isCheckingDownload, setIsCheckingDownload] = useState(false);
 
   // Reset the progress bar when navigation completes.
   useEffect(() => {
@@ -74,15 +72,6 @@ export default memo(function Navbar() {
     },
     [pathname, router]
   );
-
-  const handleDownload = useCallback(async () => {
-    setIsCheckingDownload(true);
-    try {
-      await checkAndDownloadApp();
-    } finally {
-      setIsCheckingDownload(false);
-    }
-  }, []);
 
   const avatarSrc = getProxiedImageUrl(photoUrl) || FALLBACK_AVATAR;
 

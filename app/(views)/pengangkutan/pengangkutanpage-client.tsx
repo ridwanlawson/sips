@@ -10,6 +10,8 @@ import { cookieStore } from '@/utils/cookieStore';
 import { getFilterCriteria, getLockedFields } from '@/utils/filterHelper';
 import { formatPerfNumber, formatPerfDate } from '@/utils/perf-formatter';
 import { fetchBusinessUnits } from '@/utils/businessUnitService';
+import { fetchAttendanceUpload } from '@/utils/attendanceUploadService';
+import { exportJsonToCsv } from '@/utils/exportCsv';
 import { useLocale } from '@/hooks/useLocale';
 import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
@@ -116,9 +118,7 @@ type FormState = {
   mentah: string;
   abnormal: string;
   etd: string;
-  eta: string;
   card_id: string;
-  status_pengangkutan: string;
   flag: string;
   exception_case: string;
 };
@@ -137,12 +137,22 @@ type MasterUser = {
   [key: string]: unknown;
 };
 
+const getTodayISO = (): string => {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+const normalizeNonNegative = (value: string) => (value.startsWith('-') ? '0' : value);
+
 const initialForm: FormState = {
   id: '',
   nopengangkutan: '',
   nospb: '',
   nodokumen: '',
-  tanggal: '',
+  tanggal: getTodayISO(),
   kode_karyawan_kerani: '',
   kode_karyawan_driver: '',
   tkbm1: '',
@@ -159,16 +169,14 @@ const initialForm: FormState = {
   fcba_destination: '',
   afdeling_destination: '',
   pabrik_tujuan: '',
-  totaljanjang: '',
-  output: '',
-  janjangnormal: '',
-  brondolan: '',
-  mentah: '',
-  abnormal: '',
+  totaljanjang: '0',
+  output: '0',
+  janjangnormal: '0',
+  brondolan: '0',
+  mentah: '0',
+  abnormal: '0',
   etd: '',
-  eta: '',
   card_id: '',
-  status_pengangkutan: '',
   flag: '',
   exception_case: '',
 };
@@ -178,14 +186,6 @@ const formatDateTimeForApi = (value: string) => (value ? value.replace('T', ' ')
 /* =========================
    U T I L S
 ========================= */
-const getTodayISO = (): string => {
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-};
-
 const getUserScope = () => ({
   level: cookieStore.getLevel(),
   fcba: cookieStore.getFcba(),
@@ -279,6 +279,11 @@ export default function PengangkutanPage() {
     []
   );
   const [keraniOptions, setKeraniOptions] = useState<Array<MasterUser>>([]);
+  const [harvestMatched, setHarvestMatched] = useState(false);
+  const [harvestSource, setHarvestSource] = useState<{ fcba: string; afdeling: string } | null>(
+    null
+  );
+  const [harvestStatus, setHarvestStatus] = useState('');
 
   const deleteFileRef = useRef<HTMLInputElement | null>(null);
   const harvestFetchTimerRef = useRef<number | null>(null);
@@ -304,11 +309,9 @@ export default function PengangkutanPage() {
   useEffect(() => {
     const init = async () => {
       try {
-        const [pabrikRows, driverRows, keraniRows, tkbmRows] = await Promise.all([
+        const [pabrikRows, driverRows] = await Promise.all([
           fetchBusinessUnits({ fctype: 'M' }),
-          fetchMasterUsers({ level: 'KRT', fcba: 'CNT' }),
-          fetchMasterUsers({ level: 'KRA' }),
-          fetchMasterUsers({ level: 'MDP' }),
+          fetchMasterUsers({ fcba: 'CNT' }),
         ]);
 
         setPabrikOptions(
@@ -323,21 +326,6 @@ export default function PengangkutanPage() {
             fullname: String(row.fullname || ''),
           }))
         );
-        setKeraniOptions(
-          keraniRows.map(row => ({
-            fccode: String(row.fccode || ''),
-            fullname: String(row.fullname || ''),
-            fcba: String(row.fcba || ''),
-            afdeling: String(row.afdeling || ''),
-            gangcode: String(row.gangcode || ''),
-          }))
-        );
-        setTkbmOptions(
-          tkbmRows.map(row => ({
-            fccode: String(row.fccode || ''),
-            fullname: String(row.fullname || ''),
-          }))
-        );
       } catch (err) {
         console.warn('Error initializing master data', err);
       }
@@ -346,7 +334,41 @@ export default function PengangkutanPage() {
   }, []);
 
   useEffect(() => {
+    const loadKeraniOptions = async () => {
+      try {
+        const params: Record<string, string> = {
+          level: 'KRT',
+          fcba: form.fcba || homeFcba,
+          afdeling: form.afdeling || homeSection,
+        };
+        const hasFilter = params.fcba || params.afdeling;
+        if (!hasFilter) {
+          setKeraniOptions([]);
+          return;
+        }
+        const rows = await fetchMasterUsers(params);
+        setKeraniOptions(
+          rows.map(row => ({
+            fccode: String(row.fccode || ''),
+            fullname: String(row.fullname || ''),
+            fcba: String(row.fcba || ''),
+            afdeling: String(row.afdeling || ''),
+            gangcode: String(row.gangcode || ''),
+          }))
+        );
+      } catch (err) {
+        console.error('Failed fetching kerani options', err);
+      }
+    };
+
+    loadKeraniOptions();
+  }, [form.fcba, form.afdeling, homeFcba, homeSection]);
+
+  useEffect(() => {
     if (!form.nodokumen?.trim()) {
+      setHarvestMatched(false);
+      setHarvestSource(null);
+      setHarvestStatus('');
       return;
     }
 
@@ -355,28 +377,70 @@ export default function PengangkutanPage() {
     }
 
     harvestFetchTimerRef.current = window.setTimeout(async () => {
+      const dokumen = form.nodokumen.trim();
+      setHarvestMatched(false);
+      setHarvestSource(null);
+      setHarvestStatus('Mencari data dokumen...');
+
       try {
-        const res = await fetch(
-          `/api/harvest?nodokumen=${encodeURIComponent(form.nodokumen.trim())}`,
-          {
-            credentials: 'include',
-          }
-        );
-        if (!res.ok) return;
-        const json = await res.json();
-        if (!json.ok || !Array.isArray(json.data) || json.data.length === 0) {
+        const res = await fetch(`/api/harvest?nodokumen=${encodeURIComponent(dokumen)}`, {
+          credentials: 'include',
+        });
+        if (!res.ok) {
+          setHarvestStatus('Gagal mencari dokumen harvest');
           return;
         }
+
+        const json = await res.json();
+        if (!json.ok || !Array.isArray(json.data) || json.data.length === 0) {
+          setHarvestStatus('Dokumen tidak ditemukan di harvest');
+          return;
+        }
+
         const first = json.data[0];
-        if (first) {
-          setForm(s => ({
-            ...s,
-            fcba: s.fcba || first.fcba || '',
-            afdeling: s.afdeling || first.afdeling || '',
+        const harvestFcba = String(first.fcba || '');
+        const harvestAfdeling = String(first.afdeling || '');
+        setHarvestSource({ fcba: harvestFcba, afdeling: harvestAfdeling });
+
+        const selectedKerani = keraniOptions.find(
+          option => option.fccode === form.kode_karyawan_kerani
+        );
+
+        if (selectedKerani) {
+          if (selectedKerani.fcba === harvestFcba && selectedKerani.afdeling === harvestAfdeling) {
+            setForm(current => ({
+              ...current,
+              fcba: harvestFcba,
+              afdeling: harvestAfdeling,
+              fcba_destination: '',
+              afdeling_destination: '',
+            }));
+          } else {
+            setForm(current => ({
+              ...current,
+              fcba: selectedKerani.fcba || current.fcba || '',
+              afdeling: selectedKerani.afdeling || current.afdeling || '',
+              fcba_destination: harvestFcba,
+              afdeling_destination: harvestAfdeling,
+            }));
+          }
+        } else {
+          setForm(current => ({
+            ...current,
+            fcba: harvestFcba,
+            afdeling: harvestAfdeling,
+            fcba_destination: '',
+            afdeling_destination: '',
           }));
         }
+
+        setHarvestMatched(true);
+        setHarvestStatus(`Dokumen ditemukan: ${harvestFcba}/${harvestAfdeling}`);
       } catch (err) {
         console.error('Failed to fetch harvest info', err);
+        setHarvestMatched(false);
+        setHarvestSource(null);
+        setHarvestStatus('Kesalahan saat mencari dokumen harvest');
       }
     }, 500);
 
@@ -385,7 +449,95 @@ export default function PengangkutanPage() {
         window.clearTimeout(harvestFetchTimerRef.current);
       }
     };
-  }, [form.nodokumen]);
+  }, [form.nodokumen, form.kode_karyawan_kerani, keraniOptions]);
+
+  useEffect(() => {
+    let ignore = false;
+    const selectedKerani = keraniOptions.find(
+      option => option.fccode === form.kode_karyawan_kerani
+    );
+
+    if (harvestMatched && harvestSource) {
+      if (
+        selectedKerani &&
+        selectedKerani.fcba === harvestSource.fcba &&
+        selectedKerani.afdeling === harvestSource.afdeling
+      ) {
+        setForm(current => ({
+          ...current,
+          fcba: harvestSource.fcba,
+          afdeling: harvestSource.afdeling,
+          fcba_destination: '',
+          afdeling_destination: '',
+        }));
+      } else if (selectedKerani) {
+        setForm(current => ({
+          ...current,
+          fcba: selectedKerani.fcba || current.fcba || '',
+          afdeling: selectedKerani.afdeling || current.afdeling || '',
+          fcba_destination: harvestSource.fcba,
+          afdeling_destination: harvestSource.afdeling,
+        }));
+      }
+    } else if (selectedKerani) {
+      setForm(current => ({
+        ...current,
+        fcba: current.fcba || selectedKerani.fcba || '',
+        afdeling: current.afdeling || selectedKerani.afdeling || '',
+      }));
+    }
+
+    const loadTkbmOptions = async () => {
+      const params = {
+        tanggal: form.tanggal,
+        fcba: selectedKerani?.fcba || form.fcba || homeFcba,
+        afdeling: selectedKerani?.afdeling || form.afdeling || homeSection,
+        gangcode: selectedKerani?.gangcode || homeGang,
+      };
+
+      if (!params.tanggal || !params.fcba || !params.afdeling || !params.gangcode) {
+        setTkbmOptions([]);
+        return;
+      }
+
+      try {
+        const response = await fetchAttendanceUpload(params);
+        if (ignore) return;
+        if (response.success && Array.isArray(response.data)) {
+          const uniqueData = Array.from(
+            new Map(response.data.map(item => [item.employeecode, item])).values()
+          );
+          setTkbmOptions(
+            uniqueData.map(item => ({
+              fccode: String(item.employeecode || ''),
+              fullname: String(item.remarks || item.jobcode || ''),
+            }))
+          );
+        } else {
+          setTkbmOptions([]);
+        }
+      } catch (err) {
+        console.error('Failed to load TKBM options', err);
+        if (!ignore) setTkbmOptions([]);
+      }
+    };
+
+    loadTkbmOptions();
+    return () => {
+      ignore = true;
+    };
+  }, [
+    form.kode_karyawan_kerani,
+    form.tanggal,
+    form.fcba,
+    form.afdeling,
+    keraniOptions,
+    harvestMatched,
+    harvestSource,
+    homeFcba,
+    homeSection,
+    homeGang,
+  ]);
 
   // Initialize user defaults
   useEffect(() => {
@@ -430,7 +582,12 @@ export default function PengangkutanPage() {
   }, [scopeReady, userLevel, homeFcba, homeSection, homeGang]);
 
   const resetForm = () => {
-    setForm(initialForm);
+    setForm({
+      ...initialForm,
+      tanggal: getTodayISO(),
+      fcba: isFcbaLocked ? homeFcba : '',
+      afdeling: isAfdelingLocked ? homeSection : '',
+    });
     setNoBaExcaFile(null);
     if (deleteFileRef.current) deleteFileRef.current.value = '';
   };
@@ -447,7 +604,7 @@ export default function PengangkutanPage() {
       nopengangkutan: row.nopengangkutan || '',
       nospb: row.nospb || '',
       nodokumen: row.nodokumen || '',
-      tanggal: row.tanggal ? row.tanggal.split(' ')[0] : '',
+      tanggal: row.tanggal ? row.tanggal.split(' ')[0] : getTodayISO(),
       kode_karyawan_kerani: row.kode_karyawan_kerani || '',
       kode_karyawan_driver: row.kode_karyawan_driver || '',
       tkbm1: row.tkbm1 || '',
@@ -464,16 +621,14 @@ export default function PengangkutanPage() {
       fcba_destination: row.fcba_destination || '',
       afdeling_destination: row.afdeling_destination || '',
       pabrik_tujuan: row.pabrik_tujuan || '',
-      totaljanjang: row.totaljanjang || '',
-      output: row.output || '',
-      janjangnormal: row.janjangnormal || '',
-      brondolan: row.brondolan || '',
-      mentah: row.mentah || '',
-      abnormal: row.abnormal || '',
+      totaljanjang: row.totaljanjang || '0',
+      output: row.output || '0',
+      janjangnormal: row.janjangnormal || '0',
+      brondolan: row.brondolan || '0',
+      mentah: row.mentah || '0',
+      abnormal: row.abnormal || '0',
       etd: row.etd ? row.etd.replace(' ', 'T') : '',
-      eta: row.eta ? row.eta.replace(' ', 'T') : '',
       card_id: row.card_id || '',
-      status_pengangkutan: row.status_pengangkutan || '',
       flag: row.flag || '',
       exception_case: row.exception_case || '',
     });
@@ -516,9 +671,7 @@ export default function PengangkutanPage() {
     append('mentah', form.mentah);
     append('abnormal', form.abnormal);
     append('etd', formatDateTimeForApi(form.etd));
-    append('eta', formatDateTimeForApi(form.eta));
     append('card_id', form.card_id);
-    append('status_pengangkutan', form.status_pengangkutan);
     append('flag', form.flag);
     append('exception_case', form.exception_case);
     if (noBaExcaFile) {
@@ -541,7 +694,11 @@ export default function PengangkutanPage() {
       toast.error('Tipe Pengangkutan wajib dipilih');
       return;
     }
-    if (!noBaExcaFile) {
+    if (form.nodokumen.trim() && !harvestMatched) {
+      toast.error('No Dokumen belum valid atau belum ditemukan di harvest');
+      return;
+    }
+    if (!noBaExcaFile && !isEditing) {
       toast.error('File BA wajib dilampirkan dalam format PDF');
       return;
     }
@@ -636,6 +793,54 @@ export default function PengangkutanPage() {
     () => getLockedFields(userLevel, 'transport'),
     [userLevel]
   );
+
+  const shouldDisableForm = !!form.nodokumen.trim() && !harvestMatched;
+
+  const handleExport = () => {
+    if (items.length === 0) {
+      toast.error('Tidak ada data untuk diekspor');
+      return;
+    }
+
+    const dataToExport = items.map((r, idx) => ({
+      No: idx + 1,
+      'No Pengangkutan': r.nopengangkutan || '-',
+      'No SPB': r.nospb || '-',
+      'No Dokumen': r.nodokumen || '-',
+      Tanggal: (r.tanggal || '').split(' ')[0],
+      'Kerani Kode': r.kode_karyawan_kerani || '-',
+      'Kerani Nama': r.nama_karyawan_kerani || '-',
+      'Driver Kode': r.kode_karyawan_driver || '-',
+      'Driver Nama': r.nama_karyawan_driver || '-',
+      TKBM1: r.tkbm1 || '-',
+      TKBM2: r.tkbm2 || '-',
+      TKBM3: r.tkbm3 || '-',
+      TKBM4: r.tkbm4 || '-',
+      TKBM5: r.tkbm5 || '-',
+      'Tipe Pengangkutan': r.type_pengangkutan ? String(r.type_pengangkutan) : '-',
+      Kendaraan: r.nama_kendaraan || r.kode_kendaraan || '-',
+      FCBA: r.fcba || '-',
+      Pabrik: r.pabrik_tujuan || '-',
+      Afdeling: r.afdeling || '-',
+      TPH: r.tph || '-',
+      Field: r.fieldcode || '-',
+      'FCBA Tujuan': r.fcba_destination || '-',
+      'Afdeling Tujuan': r.afdeling_destination || '-',
+      ETD: r.etd || '-',
+      'Total Janjang': r.totaljanjang || '0',
+      Output: r.output || '0',
+      'Janjang Normal': r.janjangnormal || '0',
+      Brondolan: r.brondolan || '0',
+      Mentah: r.mentah || '0',
+      Abnormal: r.abnormal || '0',
+      Status: r.status_pengangkutan || '-',
+      'Card ID': r.card_id || '-',
+      Flag: r.flag || '-',
+      'Exception Case': r.exception_case || '-',
+    }));
+
+    exportJsonToCsv(dataToExport, `Pengangkutan_${getTodayISO()}.csv`);
+  };
 
   const fetchData = useCallback(
     async (current: Filters) => {
@@ -758,6 +963,45 @@ export default function PengangkutanPage() {
 
   const columns: TableColumn<Pengangkutan & { _index: number }>[] = useMemo(
     () => [
+      {
+        name: <span title="Aksi edit/hapus data pengangkutan">Aksi</span>,
+        width: '180px',
+        style: { justifyContent: 'center' },
+        cell: r => (
+          <div className="flex flex-wrap gap-2 justify-center">
+            <button
+              type="button"
+              className="btn btn-xs"
+              onClick={() => openEditRecord(r)}
+              title="Edit pengangkutan"
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              className="btn btn-xs btn-error"
+              onClick={() => handleDeleteRecord(r)}
+              title="Hapus pengangkutan"
+            >
+              Hapus
+            </button>
+          </div>
+        ),
+        ignoreRowClick: true,
+      },
+      {
+        name: <span title="Status pengangkutan (Planned/Approved/...)">Status</span>,
+        selector: r => r.status_pengangkutan || '-',
+        sortable: true,
+        width: '120px',
+        cell: r => (
+          <span
+            className={`badge ${r.status_pengangkutan === 'Planned' ? 'badge-info' : 'badge-ghost'}`}
+          >
+            {r.status_pengangkutan}
+          </span>
+        ),
+      },
       {
         name: <span title="Nomor urut baris">#</span>,
         selector: r => r._index,
@@ -906,41 +1150,24 @@ export default function PengangkutanPage() {
         ),
       },
       {
-        name: 'Aksi',
-        width: '180px',
+        name: <span title="Mentah">Mentah</span>,
+        selector: r => r.mentah || '-',
+        sortable: true,
+        width: '100px',
         style: { justifyContent: 'center' },
         cell: r => (
-          <div className="flex flex-wrap gap-2 justify-center">
-            <button
-              type="button"
-              className="btn btn-xs btn-outline"
-              onClick={() => openEditRecord(r)}
-              title="Edit pengangkutan"
-            >
-              Edit
-            </button>
-            <button
-              type="button"
-              className="btn btn-xs btn-error btn-outline"
-              onClick={() => handleDeleteRecord(r)}
-              title="Hapus pengangkutan"
-            >
-              Hapus
-            </button>
-          </div>
+          <span className="text-center w-full">{formatPerfNumber(r.mentah || '0', localeTag)}</span>
         ),
-        ignoreRowClick: true,
       },
       {
-        name: <span title="Status pengangkutan (Planned/Approved/...)">Status</span>,
-        selector: r => r.status_pengangkutan || '-',
+        name: <span title="Abnormal">Abnormal</span>,
+        selector: r => r.abnormal || '-',
         sortable: true,
-        width: '120px',
+        width: '100px',
+        style: { justifyContent: 'center' },
         cell: r => (
-          <span
-            className={`badge ${r.status_pengangkutan === 'Planned' ? 'badge-info' : 'badge-ghost'}`}
-          >
-            {r.status_pengangkutan}
+          <span className="text-center w-full">
+            {formatPerfNumber(r.abnormal || '0', localeTag)}
           </span>
         ),
       },
@@ -991,13 +1218,6 @@ export default function PengangkutanPage() {
           </h1>
           <div className="flex justify-start sm:justify-end gap-2 flex-wrap w-full">
             <button
-              className="btn btn-primary btn-sm"
-              onClick={openNewRecord}
-              title="Tambah pengangkutan baru"
-            >
-              Tambah
-            </button>
-            <button
               className="btn btn-outline btn-sm"
               onClick={() => setShowFilters(s => !s)}
               title="Tampilkan / sembunyikan filter lanjutan"
@@ -1011,6 +1231,21 @@ export default function PengangkutanPage() {
               disabled={loading}
             >
               {loading ? 'Loading...' : 'Refresh'}
+            </button>
+            <button
+              className="btn btn-sm btn-outline"
+              onClick={handleExport}
+              title="Ekspor semua data pengangkutan ke CSV"
+              disabled={items.length === 0}
+            >
+              Export
+            </button>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={openNewRecord}
+              title="Tambah pengangkutan baru"
+            >
+              + Tambah Pengangkutan
             </button>
           </div>
         </div>
@@ -1247,6 +1482,7 @@ export default function PengangkutanPage() {
                     className="input input-bordered w-full"
                     value={form.nopengangkutan}
                     onChange={e => setForm(s => ({ ...s, nopengangkutan: e.target.value }))}
+                    disabled={shouldDisableForm}
                     required
                   />
                 </fieldset>
@@ -1257,6 +1493,7 @@ export default function PengangkutanPage() {
                     className="input input-bordered w-full"
                     value={form.nospb}
                     onChange={e => setForm(s => ({ ...s, nospb: e.target.value }))}
+                    disabled={shouldDisableForm}
                   />
                 </fieldset>
                 <fieldset className="fieldset col-span-12 md:col-span-4">
@@ -1268,6 +1505,13 @@ export default function PengangkutanPage() {
                     onChange={e => setForm(s => ({ ...s, nodokumen: e.target.value }))}
                   />
                 </fieldset>
+                {form.nodokumen.trim() ? (
+                  <div className="col-span-12">
+                    <p className={`text-sm ${harvestMatched ? 'text-success' : 'text-warning'}`}>
+                      {harvestStatus}
+                    </p>
+                  </div>
+                ) : null}
                 <fieldset className="fieldset col-span-12 md:col-span-3">
                   <legend className="fieldset-legend">Tanggal *</legend>
                   <input
@@ -1275,6 +1519,7 @@ export default function PengangkutanPage() {
                     className="input input-bordered w-full"
                     value={form.tanggal}
                     onChange={e => setForm(s => ({ ...s, tanggal: e.target.value }))}
+                    disabled={shouldDisableForm}
                     required
                   />
                 </fieldset>
@@ -1284,6 +1529,7 @@ export default function PengangkutanPage() {
                     className="select select-bordered w-full"
                     value={form.type_pengangkutan}
                     onChange={e => setForm(s => ({ ...s, type_pengangkutan: e.target.value }))}
+                    disabled={shouldDisableForm}
                     required
                   >
                     <option value="">Pilih tipe</option>
@@ -1298,6 +1544,7 @@ export default function PengangkutanPage() {
                     className="input input-bordered w-full"
                     value={form.kode_kendaraan}
                     onChange={e => setForm(s => ({ ...s, kode_kendaraan: e.target.value }))}
+                    disabled={shouldDisableForm}
                   />
                 </fieldset>
                 <fieldset className="fieldset col-span-12 md:col-span-3">
@@ -1307,6 +1554,7 @@ export default function PengangkutanPage() {
                     className="input input-bordered w-full"
                     value={form.tph}
                     onChange={e => setForm(s => ({ ...s, tph: e.target.value }))}
+                    disabled={shouldDisableForm}
                   />
                 </fieldset>
 
@@ -1319,6 +1567,7 @@ export default function PengangkutanPage() {
                       className="input input-bordered w-full"
                       value={form.kode_karyawan_kerani}
                       onChange={e => setForm(s => ({ ...s, kode_karyawan_kerani: e.target.value }))}
+                      disabled={shouldDisableForm}
                     />
                     <datalist id="kerani-options">
                       {keraniOptions.map(option => (
@@ -1336,6 +1585,7 @@ export default function PengangkutanPage() {
                       className="input input-bordered w-full"
                       value={form.kode_karyawan_driver}
                       onChange={e => setForm(s => ({ ...s, kode_karyawan_driver: e.target.value }))}
+                      disabled={shouldDisableForm}
                     />
                     <datalist id="driver-options">
                       {driverOptions.map(option => (
@@ -1352,6 +1602,7 @@ export default function PengangkutanPage() {
                       className="input input-bordered w-full"
                       value={form.card_id}
                       onChange={e => setForm(s => ({ ...s, card_id: e.target.value }))}
+                      disabled={shouldDisableForm}
                     />
                   </fieldset>
                 </div>
@@ -1365,6 +1616,7 @@ export default function PengangkutanPage() {
                       className="input input-bordered w-full"
                       value={form.tkbm1}
                       onChange={e => setForm(s => ({ ...s, tkbm1: e.target.value }))}
+                      disabled={shouldDisableForm}
                     />
                   </fieldset>
                   <fieldset className="fieldset col-span-12 md:col-span-4">
@@ -1375,6 +1627,7 @@ export default function PengangkutanPage() {
                       className="input input-bordered w-full"
                       value={form.tkbm2}
                       onChange={e => setForm(s => ({ ...s, tkbm2: e.target.value }))}
+                      disabled={shouldDisableForm}
                     />
                   </fieldset>
                   <fieldset className="fieldset col-span-12 md:col-span-4">
@@ -1385,6 +1638,7 @@ export default function PengangkutanPage() {
                       className="input input-bordered w-full"
                       value={form.tkbm3}
                       onChange={e => setForm(s => ({ ...s, tkbm3: e.target.value }))}
+                      disabled={shouldDisableForm}
                     />
                   </fieldset>
                 </div>
@@ -1404,6 +1658,7 @@ export default function PengangkutanPage() {
                       className="input input-bordered w-full"
                       value={form.tkbm4}
                       onChange={e => setForm(s => ({ ...s, tkbm4: e.target.value }))}
+                      disabled={shouldDisableForm}
                     />
                   </fieldset>
                   <fieldset className="fieldset col-span-12 md:col-span-4">
@@ -1414,6 +1669,7 @@ export default function PengangkutanPage() {
                       className="input input-bordered w-full"
                       value={form.tkbm5}
                       onChange={e => setForm(s => ({ ...s, tkbm5: e.target.value }))}
+                      disabled={shouldDisableForm}
                     />
                   </fieldset>
                   <fieldset className="fieldset col-span-12 md:col-span-4">
@@ -1423,6 +1679,7 @@ export default function PengangkutanPage() {
                       className="input input-bordered w-full"
                       value={form.fieldcode}
                       onChange={e => setForm(s => ({ ...s, fieldcode: e.target.value }))}
+                      disabled={shouldDisableForm}
                     />
                   </fieldset>
                 </div>
@@ -1435,6 +1692,7 @@ export default function PengangkutanPage() {
                       className="input input-bordered w-full"
                       value={form.fcba}
                       onChange={e => setForm(s => ({ ...s, fcba: e.target.value }))}
+                      disabled={shouldDisableForm}
                     />
                   </fieldset>
                   <fieldset className="fieldset col-span-12 md:col-span-3">
@@ -1444,6 +1702,7 @@ export default function PengangkutanPage() {
                       className="input input-bordered w-full"
                       value={form.afdeling}
                       onChange={e => setForm(s => ({ ...s, afdeling: e.target.value }))}
+                      disabled={shouldDisableForm}
                     />
                   </fieldset>
                   <fieldset className="fieldset col-span-12 md:col-span-3">
@@ -1453,6 +1712,7 @@ export default function PengangkutanPage() {
                       className="input input-bordered w-full"
                       value={form.fcba_destination}
                       onChange={e => setForm(s => ({ ...s, fcba_destination: e.target.value }))}
+                      disabled={shouldDisableForm}
                     />
                   </fieldset>
                   <fieldset className="fieldset col-span-12 md:col-span-3">
@@ -1462,6 +1722,7 @@ export default function PengangkutanPage() {
                       className="input input-bordered w-full"
                       value={form.afdeling_destination}
                       onChange={e => setForm(s => ({ ...s, afdeling_destination: e.target.value }))}
+                      disabled={shouldDisableForm}
                     />
                   </fieldset>
                 </div>
@@ -1473,6 +1734,7 @@ export default function PengangkutanPage() {
                       className="select select-bordered w-full"
                       value={form.pabrik_tujuan}
                       onChange={e => setForm(s => ({ ...s, pabrik_tujuan: e.target.value }))}
+                      disabled={shouldDisableForm}
                     >
                       <option value="">Pilih pabrik</option>
                       {pabrikOptions.map(option => (
@@ -1486,30 +1748,45 @@ export default function PengangkutanPage() {
                     <legend className="fieldset-legend">Total Janjang</legend>
                     <input
                       type="number"
+                      min="0"
                       step="any"
                       className="input input-bordered w-full"
                       value={form.totaljanjang}
-                      onChange={e => setForm(s => ({ ...s, totaljanjang: e.target.value }))}
+                      onChange={e =>
+                        setForm(s => ({ ...s, totaljanjang: normalizeNonNegative(e.target.value) }))
+                      }
+                      disabled={shouldDisableForm}
                     />
                   </fieldset>
                   <fieldset className="fieldset col-span-12 md:col-span-3">
                     <legend className="fieldset-legend">Output</legend>
                     <input
                       type="number"
+                      min="0"
                       step="any"
                       className="input input-bordered w-full"
                       value={form.output}
-                      onChange={e => setForm(s => ({ ...s, output: e.target.value }))}
+                      onChange={e =>
+                        setForm(s => ({ ...s, output: normalizeNonNegative(e.target.value) }))
+                      }
+                      disabled={shouldDisableForm}
                     />
                   </fieldset>
                   <fieldset className="fieldset col-span-12 md:col-span-3">
                     <legend className="fieldset-legend">Janjang Normal</legend>
                     <input
                       type="number"
+                      min="0"
                       step="any"
                       className="input input-bordered w-full"
                       value={form.janjangnormal}
-                      onChange={e => setForm(s => ({ ...s, janjangnormal: e.target.value }))}
+                      onChange={e =>
+                        setForm(s => ({
+                          ...s,
+                          janjangnormal: normalizeNonNegative(e.target.value),
+                        }))
+                      }
+                      disabled={shouldDisableForm}
                     />
                   </fieldset>
                 </div>
@@ -1519,30 +1796,42 @@ export default function PengangkutanPage() {
                     <legend className="fieldset-legend">Brondolan</legend>
                     <input
                       type="number"
+                      min="0"
                       step="any"
                       className="input input-bordered w-full"
                       value={form.brondolan}
-                      onChange={e => setForm(s => ({ ...s, brondolan: e.target.value }))}
+                      onChange={e =>
+                        setForm(s => ({ ...s, brondolan: normalizeNonNegative(e.target.value) }))
+                      }
+                      disabled={shouldDisableForm}
                     />
                   </fieldset>
                   <fieldset className="fieldset col-span-12 md:col-span-3">
                     <legend className="fieldset-legend">Mentah</legend>
                     <input
                       type="number"
+                      min="0"
                       step="any"
                       className="input input-bordered w-full"
                       value={form.mentah}
-                      onChange={e => setForm(s => ({ ...s, mentah: e.target.value }))}
+                      onChange={e =>
+                        setForm(s => ({ ...s, mentah: normalizeNonNegative(e.target.value) }))
+                      }
+                      disabled={shouldDisableForm}
                     />
                   </fieldset>
                   <fieldset className="fieldset col-span-12 md:col-span-3">
                     <legend className="fieldset-legend">Abnormal</legend>
                     <input
                       type="number"
+                      min="0"
                       step="any"
                       className="input input-bordered w-full"
                       value={form.abnormal}
-                      onChange={e => setForm(s => ({ ...s, abnormal: e.target.value }))}
+                      onChange={e =>
+                        setForm(s => ({ ...s, abnormal: normalizeNonNegative(e.target.value) }))
+                      }
+                      disabled={shouldDisableForm}
                     />
                   </fieldset>
                 </div>
@@ -1555,15 +1844,7 @@ export default function PengangkutanPage() {
                       className="input input-bordered w-full"
                       value={form.etd}
                       onChange={e => setForm(s => ({ ...s, etd: e.target.value }))}
-                    />
-                  </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-6">
-                    <legend className="fieldset-legend">ETA</legend>
-                    <input
-                      type="datetime-local"
-                      className="input input-bordered w-full"
-                      value={form.eta}
-                      onChange={e => setForm(s => ({ ...s, eta: e.target.value }))}
+                      disabled={shouldDisableForm}
                     />
                   </fieldset>
                 </div>
@@ -1576,7 +1857,8 @@ export default function PengangkutanPage() {
                       accept="application/pdf"
                       className="file-input file-input-bordered w-full"
                       onChange={handleNoBaExcaChange}
-                      required
+                      required={!isEditing}
+                      disabled={shouldDisableForm}
                     />
                   </fieldset>
                   <fieldset className="fieldset col-span-12 md:col-span-6">
@@ -1585,6 +1867,7 @@ export default function PengangkutanPage() {
                       className="textarea textarea-bordered w-full h-24"
                       value={form.exception_case}
                       onChange={e => setForm(s => ({ ...s, exception_case: e.target.value }))}
+                      disabled={shouldDisableForm}
                     />
                   </fieldset>
                 </div>
@@ -1593,7 +1876,11 @@ export default function PengangkutanPage() {
                   <button type="button" className="btn btn-outline" onClick={() => setOpen(false)}>
                     Batal
                   </button>
-                  <button type="submit" className="btn btn-primary" disabled={submitLoading}>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={submitLoading || shouldDisableForm}
+                  >
                     {submitLoading ? 'Menyimpan...' : isEditing ? 'Simpan Perubahan' : 'Simpan'}
                   </button>
                 </div>
