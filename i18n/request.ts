@@ -10,7 +10,7 @@ export default getRequestConfig(async () => {
   const cookieLocale = cookieStore.get('NEXT_LOCALE')?.value;
 
   // Use cookie locale if valid, otherwise default to 'en'
-  const locale = locales.includes(cookieLocale as any) ? cookieLocale : 'en';
+  const locale = (locales.includes(cookieLocale as string) ? cookieLocale : 'en') as string;
 
   try {
     const messages = (await import(`../messages/${locale}.json`)).default;
