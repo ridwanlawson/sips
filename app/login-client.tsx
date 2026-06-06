@@ -34,7 +34,7 @@ export default function Home() {
   const searchParams = useSearchParams();
 
   const rawRedirect = searchParams.get('redirect');
-  const redirectTo = isValidRedirect(rawRedirect) ? rawRedirect : '/dashboard';
+  const redirectTo = isValidRedirect(rawRedirect) ? (rawRedirect as string) : '/dashboard';
 
   useEffect(() => {
     const saved = window.localStorage.getItem('sips_saved_login');
