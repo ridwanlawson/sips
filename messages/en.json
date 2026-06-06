@@ -56,5 +56,17 @@
     "clearSearch": "Clear search",
     "searchPlaceholder": "Search (transport no, SPB, driver, fcba...)",
     "noData": "No data"
+  },
+  "Dashboard": {
+    "noDataBar": "📊 No data available",
+    "noDataPie": "🥧 No data available",
+    "noDataLine": "📈 No data available",
+    "total": "Total",
+    "period": "Period",
+    "present": "Present",
+    "onTime": "On Time",
+    "late": "Late",
+    "earlyLeave": "Early Leave",
+    "absent": "Absent"
   }
 }
