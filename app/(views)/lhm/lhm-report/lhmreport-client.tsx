@@ -402,7 +402,12 @@ export default function LhmReport() {
           </button>
         </div>
       </div>
-      <div ref={printRef} className="lhm-print-wrapper" style={{ overflowX: 'auto' }}>
+      <div
+        ref={printRef}
+        className="lhm-print-wrapper"
+        style={{ overflowX: 'auto' }}
+        suppressHydrationWarning
+      >
         <div className="lhm-print-header">
           <div className="w-full">
             <div>
