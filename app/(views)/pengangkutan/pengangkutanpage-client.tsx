@@ -990,15 +990,21 @@ export default function PengangkutanPage() {
         ignoreRowClick: true,
       },
       {
-        name: <span title="Status pengangkutan (Planned/Approved/...)">Status</span>,
-        selector: r => r.status_pengangkutan || '-',
+        name: <span title="Status persetujuan pengangkutan (Planned/Approved/dll)">Status</span>,
+        selector: r => r.status_pengangkutan ?? '-',
         sortable: true,
         width: '120px',
         cell: r => (
           <span
-            className={`badge ${r.status_pengangkutan === 'Planned' ? 'badge-info' : 'badge-ghost'}`}
+            className={`badge ${
+              (r.status_pengangkutan || '').toLowerCase() === 'planned'
+                ? 'badge-warning'
+                : (r.status_pengangkutan || '').toLowerCase() === 'approved'
+                  ? 'badge-success'
+                  : 'badge-ghost'
+            }`}
           >
-            {r.status_pengangkutan}
+            {r.status_pengangkutan ?? '-'}
           </span>
         ),
       },
