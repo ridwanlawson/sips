@@ -56,5 +56,17 @@
     "clearSearch": "Hapus pencarian",
     "searchPlaceholder": "Cari (no pengangkutan, SPB, driver, fcba...)",
     "noData": "Tidak ada data"
+  },
+  "Dashboard": {
+    "noDataBar": "📊 Tidak ada data tersedia",
+    "noDataPie": "🥧 Tidak ada data tersedia",
+    "noDataLine": "📈 Tidak ada data tersedia",
+    "total": "Total",
+    "period": "Periode",
+    "present": "Hadir",
+    "onTime": "Tepat Waktu",
+    "late": "Telat",
+    "earlyLeave": "Pulang Awal",
+    "absent": "Alpa"
   }
 }
