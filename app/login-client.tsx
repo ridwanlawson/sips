@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { checkAndDownloadApp } from '@/utils/downloadapp';
+import { isValidRedirect } from '@/utils/sanitization';
 
 const LOADING_TIPS = [
   'Pastikan username dan password sudah benar.',
@@ -32,7 +33,8 @@ export default function Home() {
   const [tipIndex, setTipIndex] = useState(0);
   const searchParams = useSearchParams();
 
-  const redirectTo = searchParams.get('redirect') || '/dashboard';
+  const rawRedirect = searchParams.get('redirect');
+  const redirectTo = isValidRedirect(rawRedirect) ? rawRedirect : '/dashboard';
 
   useEffect(() => {
     const saved = window.localStorage.getItem('sips_saved_login');
