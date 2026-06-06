@@ -24,7 +24,6 @@ type Pengangkutan = {
   // ⚡ Bolt Optimization: cached display and search values
   _displayDate?: string;
   _searchContent?: string;
-
   id: string;
   nopengangkutan: string;
   nospb?: string | null;
@@ -259,6 +258,7 @@ export default function PengangkutanPage() {
   const [userLevel, setUserLevel] = useState<
     'ADM' | 'MGR' | 'KSI' | 'MD1' | 'AST' | 'KRT' | 'KRA' | 'KRP' | 'MDP' | 'OTHER'
   >('OTHER');
+  const canModify = userLevel === 'ADM' || userLevel === 'KSI';
   const [scopeReady, setScopeReady] = useState(false);
   const [homeFcba, setHomeFcba] = useState<string>('');
   const [homeSection, setHomeSection] = useState<string>('');
@@ -593,49 +593,54 @@ export default function PengangkutanPage() {
   };
 
   const openNewRecord = () => {
+    if (!canModify) return;
     resetForm();
     setIsEditing(false);
     setOpen(true);
   };
 
-  const openEditRecord = (row: Pengangkutan) => {
-    setForm({
-      id: row.id,
-      nopengangkutan: row.nopengangkutan || '',
-      nospb: row.nospb || '',
-      nodokumen: row.nodokumen || '',
-      tanggal: row.tanggal ? row.tanggal.split(' ')[0] : getTodayISO(),
-      kode_karyawan_kerani: row.kode_karyawan_kerani || '',
-      kode_karyawan_driver: row.kode_karyawan_driver || '',
-      tkbm1: row.tkbm1 || '',
-      tkbm2: row.tkbm2 || '',
-      tkbm3: row.tkbm3 || '',
-      tkbm4: row.tkbm4 || '',
-      tkbm5: row.tkbm5 || '',
-      type_pengangkutan: row.type_pengangkutan ? String(row.type_pengangkutan) : '',
-      kode_kendaraan: row.kode_kendaraan || '',
-      tph: row.tph || '',
-      fieldcode: row.fieldcode || '',
-      fcba: row.fcba || '',
-      afdeling: row.afdeling || '',
-      fcba_destination: row.fcba_destination || '',
-      afdeling_destination: row.afdeling_destination || '',
-      pabrik_tujuan: row.pabrik_tujuan || '',
-      totaljanjang: row.totaljanjang || '0',
-      output: row.output || '0',
-      janjangnormal: row.janjangnormal || '0',
-      brondolan: row.brondolan || '0',
-      mentah: row.mentah || '0',
-      abnormal: row.abnormal || '0',
-      etd: row.etd ? row.etd.replace(' ', 'T') : '',
-      card_id: row.card_id || '',
-      flag: row.flag || '',
-      exception_case: row.exception_case || '',
-    });
-    setNoBaExcaFile(null);
-    setIsEditing(true);
-    setOpen(true);
-  };
+  const openEditRecord = useCallback(
+    (row: Pengangkutan) => {
+      if (!canModify) return;
+      setForm({
+        id: row.id,
+        nopengangkutan: row.nopengangkutan || '',
+        nospb: row.nospb || '',
+        nodokumen: row.nodokumen || '',
+        tanggal: row.tanggal ? row.tanggal.split(' ')[0] : getTodayISO(),
+        kode_karyawan_kerani: row.kode_karyawan_kerani || '',
+        kode_karyawan_driver: row.kode_karyawan_driver || '',
+        tkbm1: row.tkbm1 || '',
+        tkbm2: row.tkbm2 || '',
+        tkbm3: row.tkbm3 || '',
+        tkbm4: row.tkbm4 || '',
+        tkbm5: row.tkbm5 || '',
+        type_pengangkutan: row.type_pengangkutan ? String(row.type_pengangkutan) : '',
+        kode_kendaraan: row.kode_kendaraan || '',
+        tph: row.tph || '',
+        fieldcode: row.fieldcode || '',
+        fcba: row.fcba || '',
+        afdeling: row.afdeling || '',
+        fcba_destination: row.fcba_destination || '',
+        afdeling_destination: row.afdeling_destination || '',
+        pabrik_tujuan: row.pabrik_tujuan || '',
+        totaljanjang: row.totaljanjang || '0',
+        output: row.output || '0',
+        janjangnormal: row.janjangnormal || '0',
+        brondolan: row.brondolan || '0',
+        mentah: row.mentah || '0',
+        abnormal: row.abnormal || '0',
+        etd: row.etd ? row.etd.replace(' ', 'T') : '',
+        card_id: row.card_id || '',
+        flag: row.flag || '',
+        exception_case: row.exception_case || '',
+      });
+      setNoBaExcaFile(null);
+      setIsEditing(true);
+      setOpen(true);
+    },
+    [canModify]
+  );
 
   const buildFormData = () => {
     const formData = new FormData();
@@ -734,11 +739,15 @@ export default function PengangkutanPage() {
     }
   };
 
-  const handleDeleteRecord = (row: Pengangkutan) => {
-    setDeleteTarget({ id: row.id, nopengangkutan: row.nopengangkutan || row.id });
-    setDeleteFile(null);
-    setDeleteOpen(true);
-  };
+  const handleDeleteRecord = useCallback(
+    (row: Pengangkutan) => {
+      if (!canModify) return;
+      setDeleteTarget({ id: row.id, nopengangkutan: row.nopengangkutan || row.id });
+      setDeleteFile(null);
+      setDeleteOpen(true);
+    },
+    [canModify]
+  );
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
@@ -969,22 +978,27 @@ export default function PengangkutanPage() {
         style: { justifyContent: 'center' },
         cell: r => (
           <div className="flex flex-wrap gap-2 justify-center">
-            <button
-              type="button"
-              className="btn btn-xs"
-              onClick={() => openEditRecord(r)}
-              title="Edit pengangkutan"
-            >
-              Edit
-            </button>
-            <button
-              type="button"
-              className="btn btn-xs btn-error"
-              onClick={() => handleDeleteRecord(r)}
-              title="Hapus pengangkutan"
-            >
-              Hapus
-            </button>
+            {canModify && (
+              <>
+                <button
+                  type="button"
+                  className="btn btn-xs"
+                  onClick={() => openEditRecord(r)}
+                  title="Edit pengangkutan"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-xs btn-error"
+                  onClick={() => handleDeleteRecord(r)}
+                  title="Hapus pengangkutan"
+                >
+                  Hapus
+                </button>
+              </>
+            )}
+            {!canModify && <span className="text-xs text-gray-500">ADM / KSI only</span>}
           </div>
         ),
         ignoreRowClick: true,
@@ -1209,7 +1223,7 @@ export default function PengangkutanPage() {
         ignoreRowClick: true,
       },
     ],
-    [localeTag]
+    [localeTag, canModify, handleDeleteRecord, openEditRecord]
   );
 
   return (
@@ -1250,6 +1264,7 @@ export default function PengangkutanPage() {
               className="btn btn-primary btn-sm"
               onClick={openNewRecord}
               title="Tambah pengangkutan baru"
+              disabled={!canModify}
             >
               + Tambah Pengangkutan
             </button>
