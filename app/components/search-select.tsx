@@ -20,7 +20,13 @@ interface SearchSelectProps {
   useFixedPositioning?: boolean;
 }
 
-export const SearchSelect: React.FC<SearchSelectProps> = ({
+/**
+ * ⚡ Bolt Optimization: SearchSelect component.
+ * - Wrapped in React.memo to prevent unnecessary re-renders.
+ * - Uses a pre-calculated Map for O(1) label lookups.
+ * - Pre-calculates lowercase search content to optimize filtering performance.
+ */
+const SearchSelectInner: React.FC<SearchSelectProps> = ({
   options,
   value,
   onChange,
@@ -37,13 +43,25 @@ export const SearchSelect: React.FC<SearchSelectProps> = ({
   const [q, setQ] = useState('');
   const boxRef = useRef<HTMLDivElement | null>(null);
 
+  // ⚡ Bolt Optimization: Pre-calculate lookup map and search content
+  const { optionsMap, enrichedOptions } = useMemo(() => {
+    const map = new Map<string, string>();
+    const enriched = options.map(o => {
+      map.set(o.value, o.label);
+      return {
+        ...o,
+        _search: `${o.label.toLowerCase()} ${o.value.toLowerCase()}`,
+      };
+    });
+    return { optionsMap: map, enrichedOptions: enriched };
+  }, [options]);
+
   const filtered = useMemo(() => {
     if (!q.trim()) return options;
     const s = q.toLowerCase();
-    return options.filter(
-      o => o.label.toLowerCase().includes(s) || o.value.toLowerCase().includes(s)
-    );
-  }, [q, options]);
+    // ⚡ Bolt Optimization: Use pre-calculated lowercase content
+    return enrichedOptions.filter(o => o._search.includes(s));
+  }, [q, options, enrichedOptions]);
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
@@ -55,7 +73,8 @@ export const SearchSelect: React.FC<SearchSelectProps> = ({
     return () => document.removeEventListener('mousedown', onDoc);
   }, []);
 
-  const currentLabel = options.find(o => o.value === value)?.label || value || '';
+  // ⚡ Bolt Optimization: O(1) lookup via Map
+  const currentLabel = optionsMap.get(value) || value || '';
 
   const dropdownStyle = useMemo(() => {
     if (!open || !boxRef.current || !useFixedPositioning) return undefined;
@@ -195,3 +214,6 @@ export const SearchSelect: React.FC<SearchSelectProps> = ({
     </div>
   );
 };
+
+export const SearchSelect = React.memo(SearchSelectInner);
+SearchSelect.displayName = 'SearchSelect';
