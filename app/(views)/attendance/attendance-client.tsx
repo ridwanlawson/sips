@@ -176,18 +176,41 @@ type EmployeesApiRow = {
   gangcode?: unknown;
 };
 
-const resolveBusinessUnitCode = (value: string, businessUnits: BusinessUnit[]): string => {
+/**
+ * ⚡ Bolt Optimization: Use Map-based lookups for Business Units to avoid O(N) .find() in loops.
+ */
+const getBusinessUnitLookups = (businessUnits: BusinessUnit[] | undefined) => {
+  const codeMap = new Map<string, BusinessUnit>();
+  const nameMap = new Map<string, BusinessUnit>();
+
+  if (Array.isArray(businessUnits)) {
+    for (const bu of businessUnits) {
+      if (bu.fccode) codeMap.set(bu.fccode, bu);
+      if (bu.fcname) nameMap.set(bu.fcname.toLowerCase(), bu);
+    }
+  }
+
+  return { codeMap, nameMap };
+};
+
+const resolveBusinessUnitCode = (
+  value: string,
+  lookups: { codeMap: Map<string, BusinessUnit>; nameMap: Map<string, BusinessUnit> }
+): string => {
   if (!value) return '';
-  const directMatch = businessUnits.find(b => b.fccode === value);
+  const directMatch = lookups.codeMap.get(value);
   if (directMatch) return directMatch.fccode;
 
-  const nameMatch = businessUnits.find(b => b.fcname?.toLowerCase() === value.toLowerCase());
+  const nameMatch = lookups.nameMap.get(value.toLowerCase());
   return nameMatch?.fccode || value;
 };
 
-const resolveBusinessUnitName = (value: string, businessUnits: BusinessUnit[]): string => {
+const resolveBusinessUnitName = (
+  value: string,
+  lookups: { codeMap: Map<string, BusinessUnit>; nameMap: Map<string, BusinessUnit> }
+): string => {
   if (!value) return '';
-  const directMatch = businessUnits.find(b => b.fccode === value);
+  const directMatch = lookups.codeMap.get(value);
   if (directMatch) return directMatch.fcname || directMatch.fccode;
   return value;
 };
@@ -195,13 +218,14 @@ const resolveBusinessUnitName = (value: string, businessUnits: BusinessUnit[]): 
 const matchesEmployeeFcba = (
   employeeFcba: string | undefined,
   selectedFcba: string,
-  businessUnits: BusinessUnit[]
+  lookups: { codeMap: Map<string, BusinessUnit>; nameMap: Map<string, BusinessUnit> },
+  preResolved?: { code: string; name: string }
 ): boolean => {
   const employeeValue = (employeeFcba || '').trim();
   if (!employeeValue || !selectedFcba) return false;
 
-  const selectedCode = resolveBusinessUnitCode(selectedFcba, businessUnits);
-  const selectedName = resolveBusinessUnitName(selectedFcba, businessUnits);
+  const selectedCode = preResolved?.code || resolveBusinessUnitCode(selectedFcba, lookups);
+  const selectedName = preResolved?.name || resolveBusinessUnitName(selectedFcba, lookups);
 
   return (
     employeeValue === selectedFcba ||
@@ -826,14 +850,16 @@ export default function Attendance() {
     gcTime: 60 * 60 * 1000, // 1 jam cache di memori
   });
 
+  const buLookups = useMemo(() => getBusinessUnitLookups(businessUnits), [businessUnits]);
+
   const selectedFcbaCodeForMaster = useMemo(
-    () => resolveBusinessUnitCode(selFcba || homeFcba || '', businessUnits),
-    [selFcba, homeFcba, businessUnits]
+    () => resolveBusinessUnitCode(selFcba || homeFcba || '', buLookups),
+    [selFcba, homeFcba, buLookups]
   );
 
   const selectedDestFcbaCodeForMaster = useMemo(
-    () => resolveBusinessUnitCode(destFcba || '', businessUnits),
-    [destFcba, businessUnits]
+    () => resolveBusinessUnitCode(destFcba || '', buLookups),
+    [destFcba, buLookups]
   );
 
   const { data: masterSections = [], isLoading: isLoadingSections } = useQuery({
@@ -991,8 +1017,8 @@ export default function Attendance() {
 
   // convert homeFcba (which might be fcname or fccode) to actual fccode for proper filtering
   const homeFcbaCode = useMemo(() => {
-    return resolveBusinessUnitCode(homeFcba, businessUnits);
-  }, [homeFcba, businessUnits]);
+    return resolveBusinessUnitCode(homeFcba, buLookups);
+  }, [homeFcba, buLookups]);
 
   const currentFcbaForForm = useMemo(() => {
     return userLevel === 'ADM' ? selFcba || homeFcbaCode || '' : homeFcbaCode || selFcba || '';
@@ -1000,7 +1026,7 @@ export default function Attendance() {
 
   const sectionOptions: Option[] = useMemo(() => {
     if (!selFcba) return [];
-    const fcbaCode = resolveBusinessUnitCode(selFcba, businessUnits);
+    const fcbaCode = resolveBusinessUnitCode(selFcba, buLookups);
     const sectionsFromMaster = masterSections
       .filter(section => section.fcba === fcbaCode)
       .filter(section => section.fccode !== destSection)
@@ -1024,9 +1050,7 @@ export default function Attendance() {
             // Direct match with fcba field
             if (t.fcba === selFcba) return true;
             // Also try to match by extracting fcba from business units if selFcba is fccode
-            const buMatch = Array.isArray(businessUnits)
-              ? businessUnits.find(b => b.fccode === selFcba)
-              : undefined;
+            const buMatch = buLookups.codeMap.get(selFcba);
             if (buMatch && t.fcba === buMatch.fcname) return true;
             return false;
           })
@@ -1037,7 +1061,7 @@ export default function Attendance() {
     )
       .sort()
       .map(v => ({ value: v, label: v }));
-  }, [triplets, selFcba, businessUnits, masterSections, destSection]);
+  }, [triplets, selFcba, buLookups, masterSections, destSection]);
 
   const gangOptions: Option[] = useMemo(() => {
     if (!selFcba || !selSection) return [];
@@ -1055,9 +1079,7 @@ export default function Attendance() {
 
     // Get the actual fcba name for matching triplets
     let fcbaName = selFcba;
-    const buMatch = Array.isArray(businessUnits)
-      ? businessUnits.find(b => b.fccode === selFcba)
-      : undefined;
+    const buMatch = buLookups.codeMap.get(selFcba);
     if (buMatch) fcbaName = buMatch.fcname || selFcba;
 
     return Array.from(
@@ -1070,15 +1092,27 @@ export default function Attendance() {
     )
       .sort()
       .map(v => ({ value: v, label: v }));
-  }, [triplets, selFcba, selSection, businessUnits, masterGangs]);
+  }, [triplets, selFcba, selSection, buLookups, masterGangs]);
+
+  const currentFcbaPreresolved = useMemo(() => {
+    const fcba = currentFcbaForForm || form.fcba || selFcba;
+    if (!fcba) return undefined;
+    return {
+      value: fcba,
+      code: resolveBusinessUnitCode(fcba, buLookups),
+      name: resolveBusinessUnitName(fcba, buLookups),
+    };
+  }, [currentFcbaForForm, form.fcba, selFcba, buLookups]);
 
   const pengancakanOptions: Option[] = useMemo(() => {
-    if (!selFcba || !selSection || !selGang) return [];
-    const fcba = currentFcbaForForm || form.fcba || selFcba;
+    if (!selFcba || !selSection || !selGang || !currentFcbaPreresolved) return [];
 
     const pool = employees.filter(
       e =>
-        matchesEmployeeFcba(e.fcba, fcba, businessUnits) &&
+        matchesEmployeeFcba(e.fcba, currentFcbaPreresolved.value, buLookups, {
+          code: currentFcbaPreresolved.code,
+          name: currentFcbaPreresolved.name,
+        }) &&
         (e.sectionname || '') === selSection &&
         (e.gangcode || '') === selGang
     );
@@ -1090,15 +1124,17 @@ export default function Attendance() {
     return Array.from(set)
       .sort()
       .map(v => ({ value: v, label: v }));
-  }, [employees, selFcba, selSection, selGang, businessUnits, currentFcbaForForm, form.fcba]);
+  }, [employees, selFcba, selSection, selGang, currentFcbaPreresolved, buLookups]);
 
   const employeeOptions: Option[] = useMemo(() => {
-    if (!selFcba || !selSection || !selGang) return [];
-    const fcba = currentFcbaForForm || form.fcba || selFcba;
+    if (!selFcba || !selSection || !selGang || !currentFcbaPreresolved) return [];
 
     const pool = employees.filter(
       e =>
-        matchesEmployeeFcba(e.fcba, fcba, businessUnits) &&
+        matchesEmployeeFcba(e.fcba, currentFcbaPreresolved.value, buLookups, {
+          code: currentFcbaPreresolved.code,
+          name: currentFcbaPreresolved.name,
+        }) &&
         (e.sectionname || '') === selSection &&
         (e.gangcode || '') === selGang
     );
@@ -1112,7 +1148,7 @@ export default function Attendance() {
     return Array.from(map, ([value, label]) => ({ value, label })).sort((a, b) =>
       a.label.localeCompare(b.label)
     );
-  }, [employees, selFcba, selSection, selGang, businessUnits, currentFcbaForForm, form.fcba]);
+  }, [employees, selFcba, selSection, selGang, currentFcbaPreresolved, buLookups]);
 
   // destination select options should include every FCBA, including the user's current FCBA.
   const destOptions = useMemo(() => {
@@ -1157,9 +1193,7 @@ export default function Attendance() {
     if (!triplets.length) return [];
 
     let fcbaName = destFcba;
-    const buMatch = Array.isArray(businessUnits)
-      ? businessUnits.find(b => b.fccode === destFcba)
-      : undefined;
+    const buMatch = buLookups.codeMap.get(destFcba);
     if (buMatch) fcbaName = buMatch.fcname || destFcba;
 
     return Array.from(
@@ -1176,7 +1210,7 @@ export default function Attendance() {
   }, [
     destFcba,
     triplets,
-    businessUnits,
+    buLookups,
     masterSections,
     selectedDestFcbaCodeForMaster,
     selSection,
@@ -1186,8 +1220,20 @@ export default function Attendance() {
     const fcba = currentFcbaForForm || form.fcba || homeFcbaCode || homeFcba || '';
     const section = selSection || form.section || homeSection || '';
 
+    // Reuse preresolved lookups if possible
+    const isFcbaCurrent =
+      currentFcbaPreresolved &&
+      fcba === (currentFcbaPreresolved.value || currentFcbaForForm || form.fcba || selFcba);
+
+    const preresolved = isFcbaCurrent
+      ? { code: currentFcbaPreresolved!.code, name: currentFcbaPreresolved!.name }
+      : {
+          code: resolveBusinessUnitCode(fcba, buLookups),
+          name: resolveBusinessUnitName(fcba, buLookups),
+        };
+
     const pool = employees.filter(
-      e => matchesEmployeeFcba(e.fcba, fcba, businessUnits) && (e.sectionname || '') === section
+      e => matchesEmployeeFcba(e.fcba, fcba, buLookups, preresolved) && (e.sectionname || '') === section
     );
 
     const map = new Map<string, string>();
@@ -1212,7 +1258,9 @@ export default function Attendance() {
     homeSection,
     selSection,
     form.section,
-    businessUnits,
+    buLookups,
+    currentFcbaPreresolved,
+    selFcba,
   ]);
 
   const empLabelMap = useMemo(() => {
