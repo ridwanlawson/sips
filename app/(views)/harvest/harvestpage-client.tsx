@@ -23,8 +23,22 @@ import { SearchSelect, type Option } from '@/app/components/search-select';
 type Harvest = {
   _rowKey?: string;
   _index?: number;
-  // ⚡ Bolt Optimization: cached search values
+  /**
+   * ⚡ Bolt Optimization: Cached values to avoid O(N*M) lookups and
+   * expensive regex-based number parsing in render/search loops.
+   */
   _searchContent?: string;
+  _outputNum?: number;
+  _mentahNum?: number;
+  _overNum?: number;
+  _busukNum?: number;
+  _busuk2Num?: number;
+  _kecilNum?: number;
+  _partenoNum?: number;
+  _parteno50Num?: number;
+  _brondolNum?: number;
+  _panjangNum?: number;
+
   id: string;
   nodokumen: string;
   tanggal: string;
@@ -314,6 +328,45 @@ const toNumber = (value: string | number | null | undefined): number => {
 const formatTotal = (value: number, localeTag = 'id-ID'): string =>
   formatPerfNumber(value, localeTag, { maximumFractionDigits: 2 });
 
+/**
+ * ⚡ Bolt Optimization: Use Map-based lookups for Business Units to avoid O(N) .find() in loops.
+ */
+const getBusinessUnitLookups = (businessUnits: BusinessUnit[] | undefined) => {
+  const codeMap = new Map<string, BusinessUnit>();
+  const nameMap = new Map<string, BusinessUnit>();
+
+  if (Array.isArray(businessUnits)) {
+    for (const bu of businessUnits) {
+      if (bu.fccode) codeMap.set(bu.fccode, bu);
+      if (bu.fcname) nameMap.set(bu.fcname.toLowerCase(), bu);
+    }
+  }
+
+  return { codeMap, nameMap };
+};
+
+const resolveBusinessUnitCode = (
+  value: string,
+  lookups: { codeMap: Map<string, BusinessUnit>; nameMap: Map<string, BusinessUnit> }
+): string => {
+  if (!value) return '';
+  const directMatch = lookups.codeMap.get(value);
+  if (directMatch) return directMatch.fccode;
+
+  const nameMatch = lookups.nameMap.get(value.toLowerCase());
+  return nameMatch?.fccode || value;
+};
+
+const resolveBusinessUnitName = (
+  value: string,
+  lookups: { codeMap: Map<string, BusinessUnit>; nameMap: Map<string, BusinessUnit> }
+): string => {
+  if (!value) return '';
+  const directMatch = lookups.codeMap.get(value);
+  if (directMatch) return directMatch.fcname || directMatch.fccode;
+  return value;
+};
+
 const getMonthDateRange = (isoDate: string) => {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
   if (!match) return null;
@@ -515,6 +568,7 @@ export default function HarvestPage() {
   }, [userLevel, homeFcba, homeSection, selFcba, selSection, userFcbaCookie, userAfdelingCookie]);
 
   /* ===== Query for harvest list ===== */
+
   const {
     data: items = [],
     isLoading: loading,
@@ -583,7 +637,22 @@ export default function HarvestPage() {
         let key = candidate;
         while (seen.has(key)) key = `${key}_`;
         seen.add(key);
-        return { ...it, _rowKey: key, _searchContent: searchContent };
+        return {
+          ...it,
+          _rowKey: key,
+          _searchContent: searchContent,
+          // ⚡ Bolt Optimization: pre-calculate numeric values to avoid redundant regex parsing in loops
+          _outputNum: toNumber(it.output),
+          _mentahNum: toNumber(it.mentah),
+          _overNum: toNumber(it.overripe),
+          _busukNum: toNumber(it.busuk),
+          _busuk2Num: toNumber(it.busuk2),
+          _kecilNum: toNumber(it.buahkecil),
+          _partenoNum: toNumber(it.parteno),
+          _parteno50Num: toNumber(it.parteno50plus),
+          _brondolNum: toNumber(it.brondol),
+          _panjangNum: toNumber(it.tangkaipanjang),
+        };
       });
     },
     enabled: !!homeFcba || userLevel === 'ADM',
@@ -783,18 +852,16 @@ export default function HarvestPage() {
     gcTime: 60 * 60 * 1000, // 1 hour garbage collection
   });
 
+  const buLookups = useMemo(() => getBusinessUnitLookups(businessUnits), [businessUnits]);
+
   // Query: Field Codes from TPH API (by fcba + afdeling)
   const { data: tphFieldcodeData = [], isLoading: isLoadingFieldcode } = useQuery({
     queryKey: ['tph-fieldcodes', selFcba, selSection],
     queryFn: async () => {
       if (!selFcba || !selSection) return [];
 
-      // Get actual fcba name
-      let fcbaName = selFcba;
-      const buMatch = Array.isArray(businessUnits)
-        ? businessUnits.find(b => b.fccode === selFcba)
-        : undefined;
-      if (buMatch) fcbaName = buMatch.fcname || selFcba;
+      // ⚡ Bolt Optimization: Use Map lookup for O(1) BU name resolution
+      const fcbaName = resolveBusinessUnitName(selFcba, buLookups);
 
       const params = new URLSearchParams();
       params.append('fcba', fcbaName);
@@ -845,12 +912,8 @@ export default function HarvestPage() {
     queryFn: async () => {
       if (!selFcba || !selSection || !form.fieldcode) return [];
 
-      // Get actual fcba name
-      let fcbaName = selFcba;
-      const buMatch = Array.isArray(businessUnits)
-        ? businessUnits.find(b => b.fccode === selFcba)
-        : undefined;
-      if (buMatch) fcbaName = buMatch.fcname || selFcba;
+      // ⚡ Bolt Optimization: Use Map lookup for O(1) BU name resolution
+      const fcbaName = resolveBusinessUnitName(selFcba, buLookups);
 
       const params = new URLSearchParams();
       params.append('fcba', fcbaName);
@@ -902,10 +965,8 @@ export default function HarvestPage() {
   /* ===== Prefetch TPH data for poor network conditions ===== */
   const prefetchTphData = useCallback(
     async (fcba: string, section: string, fieldcode?: string) => {
-      const buMatch = Array.isArray(businessUnits)
-        ? businessUnits.find(b => b.fccode === fcba)
-        : undefined;
-      const fcbaName = buMatch ? buMatch.fcname || fcba : fcba;
+      // ⚡ Bolt Optimization: Use Map lookup for O(1) BU name resolution
+      const fcbaName = resolveBusinessUnitName(fcba, buLookups);
 
       if (fieldcode) {
         // Prefetch TPH Detail
@@ -964,7 +1025,7 @@ export default function HarvestPage() {
         });
       }
     },
-    [businessUnits, queryClient]
+    [buLookups, queryClient]
   );
 
   useEffect(() => {
@@ -1185,15 +1246,15 @@ export default function HarvestPage() {
 
   const sectionOptions: Option[] = useMemo(() => {
     if (!selFcba) return [];
+    // ⚡ Bolt Optimization: Pre-resolve the current FCBA code and name once.
+    const selCode = resolveBusinessUnitCode(selFcba, buLookups);
+    const selName = resolveBusinessUnitName(selFcba, buLookups);
+
     return Array.from(
       new Set(
         triplets
           .filter(t => {
-            if (t.fcba === selFcba) return true;
-            const buMatch = Array.isArray(businessUnits)
-              ? businessUnits.find(b => b.fccode === selFcba)
-              : undefined;
-            if (buMatch && t.fcba === buMatch.fcname) return true;
+            if (t.fcba === selFcba || t.fcba === selCode || t.fcba === selName) return true;
             return false;
           })
           .map(t => t.sectionname)
@@ -1202,16 +1263,13 @@ export default function HarvestPage() {
     )
       .sort()
       .map(v => ({ value: v, label: v }));
-  }, [triplets, selFcba, businessUnits]);
+  }, [triplets, selFcba, buLookups]);
 
   // Kemandoran: only gangs starting with MD
   const kemandoranOptions: Option[] = useMemo(() => {
     if (!selFcba || !selSection) return [];
-    let fcbaName = selFcba;
-    const buMatch = Array.isArray(businessUnits)
-      ? businessUnits.find(b => b.fccode === selFcba)
-      : undefined;
-    if (buMatch) fcbaName = buMatch.fcname || selFcba;
+    // ⚡ Bolt Optimization: Use Map lookup for O(1) BU name resolution
+    const fcbaName = resolveBusinessUnitName(selFcba, buLookups);
 
     // Kemandoran = gangcode from employees matching fcba and section, only MD prefix
     const pool = employees.filter(
@@ -1228,7 +1286,7 @@ export default function HarvestPage() {
     return Array.from(set)
       .sort()
       .map(v => ({ value: v, label: v }));
-  }, [employees, selFcba, selSection, businessUnits]);
+  }, [employees, selFcba, selSection, buLookups]);
 
   // Query: Employees by fcba + afdeling + kemandoran (with MD->PN transformation for API)
   const { data: employeesByGang = [], isLoading: isLoadingEmpByGang } = useQuery({
@@ -1236,12 +1294,8 @@ export default function HarvestPage() {
     queryFn: async () => {
       if (!selFcba || !selSection || !selGang) return [];
 
-      // Get actual fcba name
-      let fcbaName = selFcba;
-      const buMatch = Array.isArray(businessUnits)
-        ? businessUnits.find(b => b.fccode === selFcba)
-        : undefined;
-      if (buMatch) fcbaName = buMatch.fcname || selFcba;
+      // ⚡ Bolt Optimization: Use Map lookup for O(1) BU name resolution
+      const fcbaName = resolveBusinessUnitName(selFcba, buLookups);
 
       // Transform MDxxx to PNxxx for API parameter
       const gangForApi = selGang.toUpperCase().startsWith('MD')
@@ -1460,11 +1514,12 @@ export default function HarvestPage() {
     () =>
       filtered.reduce(
         (acc, row) => ({
-          output: acc.output + toNumber(row.output),
-          mentah: acc.mentah + toNumber(row.mentah),
-          overripe: acc.overripe + toNumber(row.overripe),
-          busuk: acc.busuk + toNumber(row.busuk),
-          brondol: acc.brondol + toNumber(row.brondol),
+          // ⚡ Bolt Optimization: Use pre-calculated numbers to avoid thousands of O(N*M) toNumber/regex calls during search
+          output: acc.output + (row._outputNum || 0),
+          mentah: acc.mentah + (row._mentahNum || 0),
+          overripe: acc.overripe + (row._overNum || 0),
+          busuk: acc.busuk + (row._busukNum || 0),
+          brondol: acc.brondol + (row._brondolNum || 0),
         }),
         {
           output: 0,
@@ -1658,7 +1713,7 @@ export default function HarvestPage() {
         style: { justifyContent: 'end' },
         cell: row => (
           <span className="text-right w-full">
-            {formatPerfNumber(toNumber(row.output), localeTag)}
+            {formatPerfNumber(row._outputNum || 0, localeTag)}
           </span>
         ),
       },
@@ -1670,7 +1725,7 @@ export default function HarvestPage() {
         style: { justifyContent: 'end' },
         cell: row => (
           <span className="text-right w-full">
-            {formatPerfNumber(toNumber(row.mentah), localeTag)}
+            {formatPerfNumber(row._mentahNum || 0, localeTag)}
           </span>
         ),
       },
@@ -1682,7 +1737,7 @@ export default function HarvestPage() {
         style: { justifyContent: 'end' },
         cell: row => (
           <span className="text-right w-full">
-            {formatPerfNumber(toNumber(row.overripe), localeTag)}
+            {formatPerfNumber(row._overNum || 0, localeTag)}
           </span>
         ),
       },
@@ -1694,7 +1749,7 @@ export default function HarvestPage() {
         style: { justifyContent: 'end' },
         cell: row => (
           <span className="text-right w-full">
-            {formatPerfNumber(toNumber(row.busuk), localeTag)}
+            {formatPerfNumber(row._busukNum || 0, localeTag)}
           </span>
         ),
       },
@@ -1706,7 +1761,7 @@ export default function HarvestPage() {
         style: { justifyContent: 'end' },
         cell: row => (
           <span className="text-right w-full">
-            {formatPerfNumber(toNumber(row.busuk2), localeTag)}
+            {formatPerfNumber(row._busuk2Num || 0, localeTag)}
           </span>
         ),
       },
@@ -1718,7 +1773,7 @@ export default function HarvestPage() {
         style: { justifyContent: 'end' },
         cell: row => (
           <span className="text-right w-full">
-            {formatPerfNumber(toNumber(row.buahkecil), localeTag)}
+            {formatPerfNumber(row._kecilNum || 0, localeTag)}
           </span>
         ),
       },
@@ -1730,7 +1785,7 @@ export default function HarvestPage() {
         style: { justifyContent: 'end' },
         cell: row => (
           <span className="text-right w-full">
-            {formatPerfNumber(toNumber(row.parteno), localeTag)}
+            {formatPerfNumber(row._partenoNum || 0, localeTag)}
           </span>
         ),
       },
@@ -1742,7 +1797,7 @@ export default function HarvestPage() {
         style: { justifyContent: 'end' },
         cell: row => (
           <span className="text-right w-full">
-            {formatPerfNumber(toNumber(row.parteno50plus), localeTag)}
+            {formatPerfNumber(row._parteno50Num || 0, localeTag)}
           </span>
         ),
       },
@@ -1754,7 +1809,7 @@ export default function HarvestPage() {
         style: { justifyContent: 'end' },
         cell: row => (
           <span className="text-right w-full">
-            {formatPerfNumber(toNumber(row.brondol), localeTag)}
+            {formatPerfNumber(row._brondolNum || 0, localeTag)}
           </span>
         ),
       },
@@ -1778,7 +1833,7 @@ export default function HarvestPage() {
         style: { justifyContent: 'end' },
         cell: row => (
           <span className="text-right w-full">
-            {formatPerfNumber(toNumber(row.tangkaipanjang), localeTag)}
+            {formatPerfNumber(row._panjangNum || 0, localeTag)}
           </span>
         ),
       },
