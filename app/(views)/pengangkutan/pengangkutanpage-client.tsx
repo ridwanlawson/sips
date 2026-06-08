@@ -9,12 +9,15 @@ import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/authHelper';
 import { cookieStore } from '@/utils/cookieStore';
 import { getFilterCriteria, getLockedFields } from '@/utils/filterHelper';
 import { formatPerfNumber, formatPerfDate } from '@/utils/perf-formatter';
+import { centerHeaderStyle } from '@/utils/tableHelper';
 import { fetchBusinessUnits } from '@/utils/businessUnitService';
 import { fetchAttendanceUpload } from '@/utils/attendanceUploadService';
 import { exportJsonToCsv } from '@/utils/exportCsv';
 import { useLocale } from '@/hooks/useLocale';
 import { useTranslations } from 'next-intl';
 import toast from 'react-hot-toast';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { SkeletonTable } from '@/app/components/skeletons';
 
 /* =========================
    T Y P E S
@@ -219,8 +222,6 @@ const applyClientUserScope = (params: URLSearchParams) => {
 export default function PengangkutanPage() {
   const localeTag = useLocale();
   const t = useTranslations('Transport');
-  const [items, setItems] = useState<Pengangkutan[]>([]);
-  const [loading, setLoading] = useState(false);
 
   const [filters, setFilters] = useState<Filters>(() => {
     const yesterday = getYesterdayISO();
@@ -245,10 +246,10 @@ export default function PengangkutanPage() {
       flag: '',
     };
   });
-  const [appliedFilters, setAppliedFilters] = useState<Filters | null>(null);
 
   const [q, setQ] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const queryClient = useQueryClient();
   const [userLevel, setUserLevel] = useState<
     'ADM' | 'MGR' | 'KSI' | 'MD1' | 'AST' | 'KRT' | 'KRA' | 'KRP' | 'MDP' | 'OTHER'
   >('OTHER');
@@ -266,7 +267,7 @@ export default function PengangkutanPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [deleteFile, setDeleteFile] = useState<File | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
+
   const [pabrikOptions, setPabrikOptions] = useState<Array<{ fccode: string; fcname: string }>>([]);
   const [tkbmOptions, setTkbmOptions] = useState<Array<{ fccode: string; fullname: string }>>([]);
   const [driverOptions, setDriverOptions] = useState<Array<{ fccode: string; fullname: string }>>(
@@ -570,7 +571,6 @@ export default function PengangkutanPage() {
 
     const nextFilters = { ...filters, ...newFilters };
     setFilters(nextFilters);
-    setAppliedFilters(nextFilters);
     // Only run when the account scope changes. Filter field edits are applied by the button.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scopeReady, userLevel, homeFcba, homeSection, homeGang]);
@@ -724,13 +724,20 @@ export default function PengangkutanPage() {
       toast.success(isEditing ? 'Data berhasil diperbarui' : 'Data berhasil ditambahkan');
       setOpen(false);
       resetForm();
-      fetchData(appliedFilters ?? filters);
+      queryClient.invalidateQueries({ queryKey: ['pengangkutan'] });
     } catch (error) {
       console.error(error);
       toast.error(error instanceof Error ? error.message : 'Gagal menyimpan data');
     } finally {
       setSubmitLoading(false);
     }
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteOpen(false);
+    setDeleteTarget(null);
+    setDeleteFile(null);
+    if (deleteFileRef.current) deleteFileRef.current.value = '';
   };
 
   const handleDeleteRecord = useCallback(
@@ -743,17 +750,11 @@ export default function PengangkutanPage() {
     [canModify]
   );
 
-  const handleConfirmDelete = async () => {
-    if (!deleteTarget) return;
-    if (!deleteFile) {
-      toast.error('File BA delete wajib dipilih');
-      return;
-    }
-    setDeleteLoading(true);
-    try {
+  const deleteMutation = useMutation({
+    mutationFn: async ({ id, file }: { id: string; file: File }) => {
       const body = new FormData();
-      body.append('ba_deleted', deleteFile, deleteFile.name);
-      const res = await fetch(`/api/pengangkutans/${encodeURIComponent(deleteTarget.id)}`, {
+      body.append('ba_deleted', file, file.name);
+      const res = await fetch(`/api/pengangkutans/${encodeURIComponent(id)}`, {
         method: 'DELETE',
         body,
         credentials: 'include',
@@ -761,23 +762,29 @@ export default function PengangkutanPage() {
       const json = await res.json();
       if (isUnauthenticatedJson(json)) {
         await logoutAndRedirect();
-        return;
+        throw new Error('Unauthorized');
       }
       if (!res.ok || !json.ok) {
         throw new Error(json.message || json.error || 'Gagal menghapus data');
       }
+      return id;
+    },
+    onSuccess: () => {
       toast.success('Data berhasil dihapus');
       setDeleteOpen(false);
       setDeleteTarget(null);
       setDeleteFile(null);
       if (deleteFileRef.current) deleteFileRef.current.value = '';
-      fetchData(appliedFilters ?? filters);
-    } catch (error) {
-      console.error(error);
-      toast.error(error instanceof Error ? error.message : 'Gagal menghapus data');
-    } finally {
-      setDeleteLoading(false);
-    }
+      queryClient.invalidateQueries({ queryKey: ['pengangkutan'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const handleConfirmDelete = () => {
+    if (!deleteTarget || !deleteFile) return;
+    deleteMutation.mutate({ id: deleteTarget.id, file: deleteFile });
   };
 
   const handleNoBaExcaChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -845,114 +852,109 @@ export default function PengangkutanPage() {
     exportJsonToCsv(dataToExport, `Pengangkutan_${getTodayISO()}.csv`);
   };
 
-  const fetchData = useCallback(
-    async (current: Filters) => {
-      setLoading(true);
-      try {
-        const p = new URLSearchParams();
-        if (current.tanggal) p.set('tanggal', current.tanggal as string);
-        if (current.tanggal_end) p.set('tanggal_end', current.tanggal_end as string);
-        if (current.nopengangkutan) p.set('nopengangkutan', current.nopengangkutan as string);
-        if (current.nospb) p.set('nospb', current.nospb as string);
-        if (current.nodokumen) p.set('nodokumen', current.nodokumen as string);
-        if (current.kode_karyawan_kerani)
-          p.set('kode_karyawan_kerani', current.kode_karyawan_kerani as string);
-        if (current.kode_karyawan_driver)
-          p.set('kode_karyawan_driver', current.kode_karyawan_driver as string);
-        if (current.type_pengangkutan)
-          p.set('type_pengangkutan', current.type_pengangkutan as string);
-        if (current.kode_kendaraan) p.set('kode_kendaraan', current.kode_kendaraan as string);
-        if (current.fcba) p.set('fcba', current.fcba as string);
-        if (current.pabrik_tujuan) p.set('pabrik_tujuan', current.pabrik_tujuan as string);
-        if (current.afdeling) p.set('afdeling', current.afdeling as string);
-        if (current.tph) p.set('tph', current.tph as string);
-        if (current.fieldcode) p.set('fieldcode', current.fieldcode as string);
-        if (current.status_pengangkutan)
-          p.set('status_pengangkutan', current.status_pengangkutan as string);
-        if (current.kemandoran) p.set('kemandoran', current.kemandoran as string);
-        if (current.flag) p.set('flag', current.flag as string);
-        applyClientUserScope(p);
+  const {
+    data: items = [],
+    isLoading: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: ['pengangkutan', filters, userLevel, homeFcba, homeSection, homeGang],
+    queryFn: async () => {
+      const p = new URLSearchParams();
+      if (filters.tanggal) p.set('tanggal', filters.tanggal);
+      if (filters.tanggal_end) p.set('tanggal_end', filters.tanggal_end);
+      if (filters.nopengangkutan) p.set('nopengangkutan', filters.nopengangkutan);
+      if (filters.nospb) p.set('nospb', filters.nospb);
+      if (filters.nodokumen) p.set('nodokumen', filters.nodokumen);
+      if (filters.kode_karyawan_kerani) p.set('kode_karyawan_kerani', filters.kode_karyawan_kerani);
+      if (filters.kode_karyawan_driver) p.set('kode_karyawan_driver', filters.kode_karyawan_driver);
+      if (filters.type_pengangkutan) p.set('type_pengangkutan', filters.type_pengangkutan);
+      if (filters.kode_kendaraan) p.set('kode_kendaraan', filters.kode_kendaraan);
+      if (filters.fcba) p.set('fcba', filters.fcba);
+      if (filters.pabrik_tujuan) p.set('pabrik_tujuan', filters.pabrik_tujuan);
+      if (filters.afdeling) p.set('afdeling', filters.afdeling);
+      if (filters.tph) p.set('tph', filters.tph);
+      if (filters.fieldcode) p.set('fieldcode', filters.fieldcode);
+      if (filters.status_pengangkutan) p.set('status_pengangkutan', filters.status_pengangkutan);
+      if (filters.kemandoran) p.set('kemandoran', filters.kemandoran);
+      if (filters.flag) p.set('flag', filters.flag);
+      applyClientUserScope(p);
 
-        const res = await fetch(`/api/pengangkutans?${p.toString()}`, {
-          credentials: 'include',
-        });
+      const res = await fetch(`/api/pengangkutans?${p.toString()}`, {
+        credentials: 'include',
+      });
 
-        if (res.status === 404) {
-          setItems([]);
-          setLoading(false);
-          return;
-        }
-
-        if (res.status === 401) {
-          await logoutAndRedirect();
-          return;
-        }
-
-        const json = await res.json();
-        if (isUnauthenticatedJson(json)) {
-          await logoutAndRedirect();
-          return;
-        }
-        // Example API returns { success: true, data: [...] }
-        if (json && (json.success === true || json.ok === true)) {
-          const raw = (json.data || json.rows || []) as Pengangkutan[];
-          const seen = new Set<string>();
-          const data = raw.map((it, idx) => {
-            const dateOnly = (it.tanggal || '').split(' ')[0];
-            // ⚡ Bolt Optimization: pre-calculate display date using cached formatter
-            const displayDate = dateOnly ? formatPerfDate(dateOnly, localeTag) : '-';
-
-            // ⚡ Bolt Optimization: pre-calculate search content string
-            const searchContent = [
-              it.nopengangkutan,
-              it.nospb,
-              it.nodokumen,
-              it.kode_karyawan_kerani,
-              it.nama_karyawan_kerani,
-              it.kode_karyawan_driver,
-              it.nama_karyawan_driver,
-              it.fcba,
-              it.afdeling,
-              it.status_pengangkutan,
-              it.kode_kendaraan,
-              it.card_id,
-              dateOnly,
-              displayDate,
-            ]
-              .filter(Boolean)
-              .join(' ')
-              .toLowerCase();
-
-            const candidate = [it.nopengangkutan || '', dateOnly, String(idx)].join('|');
-            let key = candidate;
-            while (seen.has(key)) key = `${key}_`;
-            seen.add(key);
-
-            return {
-              ...it,
-              _rowKey: key,
-              _displayDate: displayDate,
-              _searchContent: searchContent,
-            };
-          });
-          setItems(data);
-        } else {
-          toast.error(json.message || json.error || 'Gagal mengambil data');
-        }
-      } catch (e) {
-        console.error(e);
-        toast.error('Terjadi kesalahan jaringan');
-      } finally {
-        setLoading(false);
+      if (res.status === 404) return [];
+      if (res.status === 401) {
+        await logoutAndRedirect();
+        return [];
       }
-    },
-    [localeTag]
-  );
 
+      const json = await res.json();
+      if (isUnauthenticatedJson(json)) {
+        await logoutAndRedirect();
+        return [];
+      }
+
+      if (!json || !(json.success === true || json.ok === true)) {
+        throw new Error(json?.message || json?.error || 'Gagal mengambil data');
+      }
+
+      const raw = (json.data || json.rows || []) as Pengangkutan[];
+      const seen = new Set<string>();
+      return raw.map((it, idx) => {
+        const dateOnly = (it.tanggal || '').split(' ')[0];
+        // ⚡ Bolt Optimization: pre-calculate display date using cached formatter
+        const displayDate = dateOnly ? formatPerfDate(dateOnly, localeTag) : '-';
+
+        // ⚡ Bolt Optimization: pre-calculate search content string
+        const searchContent = [
+          it.nopengangkutan,
+          it.nospb,
+          it.nodokumen,
+          it.kode_karyawan_kerani,
+          it.nama_karyawan_kerani,
+          it.kode_karyawan_driver,
+          it.nama_karyawan_driver,
+          it.fcba,
+          it.afdeling,
+          it.status_pengangkutan,
+          it.kode_kendaraan,
+          it.card_id,
+          dateOnly,
+          displayDate,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        const candidate = [it.nopengangkutan || '', dateOnly, String(idx)].join('|');
+        let key = candidate;
+        while (seen.has(key)) key = `${key}_`;
+        seen.add(key);
+
+        return {
+          ...it,
+          _rowKey: key,
+          _displayDate: displayDate,
+          _searchContent: searchContent,
+        };
+      });
+    },
+    enabled: scopeReady,
+  });
+
+  // Show toast on error
   useEffect(() => {
-    if (!appliedFilters) return;
-    fetchData(appliedFilters);
-  }, [appliedFilters, fetchData]);
+    if (queryError) {
+      const msg =
+        typeof queryError === 'string'
+          ? queryError
+          : queryError instanceof Error
+            ? queryError.message
+            : 'Terjadi kesalahan saat mengambil data';
+      toast.error(msg);
+    }
+  }, [queryError]);
 
   /* ===== Quick search lokal ===== */
   const filtered = useMemo(() => {
@@ -968,7 +970,7 @@ export default function PengangkutanPage() {
     () => [
       {
         name: <span title="Aksi edit/hapus data pengangkutan">Aksi</span>,
-        width: '180px',
+        width: '130px',
         style: { justifyContent: 'center' },
         cell: r => (
           <div className="flex flex-wrap gap-2 justify-center">
@@ -1239,7 +1241,7 @@ export default function PengangkutanPage() {
             </button>
             <button
               className={`btn btn-sm ${loading ? 'btn-disabled' : ''}`}
-              onClick={() => fetchData(appliedFilters ?? filters)}
+              onClick={() => queryClient.invalidateQueries({ queryKey: ['pengangkutan'] })}
               title="Refresh data pengangkutan"
               disabled={loading}
             >
@@ -1441,7 +1443,7 @@ export default function PengangkutanPage() {
             <div className="flex justify-start gap-2 pt-3 border-t border-base-200">
               <button
                 className={`btn btn-outline ${loading ? 'btn-disabled' : ''}`}
-                onClick={() => setAppliedFilters({ ...filters })}
+                onClick={() => queryClient.invalidateQueries({ queryKey: ['pengangkutan'] })}
                 disabled={loading}
                 title="Terapkan filter"
               >
@@ -1475,7 +1477,6 @@ export default function PengangkutanPage() {
                   if (isAfdelingLocked && homeSection) reset.afdeling = homeSection;
                   if (isKemandoranLocked && homeGang) reset.kemandoran = homeGang;
                   setFilters(reset);
-                  setAppliedFilters(reset);
                 }}
                 disabled={loading}
                 title="Reset semua filter"
@@ -1504,7 +1505,6 @@ export default function PengangkutanPage() {
                 keyField="_rowKey"
                 columns={columns}
                 data={filtered}
-                progressPending={loading}
                 pagination
                 customStyles={centerHeaderStyle}
                 paginationPerPage={100}
@@ -1958,7 +1958,7 @@ export default function PengangkutanPage() {
               <button
                 type="button"
                 className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
-                onClick={() => setDeleteOpen(false)}
+                onClick={closeDeleteModal}
                 aria-label="Tutup"
                 title="Tutup"
               >
@@ -1984,20 +1984,23 @@ export default function PengangkutanPage() {
                 </div>
               </div>
               <div className="mt-4 flex justify-end gap-2">
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  onClick={() => setDeleteOpen(false)}
-                >
+                <button type="button" className="btn btn-outline" onClick={closeDeleteModal}>
                   Batal
                 </button>
                 <button
                   type="button"
-                  className="btn btn-error"
+                  className={`btn btn-error ${deleteMutation.isPending ? 'btn-disabled' : ''}`}
                   onClick={handleConfirmDelete}
-                  disabled={deleteLoading}
+                  disabled={deleteMutation.isPending || !deleteFile}
                 >
-                  {deleteLoading ? 'Menghapus...' : 'Hapus'}
+                  {deleteMutation.isPending ? (
+                    <>
+                      <span className="loading loading-spinner loading-xs" />
+                      Menghapus...
+                    </>
+                  ) : (
+                    'Hapus'
+                  )}
                 </button>
               </div>
             </div>

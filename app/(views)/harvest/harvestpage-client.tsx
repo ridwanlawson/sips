@@ -88,6 +88,8 @@ type Employee = {
   sectionname?: string;
   gangcode?: string;
   noancak?: string;
+  attendance_type?: string;
+  section_destination?: string;
 };
 
 type EmployeesApiRow = {
@@ -752,6 +754,8 @@ export default function HarvestPage() {
             sectionname: String(it.sectionname ?? '').trim(),
             gangcode: String(it.gangcode ?? '').trim(),
             noancak,
+            attendance_type: String(it.attendance_type ?? '').trim(),
+            section_destination: String(it.section_destination ?? '').trim(),
           });
         }
       }
@@ -1245,6 +1249,8 @@ export default function HarvestPage() {
               sectionname: String(it.sectionname ?? '').trim(),
               gangcode: String(it.gangcode ?? '').trim(),
               noancak,
+              attendance_type: String(it.attendance_type ?? '').trim(),
+              section_destination: String(it.section_destination ?? '').trim(),
             });
           }
         }
@@ -1323,6 +1329,13 @@ export default function HarvestPage() {
       ...s,
       kode_karyawan: fccode,
       noancak: emp?.noancak || '', // No Ancak from selected employee
+      // ATTENDANCE_TYPE menentukan afdeling:
+      // - ASSISTENSI → pakai SECTION_DESTINATION
+      // - lainnya   → pakai SECTION
+      afdeling:
+        emp?.attendance_type === 'ASSISTENSI'
+          ? emp?.section_destination || ''
+          : emp?.sectionname || '',
     }));
   };
 
@@ -2081,12 +2094,14 @@ export default function HarvestPage() {
               <SkeletonTable rows={10} />
             ) : (
               <DataTable
+                keyField="_rowKey"
                 columns={columns}
                 data={filtered}
                 pagination
                 customStyles={centerHeaderStyle}
                 paginationPerPage={100}
                 paginationRowsPerPageOptions={[100, 500, 1000, 5000]}
+                dense
                 highlightOnHover
                 pointerOnHover
                 fixedHeader
