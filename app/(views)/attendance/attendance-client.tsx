@@ -1092,14 +1092,7 @@ export default function Attendance() {
     )
       .sort()
       .map(v => ({ value: v, label: v }));
-  }, [
-    destFcba,
-    triplets,
-    buLookups,
-    masterSections,
-    selectedDestFcbaCodeForMaster,
-    selSection,
-  ]);
+  }, [destFcba, triplets, buLookups, masterSections, selectedDestFcbaCodeForMaster, selSection]);
 
   const mandorOptions: Option[] = useMemo(() => {
     const fcba = currentFcbaForForm || form.fcba || homeFcbaCode || homeFcba || '';
@@ -1118,7 +1111,9 @@ export default function Attendance() {
         };
 
     const pool = employees.filter(
-      e => matchesEmployeeFcba(e.fcba, fcba, buLookups, preresolved) && (e.sectionname || '') === section
+      e =>
+        matchesEmployeeFcba(e.fcba, fcba, buLookups, preresolved) &&
+        (e.sectionname || '') === section
     );
 
     const map = new Map<string, string>();

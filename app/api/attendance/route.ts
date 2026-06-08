@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ABSENSI_BASE, buildFilteredUrl, getTokenFromCookie, safeJson } from '@/utils/absensiProxy';
 import { attendanceFilterSchema, attendanceApiResponseSchema } from '@/lib/validations/attendance';
+import { applyUserDataScope } from '@/utils/requestScope';
 
 export const dynamic = 'force-dynamic'; // no cache
 export const runtime = 'nodejs';
@@ -24,6 +25,7 @@ export async function GET(req: NextRequest) {
   }
 
   const sp = new URLSearchParams(req.nextUrl.searchParams.toString());
+  applyUserDataScope(req, sp, { gangParam: 'gang' });
 
   // Build URL final ke API absensi upstream
   const upstreamUrl = buildFilteredUrl(ABSENSI_BASE, sp);

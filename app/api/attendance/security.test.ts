@@ -36,4 +36,27 @@ describe('Attendance API Security', () => {
     expect(data.error).toBe('Failed to fetch attendance data');
     expect(data.ok).toBe(false);
   });
+
+  it('should enforce data scoping for non-admin users (Broken Access Control)', async () => {
+    const req = new NextRequest('http://localhost/api/attendance?fcba=OTHER_FCBA&gang=OTHER_GANG');
+    req.cookies.set('auth_token', 'valid-token');
+    req.cookies.set('user_Level', 'MDP'); // MANDOR
+    req.cookies.set('user_Fcba', 'MY_FCBA');
+    req.cookies.set('user_Gang', 'MY_GANG');
+
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ ok: true, data: [] }),
+    } as Response);
+
+    await GET(req);
+
+    const callUrl = vi.mocked(global.fetch).mock.calls[0][0] as string;
+    const params = new URL(callUrl).searchParams;
+
+    // Both should be overridden by applyUserDataScope
+    expect(params.get('fcba')).toBe('MY_FCBA');
+    expect(params.get('gang')).toBe('MY_GANG');
+  });
 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
 import { authHeaders, extractDataArray } from '@/lib/apiProxy';
+import { applyUserDataScope } from '@/utils/requestScope';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -34,6 +35,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 
   const upstreamParams = new URLSearchParams({ fcba });
+  applyUserDataScope(req, upstreamParams);
 
   for (const key of ['fieldcode', 'afdeling', 'ancakno', 'notph']) {
     const v = searchParams.get(key);
