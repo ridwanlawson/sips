@@ -1238,12 +1238,19 @@ export default function PengangkutanPage() {
               {showFilters ? 'Sembunyikan Filter' : 'Tampilkan Filter'}
             </button>
             <button
-              className="btn btn-sm"
+              className={`btn btn-sm ${loading ? 'btn-disabled' : ''}`}
               onClick={() => fetchData(appliedFilters ?? filters)}
               title="Refresh data pengangkutan"
               disabled={loading}
             >
-              {loading ? 'Loading...' : 'Refresh'}
+              {loading ? (
+                <>
+                  <span className="loading loading-spinner loading-xs" />
+                  Memuat...
+                </>
+              ) : (
+                'Refresh'
+              )}
             </button>
             <button
               className="btn btn-sm btn-outline"
