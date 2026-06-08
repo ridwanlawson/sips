@@ -21,3 +21,7 @@
 ## 2025-05-15 - [O(N) Master Data Lookup in Filter Loops]
 **Learning:** Performing O(N) array searches (like `.find()`) inside of `.filter()` or `.map()` loops over large datasets (like employees) causes O(N*M) complexity. This results in noticeable UI freezing when changing filters or typing in searchable selects.
 **Action:** Pre-calculate a lookup `Map` for master data (e.g., Business Units) and use it for O(1) resolution within the loop. Pre-resolving the current selection's properties before the loop further eliminates redundant Map lookups.
+
+## 2025-06-08 - [Multi-pass Aggregate Calculation Anti-pattern]
+**Learning:** Using multiple O(N) passes (e.g., .reduce() followed by several .filter().length) to calculate dashboard statistics creates unnecessary iterations and intermediate array allocations.
+**Action:** Consolidate aggregate calculations into a single-pass loop (e.g., for...of) to maintain O(N) complexity regardless of the number of metrics being derived.
