@@ -8,10 +8,10 @@
 }
 
 @plugin "daisyui/theme" {
-  name: "plant";
+  name: 'plant';
   default: false;
   prefersdark: false;
-  color-scheme: "light";
+  color-scheme: 'light';
 
   --color-base-100: oklch(96% 0.025 140);
   --color-base-200: oklch(91% 0.04 140);
@@ -43,8 +43,8 @@
   --radius-field: 0.5rem;
   --radius-box: 1rem;
   --size-selector: 0.25rem;
-  --size-field: 0.25rem;   /* ← dinaikkan dari 0.1875rem */
-  --font-size: 0.875rem;   /* ← ditambahkan, 14px base */
+  --size-field: 0.25rem; /* ← dinaikkan dari 0.1875rem */
+  --font-size: 0.875rem; /* ← ditambahkan, 14px base */
   --border: 0.5px;
   --depth: 1;
   --noise: 0;

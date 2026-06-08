@@ -52,4 +52,25 @@ describe('TPH API Security', () => {
     expect(data.error).toBe('Failed to fetch TPH data');
     expect(data.ok).toBe(false);
   });
+
+  it('should enforce data scoping for non-admin users (Broken Access Control)', async () => {
+    vi.mocked(getTokenFromCookie).mockResolvedValue('valid-token');
+    const req = new NextRequest('http://localhost/api/tph?fcba=OTHER_FCBA');
+    req.cookies.set('auth_token', 'valid-token');
+    req.cookies.set('user_Level', 'MDP'); // MANDOR
+    req.cookies.set('user_Fcba', 'MY_FCBA');
+
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ ok: true, data: [] }),
+    } as Response);
+
+    await GET(req);
+
+    const callUrl = vi.mocked(global.fetch).mock.calls[0][0] as string;
+    const params = new URL(callUrl).searchParams;
+
+    expect(params.get('fcba')).toBe('MY_FCBA');
+  });
 });

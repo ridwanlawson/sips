@@ -90,7 +90,10 @@ export async function DELETE(
   const incoming = await req.formData();
   const baDeleted = incoming.get('ba_deleted');
   if (!(baDeleted instanceof File)) {
-    return NextResponse.json({ ok: false, error: 'BA delete file wajib dilampirkan' }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: 'BA delete file wajib dilampirkan' },
+      { status: 400 }
+    );
   }
 
   const form = new FormData();

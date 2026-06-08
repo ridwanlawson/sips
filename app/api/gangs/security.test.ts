@@ -37,7 +37,9 @@ describe('Gangs API Security', () => {
     vi.mocked(getTokenFromCookie).mockResolvedValue('valid-token');
 
     // Mock user as MANDOR who should only see their FCBA and Afdeling
-    const req = new NextRequest('http://localhost/api/gangs?fcba=ATTACKER_FCBA&afdeling=ATTACKER_AFD');
+    const req = new NextRequest(
+      'http://localhost/api/gangs?fcba=ATTACKER_FCBA&afdeling=ATTACKER_AFD'
+    );
     req.cookies.set('user_Level', UserLevel.MANDOR);
     req.cookies.set('user_Fcba', 'MY_FCBA');
     req.cookies.set('user_Afdeling', 'MY_AFD');

@@ -29,7 +29,10 @@ export async function GET(req: NextRequest) {
   }
 
   if (!upstream.ok) {
-    return NextResponse.json({ ok: false, error: 'Failed to fetch master users' }, { status: upstream.status });
+    return NextResponse.json(
+      { ok: false, error: 'Failed to fetch master users' },
+      { status: upstream.status }
+    );
   }
 
   if (Array.isArray(data)) {
