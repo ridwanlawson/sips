@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -107,37 +106,11 @@ type Filters = Partial<{
   attendance: string;
 }>;
 
-type UserLevel = 'ADM' | 'MGR' | 'KSI' | 'MD1' | 'AST' | 'KRT' | 'KRA' | 'KRP' | 'MDP' | 'OTHER';
-
-const USER_LEVELS: UserLevel[] = [
-  'ADM',
-  'MGR',
-  'KSI',
-  'AST',
-  'MD1',
-  'MDP',
-  'KRA',
-  'KRT',
-  'KRP',
-  'OTHER',
-];
-
-const normalizeUserLevel = (level: string): UserLevel => {
-  const upperLevel = level.toUpperCase();
-  const normalizedLevel = upperLevel === 'ADMIN' ? 'ADM' : upperLevel;
-
-  if (USER_LEVELS.includes(normalizedLevel as UserLevel)) {
-    return normalizedLevel as UserLevel;
-  }
-
-  return 'OTHER';
-};
-
 /* =========================
    U T I L h
    ========================= */
 import { cookieStore } from '@/utils/cookieStore';
-import { getFilterCriteria, getLockedFields } from '@/utils/filterHelper';
+import { getFilterCriteria, getLockedFields, type UserLevel } from '@/utils/filterHelper';
 
 /* =========================
    M A I N
@@ -185,7 +158,9 @@ export default function Lhm() {
     );
 
     const level = cookieStore.getLevel();
-    setUserLevel(normalizeUserLevel(level));
+    const upperLevel = level.toUpperCase();
+    const normalizedLevel = upperLevel === 'ADMIN' ? 'ADM' : upperLevel;
+    setUserLevel((normalizedLevel as UserLevel) || 'OTHER');
   }, []);
 
   const getScopedFilters = useCallback(
@@ -748,7 +723,7 @@ export default function Lhm() {
         ),
       },
     ],
-    [numCell]
+    [numCell, formatNumber]
   );
 
   return (

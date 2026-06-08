@@ -14,6 +14,5 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   applyUserDataScope(req, searchParams);
 
   const url = `${BACKEND_URL}/api/report/upload-lhm${searchParams.toString() ? `?${searchParams}` : ''}`;
-  console.log('Proxying GET request to:', url);
   return proxyGet(url, token);
 }

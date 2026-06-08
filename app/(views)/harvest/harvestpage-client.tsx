@@ -181,8 +181,6 @@ type Filters = Partial<{
   kemandoran: string;
 }>;
 
-type UserLevel = 'ADM' | 'MGR' | 'KSI' | 'MD1' | 'AST' | 'KRT' | 'KRA' | 'KRP' | 'MDP' | 'OTHER';
-
 /* =========================
    U T I L S
 ========================= */
@@ -190,6 +188,9 @@ import { getProxiedImageUrl, PLACEHOLDER_IMAGE } from '@/utils/imageHelper';
 import { getTodayISO, formatDateDMY, formatDateISO, getYesterdayISO } from '@/utils/datetime';
 import { buildMapUrl } from '@/utils/mapHelper';
 import { cookieStore } from '@/utils/cookieStore';
+import { type UserLevel } from '@/utils/filterHelper';
+import { getReadableDevice, getOrCreateDeviceIds } from '@/utils/deviceHelper';
+import { extractArrayData, extractSingleData } from '@/utils/apiHelpers';
 
 const LocationButton: React.FC<{
   loc?: string | null;
@@ -224,97 +225,6 @@ const LocationButton: React.FC<{
       </a>
     </div>
   );
-};
-
-const getReadableDevice = () => {
-  if (typeof navigator === 'undefined') return 'Unknown • Unknown';
-  const ua = navigator.userAgent;
-  const os = /Windows/i.test(ua)
-    ? 'Windows'
-    : /Android/i.test(ua)
-      ? 'Android'
-      : /iPhone|iPad|iPod/i.test(ua)
-        ? 'iOS'
-        : /Mac OS X/i.test(ua)
-          ? 'macOS'
-          : /Linux/i.test(ua)
-            ? 'Linux'
-            : 'Unknown';
-  const browser = /Edg\//i.test(ua)
-    ? 'Edge'
-    : /Chrome\//i.test(ua)
-      ? 'Chrome'
-      : /Firefox\//i.test(ua)
-        ? 'Firefox'
-        : /Safari\//i.test(ua)
-          ? 'Safari'
-          : 'Browser';
-  return `${os} • ${browser}`;
-};
-
-const getOrCreateDeviceIds = () => {
-  if (typeof window === 'undefined') return { deviceId: '', pseudoMac: '' };
-  const devKey = 'sips_device_id';
-  const macKey = 'sips_pseudo_mac';
-  let deviceId = localStorage.getItem(devKey) || '';
-  let pseudoMac = localStorage.getItem(macKey) || '';
-  const ensurePseudoMacFormat = (s: string) => {
-    const hex = s
-      .replace(/[^a-f0-9]/gi, '')
-      .padEnd(12, '0')
-      .slice(0, 12);
-    const formatted =
-      hex
-        .match(/.{1,2}/g)
-        ?.join(':')
-        .toUpperCase() ?? '00:00:00:00:00:00';
-    return formatted;
-  };
-  if (!deviceId) {
-    const rnd = (globalThis.crypto as Crypto | undefined)?.randomUUID?.();
-    deviceId = rnd ?? String(Date.now()) + Math.random().toString(16).slice(2);
-    localStorage.setItem(devKey, deviceId);
-  }
-  if (!pseudoMac) {
-    const seed = `${navigator.userAgent}|${deviceId}|${screen.width}x${
-      screen.height
-    }|${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
-    let h = 0;
-    for (let i = 0; i < seed.length; i += 1) {
-      h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-    }
-    pseudoMac = ensurePseudoMacFormat(h.toString(16));
-    localStorage.setItem(macKey, pseudoMac);
-  }
-  return { deviceId, pseudoMac };
-};
-
-/* Type guards */
-const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
-
-const extractArrayData = <T,>(payload: unknown): T[] => {
-  if (!isObject(payload)) return [];
-  if ('ok' in payload && payload.ok === true && 'data' in payload) {
-    const d = (payload as { data: unknown }).data;
-    if (Array.isArray(d)) return d as T[];
-    if (isObject(d) && 'data' in d && Array.isArray((d as { data: unknown }).data)) {
-      return (d as { data: T[] }).data;
-    }
-  }
-  return [];
-};
-
-const extractSingleData = <T,>(payload: unknown): T | null => {
-  if (!isObject(payload)) return null;
-  if ('ok' in payload && payload.ok === true && 'data' in payload) {
-    const d = (payload as { data: unknown }).data;
-    if (isObject(d) && 'data' in d) {
-      const inner = (d as { data: unknown }).data as T;
-      return inner;
-    }
-    return d as T;
-  }
-  return null;
 };
 
 const toNumber = (value: string | number | null | undefined): number => {

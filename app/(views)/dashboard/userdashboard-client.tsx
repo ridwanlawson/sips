@@ -9,6 +9,8 @@ import { SkeletonCard, SkeletonTable, SkeletonChart } from '@/app/components/ske
 import { formatPerfNumber } from '@/utils/perf-formatter';
 import { useLocale } from '@/hooks/useLocale';
 import { SearchSelect, type Option } from '@/app/components/search-select';
+import { cookieStore } from '@/utils/cookieStore';
+import { toTitleCase } from '@/utils/textManipulation';
 
 /* =========================
    T Y P E S
@@ -128,22 +130,6 @@ type DetailMode = 'perHari' | 'perBaris';
 ========================= */
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
-
-const readCookie = (name: string): string | null => {
-  if (typeof document === 'undefined') return null;
-  const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
-  return m ? decodeURIComponent(m.pop() as string) : null;
-};
-
-const toTitleCase = (str: string | undefined | null): string => {
-  if (!str) return '';
-  return str
-    .toLowerCase()
-    .split(' ')
-    .filter(Boolean)
-    .map(w => w[0]?.toUpperCase() + w.slice(1))
-    .join(' ');
-};
 
 // Range tanggal utk filter FRONTEND
 const getDateRange = (frame: Timeframe): { from: string; to: string } => {
@@ -310,7 +296,7 @@ export default function UserDashboard() {
     queryClient.prefetchQuery({
       queryKey: ['triplets'],
       queryFn: async () => {
-        const ckTrip = readCookie('opt_triplets');
+        const ckTrip = cookieStore.getCookie('opt_triplets');
         if (ckTrip) {
           try {
             const arr = JSON.parse(ckTrip) as Triplet[];
@@ -362,7 +348,7 @@ export default function UserDashboard() {
     queryKey: ['triplets'],
     queryFn: async () => {
       // Cek cookie dulu
-      const ckTrip = readCookie('opt_triplets');
+      const ckTrip = cookieStore.getCookie('opt_triplets');
       if (ckTrip) {
         try {
           const arr = JSON.parse(ckTrip) as Triplet[];
@@ -457,9 +443,9 @@ export default function UserDashboard() {
       params.set('tanggal', from);
       params.set('tanggal_end', to);
 
-      const homeFcba = userProfile?.fcba || readCookie('user_Fcba') || '';
+      const homeFcba = userProfile?.fcba || cookieStore.getCookie('user_Fcba') || '';
       const homeAfdeling =
-        userProfile?.afdeling || userProfile?.section || readCookie('user_Section') || '';
+        userProfile?.afdeling || userProfile?.section || cookieStore.getCookie('user_Section') || '';
 
       if (userLevel === 'ADM') {
         if (filterFcba && filterFcba !== 'ALL') params.set('fcba', filterFcba.trim());
@@ -516,9 +502,9 @@ export default function UserDashboard() {
       p.set('tanggal', from);
       p.set('tanggal_end', to);
 
-      const homeFcba = userProfile?.fcba || readCookie('user_Fcba') || '';
+      const homeFcba = userProfile?.fcba || cookieStore.getCookie('user_Fcba') || '';
       const homeAfdeling =
-        userProfile?.afdeling || userProfile?.section || readCookie('user_Section') || '';
+        userProfile?.afdeling || userProfile?.section || cookieStore.getCookie('user_Section') || '';
 
       if (userLevel === 'ADM') {
         if (filterFcba && filterFcba !== 'ALL') p.set('fcba', filterFcba.trim());
@@ -594,9 +580,9 @@ export default function UserDashboard() {
       p.set('tanggal', from);
       p.set('tanggal_end', to);
 
-      const homeFcba = userProfile?.fcba || readCookie('user_Fcba') || '';
+      const homeFcba = userProfile?.fcba || cookieStore.getCookie('user_Fcba') || '';
       const homeAfdeling =
-        userProfile?.afdeling || userProfile?.section || readCookie('user_Section') || '';
+        userProfile?.afdeling || userProfile?.section || cookieStore.getCookie('user_Section') || '';
 
       if (userLevel === 'ADM') {
         if (filterFcba && filterFcba !== 'ALL') p.set('fcba', filterFcba.trim());
@@ -689,24 +675,24 @@ export default function UserDashboard() {
   /* ===== Bootstrap user dari cookies ===== */
   useEffect(() => {
     const cookieFullname =
-      readCookie('user_FullName') ||
-      readCookie('user_fullname') ||
-      readCookie('user_Name') ||
-      readCookie('user_name') ||
+      cookieStore.getCookie('user_FullName') ||
+      cookieStore.getCookie('user_fullname') ||
+      cookieStore.getCookie('user_Name') ||
+      cookieStore.getCookie('user_name') ||
       '';
     const cookieLevelRaw =
-      readCookie('user_Level') || readCookie('user_LEVEL') || readCookie('user_level') || '';
+      cookieStore.getCookie('user_Level') || cookieStore.getCookie('user_LEVEL') || cookieStore.getCookie('user_level') || '';
     const cookieFcba =
-      readCookie('user_Fcba') || readCookie('user_FCBA') || readCookie('user_fcba') || '';
+      cookieStore.getCookie('user_Fcba') || cookieStore.getCookie('user_FCBA') || cookieStore.getCookie('user_fcba') || '';
     const cookieSection =
-      readCookie('user_Section') ||
-      readCookie('user_SECTION') ||
-      readCookie('user_section') ||
-      readCookie('user_Afdeling') ||
-      readCookie('user_afdeling') ||
+      cookieStore.getCookie('user_Section') ||
+      cookieStore.getCookie('user_SECTION') ||
+      cookieStore.getCookie('user_section') ||
+      cookieStore.getCookie('user_Afdeling') ||
+      cookieStore.getCookie('user_afdeling') ||
       '';
     const cookieGang =
-      readCookie('user_Gang') || readCookie('user_gang') || readCookie('user_GANG') || '';
+      cookieStore.getCookie('user_Gang') || cookieStore.getCookie('user_gang') || cookieStore.getCookie('user_GANG') || '';
 
     let lvl: UserLevel = 'OTHER';
     const upperLvl = cookieLevelRaw.toUpperCase();
@@ -763,12 +749,6 @@ export default function UserDashboard() {
     ).sort();
     return [{ value: '', label: 'Semua Afdeling' }, ...uniq.map(v => ({ value: v, label: v }))];
   }, [triplets, filterFcba]);
-
-  /* ===== Options FCBA & Afdeling (chain) ===== */
-
-  /* ===== Options FCBA & Afdeling (chain) ===== */
-
-  /* ===== Options FCBA & Afdeling (chain) ===== */
 
   /* ===== Consolidated Attendance Data Processing (O(n) single-pass) ===== */
   const {
@@ -1056,7 +1036,7 @@ export default function UserDashboard() {
 
   const displayName =
     toTitleCase(
-      userProfile?.fullname || readCookie('user_FullName') || userProfile?.username || ''
+      userProfile?.fullname || cookieStore.getCookie('user_FullName') || userProfile?.username || ''
     ) || 'User';
 
   const displayLevel = (userProfile?.level || '').toUpperCase() || userLevel;

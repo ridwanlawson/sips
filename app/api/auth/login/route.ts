@@ -1,9 +1,20 @@
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { BACKEND_URL } from '@/utils/absensiProxy';
+
+const loginSchema = z.object({
+  username: z.string().min(1).max(100),
+  password: z.string().min(1).max(200),
+});
 
 export async function POST(request: Request) {
   try {
-    const { username, password } = await request.json();
+    const body = await request.json();
+    const parsed = loginSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ ok: false, error: 'Invalid input' }, { status: 400 });
+    }
+    const { username, password } = parsed.data;
 
     const upstream = await fetch(`${BACKEND_URL}/api/login`, {
       method: 'POST',

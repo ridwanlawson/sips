@@ -1334,12 +1334,14 @@ export default function PengangkutanPage() {
                 className="input input-bordered w-full"
                 value={filters.tanggal || ''}
                 onChange={e => setFilters(s => ({ ...s, tanggal: e.target.value }))}
+                title="Filter tanggal awal pengangkutan"
               />
               <input
                 type="date"
                 className="input input-bordered w-full"
                 value={filters.tanggal_end || ''}
                 onChange={e => setFilters(s => ({ ...s, tanggal_end: e.target.value }))}
+                title="Filter tanggal akhir pengangkutan"
               />
               <input
                 type="text"
@@ -1347,6 +1349,7 @@ export default function PengangkutanPage() {
                 placeholder="No Pengangkutan"
                 value={filters.nopengangkutan || ''}
                 onChange={e => setFilters(s => ({ ...s, nopengangkutan: e.target.value }))}
+                title="Filter berdasarkan nomor pengangkutan"
               />
               <input
                 type="text"
@@ -1354,6 +1357,7 @@ export default function PengangkutanPage() {
                 placeholder="No SPB"
                 value={filters.nospb || ''}
                 onChange={e => setFilters(s => ({ ...s, nospb: e.target.value }))}
+                title="Filter berdasarkan nomor SPB"
               />
               <input
                 type="text"
@@ -1361,6 +1365,7 @@ export default function PengangkutanPage() {
                 placeholder="No Dokumen"
                 value={filters.nodokumen || ''}
                 onChange={e => setFilters(s => ({ ...s, nodokumen: e.target.value }))}
+                title="Filter berdasarkan nomor dokumen harvest"
               />
               <input
                 type="text"
@@ -1373,6 +1378,7 @@ export default function PengangkutanPage() {
                     kode_karyawan_driver: e.target.value,
                   }))
                 }
+                title="Filter berdasarkan kode driver"
               />
               <input
                 type="text"
@@ -1385,6 +1391,7 @@ export default function PengangkutanPage() {
                     kode_karyawan_kerani: e.target.value,
                   }))
                 }
+                title="Filter berdasarkan kode kerani"
               />
               <input
                 type="text"
@@ -1393,6 +1400,7 @@ export default function PengangkutanPage() {
                 value={filters.fcba || ''}
                 onChange={e => setFilters(s => ({ ...s, fcba: e.target.value }))}
                 disabled={isFcbaLocked}
+                title="Filter berdasarkan FCBA"
               />
               <input
                 type="text"
@@ -1401,6 +1409,7 @@ export default function PengangkutanPage() {
                 value={filters.afdeling || ''}
                 onChange={e => setFilters(s => ({ ...s, afdeling: e.target.value }))}
                 disabled={isAfdelingLocked}
+                title="Filter berdasarkan Afdeling"
               />
               <input
                 type="text"
@@ -1409,12 +1418,10 @@ export default function PengangkutanPage() {
                 value={filters.kemandoran || ''}
                 onChange={e => setFilters(s => ({ ...s, kemandoran: e.target.value }))}
                 disabled={isKemandoranLocked}
+                title="Filter berdasarkan Kemandoran"
               />
-
-              <input
-                type="text"
-                className="input input-bordered w-full"
-                placeholder="Status"
+              <select
+                className="select select-bordered w-full"
                 value={filters.status_pengangkutan || ''}
                 onChange={e =>
                   setFilters(s => ({
@@ -1422,15 +1429,33 @@ export default function PengangkutanPage() {
                     status_pengangkutan: e.target.value,
                   }))
                 }
-              />
+                title="Filter berdasarkan status pengangkutan"
+              >
+                <option value="">Status</option>
+                <option value="Approved">Approved</option>
+                <option value="Planned">Planned</option>
+                <option value="Completed">Completed</option>
+              </select>
             </div>
 
             <div className="flex justify-start gap-2 pt-3 border-t border-base-200">
-              <button className="btn btn-outline" onClick={() => setAppliedFilters({ ...filters })}>
-                Terapkan Filter
+              <button
+                className={`btn btn-outline ${loading ? 'btn-disabled' : ''}`}
+                onClick={() => setAppliedFilters({ ...filters })}
+                disabled={loading}
+                title="Terapkan filter"
+              >
+                {loading ? (
+                  <>
+                    <span className="loading loading-spinner loading-xs" />
+                    Memuat...
+                  </>
+                ) : (
+                  'Terapkan Filter'
+                )}
               </button>
               <button
-                className="btn"
+                className={`btn ${loading ? 'btn-disabled' : ''}`}
                 onClick={() => {
                   const reset: Filters = {
                     tanggal: '',
@@ -1452,8 +1477,17 @@ export default function PengangkutanPage() {
                   setFilters(reset);
                   setAppliedFilters(reset);
                 }}
+                disabled={loading}
+                title="Reset semua filter"
               >
-                Reset
+                {loading ? (
+                  <>
+                    <span className="loading loading-spinner loading-xs" />
+                    Memuat...
+                  </>
+                ) : (
+                  'Reset'
+                )}
               </button>
             </div>
           </div>
@@ -1461,22 +1495,30 @@ export default function PengangkutanPage() {
 
         <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100 animate-slideUp [animation-delay:200ms]">
           <div className="min-w-[900px] md:min-w-0">
-            <DataTable
-              keyField="_rowKey"
-              columns={columns}
-              data={filtered}
-              progressPending={loading}
-              pagination
-              paginationPerPage={100}
-              paginationRowsPerPageOptions={[100, 500, 1000, 5000]}
-              highlightOnHover
-              pointerOnHover
-              fixedHeader
-              fixedHeaderScrollHeight="520px"
-              persistTableHead
-              responsive
-              noDataComponent={<div className="py-8 text-base-content/70">{t('noData')}</div>}
-            />
+            {loading ? (
+              <div className="p-8">
+                <SkeletonTable rows={10} />
+              </div>
+            ) : (
+              <DataTable
+                keyField="_rowKey"
+                columns={columns}
+                data={filtered}
+                progressPending={loading}
+                pagination
+                customStyles={centerHeaderStyle}
+                paginationPerPage={100}
+                paginationRowsPerPageOptions={[100, 500, 1000, 5000]}
+                dense
+                highlightOnHover
+                pointerOnHover
+                fixedHeader
+                fixedHeaderScrollHeight="520px"
+                persistTableHead
+                responsive
+                noDataComponent={<div className="py-8 text-base-content/70">{t('noData')}</div>}
+              />
+            )}
           </div>
         </div>
 

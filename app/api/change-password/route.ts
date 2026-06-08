@@ -1,10 +1,21 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { z } from 'zod';
 import { BACKEND_URL } from '@/utils/absensiProxy';
+
+const changePasswordSchema = z.object({
+  current_password: z.string().min(1).max(200),
+  new_password: z.string().min(8).max(200),
+});
 
 export async function POST(request: Request) {
   try {
-    const { current_password, new_password } = await request.json();
+    const body = await request.json();
+    const parsed = changePasswordSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ ok: false, error: 'Invalid input' }, { status: 400 });
+    }
+    const { current_password, new_password } = parsed.data;
     const cookieStore = await cookies();
     const token = cookieStore.get('auth_token')?.value;
 

@@ -1,30 +1,48 @@
 ﻿'use client';
 
+/**
+ * Change Password Page — Client Component
+ *
+ * Prinsip yang diterapkan (Software Design & Architecture Roadmap):
+ *
+ * Clean Code:
+ *   - Meaningful names over comments
+ *   - Keep classes/files small → UI dipecah ke sub-komponen
+ *   - Pure functions untuk helper/validator
+ *   - Command-query separation: submit handler hanya memberi perintah,
+ *     state query dikelola hook
+ *
+ * Design Principles:
+ *   - SRP (Single Responsibility): tiap komponen/hook punya satu alasan berubah
+ *   - DRY: UserProfile type dari shared `app/types`, PROFILE_FIELDS cukup di satu tempat
+ *   - YAGNI: tidak ada fitur yang belum dibutuhkan
+ *   - Program to abstractions: komponen menerima data via props, bukan fetch sendiri
+ *
+ * Functional Programming:
+ *   - Enkapsulasi state & side-effect ke custom hook `useChangePassword`
+ *   - Validator sebagai pure function terpisah
+ */
+
 import { useState } from 'react';
 import Image from 'next/image';
 import { toTitleCase } from '@/utils/textManipulation';
 import { getProxiedImageUrl } from '@/utils/imageHelper';
+import type { UserProfile } from '@/app/types';
 
-export type UserProfile = {
-  id: number;
-  name: string;
-  email: string;
-  username: string;
-  idkaryawan: string;
-  fullname: string;
-  level: string;
-  position: string;
-  photo: string;
-  fcba: string;
-  afdeling: string;
-  gangcode: string;
-  phone: string;
-};
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-interface Props {
-  /** Profile data di-fetch di server (SSR) dan diteruskan sebagai prop. */
+interface ChangePasswordPageProps {
+  /** Profile di-fetch di server (SSR) dan diteruskan sebagai prop. */
   profile: UserProfile | null;
 }
+
+interface ChangePasswordFormState {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const PROFILE_FIELDS: { label: string; key: keyof UserProfile }[] = [
   { label: 'Username', key: 'username' },
@@ -39,39 +57,68 @@ const PROFILE_FIELDS: { label: string; key: keyof UserProfile }[] = [
   { label: 'Gang Code', key: 'gangcode' },
 ];
 
-export default function ChangePasswordPage({ profile }: Props) {
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+const FALLBACK_AVATAR =
+  'https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp';
+
+// ─── Pure Validators (Clean Code: pure functions) ─────────────────────────────
+
+function validatePasswordMatch(newPassword: string, confirmPassword: string): string | null {
+  if (newPassword !== confirmPassword) return 'Password baru dan konfirmasi tidak cocok.';
+  return null;
+}
+
+function validatePasswordLength(password: string, minLength = 8): string | null {
+  if (password.length < minLength) return `Password baru minimal ${minLength} karakter.`;
+  return null;
+}
+
+// ─── Custom Hook (SRP: enkapsulasi form logic) ────────────────────────────────
+
+function useChangePassword() {
+  const [form, setForm] = useState<ChangePasswordFormState>({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
   const [showPasswords, setShowPasswords] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  /** Query: apakah konfirmasi password cocok (untuk live validation). */
+  const isConfirmMismatch =
+    !!form.newPassword && !!form.confirmPassword && form.newPassword !== form.confirmPassword;
+
+  /** Command: update salah satu field form. */
+  function updateField(field: keyof ChangePasswordFormState, value: string) {
+    setForm(prev => ({ ...prev, [field]: value }));
+  }
+
+  /** Command: reset seluruh form ke initial state. */
+  function resetForm() {
+    setForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  }
+
+  /** Command: submit form — satu-satunya fungsi yang menyentuh API. */
+  async function submitChangePassword(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setSuccess('');
 
-    if (newPassword !== confirmPassword) {
-      setError('Password baru dan konfirmasi tidak cocok.');
-      return;
-    }
+    const matchError = validatePasswordMatch(form.newPassword, form.confirmPassword);
+    if (matchError) { setError(matchError); return; }
 
-    if (newPassword.length < 8) {
-      setError('Password baru minimal 8 karakter.');
-      return;
-    }
+    const lengthError = validatePasswordLength(form.newPassword);
+    if (lengthError) { setError(lengthError); return; }
 
     setLoading(true);
-
     try {
       const res = await fetch('/api/change-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          current_password: currentPassword,
-          new_password: newPassword,
+          current_password: form.currentPassword,
+          new_password: form.newPassword,
         }),
       });
 
@@ -79,9 +126,7 @@ export default function ChangePasswordPage({ profile }: Props) {
 
       if (res.ok) {
         setSuccess(data.message || 'Password berhasil diubah.');
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
+        resetForm();
       } else {
         setError(data.message || 'Gagal mengubah password.');
       }
@@ -90,206 +135,264 @@ export default function ChangePasswordPage({ profile }: Props) {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
+  return {
+    form,
+    showPasswords,
+    loading,
+    error,
+    success,
+    isConfirmMismatch,
+    updateField,
+    setShowPasswords,
+    submitChangePassword,
+  };
+}
+
+// ─── Sub-Components (SRP: satu komponen, satu tanggung jawab) ─────────────────
+
+/** Menampilkan satu field input password. */
+function PasswordField({
+  label,
+  placeholder,
+  value,
+  isVisible,
+  hasError = false,
+  onChange,
+}: {
+  label: string;
+  placeholder: string;
+  value: string;
+  isVisible: boolean;
+  hasError?: boolean;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="form-control">
+      <label className="label">
+        <span className="label-text font-medium">{label}</span>
+      </label>
+      <input
+        type={isVisible ? 'text' : 'password'}
+        placeholder={placeholder}
+        className={`input input-bordered w-full focus:input-primary transition-all ${
+          hasError ? 'input-error' : ''
+        }`}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        required
+        minLength={8}
+      />
+    </div>
+  );
+}
+
+/** Menampilkan pesan alert (error atau success). */
+function FormAlert({ type, message }: { type: 'error' | 'success'; message: string }) {
+  const isError = type === 'error';
+  return (
+    <div
+      className={`alert ${isError ? 'alert-error' : 'alert-success'} shadow-sm text-sm animate-fadeIn`}
+      role="alert"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="stroke-current shrink-0 h-5 w-5"
+        fill="none"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        {isError ? (
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        ) : (
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        )}
+      </svg>
+      <span>{message}</span>
+    </div>
+  );
+}
+
+/** Menampilkan kartu profil pengguna di sisi kiri. */
+function UserProfileCard({ profile }: { profile: UserProfile | null }) {
+  if (!profile) {
+    return (
+      <div className="card bg-base-100 shadow-xl border border-base-300 h-full">
+        <div className="card-body items-center justify-center">
+          <p className="text-base-content/60">Gagal memuat data profil.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const avatarSrc = getProxiedImageUrl(profile.photo ?? '') || FALLBACK_AVATAR;
+  const displayName = profile.fullname ? toTitleCase(profile.fullname) : 'User';
+  const displayRole = profile.position || profile.level || 'Staff';
+
+  return (
+    <div className="card bg-base-100 shadow-xl border border-base-300 h-full">
+      <div className="card-body items-center text-center">
+        <div className="avatar mb-2">
+          <div className="w-24 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2 shadow-lg">
+            <Image
+              src={avatarSrc}
+              alt={`Avatar ${displayName}`}
+              width={96}
+              height={96}
+              className="object-cover"
+              unoptimized
+            />
+          </div>
+        </div>
+
+        <h2 className="card-title text-xl font-bold">{displayName}</h2>
+        <div className="badge badge-secondary badge-outline mt-1 mb-4">{displayRole}</div>
+
+        <dl className="w-full flex flex-col gap-3 text-left mt-2 text-sm">
+          {PROFILE_FIELDS.map(({ label, key }) => (
+            <div key={key} className="flex justify-between border-b border-base-200 pb-2">
+              <dt className="text-base-content/60">{label}</dt>
+              <dd className="font-medium">{String(profile[key] ?? '-')}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </div>
+  );
+}
+
+/** Form ganti password. */
+function ChangePasswordForm() {
+  const {
+    form,
+    showPasswords,
+    loading,
+    error,
+    success,
+    isConfirmMismatch,
+    updateField,
+    setShowPasswords,
+    submitChangePassword,
+  } = useChangePassword();
+
+  return (
+    <div className="card bg-base-100 shadow-xl border border-base-300">
+      <div className="card-body">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 bg-primary/10 rounded-lg text-primary" aria-hidden="true">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              className="w-6 h-6"
+            >
+              <path
+                fillRule="evenodd"
+                d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </div>
+          <div>
+            <h2 className="card-title text-xl">Ganti Password</h2>
+            <p className="text-xs text-base-content/60">
+              Perbarui kata sandi akun Anda secara berkala.
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={submitChangePassword} className="flex flex-col gap-5" noValidate>
+          <PasswordField
+            label="Password Saat Ini"
+            placeholder="Masukkan password lama"
+            value={form.currentPassword}
+            isVisible={showPasswords}
+            onChange={value => updateField('currentPassword', value)}
+          />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <PasswordField
+              label="Password Baru"
+              placeholder="Minimal 8 karakter"
+              value={form.newPassword}
+              isVisible={showPasswords}
+              onChange={value => updateField('newPassword', value)}
+            />
+            <PasswordField
+              label="Konfirmasi Password"
+              placeholder="Ulangi password baru"
+              value={form.confirmPassword}
+              isVisible={showPasswords}
+              hasError={isConfirmMismatch}
+              onChange={value => updateField('confirmPassword', value)}
+            />
+          </div>
+
+          {error && <FormAlert type="error" message={error} />}
+          {success && <FormAlert type="success" message={success} />}
+
+          <div className="form-control">
+            <label className="label cursor-pointer justify-start gap-2">
+              <input
+                type="checkbox"
+                className="checkbox checkbox-primary checkbox-sm"
+                checked={showPasswords}
+                onChange={e => setShowPasswords(e.target.checked)}
+              />
+              <span className="label-text">Tampilkan Password</span>
+            </label>
+          </div>
+
+          <div className="form-control mt-4">
+            <button
+              type="submit"
+              className="btn btn-primary w-full sm:w-auto sm:self-end min-w-[150px]"
+              disabled={loading}
+            >
+              {loading ? (
+                <span className="loading loading-spinner loading-sm" aria-label="Loading" />
+              ) : (
+                'Simpan Perubahan'
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ─── Page Component (Composition Root) ───────────────────────────────────────
+
+export default function ChangePasswordPage({ profile }: ChangePasswordPageProps) {
   return (
     <div className="min-h-[calc(100vh-64px)] bg-base-200 p-4 md:p-8 flex justify-center items-start pt-10 relative overflow-hidden">
       {/* Background Decorations */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+      <div
+        className="absolute inset-0 overflow-hidden pointer-events-none"
+        aria-hidden="true"
+      >
         <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/10 rounded-full blur-3xl opacity-50 animate-pulse" />
         <div className="absolute top-1/2 right-0 w-80 h-80 bg-secondary/10 rounded-full blur-3xl opacity-40 animate-pulse [animation-delay:1s]" />
       </div>
 
       <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-6 relative z-0">
-        {/* Left Column: User Profile data is already provided by the server. */}
         <div className="md:col-span-1">
-          <div className="card bg-base-100 shadow-xl border border-base-300 h-full">
-            <div className="card-body items-center text-center">
-              {profile ? (
-                <>
-                  <div className="avatar mb-2">
-                    <div className="w-24 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2 shadow-lg">
-                      <Image
-                        src={
-                          getProxiedImageUrl(profile.photo) ||
-                          'https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp'
-                        }
-                        alt="Avatar"
-                        width={96}
-                        height={96}
-                        className="object-cover"
-                        unoptimized
-                      />
-                    </div>
-                  </div>
-
-                  <h2 className="card-title text-xl font-bold">
-                    {profile.fullname ? toTitleCase(profile.fullname) : 'User'}
-                  </h2>
-                  <div className="badge badge-secondary badge-outline mt-1 mb-4">
-                    {profile.position || profile.level || 'Staff'}
-                  </div>
-
-                  <div className="w-full flex flex-col gap-3 text-left mt-2 text-sm">
-                    {PROFILE_FIELDS.map(({ label, key }) => (
-                      <div key={key} className="flex justify-between border-b border-base-200 pb-2">
-                        <span className="text-base-content/60">{label}</span>
-                        <span className="font-medium">{profile[key] || '-'}</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div className="py-10 text-base-content/60">Gagal memuat data profil.</div>
-              )}
-            </div>
-          </div>
+          <UserProfileCard profile={profile} />
         </div>
-
-        {/* Right Column: Change Password Form */}
         <div className="md:col-span-2">
-          <div className="card bg-base-100 shadow-xl border border-base-300">
-            <div className="card-body">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                    className="w-6 h-6"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <h2 className="card-title text-xl">Ganti Password</h2>
-                  <p className="text-xs text-base-content/60">
-                    Perbarui kata sandi akun Anda secara berkala.
-                  </p>
-                </div>
-              </div>
-
-              <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text font-medium">Password Saat Ini</span>
-                  </label>
-                  <input
-                    type={showPasswords ? 'text' : 'password'}
-                    placeholder="Masukkan password lama"
-                    className="input input-bordered w-full focus:input-primary transition-all"
-                    value={currentPassword}
-                    onChange={e => setCurrentPassword(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text font-medium">Password Baru</span>
-                    </label>
-                    <input
-                      type={showPasswords ? 'text' : 'password'}
-                      placeholder="Minimal 8 karakter"
-                      className="input input-bordered w-full focus:input-primary transition-all"
-                      value={newPassword}
-                      onChange={e => setNewPassword(e.target.value)}
-                      required
-                      minLength={8}
-                    />
-                  </div>
-
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text font-medium">Konfirmasi Password</span>
-                    </label>
-                    <input
-                      type={showPasswords ? 'text' : 'password'}
-                      placeholder="Ulangi password baru"
-                      className={`input input-bordered w-full focus:input-primary transition-all ${
-                        newPassword && confirmPassword && newPassword !== confirmPassword
-                          ? 'input-error'
-                          : ''
-                      }`}
-                      value={confirmPassword}
-                      onChange={e => setConfirmPassword(e.target.value)}
-                      required
-                      minLength={8}
-                    />
-                  </div>
-                </div>
-
-                {error && (
-                  <div className="alert alert-error shadow-sm text-sm animate-fadeIn">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="stroke-current shrink-0 h-5 w-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    <span>{error}</span>
-                  </div>
-                )}
-
-                {success && (
-                  <div className="alert alert-success shadow-sm text-sm animate-fadeIn">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="stroke-current shrink-0 h-5 w-5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    <span>{success}</span>
-                  </div>
-                )}
-
-                <div className="form-control">
-                  <label className="label cursor-pointer justify-start gap-2">
-                    <input
-                      type="checkbox"
-                      className="checkbox checkbox-primary checkbox-sm"
-                      checked={showPasswords}
-                      onChange={e => setShowPasswords(e.target.checked)}
-                    />
-                    <span className="label-text">Tampilkan Password</span>
-                  </label>
-                </div>
-
-                <div className="form-control mt-4">
-                  <button
-                    type="submit"
-                    className="btn btn-primary w-full sm:w-auto sm:self-end min-w-[150px]"
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <span className="loading loading-spinner loading-sm" />
-                    ) : (
-                      'Simpan Perubahan'
-                    )}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
+          <ChangePasswordForm />
         </div>
       </div>
     </div>

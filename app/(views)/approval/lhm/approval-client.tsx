@@ -114,32 +114,6 @@ type Filters = Partial<{
   upload: string;
 }>;
 
-type UserLevel = 'ADM' | 'MGR' | 'KSI' | 'AST' | 'MD1' | 'MDP' | 'KRA' | 'KRT' | 'KRP' | 'OTHER';
-
-const USER_LEVELS: UserLevel[] = [
-  'ADM',
-  'MGR',
-  'KSI',
-  'AST',
-  'MD1',
-  'MDP',
-  'KRA',
-  'KRT',
-  'KRP',
-  'OTHER',
-];
-
-const normalizeUserLevel = (level: string): UserLevel => {
-  const upperLevel = level.toUpperCase();
-  const normalizedLevel = upperLevel === 'ADMIN' ? 'ADM' : upperLevel;
-
-  if (USER_LEVELS.includes(normalizedLevel as UserLevel)) {
-    return normalizedLevel as UserLevel;
-  }
-
-  return 'OTHER';
-};
-
 const getEmptyFilters = (): Filters => {
   const yesterday = getYesterdayISO();
   const today = getTodayISO();
@@ -162,6 +136,7 @@ const getEmptyFilters = (): Filters => {
    U T I L S
 ========================= */
 import { cookieStore } from '@/utils/cookieStore';
+import { type UserLevel } from '@/utils/filterHelper';
 
 /* =========================
    M A I N
@@ -183,7 +158,9 @@ export default function Approval() {
   const [homeGang, setHomeGang] = useState<string>('');
   const [userLevel, setUserLevel] = useState<UserLevel>(() => {
     const level = cookieStore.getLevel();
-    return normalizeUserLevel(level);
+    const upper = level.toUpperCase();
+    const normalized = upper === 'ADMIN' ? 'ADM' : upper;
+    return (normalized as UserLevel) || 'OTHER';
   });
 
   const getScopedFilters = useCallback(
@@ -245,7 +222,8 @@ export default function Approval() {
     const afdeling = cookieStore.getSection();
     const gang = cookieStore.getGang();
     const level = cookieStore.getLevel();
-    const resolvedLevel = normalizeUserLevel(level);
+    const upperLevel = level.toUpperCase();
+    const resolvedLevel = ((upperLevel === 'ADMIN' ? 'ADM' : upperLevel) as UserLevel) || 'OTHER';
 
     setHomeFcba(fcba);
     setHomeAfdeling(afdeling);

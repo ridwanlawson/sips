@@ -3,17 +3,13 @@
  * Handles filter logic based on user level for Attendance, Transport, and LHM menus
  */
 
-export type UserLevel =
-  | 'ADM'
-  | 'MGR'
-  | 'KSI'
-  | 'MD1'
-  | 'AST'
-  | 'KRT'
-  | 'KRA'
-  | 'KRP'
-  | 'MDP'
-  | 'OTHER';
+import { UserLevelValue } from '@/lib/constants';
+
+// Re-export for backward compatibility. Callers that need 'OTHER' use the extended type below.
+export type { UserLevelValue };
+
+/** Extended level type used in filter/lock helpers (includes 'OTHER' for unknown levels) */
+export type UserLevel = UserLevelValue | 'OTHER';
 
 export type MenuType = 'attendance' | 'transport' | 'lhm';
 

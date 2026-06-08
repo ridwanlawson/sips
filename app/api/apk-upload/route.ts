@@ -56,9 +56,6 @@ export async function POST(req: NextRequest) {
     headers.set('Authorization', `Bearer ${token}`);
     headers.set('Accept', 'application/json');
 
-    console.log('🚀 Proxying upload to Laravel:', externalUrl);
-    console.log('   Content-Type:', contentType);
-
     const response = await fetch(externalUrl, {
       method: 'POST',
       headers,
@@ -66,8 +63,6 @@ export async function POST(req: NextRequest) {
       // @ts-expect-error duplex required for streaming body
       duplex: 'half',
     });
-
-    console.log('📤 Laravel response status:', response.status);
 
     if (!response.ok) {
       const text = await response.text();
@@ -84,7 +79,6 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await response.json();
-    console.log('✅ Laravel success response:', data);
     return NextResponse.json(data);
   } catch (err: unknown) {
     const error = err instanceof Error ? err : new Error(String(err));

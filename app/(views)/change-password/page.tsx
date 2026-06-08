@@ -2,25 +2,10 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { BACKEND_URL } from '@/utils/backendConfig';
 import ChangePasswordPage from './changepasswordpage-client';
+import type { UserProfile } from '@/app/types';
 
 export const metadata: Metadata = {
   title: 'Change Password',
-};
-
-type UserProfile = {
-  id: number;
-  name: string;
-  email: string;
-  username: string;
-  idkaryawan: string;
-  fullname: string;
-  level: string;
-  position: string;
-  photo: string;
-  fcba: string;
-  afdeling: string;
-  gangcode: string;
-  phone: string;
 };
 
 /**
