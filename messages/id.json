@@ -34,6 +34,7 @@
     "searchPlaceholder": "Cari apapun (karyawan, fcba, mandor, device, lokasi...)",
     "close": "Tutup",
     "noData": "Tidak ada data",
+    "noDataHint": "Coba sesuaikan filter atau pencarian Anda untuk menemukan apa yang Anda cari.",
     "select": "Pilih...",
     "typeToSearch": "Ketik untuk mencari..."
   },
@@ -43,19 +44,23 @@
     "searchPlaceholder": "Cari No Dokumen, Karyawan, FCBA, TPH...",
     "close": "Tutup",
     "noData": "Tidak ada data",
+    "noDataHint": "Coba sesuaikan filter atau pencarian Anda untuk menemukan apa yang Anda cari.",
     "select": "Pilih...",
     "typeToSearch": "Ketik untuk mencari..."
   },
   "Lhm": {
     "quickSearch": "Pencarian Cepat",
     "clearSearch": "Hapus pencarian",
-    "searchPlaceholder": "Cari karyawan, blok, fcba, nomor dokumen..."
+    "searchPlaceholder": "Cari karyawan, blok, fcba, nomor dokumen...",
+    "noData": "Tidak ada data",
+    "noDataHint": "Coba sesuaikan filter atau pencarian Anda untuk menemukan apa yang Anda cari."
   },
   "Transport": {
     "quickSearch": "Pencarian Cepat",
     "clearSearch": "Hapus pencarian",
     "searchPlaceholder": "Cari (no pengangkutan, SPB, driver, fcba...)",
-    "noData": "Tidak ada data"
+    "noData": "Tidak ada data",
+    "noDataHint": "Coba sesuaikan filter atau pencarian Anda untuk menemukan apa yang Anda cari."
   },
   "Dashboard": {
     "noDataBar": "📊 Tidak ada data tersedia",
