@@ -176,10 +176,19 @@ const monthFormatter = new Intl.DateTimeFormat('id-ID', {
   year: 'numeric',
 });
 
+const dateCache = new Map<string, string>();
 const formatDateID = (yyyyMmDd: string): string => {
+  // ⚡ Bolt Optimization: Memoize formatted date strings to avoid redundant
+  // new Date() and Intl format() calls in large loops.
+  const cached = dateCache.get(yyyyMmDd);
+  if (cached) return cached;
+
   const d = new Date(yyyyMmDd + 'T00:00:00');
   if (Number.isNaN(+d)) return yyyyMmDd;
-  return dayFormatter.format(d);
+
+  const formatted = dayFormatter.format(d);
+  dateCache.set(yyyyMmDd, formatted);
+  return formatted;
 };
 
 const formatMonthID = (year: number, month: number): string => {
@@ -545,16 +554,22 @@ export default function UserDashboard() {
       }
       const harvestRows = rows as HarvestingRecord[];
 
+      // ⚡ Bolt Optimization: Single-pass stats calculation (O(N) vs O(3N))
+      let totalOutput = 0;
+      let approved = 0;
+      let planned = 0;
+
+      for (const r of harvestRows) {
+        totalOutput += parseInt(String(r.output || 0)) || 0;
+        if (r.status_harvesting === 'Approved') approved++;
+        else if (r.status_harvesting === 'Planned') planned++;
+      }
+
       return {
         total: harvestRows.length,
-        totalOutput: harvestRows.reduce(
-          (sum: number, r: HarvestingRecord) => sum + (parseInt(String(r.output || 0)) || 0),
-          0
-        ),
-        approved: harvestRows.filter((r: HarvestingRecord) => r.status_harvesting === 'Approved')
-          .length,
-        planned: harvestRows.filter((r: HarvestingRecord) => r.status_harvesting === 'Planned')
-          .length,
+        totalOutput,
+        approved,
+        planned,
       };
     },
     enabled: isClient,
@@ -641,27 +656,32 @@ export default function UserDashboard() {
       }
       const pengangkutanRows = rows as PengangkutanRecord[];
 
-      const totalOutput = pengangkutanRows.reduce((sum: number, r: PengangkutanRecord) => {
+      // ⚡ Bolt Optimization: Single-pass stats calculation (O(N) vs O(4N))
+      let totalOutput = 0;
+      let approved = 0;
+      let planned = 0;
+      let completed = 0;
+
+      for (const r of pengangkutanRows) {
         const candidates = [r.output, r.jjg, r.jumlah, r.quantity, r.tonase, r.berat];
         for (const c of candidates) {
           if (c === null || c === undefined || c === '') continue;
           const n = parseInt(String(c).replace(/[^0-9-]/g, ''), 10);
-          if (!Number.isNaN(n)) return sum + n;
+          if (!Number.isNaN(n)) {
+            totalOutput += n;
+            break;
+          }
         }
-        return sum;
-      }, 0);
+        if (r.status_pengangkutan === 'Approved') approved++;
+        else if (r.status_pengangkutan === 'Planned') planned++;
+        else if (r.status_pengangkutan === 'Completed') completed++;
+      }
 
       return {
         total: pengangkutanRows.length,
-        approved: pengangkutanRows.filter(
-          (r: PengangkutanRecord) => r.status_pengangkutan === 'Approved'
-        ).length,
-        planned: pengangkutanRows.filter(
-          (r: PengangkutanRecord) => r.status_pengangkutan === 'Planned'
-        ).length,
-        completed: pengangkutanRows.filter(
-          (r: PengangkutanRecord) => r.status_pengangkutan === 'Completed'
-        ).length,
+        approved,
+        planned,
+        completed,
         totalOutput,
       };
     },
