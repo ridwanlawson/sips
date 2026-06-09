@@ -2219,7 +2219,12 @@ export default function Attendance() {
                 fixedHeaderScrollHeight="520px"
                 persistTableHead
                 responsive
-                noDataComponent={<div className="py-8 text-base-content/70">Tidak ada data.</div>}
+                noDataComponent={
+                  <EmptyState
+                    namespace="Attendance"
+                    onClearSearch={q ? () => setQ('') : undefined}
+                  />
+                }
                 progressPending={loading}
               />
             )}
