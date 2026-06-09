@@ -88,16 +88,26 @@ export async function proxyGet(
   }
 
   if (!response.ok) {
+    const errorMsg = extractMessage(data);
     if (
       options.emptyOn404 &&
-      (response.status === 404 || extractMessage(data).toLowerCase().includes('tidak ditemukan'))
+      (response.status === 404 || errorMsg.toLowerCase().includes('tidak ditemukan'))
     ) {
       return NextResponse.json({ success: true, message: 'Data tidak ditemukan', data: [] });
     }
+
+    // SECURITY: Log original error details server-side but return generic message
+    // to client to prevent information leakage (CWE-209).
+    console.error('[API_PROXY_GET_ERROR]', {
+      status: response.status,
+      url: upstreamUrl,
+      data,
+    });
+
     return NextResponse.json(
       {
         success: false,
-        message: extractMessage(data, `External API error ${response.status}`),
+        message: 'Failed to fetch data from upstream API',
         data: [],
       },
       { status: response.status }
@@ -144,8 +154,16 @@ export async function proxyPost(
   }
 
   if (!response.ok) {
+    // SECURITY: Log original error details server-side but return generic message
+    // to client to prevent information leakage (CWE-209).
+    console.error('[API_PROXY_POST_ERROR]', {
+      status: response.status,
+      url: upstreamUrl,
+      data,
+    });
+
     return NextResponse.json(
-      { success: false, message: extractMessage(data, `External API error ${response.status}`) },
+      { success: false, message: 'Failed to process request with upstream API' },
       { status: response.status }
     );
   }
