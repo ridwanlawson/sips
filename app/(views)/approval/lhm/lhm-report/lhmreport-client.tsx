@@ -729,7 +729,9 @@ export default function LhmReport() {
               <td colSpan={2} className="text-right">
                 Total
               </td>
-              <td className="text-right whitespace-nowrap">{formatNumberRounded(lhaTotals.luas)}</td>
+              <td className="text-right whitespace-nowrap">
+                {formatNumberRounded(lhaTotals.luas)}
+              </td>
               <td className="text-right whitespace-nowrap">
                 {formatNumberRounded(lhaTotals.output)}
               </td>

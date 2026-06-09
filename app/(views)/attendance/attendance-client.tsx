@@ -15,6 +15,7 @@ import { centerHeaderStyle } from '@/utils/tableHelper';
 import { exportJsonToCsv } from '@/utils/exportCsv';
 import { useTranslations } from 'next-intl';
 import { SearchSelect, type Option } from '@/app/components/search-select';
+import { EmptyState } from '@/app/components/empty-state';
 
 /* =========================
    T Y P E S
@@ -2218,8 +2219,12 @@ export default function Attendance() {
                 fixedHeaderScrollHeight="520px"
                 persistTableHead
                 responsive
+<<<<<<< HEAD
                 noDataComponent={<div className="py-8 text-base-content/70">Tidak ada data.</div>}
                 progressPending={loading}
+=======
+                noDataComponent={<div className="p-20 bg-red-500 text-white text-5xl">NO DATA COMPONENT TEST</div>}
+>>>>>>> e636d6f8037db3c53f231eb1c6f44237832f4e94
               />
             )}
           </div>

@@ -43,13 +43,13 @@ const nextConfig: NextConfig = {
       },
       ...(backendUrl
         ? [
-          {
-            protocol: backendUrl.protocol.replace(':', '') as 'http' | 'https',
-            hostname: backendUrl.hostname,
-            port: backendUrl.port || undefined,
-            pathname: '/**',
-          },
-        ]
+            {
+              protocol: backendUrl.protocol.replace(':', '') as 'http' | 'https',
+              hostname: backendUrl.hostname,
+              port: backendUrl.port || undefined,
+              pathname: '/**',
+            },
+          ]
         : []),
     ],
   },

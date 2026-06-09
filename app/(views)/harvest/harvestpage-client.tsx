@@ -16,6 +16,7 @@ import { exportJsonToCsv } from '@/utils/exportCsv';
 import { formatPerfNumber } from '@/utils/perf-formatter';
 import { useLocale } from '@/hooks/useLocale';
 import { SearchSelect, type Option } from '@/app/components/search-select';
+import { EmptyState } from '@/app/components/empty-state';
 
 /* =========================
    T Y P E S
@@ -2153,8 +2154,12 @@ export default function HarvestPage() {
                 fixedHeaderScrollHeight="520px"
                 persistTableHead
                 responsive
+<<<<<<< HEAD
                 noDataComponent={<div className="py-8 text-base-content/70">Tidak ada data.</div>}
                 progressPending={loading}
+=======
+                noDataComponent={<EmptyState namespace="Harvest" onClearSearch={q ? () => setQ('') : undefined} />}
+>>>>>>> e636d6f8037db3c53f231eb1c6f44237832f4e94
               />
             )}
           </div>
