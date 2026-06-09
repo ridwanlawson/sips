@@ -27,8 +27,15 @@ export async function GET(
     return NextResponse.json({ ok: false, error: 'Invalid response format' }, { status: 502 });
   }
   if (!upstream.ok) {
+    // SECURITY: Log original error details server-side but return generic message
+    // to client to prevent information leakage (CWE-209).
+    console.error('[API_PENGANGKUTANS_ID_GET_ERROR]', {
+      status: upstream.status,
+      id,
+      data,
+    });
     return NextResponse.json(
-      { ok: false, error: extractMessage(data, 'Failed to fetch record') },
+      { ok: false, error: 'Failed to fetch transport record' },
       { status: upstream.status }
     );
   }
@@ -68,8 +75,15 @@ export async function PUT(
     return NextResponse.json({ ok: false, error: 'Invalid response format' }, { status: 502 });
   }
   if (!upstream.ok) {
+    // SECURITY: Log original error details server-side but return generic message
+    // to client to prevent information leakage (CWE-209).
+    console.error('[API_PENGANGKUTANS_ID_PUT_ERROR]', {
+      status: upstream.status,
+      id,
+      data,
+    });
     return NextResponse.json(
-      { ok: false, error: extractMessage(data, 'Failed to update record') },
+      { ok: false, error: 'Failed to update transport record' },
       { status: upstream.status }
     );
   }
@@ -110,8 +124,15 @@ export async function DELETE(
     return NextResponse.json({ ok: false, error: 'Invalid response format' }, { status: 502 });
   }
   if (!upstream.ok) {
+    // SECURITY: Log original error details server-side but return generic message
+    // to client to prevent information leakage (CWE-209).
+    console.error('[API_PENGANGKUTANS_ID_DELETE_ERROR]', {
+      status: upstream.status,
+      id,
+      data,
+    });
     return NextResponse.json(
-      { ok: false, error: extractMessage(data, 'Failed to delete record') },
+      { ok: false, error: 'Failed to delete transport record' },
       { status: upstream.status }
     );
   }
@@ -155,8 +176,15 @@ export async function POST(
     return NextResponse.json({ ok: false, error: 'Invalid response format' }, { status: 502 });
   }
   if (!upstream.ok) {
+    // SECURITY: Log original error details server-side but return generic message
+    // to client to prevent information leakage (CWE-209).
+    console.error('[API_PENGANGKUTANS_ID_POST_DELETE_ERROR]', {
+      status: upstream.status,
+      id,
+      data,
+    });
     return NextResponse.json(
-      { ok: false, error: extractMessage(data, 'Failed to delete record') },
+      { ok: false, error: 'Failed to delete transport record' },
       { status: upstream.status }
     );
   }
