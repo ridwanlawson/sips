@@ -1517,12 +1517,13 @@ export default function PengangkutanPage() {
                 fixedHeaderScrollHeight="520px"
                 persistTableHead
                 responsive
-<<<<<<< HEAD
-                noDataComponent={<div className="py-8 text-base-content/70">{t('noData')}</div>}
+                noDataComponent={
+                  <EmptyState
+                    namespace="Transport"
+                    onClearSearch={q ? () => setQ('') : undefined}
+                  />
+                }
                 progressPending={loading}
-=======
-                noDataComponent={<EmptyState namespace="Transport" onClearSearch={q ? () => setQ('') : undefined} />}
->>>>>>> e636d6f8037db3c53f231eb1c6f44237832f4e94
               />
             )}
           </div>
