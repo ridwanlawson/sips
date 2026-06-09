@@ -1905,7 +1905,7 @@ export default function Attendance() {
     <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
       <div className="p-4 sm:p-6 max-w-screen-2xl mx-auto w-full overflow-x-hidden">
         {/* Header */}
-        <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start">
+        <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start animate-slideUp">
           <h1
             className="text-2xl sm:text-3xl font-bold min-w-0 truncate"
             title="Halaman pengelolaan Attendance (Absensi)"
@@ -2219,7 +2219,12 @@ export default function Attendance() {
                 fixedHeaderScrollHeight="520px"
                 persistTableHead
                 responsive
-                noDataComponent={<div className="py-8 text-base-content/70">Tidak ada data.</div>}
+                noDataComponent={
+                  <EmptyState
+                    namespace="Attendance"
+                    onClearSearch={q ? () => setQ('') : undefined}
+                  />
+                }
                 progressPending={loading}
               />
             )}
