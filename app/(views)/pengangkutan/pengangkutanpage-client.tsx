@@ -1517,6 +1517,7 @@ export default function PengangkutanPage() {
                 persistTableHead
                 responsive
                 noDataComponent={<div className="py-8 text-base-content/70">{t('noData')}</div>}
+                progressPending={loading}
               />
             )}
           </div>

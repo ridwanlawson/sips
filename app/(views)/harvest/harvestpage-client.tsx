@@ -90,6 +90,7 @@ type Employee = {
   noancak?: string;
   attendance_type?: string;
   section_destination?: string;
+  fcba_destination?: string;
 };
 
 type EmployeesApiRow = {
@@ -371,7 +372,6 @@ export default function HarvestPage() {
   const [triplets, setTriplets] = useState<Triplet[]>([]);
   const [selFcba, setSelFcba] = useState<string>('');
   const [selSection, setSelSection] = useState<string>('');
-  const [selGang, setSelGang] = useState<string>('');
 
   // Location loading state
   const [locLoading, setLocLoading] = useState<boolean>(false);
@@ -774,15 +774,12 @@ export default function HarvestPage() {
     queryFn: async () => {
       if (!selFcba || !selSection) return [];
 
-      // ⚡ Bolt Optimization: Use Map lookup for O(1) BU name resolution
-      const fcbaName = resolveBusinessUnitName(selFcba, buLookups);
-
       const params = new URLSearchParams();
-      params.append('fcba', fcbaName);
+      params.append('fcba', selFcba);
       params.append('afdeling', selSection);
 
       try {
-        const res = await fetch(`/api/tph?${params.toString()}`, {
+        const res = await fetch(`/api/fields?${params.toString()}`, {
           credentials: 'include',
         });
         if (!res.ok) {
@@ -791,10 +788,15 @@ export default function HarvestPage() {
         }
         const json = await res.json();
         const data = extractArrayData<{
-          notph?: string;
-          fieldcode?: string;
-          ancakno?: string;
-          division?: string;
+          fccode?: string;
+          fcname?: string;
+          planting_year?: string;
+          bjr?: string;
+          ha_planted?: string;
+          ownership?: string;
+          status?: string;
+          afdeling?: string;
+          fcba?: string;
         }>(json);
         return data;
       } catch (err) {
@@ -812,7 +814,7 @@ export default function HarvestPage() {
     if (!tphFieldcodeData.length) return [];
     const set = new Set<string>();
     for (const t of tphFieldcodeData) {
-      const fc = String(t.fieldcode ?? '').trim();
+      const fc = String(t.fccode ?? '').trim();
       if (fc) set.add(fc);
     }
     return Array.from(set)
@@ -826,11 +828,8 @@ export default function HarvestPage() {
     queryFn: async () => {
       if (!selFcba || !selSection || !form.fieldcode) return [];
 
-      // ⚡ Bolt Optimization: Use Map lookup for O(1) BU name resolution
-      const fcbaName = resolveBusinessUnitName(selFcba, buLookups);
-
       const params = new URLSearchParams();
-      params.append('fcba', fcbaName);
+      params.append('fcba', selFcba);
       params.append('afdeling', selSection);
       params.append('fieldcode', form.fieldcode);
 
@@ -891,7 +890,7 @@ export default function HarvestPage() {
               const params = new URLSearchParams({
                 fcba: fcbaName,
                 afdeling: section,
-                fieldcode: fieldcode,
+                fieldcode,
               });
               const res = await fetch(`/api/tph?${params.toString()}`, {
                 credentials: 'include',
@@ -1131,7 +1130,6 @@ export default function HarvestPage() {
         setPreview(data.images ? getProxiedImageUrl(data.images) : '');
         setSelFcba(data.fcba || homeFcba || '');
         setSelSection(data.afdeling || homeSection || '');
-        setSelGang(data.kemandoran || '');
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Gagal memuat detail';
         toast.error(msg);
@@ -1202,27 +1200,28 @@ export default function HarvestPage() {
       .map(v => ({ value: v, label: v }));
   }, [employees, selFcba, selSection, buLookups]);
 
-  // Query: Employees by fcba + afdeling + kemandoran (with MD->PN transformation for API)
+  // Query: Employees from absensi/attendance API - independent of cascading selects
   const { data: employeesByGang = [], isLoading: isLoadingEmpByGang } = useQuery({
-    queryKey: ['employees-by-gang', selFcba, selSection, selGang],
+    queryKey: ['employees-absensi', form.tanggal, userLevel, homeFcba, homeSection, homeGang],
     queryFn: async () => {
-      if (!selFcba || !selSection || !selGang) return [];
-
-      // ⚡ Bolt Optimization: Use Map lookup for O(1) BU name resolution
-      const fcbaName = resolveBusinessUnitName(selFcba, buLookups);
-
-      // Transform MDxxx to PNxxx for API parameter
-      const gangForApi = selGang.toUpperCase().startsWith('MD')
-        ? 'PN' + selGang.substring(2)
-        : selGang;
+      if (!form.tanggal) return [];
 
       const params = new URLSearchParams();
-      params.append('fcba', fcbaName);
-      params.append('sectionname', selSection);
-      params.append('gangcode', gangForApi);
+      params.append('tanggal', form.tanggal);
+
+      // Filter berdasarkan fcba login user
+      if (homeFcba) params.append('fcba', homeFcba);
+
+      // Filter berdasarkan level user
+      if (['KRP', 'MDP', 'KRA', 'MD1', 'AST'].includes(userLevel)) {
+        if (homeSection) params.append('afdeling', homeSection);
+      }
+      if (['KRP', 'MDP'].includes(userLevel)) {
+        if (homeGang) params.append('kemandoran', homeGang);
+      }
 
       try {
-        const res = await fetch(`/api/karyawans?${params.toString()}`, {
+        const res = await fetch(`/api/attendance?${params.toString()}`, {
           credentials: 'include',
         });
         if (!res.ok) {
@@ -1230,39 +1229,47 @@ export default function HarvestPage() {
           throw new Error(`HTTP ${res.status}`);
         }
         const json = await res.json();
-        const rowsRaw = extractArrayData<EmployeesApiRow>(json);
+        const rowsRaw = extractArrayData<Record<string, unknown>>(json);
 
-        // Build employees map with noancak
+        // Build employees map
         const mapEmp = new Map<string, Employee>();
         for (const it of rowsRaw) {
-          const fccode = String(it.fccode ?? '').trim();
+          const fccode = String(it.kode_karyawan ?? it.fccode ?? '').trim();
           if (!fccode) continue;
           if (!mapEmp.has(fccode)) {
             const noancakValue =
-              (it as { noancak?: unknown }).noancak ?? (it as { NOANCAK?: unknown }).NOANCAK;
+              (it as { noancak?: unknown }).noancak ??
+              (it as { NOANCAK?: unknown }).NOANCAK ??
+              (it as { pengancakan?: unknown }).pengancakan;
             const noancak = typeof noancakValue === 'string' ? noancakValue.trim() : undefined;
 
             mapEmp.set(fccode, {
               fccode,
-              fullname: typeof it.fcname === 'string' ? it.fcname : undefined,
+              fullname:
+                typeof it.namakaryawan === 'string'
+                  ? it.namakaryawan
+                  : typeof it.fcname === 'string'
+                    ? it.fcname
+                    : undefined,
               fcba: String(it.fcba ?? '').trim(),
-              sectionname: String(it.sectionname ?? '').trim(),
-              gangcode: String(it.gangcode ?? '').trim(),
+              sectionname: String(it.section ?? it.sectionname ?? '').trim(),
+              gangcode: String(it.gangcode ?? it.kemandoran ?? '').trim(),
               noancak,
               attendance_type: String(it.attendance_type ?? '').trim(),
               section_destination: String(it.section_destination ?? '').trim(),
+              fcba_destination: String(it.fcba_destination ?? '').trim(),
             });
           }
         }
         return Array.from(mapEmp.values());
       } catch (err) {
-        console.error('Failed to fetch employees by gang:', err);
+        console.error('Failed to fetch employees from absensi:', err);
         return [];
       }
     },
-    enabled: !!selFcba && !!selSection && !!selGang,
-    staleTime: 30 * 60 * 1000, // 30 minutes
-    gcTime: 60 * 60 * 1000,
+    enabled: !!form.tanggal && (!!homeFcba || userLevel === 'ADM'),
+    staleTime: 2 * 60 * 1000, // 2 minutes - data absensi segar
+    gcTime: 5 * 60 * 1000,
   });
 
   // Employee options from employeesByGang query
@@ -1280,7 +1287,6 @@ export default function HarvestPage() {
   const onChangeFcba = (v: string) => {
     setSelFcba(v);
     setSelSection('');
-    setSelGang('');
     setForm(s => ({
       ...s,
       fcba: v,
@@ -1295,7 +1301,6 @@ export default function HarvestPage() {
 
   const onChangeSection = (v: string) => {
     setSelSection(v);
-    setSelGang('');
     // fieldcode tidak direset saat section berubah (karena dari TPH API)
     setForm(s => ({
       ...s,
@@ -1309,13 +1314,12 @@ export default function HarvestPage() {
     setForm(s => ({
       ...s,
       fieldcode: v,
-      noancak: '', // reset noancak dan tph saat fieldcode berubah
+      noancak: '', // reset noancak saat fieldcode berubah
       tph: '',
     }));
   };
 
   const onChangeGang = (v: string) => {
-    setSelGang(v);
     setForm(s => ({
       ...s,
       kemandoran: v,
@@ -1325,17 +1329,23 @@ export default function HarvestPage() {
 
   const onChangeEmployee = (fccode: string) => {
     const emp = employeesByGang.find(e => e.fccode === fccode);
+    if (!emp) return;
+
+    // Update state FCBA & Afdeling untuk trigger cascading query Field Code & TPH
+    setSelFcba(emp.fcba || '');
+    setSelSection(emp.sectionname || '');
+
+    // Isi form dari data karyawan — otomatis mengisi FCBA, Afdeling, dan
+    // mereset fieldcode/tph/noancak agar cascading select terpicu
     setForm(s => ({
       ...s,
       kode_karyawan: fccode,
-      noancak: emp?.noancak || '', // No Ancak from selected employee
-      // ATTENDANCE_TYPE menentukan afdeling:
-      // - ASSISTENSI → pakai SECTION_DESTINATION
-      // - lainnya   → pakai SECTION
-      afdeling:
-        emp?.attendance_type === 'ASSISTENSI'
-          ? emp?.section_destination || ''
-          : emp?.sectionname || '',
+      fcba: emp.fcba || '',
+      afdeling: emp.sectionname || '',
+      kemandoran: emp.gangcode || '',
+      fieldcode: '',
+      tph: '',
+      noancak: '',
     }));
   };
 
@@ -1356,11 +1366,45 @@ export default function HarvestPage() {
       toast.error('Anda tidak memiliki akses untuk melakukan perubahan');
       return;
     }
-    if (!isEditing && !form.nodokumen) {
-      toast.error(
-        'No dokumen belum terbentuk. Lengkapi FCBA, afdeling, field, kemandoran, dan karyawan.'
-      );
+
+    // Validasi semua field bertanda *
+    const requiredFields: { value: string; label: string }[] = [
+      { value: form.tanggal, label: 'Tanggal' },
+      { value: form.kode_karyawan, label: 'Karyawan' },
+      { value: form.fcba, label: 'FCBA' },
+      { value: form.afdeling, label: 'Afdeling' },
+      { value: form.fieldcode, label: 'Field Code' },
+      { value: form.tph, label: 'TPH' },
+      { value: form.nodokumen, label: 'No Dokumen' },
+      { value: form.output, label: 'Output' },
+    ];
+    const emptyFields = requiredFields.filter(f => !f.value);
+    if (emptyFields.length > 0) {
+      const names = emptyFields.map(f => `'${f.label}'`).join(', ');
+      toast.error(`Lengkapi field wajib: ${names}`);
       return;
+    }
+
+    // Validasi file upload
+    if (!isEditing) {
+      // Add: file wajib diisi
+      if (!(form.images instanceof File)) {
+        toast.error('Foto wajib diupload');
+        return;
+      }
+      if (!(form.no_ba_exca instanceof File)) {
+        toast.error('File BA ExCa (PDF) wajib diupload');
+        return;
+      }
+    } else {
+      // Edit: wajib diisi jika belum ada file sebelumnya
+      if (
+        !(form.no_ba_exca instanceof File) &&
+        !(typeof form.no_ba_exca === 'string' && form.no_ba_exca)
+      ) {
+        toast.error('File BA ExCa (PDF) wajib diupload');
+        return;
+      }
     }
 
     const formData = new FormData();
@@ -1577,7 +1621,7 @@ export default function HarvestPage() {
         name: 'No Dokumen',
         selector: row => row.nodokumen,
         sortable: true,
-        width: '250px',
+        width: '240px',
       },
       {
         name: 'Tanggal',
@@ -1590,7 +1634,7 @@ export default function HarvestPage() {
         name: 'Karyawan',
         selector: row => row.nama_karyawan || row.kode_karyawan,
         sortable: true,
-        width: '180px',
+        width: '200px',
         cell: row => (
           <div>
             <div className="font-medium">{row.nama_karyawan}</div>
@@ -1895,7 +1939,6 @@ export default function HarvestPage() {
                       ? ''
                       : userAfdelingCookie || homeSection || ''
                   );
-                  setSelGang('');
                   setOpen(true);
                   // Auto get location
                   setTimeout(() => {
@@ -1909,7 +1952,7 @@ export default function HarvestPage() {
           </div>
         </div>
 
-        <div className="mb-4 flex flex-col md:flex-row items-center gap-4 animate-slideUp [animation-delay:100ms]">
+        <div className="mb-3 flex flex-col md:flex-row items-center gap-4 animate-slideUp [animation-delay:100ms]">
           {/* TOTAL CARDS (di kiri) */}
           <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
             {totalCards.map(card => (
@@ -2089,9 +2132,11 @@ export default function HarvestPage() {
 
         {/* Table */}
         <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100 animate-slideUp [animation-delay:200ms]">
-          <div className="min-w-[900px]">
+          <div className="min-w-[900px] md:min-w-0">
             {loading ? (
-              <SkeletonTable rows={10} />
+              <div className="p-8">
+                <SkeletonTable rows={10} />
+              </div>
             ) : (
               <DataTable
                 keyField="_rowKey"
@@ -2109,6 +2154,7 @@ export default function HarvestPage() {
                 persistTableHead
                 responsive
                 noDataComponent={<div className="py-8 text-base-content/70">Tidak ada data.</div>}
+                progressPending={loading}
               />
             )}
           </div>
@@ -2155,454 +2201,459 @@ export default function HarvestPage() {
                 <p className="mt-2">Memuat detail...</p>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                  {/* No Dokumen */}
-                  <fieldset className="fieldset">
-                    <legend className="fieldset-legend">No Dokumen *</legend>
-                    <input
-                      type="text"
-                      className="input input-bordered w-full"
-                      value={form.nodokumen}
-                      readOnly
-                      placeholder={
-                        isFetchingDocumentNo && !isEditing
-                          ? 'Menghitung otomatis...'
-                          : 'Otomatis setelah FCBA, afdeling, field, kemandoran, karyawan terisi'
-                      }
-                      required
-                    />
-                    <p className="text-xs opacity-70">
-                      Format: FCBA/Afdeling/Field-Ancak/DDMMYY/Running bulanan per kemandoran.
-                    </p>
-                  </fieldset>
+              <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-2">
+                <div className="col-span-12">
+                  <h4 className="text-sm font-semibold text-base-content/80">Informasi Absensi</h4>
+                  <div className="mt-1 border-t border-base-300" />
+                </div>
 
-                  {/* Tanggal */}
-                  <fieldset className="fieldset">
-                    <legend className="fieldset-legend">Tanggal *</legend>
-                    <input
-                      type="date"
-                      className="input input-bordered w-full"
-                      value={form.tanggal}
-                      max={getTodayISO()}
-                      onChange={e => setForm(s => ({ ...s, tanggal: e.target.value }))}
-                      required
-                    />
-                  </fieldset>
+                {/* === Row 1: Tanggal + Location chain === */}
 
-                  {/* FCBA: ADM bisa pilih, lainnya dikunci ke user_Fcba cookie */}
-                  <fieldset className="fieldset">
-                    <legend className="fieldset-legend">
-                      {userLevel === 'ADM' ? 'FCBA *' : 'FCBA (akun)'}
-                    </legend>
-                    {userLevel === 'ADM' ? (
-                      <SearchSelect
-                        options={fcbaOptions}
-                        value={selFcba}
-                        onChange={onChangeFcba}
-                        placeholder={isLoadingBU ? 'Memuat FCBA...' : 'Pilih FCBA'}
-                        disabled={isLoadingBU}
-                        translationNamespace="Harvest"
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        className="input input-bordered w-full"
-                        value={userFcbaCookie || homeFcba || ''}
-                        readOnly
-                        disabled
-                      />
-                    )}
-                  </fieldset>
+                {/* Tanggal */}
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">Tanggal *</legend>
+                  <input
+                    type="date"
+                    className="input input-bordered w-full"
+                    value={form.tanggal}
+                    max={getTodayISO()}
+                    onChange={e => setForm(s => ({ ...s, tanggal: e.target.value }))}
+                    required
+                  />
+                </fieldset>
 
-                  {/* Afdeling: ADM/MGR/KSI bisa pilih, lainnya dikunci ke user_Afdeling cookie */}
-                  <fieldset className="fieldset">
-                    <legend className="fieldset-legend">
-                      {userLevel === 'ADM' || userLevel === 'MGR' || userLevel === 'KSI'
-                        ? 'Afdeling (Section) *'
-                        : 'Afdeling (akun)'}
-                    </legend>
-                    {userLevel === 'ADM' || userLevel === 'MGR' || userLevel === 'KSI' ? (
-                      <SearchSelect
-                        options={sectionOptions}
-                        value={selSection ?? ''}
-                        onChange={onChangeSection}
-                        placeholder={
-                          isLoadingEmp
-                            ? 'Memuat...'
-                            : selFcba
-                              ? 'Pilih Afdeling'
-                              : 'Pilih FCBA dulu'
-                        }
-                        disabled={!selFcba || isLoadingEmp}
-                        translationNamespace="Harvest"
-                      />
-                    ) : (
-                      <input
-                        type="text"
-                        className="input input-bordered w-full"
-                        value={userAfdelingCookie || homeSection || ''}
-                        readOnly
-                        disabled
-                      />
-                    )}
-                  </fieldset>
-
-                  {/* Field Code - dari API TPH (fcba + afdeling) */}
-                  <fieldset className="fieldset">
-                    <legend className="fieldset-legend">Field Code *</legend>
-                    {isLoadingFieldcode ? (
-                      <div className="skeleton h-10 w-full rounded-md animate-pulse bg-base-300" />
-                    ) : (
-                      <SearchSelect
-                        options={fieldcodeOptions}
-                        value={form.fieldcode ?? ''}
-                        onChange={onChangeFieldcode}
-                        placeholder={
-                          selFcba && selSection
-                            ? fieldcodeOptions.length === 0
-                              ? 'Tidak ada Field Code'
-                              : 'Pilih Field Code'
-                            : 'Pilih FCBA dan Afdeling dulu'
-                        }
-                        disabled={!selFcba || !selSection}
-                        translationNamespace="Harvest"
-                      />
-                    )}
-                  </fieldset>
-
-                  {/* TPH - dari TPH API (fcba + afdeling + fieldcode) */}
-                  <fieldset className="fieldset">
-                    <legend className="fieldset-legend">TPH *</legend>
-                    {isLoadingTph ? (
-                      <div className="skeleton h-10 w-full rounded-md animate-pulse bg-base-300" />
-                    ) : (
-                      <SearchSelect
-                        options={tphOptions}
-                        value={form.tph ?? ''}
-                        onChange={v => setForm(s => ({ ...s, tph: v }))}
-                        placeholder={
-                          form.fieldcode
-                            ? tphOptions.length === 0
-                              ? 'Tidak ada TPH'
-                              : 'Pilih TPH'
-                            : 'Pilih Field Code dulu'
-                        }
-                        disabled={!form.fieldcode}
-                        translationNamespace="Harvest"
-                      />
-                    )}
-                  </fieldset>
-
-                  {/* Kemandoran - hanya gang dengan prefix MD */}
-                  <fieldset className="fieldset">
-                    <legend className="fieldset-legend">Kemandoran</legend>
-                    <SearchSelect
-                      options={kemandoranOptions}
-                      value={form.kemandoran ?? ''}
-                      onChange={onChangeGang}
-                      placeholder={
-                        isLoadingEmp
-                          ? 'Memuat...'
-                          : selSection
-                            ? kemandoranOptions.length === 0
-                              ? 'Tidak ada Kemandoran MD'
-                              : 'Pilih Kemandoran'
-                            : 'Pilih Afdeling dulu'
-                      }
-                      disabled={!selSection || isLoadingEmp}
-                      translationNamespace="Harvest"
-                    />
-                  </fieldset>
-
-                  {/* Kode Karyawan - dari API dengan fcba+afdeling+kemandoran (MD->PN) */}
-                  <fieldset className="fieldset">
-                    <legend className="fieldset-legend">Karyawan *</legend>
-                    <SearchSelect
-                      options={employeeOptions}
-                      value={form.kode_karyawan ?? ''}
-                      onChange={onChangeEmployee}
-                      placeholder={
-                        isLoadingEmpByGang
+                {/* Kode Karyawan - dari API absensi */}
+                <fieldset className="fieldset col-span-12 md:col-span-6">
+                  <legend className="fieldset-legend">Karyawan *</legend>
+                  <SearchSelect
+                    options={employeeOptions}
+                    value={form.kode_karyawan ?? ''}
+                    onChange={onChangeEmployee}
+                    placeholder={
+                      !form.tanggal
+                        ? 'Isi Tanggal dulu'
+                        : isLoadingEmpByGang
                           ? 'Memuat Karyawan...'
-                          : selGang
-                            ? employeeOptions.length === 0
-                              ? 'Tidak ada Karyawan'
-                              : 'Pilih Karyawan'
-                            : 'Pilih Kemandoran dulu'
-                      }
-                      disabled={!selGang || isLoadingEmpByGang}
+                          : employeeOptions.length === 0
+                            ? 'Tidak ada Karyawan'
+                            : 'Pilih Karyawan'
+                    }
+                    disabled={!form.tanggal || isLoadingEmpByGang}
+                    required
+                    translationNamespace="Harvest"
+                  />
+                </fieldset>
+
+                {/* Kemandoran - hanya gang dengan prefix MD */}
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">Kemandoran</legend>
+                  <SearchSelect
+                    options={kemandoranOptions}
+                    value={form.kemandoran ?? ''}
+                    onChange={onChangeGang}
+                    placeholder={
+                      isLoadingEmp
+                        ? 'Memuat...'
+                        : selSection
+                          ? kemandoranOptions.length === 0
+                            ? 'Tidak ada Kemandoran MD'
+                            : 'Pilih Kemandoran'
+                          : 'Pilih Afdeling dulu'
+                    }
+                    disabled={!selSection || isLoadingEmp || !!form.kode_karyawan}
+                    translationNamespace="Harvest"
+                  />
+                </fieldset>
+
+                {/* FCBA: ADM/MGR/KSI bisa pilih, lainnya dikunci ke user_Fcba cookie */}
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">
+                    {userLevel === 'ADM' ? 'FCBA *' : 'FCBA (akun)'}
+                  </legend>
+                  {userLevel === 'ADM' ? (
+                    <SearchSelect
+                      options={fcbaOptions}
+                      value={selFcba}
+                      onChange={onChangeFcba}
+                      placeholder={isLoadingBU ? 'Memuat FCBA...' : 'Pilih FCBA'}
+                      disabled={isLoadingBU || !!form.kode_karyawan}
+                      required
                       translationNamespace="Harvest"
                     />
-                  </fieldset>
-
-                  {/* No Ancak - otomatis dari Karyawan yang dipilih */}
-                  <fieldset className="fieldset">
-                    <legend className="fieldset-legend">No Ancak</legend>
+                  ) : (
                     <input
                       type="text"
                       className="input input-bordered w-full"
-                      value={form.noancak ?? ''}
+                      value={userFcbaCookie || homeFcba || ''}
                       readOnly
                       disabled
-                      placeholder="Otomatis dari Karyawan"
                     />
-                  </fieldset>
-                </div>
+                  )}
+                </fieldset>
 
-                <div className="divider">Output Data</div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {/* Output */}
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text">Output</span>
-                    </label>
-                    <input
-                      type="number"
-                      className="input input-bordered"
-                      value={form.output}
-                      onChange={e => setForm(s => ({ ...s, output: e.target.value }))}
+                {/* Afdeling: ADM/MGR/KSI bisa pilih, lainnya dikunci ke user_Afdeling cookie */}
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">
+                    {userLevel === 'ADM' || userLevel === 'MGR' || userLevel === 'KSI'
+                      ? 'Afdeling (Section) *'
+                      : 'Afdeling (akun)'}
+                  </legend>
+                  {userLevel === 'ADM' || userLevel === 'MGR' || userLevel === 'KSI' ? (
+                    <SearchSelect
+                      options={sectionOptions}
+                      value={selSection ?? ''}
+                      onChange={onChangeSection}
+                      placeholder={
+                        isLoadingEmp ? 'Memuat...' : selFcba ? 'Pilih Afdeling' : 'Pilih FCBA dulu'
+                      }
+                      disabled={!selFcba || isLoadingEmp || !!form.kode_karyawan}
                       required
-                      min="0"
+                      translationNamespace="Harvest"
                     />
-                  </div>
-
-                  {/* Mentah */}
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text">Mentah</span>
-                    </label>
+                  ) : (
                     <input
-                      type="number"
-                      className="input input-bordered"
-                      value={form.mentah}
-                      onChange={e => setForm(s => ({ ...s, mentah: e.target.value }))}
-                      min="0"
+                      type="text"
+                      className="input input-bordered w-full"
+                      value={userAfdelingCookie || homeSection || ''}
+                      readOnly
+                      disabled
                     />
-                  </div>
+                  )}
+                </fieldset>
 
-                  {/* Overripe */}
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text">Overripe</span>
-                    </label>
-                    <input
-                      type="number"
-                      className="input input-bordered"
-                      value={form.overripe}
-                      onChange={e => setForm(s => ({ ...s, overripe: e.target.value }))}
-                      min="0"
-                    />
-                  </div>
-
-                  {/* Busuk */}
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text">Busuk</span>
-                    </label>
-                    <input
-                      type="number"
-                      className="input input-bordered"
-                      value={form.busuk}
-                      onChange={e => setForm(s => ({ ...s, busuk: e.target.value }))}
-                      min="0"
-                    />
-                  </div>
-
-                  {/* Busuk 2 */}
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text">Busuk 2</span>
-                    </label>
-                    <input
-                      type="number"
-                      className="input input-bordered"
-                      value={form.busuk2}
-                      onChange={e => setForm(s => ({ ...s, busuk2: e.target.value }))}
-                      min="0"
-                    />
-                  </div>
-
-                  {/* Buah Kecil */}
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text">Buah Kecil</span>
-                    </label>
-                    <input
-                      type="number"
-                      className="input input-bordered"
-                      value={form.buahkecil}
-                      onChange={e => setForm(s => ({ ...s, buahkecil: e.target.value }))}
-                      min="0"
-                    />
-                  </div>
-
-                  {/* Brondol */}
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text">Brondol</span>
-                    </label>
-                    <input
-                      type="number"
-                      className="input input-bordered"
-                      value={form.brondol}
-                      onChange={e => setForm(s => ({ ...s, brondol: e.target.value }))}
-                      min="0"
-                    />
-                  </div>
-
-                  {/* Tangkai Panjang */}
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text">Tangkai Panjang</span>
-                    </label>
-                    <input
-                      type="number"
-                      className="input input-bordered"
-                      value={form.tangkaipanjang}
-                      onChange={e =>
-                        setForm(s => ({
-                          ...s,
-                          tangkaipanjang: e.target.value,
-                        }))
+                {/* Field Code - dari API TPH (fcba + afdeling) */}
+                <fieldset className="fieldset col-span-12 md:col-span-2">
+                  <legend className="fieldset-legend">Field Code *</legend>
+                  {isLoadingFieldcode ? (
+                    <div className="skeleton h-10 w-full rounded-md animate-pulse bg-base-300" />
+                  ) : (
+                    <SearchSelect
+                      options={fieldcodeOptions}
+                      value={form.fieldcode ?? ''}
+                      onChange={onChangeFieldcode}
+                      placeholder={
+                        selFcba && selSection
+                          ? fieldcodeOptions.length === 0
+                            ? 'Tidak ada Field Code'
+                            : 'Pilih Field Code'
+                          : 'Pilih FCBA dan Afdeling dulu'
                       }
-                      min="0"
+                      disabled={!selFcba || !selSection}
+                      required
+                      translationNamespace="Harvest"
                     />
-                  </div>
+                  )}
+                </fieldset>
 
-                  {/* Parteno */}
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text">Parteno</span>
-                    </label>
-                    <input
-                      type="number"
-                      className="input input-bordered"
-                      value={form.parteno}
-                      onChange={e => setForm(s => ({ ...s, parteno: e.target.value }))}
-                      min="0"
-                    />
-                  </div>
+                {/* === Row 2: TPH + Personnel === */}
 
-                  {/* Parteno 50+ */}
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text">Parteno 50+</span>
-                    </label>
-                    <input
-                      type="number"
-                      className="input input-bordered"
-                      value={form.parteno50plus}
-                      onChange={e =>
-                        setForm(s => ({
-                          ...s,
-                          parteno50plus: e.target.value,
-                        }))
+                {/* TPH - dari TPH API (fcba + afdeling + fieldcode) */}
+                <fieldset className="fieldset col-span-12 md:col-span-2">
+                  <legend className="fieldset-legend">TPH *</legend>
+                  {isLoadingTph ? (
+                    <div className="skeleton h-10 w-full rounded-md animate-pulse bg-base-300" />
+                  ) : (
+                    <SearchSelect
+                      options={tphOptions}
+                      value={form.tph ?? ''}
+                      onChange={v => {
+                        const tphItem = tphDetailData.find(t => t.notph === v);
+                        setForm(s => ({ ...s, tph: v, noancak: tphItem?.ancakno || '' }));
+                      }}
+                      placeholder={
+                        form.fieldcode
+                          ? tphOptions.length === 0
+                            ? 'Tidak ada TPH'
+                            : 'Pilih TPH'
+                          : 'Pilih Field Code dulu'
                       }
-                      min="0"
+                      disabled={!form.fieldcode}
+                      required
+                      translationNamespace="Harvest"
                     />
-                  </div>
+                  )}
+                </fieldset>
 
-                  {/* Alas Brondol */}
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text">Alas Brondol</span>
-                    </label>
-                    <select
-                      className="select select-bordered"
-                      value={form.alasbrondol}
-                      onChange={e => setForm(s => ({ ...s, alasbrondol: e.target.value }))}
-                    >
-                      <option value="">- Pilih -</option>
-                      <option value="Y">Ya (Y)</option>
-                      <option value="N">Tidak (N)</option>
-                    </select>
-                  </div>
+                {/* No Ancak - otomatis dari TPH yang dipilih */}
+                <fieldset className="fieldset col-span-12 md:col-span-2">
+                  <legend className="fieldset-legend">No Ancak</legend>
+                  <input
+                    type="text"
+                    className="input input-bordered w-full"
+                    value={form.noancak ?? ''}
+                    readOnly
+                    disabled
+                    placeholder="Otomatis dari TPH"
+                  />
+                </fieldset>
+
+                {/* === Row 3: Dokumen (full width) === */}
+
+                {/* No Dokumen */}
+                <fieldset className="fieldset col-span-12">
+                  <legend className="fieldset-legend">No Dokumen *</legend>
+                  <input
+                    type="text"
+                    className="input input-bordered w-full"
+                    value={form.nodokumen}
+                    readOnly
+                    placeholder={
+                      isFetchingDocumentNo && !isEditing
+                        ? 'Menghitung otomatis...'
+                        : 'Otomatis setelah FCBA, afdeling, field, kemandoran, karyawan terisi'
+                    }
+                    required
+                  />
+                  <p className="text-xs opacity-70">
+                    Format: FCBA/Afdeling/Field-Ancak/DDMMYY/Running bulanan per kemandoran.
+                  </p>
+                </fieldset>
+
+                <div className="col-span-12">
+                  <h4 className="text-sm font-semibold text-base-content/80">Hasil Panen</h4>
+                  <div className="mt-1 border-t border-base-300" />
                 </div>
 
-                <div className="divider">Informasi Tambahan</div>
+                {/* --- Hasil Panen --- */}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Lokasi */}
-                  <fieldset className="fieldset md:col-span-2">
-                    <legend className="fieldset-legend">Lokasi (lat,lng) *</legend>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        className="input input-bordered w-full"
-                        value={form.location}
-                        onChange={e => setForm(s => ({ ...s, location: e.target.value }))}
-                        placeholder="contoh: -2.2893371,118.0399877"
-                        required
-                      />
+                {/* Output */}
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">Output *</legend>
+                  <input
+                    type="number"
+                    className="input input-bordered w-full"
+                    value={form.output}
+                    onChange={e => setForm(s => ({ ...s, output: e.target.value }))}
+                    required
+                    min="0"
+                  />
+                </fieldset>
 
-                      <button
-                        type="button"
-                        className={`btn btn-square ${locLoading ? 'btn-disabled' : ''}`}
-                        onClick={handleGetLocation}
-                        disabled={locLoading}
+                {/* Mentah */}
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">Mentah</legend>
+                  <input
+                    type="number"
+                    className="input input-bordered w-full"
+                    value={form.mentah}
+                    onChange={e => setForm(s => ({ ...s, mentah: e.target.value }))}
+                    min="0"
+                  />
+                </fieldset>
+
+                {/* Overripe */}
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">Overripe</legend>
+                  <input
+                    type="number"
+                    className="input input-bordered w-full"
+                    value={form.overripe}
+                    onChange={e => setForm(s => ({ ...s, overripe: e.target.value }))}
+                    min="0"
+                  />
+                </fieldset>
+
+                {/* Busuk */}
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">Busuk</legend>
+                  <input
+                    type="number"
+                    className="input input-bordered w-full"
+                    value={form.busuk}
+                    onChange={e => setForm(s => ({ ...s, busuk: e.target.value }))}
+                    min="0"
+                  />
+                </fieldset>
+
+                {/* Busuk 2 */}
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">Busuk 2</legend>
+                  <input
+                    type="number"
+                    className="input input-bordered w-full"
+                    value={form.busuk2}
+                    onChange={e => setForm(s => ({ ...s, busuk2: e.target.value }))}
+                    min="0"
+                  />
+                </fieldset>
+
+                {/* Buah Kecil */}
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">Buah Kecil</legend>
+                  <input
+                    type="number"
+                    className="input input-bordered w-full"
+                    value={form.buahkecil}
+                    onChange={e => setForm(s => ({ ...s, buahkecil: e.target.value }))}
+                    min="0"
+                  />
+                </fieldset>
+
+                {/* Brondol */}
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">Brondol</legend>
+                  <input
+                    type="number"
+                    className="input input-bordered w-full"
+                    value={form.brondol}
+                    onChange={e => setForm(s => ({ ...s, brondol: e.target.value }))}
+                    min="0"
+                  />
+                </fieldset>
+
+                {/* Tangkai Panjang */}
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">Tangkai Panjang</legend>
+                  <input
+                    type="number"
+                    className="input input-bordered w-full"
+                    value={form.tangkaipanjang}
+                    onChange={e =>
+                      setForm(s => ({
+                        ...s,
+                        tangkaipanjang: e.target.value,
+                      }))
+                    }
+                    min="0"
+                  />
+                </fieldset>
+
+                {/* --- Parteno & Flag --- */}
+
+                {/* Parteno */}
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">Parteno</legend>
+                  <input
+                    type="number"
+                    className="input input-bordered w-full"
+                    value={form.parteno}
+                    onChange={e => setForm(s => ({ ...s, parteno: e.target.value }))}
+                    min="0"
+                  />
+                </fieldset>
+
+                {/* Parteno 50+ */}
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">Parteno 50+</legend>
+                  <input
+                    type="number"
+                    className="input input-bordered w-full"
+                    value={form.parteno50plus}
+                    onChange={e =>
+                      setForm(s => ({
+                        ...s,
+                        parteno50plus: e.target.value,
+                      }))
+                    }
+                    min="0"
+                  />
+                </fieldset>
+
+                {/* Alas Brondol */}
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">Alas Brondol</legend>
+                  <select
+                    className="select select-bordered w-full"
+                    value={form.alasbrondol}
+                    onChange={e => setForm(s => ({ ...s, alasbrondol: e.target.value }))}
+                  >
+                    <option value="">- Pilih -</option>
+                    <option value="Y">Ya (Y)</option>
+                    <option value="N">Tidak (N)</option>
+                  </select>
+                </fieldset>
+
+                <div className="col-span-12">
+                  <h4 className="text-sm font-semibold text-base-content/80">Informasi Tambahan</h4>
+                  <div className="mt-1 border-t border-base-300" />
+                </div>
+
+                {/* Lokasi */}
+                <fieldset className="fieldset col-span-12 md:col-span-4">
+                  <legend className="fieldset-legend">Lokasi (lat,lng) *</legend>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      className="input input-bordered w-full"
+                      value={form.location}
+                      onChange={e => setForm(s => ({ ...s, location: e.target.value }))}
+                      placeholder="contoh: -2.2893371,118.0399877"
+                      required
+                    />
+
+                    <button
+                      type="button"
+                      className={`btn btn-square ${locLoading ? 'btn-disabled' : ''}`}
+                      onClick={handleGetLocation}
+                      disabled={locLoading}
+                    >
+                      {locLoading ? <span className="loading loading-spinner loading-xs" /> : '📍'}
+                    </button>
+                  </div>
+
+                  {form.location && (
+                    <div className="mt-1">
+                      <a
+                        className="link link-primary text-sm"
+                        href={buildMapUrl(form.location)}
+                        target="_blank"
+                        rel="noopener noreferrer"
                       >
-                        {locLoading ? (
-                          <span className="loading loading-spinner loading-xs" />
-                        ) : (
-                          '📍'
-                        )}
-                      </button>
+                        Buka di Google Maps
+                      </a>
                     </div>
+                  )}
+                </fieldset>
 
-                    {form.location && (
-                      <div className="mt-1">
-                        <a
-                          className="link link-primary text-sm"
-                          href={buildMapUrl(form.location)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Buka di Google Maps
-                        </a>
-                      </div>
-                    )}
-                  </fieldset>
+                {/* File BA ExCa (PDF) */}
+                <fieldset className="fieldset col-span-12 md:col-span-4">
+                  <legend className="fieldset-legend">
+                    File BA ExCa (PDF)
+                    {!isEditing || !(typeof form.no_ba_exca === 'string' && form.no_ba_exca)
+                      ? ' *'
+                      : ''}
+                  </legend>
 
-                  {/* Exception Case + File PDF dalam 1 row */}
+                  <input
+                    type="file"
+                    ref={pdfRef}
+                    accept=".pdf"
+                    className="file-input file-input-bordered w-full"
+                    onChange={e => {
+                      const file = e.target.files?.[0] || null;
+                      setForm(s => ({ ...s, no_ba_exca: file }));
+                    }}
+                  />
+                </fieldset>
+
+                {/* Exception Case */}
+                <fieldset className="fieldset col-span-12 md:col-span-4">
+                  <legend className="fieldset-legend">
+                    Exception Case
+                    {!isEditing ? ' *' : ''}
+                  </legend>
+
+                  <textarea
+                    className="textarea textarea-bordered min-h-24 w-full"
+                    value={form.exception_case}
+                    onChange={e =>
+                      setForm(s => ({
+                        ...s,
+                        exception_case: e.target.value,
+                      }))
+                    }
+                    required={!isEditing}
+                    rows={3}
+                  />
+                </fieldset>
+
+                {/* Foto */}
+                <div className="col-span-12">
                   <fieldset className="fieldset">
                     <legend className="fieldset-legend">
-                      Exception Case {!isEditing ? '*' : ''}
+                      Foto
+                      {!isEditing ? ' *' : ''}
                     </legend>
-
-                    <textarea
-                      className="textarea textarea-bordered min-h-24 w-full"
-                      value={form.exception_case}
-                      onChange={e =>
-                        setForm(s => ({
-                          ...s,
-                          exception_case: e.target.value,
-                        }))
-                      }
-                      required={!isEditing}
-                      rows={3}
-                    />
-                  </fieldset>
-
-                  <fieldset className="fieldset">
-                    <legend className="fieldset-legend">File BA ExCa (PDF)</legend>
-
-                    <input
-                      type="file"
-                      ref={pdfRef}
-                      accept=".pdf"
-                      className="file-input file-input-bordered w-full"
-                      onChange={e => {
-                        const file = e.target.files?.[0] || null;
-                        setForm(s => ({ ...s, no_ba_exca: file }));
-                      }}
-                    />
-                  </fieldset>
-
-                  {/* FOTO FULL WIDTH */}
-                  <fieldset className="fieldset md:col-span-2">
-                    <legend className="fieldset-legend">Foto</legend>
 
                     <input
                       type="file"
@@ -2621,7 +2672,7 @@ export default function HarvestPage() {
                       }}
                     />
 
-                    {/* Preview Full Width */}
+                    {/* Preview */}
                     {preview && (
                       <div className="mt-3 relative w-full h-80 rounded-xl overflow-hidden border">
                         <Image
@@ -2637,7 +2688,7 @@ export default function HarvestPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="modal-action">
+                <div className="modal-action col-span-12">
                   <button
                     type="button"
                     className="btn"

@@ -1077,14 +1077,19 @@ export default function Attendance() {
 
     if (!triplets.length) return [];
 
-    let fcbaName = destFcba;
-    const buMatch = buLookups.codeMap.get(destFcba);
-    if (buMatch) fcbaName = buMatch.fcname || destFcba;
-
+    // Match by fcba field in triplets (triplets use fcba name, not fccode)
+    // Need to handle both cases: destFcba being fccode or fcba name
     return Array.from(
       new Set(
         triplets
-          .filter(t => t.fcba === fcbaName)
+          .filter(t => {
+            // Direct match with fcba field
+            if (t.fcba === destFcba) return true;
+            // Also try to match by extracting fcba from business units if destFcba is fccode
+            const buMatch = buLookups.codeMap.get(destFcba);
+            if (buMatch && t.fcba === buMatch.fcname) return true;
+            return false;
+          })
           .map(t => t.sectionname)
           .filter(section => section !== selSection)
           .filter(Boolean)
@@ -1092,14 +1097,7 @@ export default function Attendance() {
     )
       .sort()
       .map(v => ({ value: v, label: v }));
-  }, [
-    destFcba,
-    triplets,
-    buLookups,
-    masterSections,
-    selectedDestFcbaCodeForMaster,
-    selSection,
-  ]);
+  }, [destFcba, triplets, buLookups, masterSections, selectedDestFcbaCodeForMaster, selSection]);
 
   const mandorOptions: Option[] = useMemo(() => {
     const fcba = currentFcbaForForm || form.fcba || homeFcbaCode || homeFcba || '';
@@ -1118,7 +1116,9 @@ export default function Attendance() {
         };
 
     const pool = employees.filter(
-      e => matchesEmployeeFcba(e.fcba, fcba, buLookups, preresolved) && (e.sectionname || '') === section
+      e =>
+        matchesEmployeeFcba(e.fcba, fcba, buLookups, preresolved) &&
+        (e.sectionname || '') === section
     );
 
     const map = new Map<string, string>();
@@ -1954,7 +1954,7 @@ export default function Attendance() {
         </div>
 
         {/* Quick Search */}
-        <div className="mb-3 flex justify-end">
+        <div className="mb-3 flex justify-end animate-slideUp [animation-delay:100ms]">
           <div className="relative w-full md:w-96 group">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg
@@ -2196,7 +2196,7 @@ export default function Attendance() {
         )}
 
         {/* DataTable */}
-        <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100">
+        <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100 animate-slideUp [animation-delay:200ms]">
           <div className="min-w-[900px] md:min-w-0">
             {loading ? (
               <div className="p-8">
@@ -2207,18 +2207,19 @@ export default function Attendance() {
                 keyField="_rowKey"
                 columns={columns}
                 data={filtered}
-                progressPending={loading}
                 pagination
                 customStyles={centerHeaderStyle}
                 paginationPerPage={100}
                 paginationRowsPerPageOptions={[100, 500, 1000, 5000]}
                 dense
                 highlightOnHover
+                pointerOnHover
                 fixedHeader
                 fixedHeaderScrollHeight="520px"
                 persistTableHead
                 responsive
                 noDataComponent={<div className="py-8 text-base-content/70">Tidak ada data.</div>}
+                progressPending={loading}
               />
             )}
           </div>
@@ -2307,6 +2308,53 @@ export default function Attendance() {
                   />
                 </fieldset>
 
+                {form.attendance_type === 'ASSISTENSI' && (
+                  <div className="col-span-12 mt-1">
+                    <h4 className="text-sm font-semibold text-base-content/80">
+                      Tujuan Assistensi
+                    </h4>
+                    <div className="mt-1 border-t border-base-300" />
+                  </div>
+                )}
+
+                {/* FCBA Dest */}
+                {form.attendance_type === 'ASSISTENSI' && (
+                  <fieldset className="fieldset col-span-12 md:col-span-4">
+                    <legend className="fieldset-legend">FCBA Destination *</legend>
+                    <SearchSelect
+                      options={destOptions}
+                      value={destFcba ?? ''}
+                      onChange={onChangeDestFcba}
+                      placeholder={isLoadingBU ? 'Memuat...' : 'Pilih FCBA tujuan'}
+                      disabled={disableUnlessAllowed(false) || isLoadingBU}
+                    />
+                  </fieldset>
+                )}
+
+                {/* Section Dest */}
+                {form.attendance_type === 'ASSISTENSI' && (
+                  <fieldset className="fieldset col-span-12 md:col-span-4">
+                    <legend className="fieldset-legend">Section Destination *</legend>
+                    <SearchSelect
+                      options={destSectionOptions}
+                      value={destSection ?? ''}
+                      onChange={onChangeDestSection}
+                      placeholder={
+                        isLoadingBU
+                          ? 'Memuat...'
+                          : destFcba
+                            ? isLoadingSections
+                              ? 'Memuat Section tujuan...'
+                              : 'Pilih Section tujuan'
+                            : 'Pilih FCBA tujuan dulu'
+                      }
+                      disabled={
+                        !destFcba || disableUnlessAllowed(false) || isLoadingBU || isLoadingSections
+                      }
+                    />
+                  </fieldset>
+                )}
+
                 <div className="col-span-12 mt-1">
                   <h4 className="text-sm font-semibold text-base-content/80">Asal</h4>
                   <div className="mt-1 border-t border-base-300" />
@@ -2389,53 +2437,6 @@ export default function Attendance() {
                     disabled={!selSection || disableUnlessAllowed(false) || isLoadingGangs}
                   />
                 </fieldset>
-
-                {form.attendance_type === 'ASSISTENSI' && (
-                  <div className="col-span-12 mt-1">
-                    <h4 className="text-sm font-semibold text-base-content/80">
-                      Tujuan Assistensi
-                    </h4>
-                    <div className="mt-1 border-t border-base-300" />
-                  </div>
-                )}
-
-                {/* FCBA Dest */}
-                {form.attendance_type === 'ASSISTENSI' && (
-                  <fieldset className="fieldset col-span-12 md:col-span-4">
-                    <legend className="fieldset-legend">FCBA Destination *</legend>
-                    <SearchSelect
-                      options={destOptions}
-                      value={destFcba ?? ''}
-                      onChange={onChangeDestFcba}
-                      placeholder={isLoadingBU ? 'Memuat...' : 'Pilih FCBA tujuan'}
-                      disabled={disableUnlessAllowed(false) || isLoadingBU}
-                    />
-                  </fieldset>
-                )}
-
-                {/* Section Dest */}
-                {form.attendance_type === 'ASSISTENSI' && (
-                  <fieldset className="fieldset col-span-12 md:col-span-4">
-                    <legend className="fieldset-legend">Section Destination *</legend>
-                    <SearchSelect
-                      options={destSectionOptions}
-                      value={destSection ?? ''}
-                      onChange={onChangeDestSection}
-                      placeholder={
-                        isLoadingBU
-                          ? 'Memuat...'
-                          : destFcba
-                            ? isLoadingSections
-                              ? 'Memuat Section tujuan...'
-                              : 'Pilih Section tujuan'
-                            : 'Pilih FCBA tujuan dulu'
-                      }
-                      disabled={
-                        !destFcba || disableUnlessAllowed(false) || isLoadingBU || isLoadingSections
-                      }
-                    />
-                  </fieldset>
-                )}
 
                 <div className="col-span-12 mt-1">
                   <h4 className="text-sm font-semibold text-base-content/80">Personel</h4>
