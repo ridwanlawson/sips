@@ -12,6 +12,7 @@ import { centerHeaderStyle } from '@/utils/tableHelper';
 import { exportJsonToCsv } from '@/utils/exportCsv';
 import { formatPerfNumber } from '@/utils/perf-formatter';
 import { useLocale } from '@/hooks/useLocale';
+import { EmptyState } from '@/app/components/empty-state';
 
 /* =========================
    T Y P E h
@@ -981,7 +982,7 @@ export default function Lhm() {
                 fixedHeaderScrollHeight="520px"
                 persistTableHead
                 responsive
-                noDataComponent={<div className="py-8 text-base-content/70">Tidak ada data.</div>}
+                noDataComponent={<EmptyState namespace="Lhm" onClearSearch={q ? () => setQ('') : undefined} />}
               />
             )}
           </div>

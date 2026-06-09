@@ -34,6 +34,7 @@
     "searchPlaceholder": "Search anything (employee, fcba, mandor, device, location...)",
     "close": "Close",
     "noData": "No data",
+    "noDataHint": "Try adjusting your filters or search to find what you're looking for.",
     "select": "Select...",
     "typeToSearch": "Type to search..."
   },
@@ -43,19 +44,23 @@
     "searchPlaceholder": "Search No Dokumen, Karyawan, FCBA, TPH...",
     "close": "Close",
     "noData": "No data",
+    "noDataHint": "Try adjusting your filters or search to find what you're looking for.",
     "select": "Select...",
     "typeToSearch": "Type to search..."
   },
   "Lhm": {
     "quickSearch": "Quick Search",
     "clearSearch": "Clear search",
-    "searchPlaceholder": "Search employee, block, fcba, document no..."
+    "searchPlaceholder": "Search employee, block, fcba, document no...",
+    "noData": "No data",
+    "noDataHint": "Try adjusting your filters or search to find what you're looking for."
   },
   "Transport": {
     "quickSearch": "Quick Search",
     "clearSearch": "Clear search",
     "searchPlaceholder": "Search (transport no, SPB, driver, fcba...)",
-    "noData": "No data"
+    "noData": "No data",
+    "noDataHint": "Try adjusting your filters or search to find what you're looking for."
   },
   "Dashboard": {
     "noDataBar": "📊 No data available",

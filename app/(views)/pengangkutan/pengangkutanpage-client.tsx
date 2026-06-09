@@ -15,6 +15,7 @@ import { fetchAttendanceUpload } from '@/utils/attendanceUploadService';
 import { exportJsonToCsv } from '@/utils/exportCsv';
 import { useLocale } from '@/hooks/useLocale';
 import { useTranslations } from 'next-intl';
+import { EmptyState } from '@/app/components/empty-state';
 import toast from 'react-hot-toast';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { SkeletonTable } from '@/app/components/skeletons';
@@ -1516,7 +1517,7 @@ export default function PengangkutanPage() {
                 fixedHeaderScrollHeight="520px"
                 persistTableHead
                 responsive
-                noDataComponent={<div className="py-8 text-base-content/70">{t('noData')}</div>}
+                noDataComponent={<EmptyState namespace="Transport" onClearSearch={q ? () => setQ('') : undefined} />}
               />
             )}
           </div>
