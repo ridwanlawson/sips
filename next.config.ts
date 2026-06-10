@@ -3,6 +3,25 @@ import createNextIntlPlugin from 'next-intl/plugin';
 
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 
+const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL
+  ? new URL(process.env.NEXT_PUBLIC_BACKEND_URL)
+  : process.env.BACKEND_URL
+    ? new URL(process.env.BACKEND_URL)
+    : null;
+
+const backendOrigin = backendUrl ? backendUrl.origin : '';
+
+const cspDirectives = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  `img-src 'self' data: blob: https://img.daisyui.com ${backendOrigin}`.trim(),
+  `connect-src 'self' https://skj.my.id ${backendOrigin}`.trim(),
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self' https://www.google.com http://gis.skj.my.id:91 https://skj.my.id",
+];
+
 const securityHeaders = [
   {
     key: 'X-DNS-Prefetch-Control',
@@ -22,11 +41,17 @@ const securityHeaders = [
   },
   {
     key: 'X-XSS-Protection',
-    value: '1; mode=block',
+    value: '0',
+  },
+  {
+    key: 'Referrer-Policy',
+    value: 'strict-origin-when-cross-origin',
+  },
+  {
+    key: 'Content-Security-Policy',
+    value: cspDirectives.join('; '),
   },
 ];
-
-const backendUrl = process.env.BACKEND_URL ? new URL(process.env.BACKEND_URL) : null;
 
 const nextConfig: NextConfig = {
   images: {

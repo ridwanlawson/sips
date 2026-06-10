@@ -23,11 +23,6 @@ export function middleware(request: NextRequest) {
 
   setDefaultLocale(response, request);
 
-  // Security headers applied to all responses
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-
   // Skip static files and Next.js internals.
   if (
     pathname.startsWith('/_next') ||
