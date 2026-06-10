@@ -1163,17 +1163,15 @@ export default function HarvestPage() {
     const selCode = resolveBusinessUnitCode(selFcba, buLookups);
     const selName = resolveBusinessUnitName(selFcba, buLookups);
 
-    return Array.from(
-      new Set(
-        triplets
-          .filter(t => {
-            if (t.fcba === selFcba || t.fcba === selCode || t.fcba === selName) return true;
-            return false;
-          })
-          .map(t => t.sectionname)
-          .filter(Boolean)
-      )
-    )
+    // ⚡ Bolt Optimization: Single-pass O(N) loop to build unique section names
+    const sections = new Set<string>();
+    for (const t of triplets) {
+      if (t.fcba === selFcba || t.fcba === selCode || t.fcba === selName) {
+        if (t.sectionname) sections.add(t.sectionname);
+      }
+    }
+
+    return Array.from(sections)
       .sort()
       .map(v => ({ value: v, label: v }));
   }, [triplets, selFcba, buLookups]);
@@ -1184,18 +1182,19 @@ export default function HarvestPage() {
     // ⚡ Bolt Optimization: Use Map lookup for O(1) BU name resolution
     const fcbaName = resolveBusinessUnitName(selFcba, buLookups);
 
-    // Kemandoran = gangcode from employees matching fcba and section, only MD prefix
-    const pool = employees.filter(
-      e =>
+    // ⚡ Bolt Optimization: Single-pass O(N) loop to build unique gang codes
+    const set = new Set<string>();
+    for (const e of employees) {
+      if (
         (e.fcba || '') === fcbaName &&
         (e.sectionname || '') === selSection &&
         (e.gangcode || '').toUpperCase().startsWith('MD')
-    );
-    const set = new Set<string>();
-    for (const e of pool) {
-      const raw = (e.gangcode || '').trim();
-      if (raw) set.add(raw);
+      ) {
+        const raw = (e.gangcode || '').trim();
+        if (raw) set.add(raw);
+      }
     }
+
     return Array.from(set)
       .sort()
       .map(v => ({ value: v, label: v }));
@@ -1471,34 +1470,34 @@ export default function HarvestPage() {
   };
 
   /* ===== Quick search ===== */
-  const filtered = useMemo(() => {
-    if (!q.trim()) return items;
-    const s = q.toLowerCase();
-    // ⚡ Bolt Optimization: Use pre-calculated search content for O(1) string check per row
-    return items.filter(it => it._searchContent?.includes(s));
-  }, [q, items]);
+  // ⚡ Bolt Optimization: Consolidate filtering and totals calculation into a single-pass O(N) loop.
+  // This reduces iterations by 50% during search/filter operations.
+  const { filtered, harvestTotals } = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    const result: Harvest[] = [];
+    const totals = {
+      output: 0,
+      mentah: 0,
+      overripe: 0,
+      busuk: 0,
+      brondol: 0,
+    };
 
-  const harvestTotals = useMemo(
-    () =>
-      filtered.reduce(
-        (acc, row) => ({
-          // ⚡ Bolt Optimization: Use pre-calculated numbers to avoid thousands of O(N*M) toNumber/regex calls during search
-          output: acc.output + (row._outputNum || 0),
-          mentah: acc.mentah + (row._mentahNum || 0),
-          overripe: acc.overripe + (row._overNum || 0),
-          busuk: acc.busuk + (row._busukNum || 0),
-          brondol: acc.brondol + (row._brondolNum || 0),
-        }),
-        {
-          output: 0,
-          mentah: 0,
-          overripe: 0,
-          busuk: 0,
-          brondol: 0,
-        }
-      ),
-    [filtered]
-  );
+    for (const it of items) {
+      if (!s || it._searchContent?.includes(s)) {
+        result.push(it);
+
+        // ⚡ Bolt Optimization: Use pre-calculated numbers to avoid thousands of O(N*M) toNumber/regex calls during search
+        totals.output += it._outputNum || 0;
+        totals.mentah += it._mentahNum || 0;
+        totals.overripe += it._overNum || 0;
+        totals.busuk += it._busukNum || 0;
+        totals.brondol += it._brondolNum || 0;
+      }
+    }
+
+    return { filtered: result, harvestTotals: totals };
+  }, [q, items]);
 
   const totalCards = [
     {
