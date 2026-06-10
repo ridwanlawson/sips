@@ -108,10 +108,32 @@ export default function AttendanceUploadPage() {
 
   // Add row keys for DataTable
   const dataWithKey = useMemo(() => {
-    return data.map((item, idx) => ({
-      ...item,
-      _rowKey: `${item.linenokey}-${item.id}-${idx}`,
-    }));
+    return data.map((item, idx) => {
+      // ⚡ Bolt Optimization: Pre-calculate search content to avoid O(N*M) string operations during search.
+      const _searchContent = [
+        item.employeecode,
+        item.gangcode,
+        item.jobcode,
+        item.afdeling,
+        item.attendance,
+        item.locationcode,
+        item.locationtype,
+        item.fcba,
+        item.reference,
+        item.remarks,
+        item.linenokey,
+        item.id,
+      ]
+        .filter(v => v !== null && v !== undefined)
+        .join(' ')
+        .toLowerCase();
+
+      return {
+        ...item,
+        _rowKey: `${item.linenokey}-${item.id}-${idx}`,
+        _searchContent,
+      };
+    });
   }, [data]);
 
   const filteredDataWithKey = useMemo(() => {
@@ -119,22 +141,8 @@ export default function AttendanceUploadPage() {
       return dataWithKey;
     }
     const search = searchTerm.toLowerCase();
-    return dataWithKey.filter(record => {
-      return (
-        record.employeecode?.toLowerCase().includes(search) ||
-        record.gangcode?.toLowerCase().includes(search) ||
-        record.jobcode?.toLowerCase().includes(search) ||
-        record.afdeling?.toLowerCase().includes(search) ||
-        record.attendance?.toLowerCase().includes(search) ||
-        record.locationcode?.toLowerCase().includes(search) ||
-        record.locationtype?.toLowerCase().includes(search) ||
-        record.fcba?.toLowerCase().includes(search) ||
-        record.reference?.toLowerCase().includes(search) ||
-        record.remarks?.toLowerCase().includes(search) ||
-        String(record.linenokey).includes(search) ||
-        String(record.id).includes(search)
-      );
-    });
+    // ⚡ Bolt Optimization: Use pre-calculated search content for O(N) filtering.
+    return dataWithKey.filter(record => record._searchContent?.includes(search));
   }, [dataWithKey, searchTerm]);
 
   // Define DataTable columns

@@ -176,36 +176,53 @@ export default function HarvestingUploadPage() {
   };
 
   const dataWithKey = useMemo(
-    () => data.map((item, idx) => ({ ...item, _rowKey: `${item.nospb}-${item.chitno}-${idx}` })),
+    () =>
+      data.map((item, idx) => {
+        // ⚡ Bolt Optimization: Pre-calculate search content to avoid O(N*M) string operations during search.
+        const _searchContent = [
+          item.nospb,
+          item.vehicle,
+          item.driver,
+          item.mill,
+          item.fcba,
+          item.chitno,
+          item.fieldcode,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        return {
+          ...item,
+          _rowKey: `${item.nospb}-${item.chitno}-${idx}`,
+          _searchContent,
+        };
+      }),
     [data]
   );
 
   const filteredDataWithKey = useMemo(() => {
     if (!searchTerm.trim()) return dataWithKey;
     const search = searchTerm.toLowerCase();
-    return dataWithKey.filter(
-      r =>
-        r.nospb?.toLowerCase().includes(search) ||
-        r.vehicle?.toLowerCase().includes(search) ||
-        r.driver?.toLowerCase().includes(search) ||
-        r.mill?.toLowerCase().includes(search) ||
-        r.fcba?.toLowerCase().includes(search) ||
-        r.chitno?.toLowerCase().includes(search) ||
-        r.fieldcode?.toLowerCase().includes(search)
-    );
+    // ⚡ Bolt Optimization: Use pre-calculated search content for O(N) filtering.
+    return dataWithKey.filter(r => r._searchContent?.includes(search));
   }, [dataWithKey, searchTerm]);
 
   const summary = useMemo(() => {
-    const totalBunch = filteredDataWithKey.reduce((s, r) => s + (Number(r.bunch) || 0), 0);
-    const totalEstateWeight = filteredDataWithKey.reduce(
-      (s, r) => s + (Number(r.bunch_estateweight) || 0),
-      0
-    );
+    // ⚡ Bolt Optimization: Consolidate multi-pass .reduce() into a single-pass loop (O(N)).
+    let totalBunch = 0;
+    let totalEstateWeight = 0;
+
+    for (const r of filteredDataWithKey) {
+      totalBunch += Number(r.bunch) || 0;
+      totalEstateWeight += Number(r.bunch_estateweight) || 0;
+    }
+
+    const count = filteredDataWithKey.length;
     return {
-      count: filteredDataWithKey.length,
+      count,
       totalBunch,
-      avgBunch:
-        filteredDataWithKey.length > 0 ? (totalBunch / filteredDataWithKey.length).toFixed(2) : 0,
+      avgBunch: count > 0 ? (totalBunch / count).toFixed(2) : 0,
       totalEstateWeight,
     };
   }, [filteredDataWithKey]);
