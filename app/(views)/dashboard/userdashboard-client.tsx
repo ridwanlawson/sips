@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { SimpleBarChart, SimplePieChart, SimpleLineChart } from '@/app/components/dashboard-chart';
@@ -11,6 +11,7 @@ import { useLocale } from '@/hooks/useLocale';
 import { SearchSelect, type Option } from '@/app/components/search-select';
 import { cookieStore } from '@/utils/cookieStore';
 import { toTitleCase } from '@/utils/textManipulation';
+import { EmptyState } from '@/app/components/empty-state';
 
 /* =========================
    T Y P E S
@@ -289,6 +290,12 @@ export default function UserDashboard() {
 
   // Mode tampilan riwayat: per hari (rekap) / per baris (detail)
   const [detailMode, setDetailMode] = useState<DetailMode>('perHari');
+
+  const handleClearFilters = useCallback(() => {
+    setFilterFcba('ALL');
+    setFilterAfdeling('');
+    setTimeframe('monthly');
+  }, []);
 
   // State untuk mengatasi hydration mismatch
   const [isClient, setIsClient] = useState(false);
@@ -1490,9 +1497,7 @@ export default function UserDashboard() {
             {loading ? (
               <SkeletonTable rows={5} />
             ) : filteredAttendance.length === 0 ? (
-              <div className="text-center py-8 text-base-content/60">
-                📭 Tidak ada data absensi pada periode & filter yang dipilih.
-              </div>
+              <EmptyState namespace="Attendance" onClearSearch={handleClearFilters} />
             ) : (
               <div className="overflow-x-auto">
                 {/* MODE PER HARI (REKAP) */}
