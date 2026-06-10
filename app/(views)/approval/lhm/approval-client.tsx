@@ -879,7 +879,7 @@ export default function Approval() {
     <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
       <div className="p-4 sm:p-6 max-w-screen-2xl mx-auto w-full overflow-x-hidden">
         {/* Header */}
-        <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start">
+        <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start animate-slideUp">
           <h1
             className="text-2xl sm:text-3xl font-bold min-w-0 truncate"
             title="Halaman Approval LHM (Laporan Harian Mandor)"
@@ -955,7 +955,7 @@ export default function Approval() {
         )}
 
         {/* Quick Search */}
-        <div className="mb-3 flex justify-end">
+        <div className="mb-3 flex justify-end animate-slideUp [animation-delay:100ms]">
           <div className="relative w-full md:w-96 group">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg
@@ -1130,7 +1130,7 @@ export default function Approval() {
         {/* Error visual dihilangkan, cukup toast saja yang muncul */}
 
         {/* DataTable */}
-        <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100">
+        <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100 animate-slideUp [animation-delay:200ms]">
           <div className="min-w-[900px] md:min-w-0">
             {loading ? (
               <div className="p-8">
