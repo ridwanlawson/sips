@@ -81,8 +81,15 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 
   if (!upstream.ok) {
+    // SECURITY: Log original error details server-side but return generic message
+    // to client to prevent information leakage (CWE-209).
+    console.error('[API_PENGANGKUTANS_GET_ERROR]', {
+      status: upstream.status,
+      url: url.toString(),
+      data,
+    });
     return NextResponse.json(
-      { ok: false, error: extractMessage(data, 'Fetch failed') },
+      { ok: false, error: 'Failed to fetch transport data' },
       { status: upstream.status }
     );
   }
@@ -122,8 +129,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   if (!upstream.ok) {
+    // SECURITY: Log original error details server-side but return generic message
+    // to client to prevent information leakage (CWE-209).
+    console.error('[API_PENGANGKUTANS_POST_ERROR]', {
+      status: upstream.status,
+      data,
+    });
     return NextResponse.json(
-      { ok: false, error: extractMessage(data, 'Create failed') },
+      { ok: false, error: 'Failed to create transport record' },
       { status: upstream.status }
     );
   }

@@ -11,6 +11,8 @@ import { centerHeaderStyle } from '@/utils/tableHelper';
 import { exportJsonToCsv } from '@/utils/exportCsv';
 import { useLocale } from '@/hooks/useLocale';
 import { formatPerfNumber } from '@/utils/perf-formatter';
+import { useTranslations } from 'next-intl';
+import { EmptyState } from '@/app/components/empty-state';
 
 /* =========================
    T Y P E S
@@ -161,6 +163,7 @@ import { cookieStore } from '@/utils/cookieStore';
    M A I N
 ========================= */
 export default function Open() {
+  const t = useTranslations('Lhm');
   const localeTag = useLocale();
   const [q, setQ] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -877,7 +880,7 @@ export default function Open() {
     <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
       <div className="p-4 sm:p-6 max-w-screen-2xl mx-auto w-full overflow-x-hidden">
         {/* Header */}
-        <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start">
+        <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start animate-slideUp">
           <h1
             className="text-2xl sm:text-3xl font-bold min-w-0 truncate"
             title="Halaman Open LHM (Laporan Harian Mandor)"
@@ -953,14 +956,59 @@ export default function Open() {
         )}
 
         {/* Quick Search */}
-        <div className="mb-3 flex justify-end gap-2">
-          <input
-            className="input input-bordered w-full md:w-96"
-            placeholder="Cari apapun (karyawan, blok, fcba, document no...)"
-            value={q}
-            onChange={e => setQ(e.target.value)}
-            title="Pencarian cepat di semua kolom penting"
-          />
+        <div className="mb-3 flex justify-end animate-slideUp [animation-delay:100ms]">
+          <div className="relative w-full md:w-96 group">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+            <input
+              className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
+              placeholder={t('searchPlaceholder')}
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              aria-label={t('quickSearch')}
+              title={t('quickSearch')}
+            />
+            {q && (
+              <button
+                type="button"
+                onClick={() => setQ('')}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-base-content/50 hover:text-error transition-colors"
+                aria-label={t('clearSearch')}
+                title={t('clearSearch')}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Filter Bar */}
@@ -1086,7 +1134,7 @@ export default function Open() {
         {/* Error visual dihilangkan, cukup toast saja yang muncul */}
 
         {/* DataTable */}
-        <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100">
+        <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100 animate-slideUp [animation-delay:200ms]">
           <div className="min-w-[900px] md:min-w-0">
             {loading ? (
               <div className="p-8">
@@ -1111,7 +1159,9 @@ export default function Open() {
                 selectableRows
                 onSelectedRowsChange={handleRowSelected}
                 clearSelectedRows={toggledClearRows}
-                noDataComponent={<div className="py-8 text-base-content/70">Tidak ada data.</div>}
+                noDataComponent={
+                  <EmptyState namespace="Lhm" onClearSearch={q ? () => setQ('') : undefined} />
+                }
               />
             )}
           </div>
