@@ -327,7 +327,7 @@ export async function validateAndSanitizeRequest(
     }
 
     return { success: true, data: result.data };
-  } catch (error) {
+  } catch {
     return {
       success: false,
       error: 'Invalid JSON format',
