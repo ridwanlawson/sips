@@ -152,8 +152,7 @@ export async function proxyGet(
 export async function proxyPost(
   upstreamUrl: string,
   token: string,
-  body: unknown,
-  requireCsrf: boolean = true
+  body: unknown
 ): Promise<NextResponse> {
   const { data: payload } = body as { data?: unknown };
 

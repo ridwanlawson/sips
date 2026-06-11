@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
-import { authHeaders, extractMessage, parseJsonSafe } from '@/lib/apiProxy';
+import { authHeaders, parseJsonSafe } from '@/lib/apiProxy';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';

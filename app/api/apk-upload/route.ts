@@ -3,8 +3,6 @@ import { cookies } from 'next/headers';
 import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
 import { UserLevel } from '@/lib/constants';
 import { validateCsrfToken } from '@/lib/csrf';
-import * as CryptoJS from 'crypto-js';
-import { sanitizeFilename } from '@/lib/inputSanitizer';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';

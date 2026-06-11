@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
 import { applyUserDataScope } from '@/utils/requestScope';
-import { authHeaders, isRecord, extractMessage, parseJsonSafe, unauthorizedResponse } from '@/lib/apiProxy';
+import { authHeaders, isRecord, parseJsonSafe } from '@/lib/apiProxy';
 import { sanitizeHtml, sanitizeFilename } from '@/lib/inputSanitizer';
 import { cookies } from 'next/headers';
 import { validateCsrfToken } from '@/lib/csrf';
