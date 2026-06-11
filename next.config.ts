@@ -24,6 +24,19 @@ const securityHeaders = [
     key: 'X-XSS-Protection',
     value: '1; mode=block',
   },
+  {
+    key: 'Referrer-Policy',
+    value: 'strict-origin-when-cross-origin',
+  },
+  {
+    key: 'Permissions-Policy',
+    value: 'camera=(), microphone=(), geolocation=(), payment=()',
+  },
+  {
+    key: 'Content-Security-Policy',
+    value:
+      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://img.daisyui.com https:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self';",
+  },
 ];
 
 const backendUrl = process.env.BACKEND_URL ? new URL(process.env.BACKEND_URL) : null;
@@ -80,6 +93,9 @@ const nextConfig: NextConfig = {
     removeConsole: process.env.NODE_ENV === 'production',
   },
 
+  // Security: Hide Next.js version
+  poweredByHeader: false,
+
   // HTTP headers for caching and baseline browser protections.
   async headers() {
     return [
@@ -131,7 +147,6 @@ const nextConfig: NextConfig = {
   },
 
   compress: true,
-  poweredByHeader: false,
   // Keep default ETag generation enabled for conditional caching.
 };
 

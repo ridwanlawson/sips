@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
 import { applyUserDataScope } from '@/utils/requestScope';
-import { authHeaders, isRecord, extractMessage, parseJsonSafe } from '@/lib/apiProxy';
-
-export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
+import { authHeaders, isRecord, extractMessage, parseJsonSafe, unauthorizedResponse } from '@/lib/apiProxy';
+import { sanitizeHtml, sanitizeFilename } from '@/lib/inputSanitizer';
+import { cookies } from 'next/headers';
+import { validateCsrfToken } from '@/lib/csrf';
 
 const PENGANGKUTAN_BASE = `${BACKEND_URL}/api/apps/pengangkutans`;
 
@@ -107,13 +107,32 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
   }
 
+  // === CSRF VALIDATION ===
+  const cookieStore = await cookies();
+  const csrfToken = cookieStore.get('csrf_token')?.value;
+  if (!csrfToken || !validateCsrfToken(req, csrfToken)) {
+    return NextResponse.json(
+      { ok: false, error: 'Invalid CSRF token' },
+      { status: 403 }
+    );
+  }
+
+  // === INPUT SANITIZATION ===
   const incoming = await req.formData();
   const form = new FormData();
   for (const [key, value] of incoming.entries()) {
+    const sanitizedKey = sanitizeHtml(key);
+    
     if (typeof value === 'string') {
-      form.append(key, value);
+      // Sanitize string values
+      const sanitizedValue = sanitizeHtml(value);
+      form.append(sanitizedKey, sanitizedValue);
+    } else if (value instanceof File) {
+      // Sanitize filename
+      const sanitizedFilename = sanitizeFilename(value.name);
+      form.append(sanitizedKey, value, sanitizedFilename);
     } else {
-      form.append(key, value, value.name);
+      form.append(sanitizedKey, value);
     }
   }
 

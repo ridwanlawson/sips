@@ -11,7 +11,10 @@
     "test:coverage": "vitest --coverage",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "security:audit": "npm audit",
+    "security:audit-fix": "npm audit fix",
+    "security:check": "npm audit && echo 'Check for vulnerabilities complete'"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.20",
@@ -20,6 +23,7 @@
     "daisyui": "^5.1.13",
     "next": "^15.5.18",
     "next-intl": "^4.8.1",
+    "rate-limiter-flexible": "^5.0.5",
     "react": "19.1.0",
     "react-data-table-component": "^7.7.0",
     "react-dom": "19.1.0",

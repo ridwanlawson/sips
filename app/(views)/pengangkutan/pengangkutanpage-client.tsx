@@ -705,6 +705,13 @@ export default function PengangkutanPage() {
     setSubmitLoading(true);
     try {
       const formData = buildFormData();
+
+      // Add CSRF token to FormData
+      const csrfToken = document.cookie.match(/csrf_token=([^;]+)/)?.[1];
+      if (csrfToken && !formData.has('_csrf_token')) {
+        formData.append('_csrf_token', csrfToken);
+      }
+
       const url = isEditing
         ? `/api/pengangkutans/${encodeURIComponent(form.id)}`
         : '/api/pengangkutans';
@@ -755,6 +762,13 @@ export default function PengangkutanPage() {
     mutationFn: async ({ id, file }: { id: string; file: File }) => {
       const body = new FormData();
       body.append('ba_deleted', file, file.name);
+
+      // Add CSRF token for DELETE
+      const csrfToken = document.cookie.match(/csrf_token=([^;]+)/)?.[1];
+      if (csrfToken) {
+        body.append('_csrf_token', csrfToken);
+      }
+
       const res = await fetch(`/api/pengangkutans/${encodeURIComponent(id)}`, {
         method: 'DELETE',
         body,

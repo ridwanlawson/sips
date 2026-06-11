@@ -1,3 +1,5 @@
+'use client';
+
 type ApiWrapper = {
   ok?: boolean;
   success?: boolean;

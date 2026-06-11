@@ -106,16 +106,28 @@ function useChangePassword() {
     setSuccess('');
 
     const matchError = validatePasswordMatch(form.newPassword, form.confirmPassword);
-    if (matchError) { setError(matchError); return; }
+    if (matchError) {
+      setError(matchError);
+      return;
+    }
 
     const lengthError = validatePasswordLength(form.newPassword);
-    if (lengthError) { setError(lengthError); return; }
+    if (lengthError) {
+      setError(lengthError);
+      return;
+    }
 
     setLoading(true);
     try {
+      // Get CSRF token from cookie
+      const csrfToken = document.cookie.match(/csrf_token=([^;]+)/)?.[1];
+
       const res = await fetch('/api/change-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken || '',
+        },
         body: JSON.stringify({
           current_password: form.currentPassword,
           new_password: form.newPassword,
@@ -379,10 +391,7 @@ export default function ChangePasswordPage({ profile }: ChangePasswordPageProps)
   return (
     <div className="min-h-[calc(100vh-64px)] bg-base-200 p-4 md:p-8 flex justify-center items-start pt-10 relative overflow-hidden">
       {/* Background Decorations */}
-      <div
-        className="absolute inset-0 overflow-hidden pointer-events-none"
-        aria-hidden="true"
-      >
+      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/10 rounded-full blur-3xl opacity-50 animate-pulse" />
         <div className="absolute top-1/2 right-0 w-80 h-80 bg-secondary/10 rounded-full blur-3xl opacity-40 animate-pulse [animation-delay:1s]" />
       </div>

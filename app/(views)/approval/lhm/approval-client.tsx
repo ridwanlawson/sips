@@ -463,11 +463,15 @@ export default function Approval() {
 
       const payload = { data: dataArr };
 
+      // Add CSRF token
+      const csrfToken = document.cookie.match(/csrf_token=([^;]+)/)?.[1];
+
       const res = await fetch('/api/approval/lhm/submit', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
+          'X-CSRF-Token': csrfToken || '',
         },
         credentials: 'include',
         body: JSON.stringify(payload),
@@ -1155,7 +1159,9 @@ export default function Approval() {
                 selectableRows
                 onSelectedRowsChange={handleRowSelected}
                 clearSelectedRows={toggledClearRows}
-                noDataComponent={<EmptyState namespace="Lhm" onClearSearch={q ? () => setQ('') : undefined} />}
+                noDataComponent={
+                  <EmptyState namespace="Lhm" onClearSearch={q ? () => setQ('') : undefined} />
+                }
               />
             )}
           </div>

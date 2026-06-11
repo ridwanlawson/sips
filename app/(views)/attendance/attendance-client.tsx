@@ -511,6 +511,12 @@ export default function Attendance() {
   // Mutations
   const mutation = useMutation({
     mutationFn: async ({ url, method, body }: { url: string; method: string; body: FormData }) => {
+      // Add CSRF token to FormData if not already present
+      const csrfToken = document.cookie.match(/csrf_token=([^;]+)/)?.[1];
+      if (csrfToken && !body.has('_csrf_token')) {
+        body.append('_csrf_token', csrfToken);
+      }
+
       const res = await fetch(url, {
         method,
         body,
@@ -559,6 +565,12 @@ export default function Attendance() {
       // Laravel expects file uploads to come via multipart POST; use _method override
       body.append('ba_deleted', file);
       body.append('_method', 'DELETE');
+
+      // Add CSRF token for file upload
+      const csrfToken = document.cookie.match(/csrf_token=([^;]+)/)?.[1];
+      if (csrfToken) {
+        body.append('_csrf_token', csrfToken);
+      }
 
       const res = await fetch(`/api/attendance/${id}`, {
         method: 'POST',

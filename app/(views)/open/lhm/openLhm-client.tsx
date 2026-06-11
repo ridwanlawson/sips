@@ -461,11 +461,15 @@ export default function Open() {
 
       const payload = { data: dataArr };
 
+      // Add CSRF token
+      const csrfToken = document.cookie.match(/csrf_token=([^;]+)/)?.[1];
+
       const res = await fetch('/api/open/lhm/submit', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
+          'X-CSRF-Token': csrfToken || '',
         },
         credentials: 'include',
         body: JSON.stringify(payload),

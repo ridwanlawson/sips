@@ -26,7 +26,6 @@ export default function Home() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [saveUsername, setSaveUsername] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingDownload, setIsCheckingDownload] = useState(false);
@@ -36,28 +35,28 @@ export default function Home() {
   const rawRedirect = searchParams.get('redirect');
   const redirectTo = isValidRedirect(rawRedirect) ? (rawRedirect as string) : '/dashboard';
 
-  useEffect(() => {
-    const saved = window.localStorage.getItem('sips_saved_login');
-    if (!saved) return;
+  // SECURITY: Hapus localStorage untuk mencegah XSS
+  // useEffect(() => {
+  //   const saved = window.localStorage.getItem('sips_saved_login');
+  //   if (!saved) return;
+  //   try {
+  //     const parsed = JSON.parse(saved) as { username?: string };
+  //     if (parsed.username) {
+  //       setUsername(parsed.username);
+  //       setSaveUsername(true);
+  //     }
+  //   } catch {
+  //     window.localStorage.removeItem('sips_saved_login');
+  //   }
+  // }, []);
 
-    try {
-      const parsed = JSON.parse(saved) as { username?: string };
-      if (parsed.username) {
-        setUsername(parsed.username);
-        setSaveUsername(true);
-      }
-    } catch {
-      window.localStorage.removeItem('sips_saved_login');
-    }
-  }, []);
-
-  useEffect(() => {
-    if (saveUsername) {
-      window.localStorage.setItem('sips_saved_login', JSON.stringify({ username }));
-    } else {
-      window.localStorage.removeItem('sips_saved_login');
-    }
-  }, [saveUsername, username]);
+  // useEffect(() => {
+  //   if (saveUsername) {
+  //     window.localStorage.setItem('sips_saved_login', JSON.stringify({ username }));
+  //   } else {
+  //     window.localStorage.removeItem('sips_saved_login');
+  //   }
+  // }, [saveUsername, username]);
 
   // Generate fireflies sekali saja (random posisi/ukuran)
   const [fireflies, setFireflies] = useState<Firefly[]>([]);
@@ -96,10 +95,14 @@ export default function Home() {
     setError('');
 
     try {
+      // Get CSRF token from cookie
+      const csrfToken = document.cookie.match(/csrf_token=([^;]+)/)?.[1];
+
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken || '',
         },
         body: JSON.stringify({ username: username.toLowerCase(), password }),
       });
@@ -333,17 +336,7 @@ export default function Home() {
                   Password must be 8+ characters
                 </span>
               )}
-
-              <label className="label cursor-pointer gap-2 px-1 mt-3">
-                <input
-                  type="checkbox"
-                  className="checkbox checkbox-sm"
-                  checked={saveUsername}
-                  onChange={e => setSaveUsername(e.target.checked)}
-                  disabled={isLoading}
-                />
-                <span className="label-text text-sm">Remember username</span>
-              </label>
+              {/* SECURITY: Remember username disabled to prevent XSS via localStorage */}
             </div>
 
             {/* Actions */}

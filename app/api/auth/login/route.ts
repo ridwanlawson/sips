@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { cookies } from 'next/headers';
 import { BACKEND_URL } from '@/utils/absensiProxy';
+import { loginRateLimiter } from '@/lib/rateLimiter';
+import { validateCsrfToken } from '@/lib/csrf';
+import * as CryptoJS from 'crypto-js';
 
 const loginSchema = z.object({
   username: z.string().min(1).max(100),
@@ -9,6 +13,25 @@ const loginSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    // === RATE LIMITING ===
+    const ip =
+      request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+    try {
+      await loginRateLimiter.consume(ip);
+    } catch {
+      return NextResponse.json(
+        { ok: false, error: 'Too many login attempts. Try again in 1 minute.' },
+        { status: 429 }
+      );
+    }
+
+    // === CSRF VALIDATION ===
+    const cookieStore = await cookies();
+    const csrfToken = cookieStore.get('csrf_token')?.value;
+    if (!csrfToken || !validateCsrfToken(request, csrfToken)) {
+      return NextResponse.json({ ok: false, error: 'Invalid CSRF token' }, { status: 403 });
+    }
+
     const body = await request.json();
     const parsed = loginSchema.safeParse(body);
     if (!parsed.success) {
@@ -51,34 +74,58 @@ export async function POST(request: Request) {
 
     const res = NextResponse.json({ ok: true });
 
-    // Base cookie utk auth (server-only)
+    // Base cookie utk auth (server-only) - ALWAYS secure
+    const cookieExpiry = new Date(Date.now() + 8 * 60 * 60 * 1000); // 8 hours
     const base = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: true, // ALWAYS secure, even in development
       sameSite: 'strict' as const,
       path: '/',
+      expires: cookieExpiry,
     };
 
     // Base cookie utk client-side info (client-readable)
     const clientBase = {
       httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
+      secure: true, // ALWAYS secure
       sameSite: 'strict' as const,
       path: '/',
+      expires: cookieExpiry,
     };
 
     // Set cookie auth & info user
     res.cookies.set('auth_token', String(token), base);
     res.cookies.set('log_id', String(userId), base);
 
-    if (userKode) res.cookies.set('user_Kode', String(userKode), clientBase);
-    if (userFcba) res.cookies.set('user_Fcba', String(userFcba), clientBase);
-    if (userAfdeling) res.cookies.set('user_Afdeling', String(userAfdeling), clientBase);
-    if (userGang) res.cookies.set('user_Gang', String(userGang), clientBase);
-    if (userFullName) res.cookies.set('user_FullName', String(userFullName), clientBase);
-    if (userLevel) res.cookies.set('user_Level', String(userLevel), clientBase);
-    if (userPosition) res.cookies.set('user_Position', String(userPosition), clientBase);
-    if (userPhoto) res.cookies.set('user_Photo', String(userPhoto), clientBase);
+    // Set CSRF token cookie (generated server-side)
+    res.cookies.set('csrf_token', CryptoJS.lib.WordArray.random(16).toString(CryptoJS.enc.Hex), {
+      httpOnly: false, // Must be accessible to JavaScript for X-CSRF-Token header
+      secure: true,
+      sameSite: 'strict' as const,
+      path: '/',
+      expires: cookieExpiry,
+    });
+
+    // HAPUS: Client-readable cookies dengan user info sensitif
+    // User info tidak boleh terbaca via JavaScript
+    // if (userKode) res.cookies.set('user_Kode', String(userKode), clientBase);
+    // if (userFcba) res.cookies.set('user_Fcba', String(userFcba), clientBase);
+    // if (userAfdeling) res.cookies.set('user_Afdeling', String(userAfdeling), clientBase);
+    // if (userGang) res.cookies.set('user_Gang', String(userGang), clientBase);
+    // if (userFullName) res.cookies.set('user_FullName', String(userFullName), clientBase);
+    // if (userLevel) res.cookies.set('user_Level', String(userLevel), clientBase);
+    // if (userPosition) res.cookies.set('user_Position', String(userPosition), clientBase);
+    // if (userPhoto) res.cookies.set('user_Photo', String(userPhoto), clientBase);
+
+    // User info disimpan di httpOnly cookies untuk keamanan
+    if (userKode) res.cookies.set('user_Kode', String(userKode), base);
+    if (userFcba) res.cookies.set('user_Fcba', String(userFcba), base);
+    if (userAfdeling) res.cookies.set('user_Afdeling', String(userAfdeling), base);
+    if (userGang) res.cookies.set('user_Gang', String(userGang), base);
+    if (userFullName) res.cookies.set('user_FullName', String(userFullName), base);
+    if (userLevel) res.cookies.set('user_Level', String(userLevel), base);
+    if (userPosition) res.cookies.set('user_Position', String(userPosition), base);
+    if (userPhoto) res.cookies.set('user_Photo', String(userPhoto), base);
 
     return res;
   } catch {

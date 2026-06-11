@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
 import { applyUserDataScope } from '@/utils/requestScope';
 import { authHeaders, parseJsonSafe, extractMessage, unauthorizedResponse } from '@/lib/apiProxy';
+import { uploadSubmitSchema, validateInput } from '@/lib/inputSanitizer';
+import { cookies } from 'next/headers';
+import { validateCsrfToken } from '@/lib/csrf';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -45,23 +48,49 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
   const token = await getTokenFromCookie();
   if (!token) return unauthorizedResponse();
 
-  const body = await req.json();
-  const recordId = new URL(req.url).pathname.split('/').pop();
-
-  const response = await fetch(`${BACKEND_URL}/api/report/upload-attendance/${recordId}`, {
-    method: 'PUT',
-    headers: authHeaders(token),
-    body: JSON.stringify(body),
-  });
-
-  const { data } = await parseJsonSafe(response);
-
-  if (!response.ok) {
+  // === CSRF VALIDATION ===
+  const cookieStore = await cookies();
+  const csrfToken = cookieStore.get('csrf_token')?.value;
+  if (!csrfToken || !validateCsrfToken(req, csrfToken)) {
     return NextResponse.json(
-      { ok: false, error: `External API error: ${response.status}` },
-      { status: response.status }
+      { ok: false, error: 'Invalid CSRF token' },
+      { status: 403 }
     );
   }
 
-  return NextResponse.json(data);
+  try {
+    const body = await req.json();
+    const recordId = new URL(req.url).pathname.split('/').pop();
+    
+    // Validate dan sanitize input
+    const validation = validateInput(body, uploadSubmitSchema);
+    if (!validation.success) {
+      return NextResponse.json(
+        { ok: false, message: validation.error },
+        { status: 400 }
+      );
+    }
+
+    const response = await fetch(`${BACKEND_URL}/api/report/upload-attendance/${recordId}`, {
+      method: 'PUT',
+      headers: authHeaders(token),
+      body: JSON.stringify(validation.data),
+    });
+
+    const { data } = await parseJsonSafe(response);
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { ok: false, error: `External API error: ${response.status}` },
+        { status: response.status }
+      );
+    }
+
+    return NextResponse.json(data);
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: 'Invalid request format' },
+      { status: 400 }
+    );
+  }
 }

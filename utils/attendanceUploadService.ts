@@ -1,3 +1,5 @@
+'use client';
+
 export interface AttendanceUploadData {
   totalcount: number;
   id: number;

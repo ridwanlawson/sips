@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { CookieName, UserLevel } from '@/lib/constants';
+import * as CryptoJS from 'crypto-js';
 
 const PUBLIC_PATHS = new Set<string>(['/', '/login', '/register', '/forgot-password']);
+const isProduction = process.env.NODE_ENV === 'production';
+
+function generateRandomHex(length: number): string {
+  const randomBytes = CryptoJS.lib.WordArray.random(length);
+  return CryptoJS.enc.Hex.stringify(randomBytes);
+}
 
 const normalizeLevel = (level: string) => {
   const upperLevel = level.toUpperCase();
@@ -15,6 +22,26 @@ const setDefaultLocale = (response: NextResponse, request: NextRequest) => {
   }
 };
 
+const CSRF_COOKIE_NAME = 'csrf_token';
+const CSRF_TOKEN_LENGTH = 32;
+
+function setCsrfCookie(response: NextResponse, request: NextRequest) {
+  const hasCsrf = request.cookies.get(CSRF_COOKIE_NAME);
+  if (!hasCsrf) {
+    const token = generateRandomHex(CSRF_TOKEN_LENGTH / 2);
+    const cookieExpiry = new Date(Date.now() + 3600 * 1000); // 1 hour
+    response.cookies.set({
+      name: CSRF_COOKIE_NAME,
+      value: token,
+      httpOnly: false, // Must be accessible to JavaScript for X-CSRF-Token header
+      secure: true,
+      sameSite: 'strict',
+      path: '/',
+      expires: cookieExpiry,
+    });
+  }
+}
+
 export function middleware(request: NextRequest) {
   const { pathname, origin } = request.nextUrl;
   const isPublic = PUBLIC_PATHS.has(pathname);
@@ -23,10 +50,39 @@ export function middleware(request: NextRequest) {
 
   setDefaultLocale(response, request);
 
-  // Security headers applied to all responses
+  // Set CSRF token for all requests (if not already set)
+  setCsrfCookie(response, request);
+
+  // === SECURITY HEADERS ===
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('X-Frame-Options', 'SAMEORIGIN');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set(
+    'Permissions-Policy',
+    'camera=(), microphone=(), geolocation=(), payment=()'
+  );
+
+  // === CORS HEADERS ===
+  // Hanya izinkan CORS untuk API routes di production
+  if (pathname.startsWith('/api/') && isProduction) {
+    const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [];
+    const origin = request.headers.get('origin');
+
+    if (origin && allowedOrigins.includes(origin)) {
+      response.headers.set('Access-Control-Allow-Origin', origin);
+      response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      response.headers.set('Access-Control-Allow-Credentials', 'true');
+      response.headers.set(
+        'Access-Control-Allow-Headers',
+        'Content-Type, Authorization, X-CSRF-Token'
+      );
+    }
+
+    // Handle preflight requests
+    if (request.method === 'OPTIONS') {
+      return new NextResponse(null, { status: 204, headers: response.headers });
+    }
+  }
 
   // Skip static files and Next.js internals.
   if (

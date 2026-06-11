@@ -2,6 +2,7 @@
  * Client-side service for harvesting quality data.
  * All requests go through Next.js API routes (never directly to backend).
  */
+'use client';
 
 export type HarvestingQualityData = {
   empcode: string;

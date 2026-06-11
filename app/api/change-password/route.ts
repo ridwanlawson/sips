@@ -2,22 +2,55 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { z } from 'zod';
 import { BACKEND_URL } from '@/utils/absensiProxy';
+import { changePasswordRateLimiter } from '@/lib/rateLimiter';
+import { validateCsrfToken } from '@/lib/csrf';
 
 const changePasswordSchema = z.object({
   current_password: z.string().min(1).max(200),
-  new_password: z.string().min(8).max(200),
+  new_password: z
+    .string()
+    .min(8, 'Password minimal 8 karakter')
+    .max(200, 'Password maksimal 200 karakter')
+    .regex(/[A-Z]/, 'Password harus mengandung huruf besar')
+    .regex(/[0-9]/, 'Password harus mengandung angka')
+    .regex(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/, 'Password harus mengandung simbol'),
 });
 
 export async function POST(request: Request) {
   try {
+    // === RATE LIMITING ===
+    const ip =
+      request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+    try {
+      await changePasswordRateLimiter.consume(ip);
+    } catch {
+      return NextResponse.json(
+        { ok: false, error: 'Too many attempts. Try again in 1 minute.' },
+        { status: 429 }
+      );
+    }
+
+    // === CSRF VALIDATION ===
+    const cookieStore = await cookies();
+    const csrfToken = cookieStore.get('csrf_token')?.value;
+    if (!csrfToken || !validateCsrfToken(request, csrfToken)) {
+      return NextResponse.json({ ok: false, error: 'Invalid CSRF token' }, { status: 403 });
+    }
+
     const body = await request.json();
     const parsed = changePasswordSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ ok: false, error: 'Invalid input' }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: parsed.error.issues[0].message },
+        { status: 400 }
+      );
     }
     const { current_password, new_password } = parsed.data;
-    const cookieStore = await cookies();
     const token = cookieStore.get('auth_token')?.value;
+
+    if (!token) {
+      return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
+    }
 
     if (!token) {
       return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
