@@ -59,7 +59,6 @@ export function middleware(request: NextRequest) {
 
   setDefaultLocale(response, request);
 
-<<<<<<< HEAD
   // Set CSRF token for all requests (if not already set)
   setCsrfCookie(response, request);
 
@@ -94,8 +93,6 @@ export function middleware(request: NextRequest) {
     }
   }
 
-=======
->>>>>>> c7714d02f904592725a67bd9e18ac093c8fb5eb0
   // Skip static files and Next.js internals.
   if (
     pathname.startsWith('/_next') ||
