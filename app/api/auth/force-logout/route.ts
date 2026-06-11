@@ -17,6 +17,10 @@ const COOKIES_TO_DELETE = [
   CookieName.USER_KODE,
   CookieName.USER_POSITION,
   CookieName.USER_PHOTO,
+  CookieName.SECURE_USER_LEVEL,
+  CookieName.SECURE_USER_FCBA,
+  CookieName.SECURE_USER_AFDELING,
+  CookieName.SECURE_USER_GANG,
   // Legacy / inconsistent variants
   'user_Section',
   'user_SECTION',

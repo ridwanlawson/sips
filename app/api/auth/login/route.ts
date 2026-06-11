@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { BACKEND_URL } from '@/utils/absensiProxy';
+import { CookieName } from '@/lib/constants';
 
 const loginSchema = z.object({
   username: z.string().min(1).max(100),
@@ -72,11 +73,23 @@ export async function POST(request: Request) {
     res.cookies.set('log_id', String(userId), base);
 
     if (userKode) res.cookies.set('user_Kode', String(userKode), clientBase);
-    if (userFcba) res.cookies.set('user_Fcba', String(userFcba), clientBase);
-    if (userAfdeling) res.cookies.set('user_Afdeling', String(userAfdeling), clientBase);
-    if (userGang) res.cookies.set('user_Gang', String(userGang), clientBase);
+    if (userFcba) {
+      res.cookies.set('user_Fcba', String(userFcba), clientBase);
+      res.cookies.set(CookieName.SECURE_USER_FCBA, String(userFcba), base);
+    }
+    if (userAfdeling) {
+      res.cookies.set('user_Afdeling', String(userAfdeling), clientBase);
+      res.cookies.set(CookieName.SECURE_USER_AFDELING, String(userAfdeling), base);
+    }
+    if (userGang) {
+      res.cookies.set('user_Gang', String(userGang), clientBase);
+      res.cookies.set(CookieName.SECURE_USER_GANG, String(userGang), base);
+    }
     if (userFullName) res.cookies.set('user_FullName', String(userFullName), clientBase);
-    if (userLevel) res.cookies.set('user_Level', String(userLevel), clientBase);
+    if (userLevel) {
+      res.cookies.set('user_Level', String(userLevel), clientBase);
+      res.cookies.set(CookieName.SECURE_USER_LEVEL, String(userLevel), base);
+    }
     if (userPosition) res.cookies.set('user_Position', String(userPosition), clientBase);
     if (userPhoto) res.cookies.set('user_Photo', String(userPhoto), clientBase);
 

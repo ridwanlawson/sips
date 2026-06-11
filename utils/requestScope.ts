@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { UserLevel } from '@/lib/constants';
+import { UserLevel, CookieName } from '@/lib/constants';
 
 type GangParam = 'gang' | 'gangcode' | 'kemandoran';
 
@@ -35,12 +35,29 @@ export function applyUserDataScope(
   searchParams: URLSearchParams,
   options: ApplyUserDataScopeOptions = {}
 ) {
-  const level = normalizeLevel(getCookieValue(req, ['user_Level', 'user_LEVEL', 'user_level']));
+  const level = normalizeLevel(
+    getCookieValue(req, [
+      CookieName.SECURE_USER_LEVEL,
+      'user_Level',
+      'user_LEVEL',
+      'user_level',
+    ])
+  );
 
-  if (!level || ADMIN_LEVELS.has(level)) return searchParams;
+  // SECURITY: Fix fail-open logic. If no level is found, treat as most restricted (CWE-285).
+  // If user is admin, they skip scoping.
+  if (!level) {
+    // If no role, strictly scope to something that returns nothing if possible,
+    // or just enforce minimal access. Here we ensure they don't get 'admin' access.
+    searchParams.set('fcba', 'NONE');
+    return searchParams;
+  }
 
-  const fcba = getCookieValue(req, ['user_Fcba', 'user_FCBA', 'user_fcba']);
+  if (ADMIN_LEVELS.has(level)) return searchParams;
+
+  const fcba = getCookieValue(req, [CookieName.SECURE_USER_FCBA, 'user_Fcba', 'user_FCBA', 'user_fcba']);
   const afdeling = getCookieValue(req, [
+    CookieName.SECURE_USER_AFDELING,
     'user_Afdeling',
     'user_AFDELING',
     'user_afdeling',
@@ -49,6 +66,7 @@ export function applyUserDataScope(
     'user_section',
   ]);
   const gang = getCookieValue(req, [
+    CookieName.SECURE_USER_GANG,
     'user_Gang',
     'user_GANG',
     'user_gang',
