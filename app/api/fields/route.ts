@@ -3,7 +3,7 @@ import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
 import { authHeaders, extractDataArray } from '@/lib/apiProxy';
 import { applyUserDataScope } from '@/utils/requestScope';
 
-const ALLOWED_PARAMS = ['fcba', 'sectionname'];
+const ALLOWED_PARAMS = ['fcba', 'afdeling'];
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const token = await getTokenFromCookie();

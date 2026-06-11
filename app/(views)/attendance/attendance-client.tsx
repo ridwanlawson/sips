@@ -658,11 +658,15 @@ export default function Attendance() {
       },
       err => {
         console.error('Geolocation error:', err);
-        toast.error(
-          err.code === err.PERMISSION_DENIED
-            ? 'Izin lokasi ditolak. Aktifkan izin lokasi di browser.'
-            : 'Gagal mengambil lokasi. coba lagi.'
-        );
+        let message = 'Gagal mengambil lokasi. Coba lagi.';
+        if (err.code === 1 || err.code === window.GeolocationPositionError?.PERMISSION_DENIED) {
+          message = 'Izin lokasi ditolak. Aktifkan izin lokasi di browser.';
+        } else if (err.code === 2 || err.code === window.GeolocationPositionError?.POSITION_UNAVAILABLE) {
+          message = 'Lokasi tidak tersedia.';
+        } else if (err.code === 3 || err.code === window.GeolocationPositionError?.TIMEOUT) {
+          message = 'Timeout saat mengambil lokasi.';
+        }
+        toast.error(message);
         setLocLoading(null);
       },
       {

@@ -87,7 +87,7 @@ export async function POST(request: Request) {
     // Base cookie utk client-side info (client-readable)
     const clientBase = {
       httpOnly: false,
-      secure: true, // ALWAYS secure
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict' as const,
       path: '/',
       expires: cookieExpiry,
@@ -106,26 +106,15 @@ export async function POST(request: Request) {
       expires: cookieExpiry,
     });
 
-    // HAPUS: Client-readable cookies dengan user info sensitif
-    // User info tidak boleh terbaca via JavaScript
-    // if (userKode) res.cookies.set('user_Kode', String(userKode), clientBase);
-    // if (userFcba) res.cookies.set('user_Fcba', String(userFcba), clientBase);
-    // if (userAfdeling) res.cookies.set('user_Afdeling', String(userAfdeling), clientBase);
-    // if (userGang) res.cookies.set('user_Gang', String(userGang), clientBase);
-    // if (userFullName) res.cookies.set('user_FullName', String(userFullName), clientBase);
-    // if (userLevel) res.cookies.set('user_Level', String(userLevel), clientBase);
-    // if (userPosition) res.cookies.set('user_Position', String(userPosition), clientBase);
-    // if (userPhoto) res.cookies.set('user_Photo', String(userPhoto), clientBase);
-
-    // User info disimpan di httpOnly cookies untuk keamanan
-    if (userKode) res.cookies.set('user_Kode', String(userKode), base);
-    if (userFcba) res.cookies.set('user_Fcba', String(userFcba), base);
-    if (userAfdeling) res.cookies.set('user_Afdeling', String(userAfdeling), base);
-    if (userGang) res.cookies.set('user_Gang', String(userGang), base);
-    if (userFullName) res.cookies.set('user_FullName', String(userFullName), base);
-    if (userLevel) res.cookies.set('user_Level', String(userLevel), base);
-    if (userPosition) res.cookies.set('user_Position', String(userPosition), base);
-    if (userPhoto) res.cookies.set('user_Photo', String(userPhoto), base);
+    // User info disimpan di client-readable cookies
+    if (userKode) res.cookies.set('user_Kode', String(userKode), clientBase);
+    if (userFcba) res.cookies.set('user_Fcba', String(userFcba), clientBase);
+    if (userAfdeling) res.cookies.set('user_Afdeling', String(userAfdeling), clientBase);
+    if (userGang) res.cookies.set('user_Gang', String(userGang), clientBase);
+    if (userFullName) res.cookies.set('user_FullName', String(userFullName), clientBase);
+    if (userLevel) res.cookies.set('user_Level', String(userLevel), clientBase);
+    if (userPosition) res.cookies.set('user_Position', String(userPosition), clientBase);
+    if (userPhoto) res.cookies.set('user_Photo', String(userPhoto), clientBase);
 
     return res;
   } catch {

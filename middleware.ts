@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { CookieName, UserLevel } from '@/lib/constants';
-import * as CryptoJS from 'crypto-js';
 
 const PUBLIC_PATHS = new Set<string>(['/', '/login', '/register', '/forgot-password']);
 const isProduction = process.env.NODE_ENV === 'production';
 
 function generateRandomHex(length: number): string {
-  const randomBytes = CryptoJS.lib.WordArray.random(length);
-  return CryptoJS.enc.Hex.stringify(randomBytes);
+  const array = new Uint8Array(length);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0'))
+    .join('')
+    .substring(0, length * 2);
 }
 
 const normalizeLevel = (level: string) => {
@@ -18,7 +20,14 @@ const normalizeLevel = (level: string) => {
 
 const setDefaultLocale = (response: NextResponse, request: NextRequest) => {
   if (!request.cookies.has(CookieName.NEXT_LOCALE)) {
-    response.cookies.set(CookieName.NEXT_LOCALE, 'en');
+    response.cookies.set({
+      name: CookieName.NEXT_LOCALE,
+      value: 'en',
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+    });
   }
 };
 
@@ -34,7 +43,7 @@ function setCsrfCookie(response: NextResponse, request: NextRequest) {
       name: CSRF_COOKIE_NAME,
       value: token,
       httpOnly: false, // Must be accessible to JavaScript for X-CSRF-Token header
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
       path: '/',
       expires: cookieExpiry,
@@ -59,7 +68,7 @@ export function middleware(request: NextRequest) {
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set(
     'Permissions-Policy',
-    'camera=(), microphone=(), geolocation=(), payment=()'
+    'camera=(), microphone=(), geolocation=(self), payment=()'
   );
 
   // === CORS HEADERS ===
