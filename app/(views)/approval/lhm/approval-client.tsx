@@ -578,7 +578,7 @@ export default function Approval() {
             <div className="space-x-1 whitespace-nowrap">
               {r.fcba && r.fddate && r.kemandoran && (
                 <a
-                  href={`/approval/lhm-report?fcba=${r.fcba}&afdeling=${r.afdeling}&tanggal=${tanggal}&kemandoran=${r.kemandoran}`}
+                  href={`/approval/lhm/lhm-report?fcba=${r.fcba}&afdeling=${r.afdeling}&tanggal=${tanggal}&kemandoran=${r.kemandoran}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="tooltip tooltip-right"
