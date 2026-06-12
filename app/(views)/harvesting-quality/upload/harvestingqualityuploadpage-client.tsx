@@ -174,9 +174,27 @@ export default function HarvestingQualityUploadPage() {
     setFormParams(isAdmin ? EMPTY_PARAMS : { ...EMPTY_PARAMS, fcba: userFcba });
   };
 
+  const dataWithKey = useMemo(
+    () =>
+      data.map((item, i) => {
+        // ⚡ Bolt Optimization: Pre-calculate search content and row keys to avoid O(N*M) string operations during search.
+        const _searchContent = [item.empcode, item.fddate, item.fieldcode, item.fcba, item.documentno]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        return {
+          ...item,
+          _rowKey: `${item.empcode}-${item.fddate}-${item.fieldcode}-${item.documentno}-${i}`,
+          _searchContent,
+        };
+      }),
+    [data]
+  );
+
   const { filteredDataWithKey, summary } = useMemo(() => {
     const search = searchTerm.trim().toLowerCase();
-    const filtered: (HarvestingQualityUploadData & { _rowKey: string })[] = [];
+    const filtered: (HarvestingQualityUploadData & { _rowKey: string; _searchContent: string })[] = [];
     const stats = {
       count: 0,
       totalUnderripe: 0,
@@ -184,21 +202,9 @@ export default function HarvestingQualityUploadPage() {
       totalAbnormal: 0,
     };
 
-    for (let i = 0; i < data.length; i++) {
-      const item = data[i];
-      const _rowKey = `${item.empcode}-${item.fddate}-${item.fieldcode}-${item.documentno}-${i}`;
-
-      const matchesSearch =
-        !search ||
-        item.empcode?.toLowerCase().includes(search) ||
-        item.fddate?.toLowerCase().includes(search) ||
-        item.fieldcode?.toLowerCase().includes(search) ||
-        item.fcba?.toLowerCase().includes(search) ||
-        item.documentno?.toString().toLowerCase().includes(search);
-
-      if (matchesSearch) {
-        const enrichedItem = { ...item, _rowKey };
-        filtered.push(enrichedItem);
+    for (const item of dataWithKey) {
+      if (!search || item._searchContent.includes(search)) {
+        filtered.push(item);
 
         stats.count++;
         stats.totalUnderripe += Number(item.under_ripe) || 0;
@@ -208,7 +214,7 @@ export default function HarvestingQualityUploadPage() {
     }
 
     return { filteredDataWithKey: filtered, summary: stats };
-  }, [data, searchTerm]);
+  }, [dataWithKey, searchTerm]);
 
   const columns: TableColumn<HarvestingQualityUploadData>[] = useMemo(
     () => [
