@@ -31,7 +31,9 @@ function generateRandomHex(length: number): string {
  */
 export function generateCsrfToken(): CsrfTokenResult {
   const token = generateRandomHex(CSRF_TOKEN_LENGTH / 2); // 32 chars = 16 bytes hex
-  const cookie = `${CSRF_COOKIE_NAME}=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=3600`;
+  // SECURITY: CSRF cookie should NOT be HttpOnly because the client needs to read it
+  // to send it back in the X-CSRF-Token header for validation.
+  const cookie = `${CSRF_COOKIE_NAME}=${token}; Path=/; Secure; SameSite=Strict; Max-Age=3600`;
   return { token, cookie };
 }
 
@@ -64,9 +66,11 @@ export function getCsrfTokenFromCookies(cookies: string): string | null {
  * Middleware untuk set CSRF token di semua response
  */
 export function setCsrfCookie(response: Response, token: string): Response {
+  // SECURITY: CSRF cookie should NOT be HttpOnly because the client needs to read it
+  // to send it back in the X-CSRF-Token header for validation.
   response.headers.set(
     'Set-Cookie',
-    `${CSRF_COOKIE_NAME}=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=3600`
+    `${CSRF_COOKIE_NAME}=${token}; Path=/; Secure; SameSite=Strict; Max-Age=3600`
   );
   return response;
 }

@@ -4,11 +4,23 @@ import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
 import { authHeaders, parseJsonSafe, unauthorizedResponse } from '@/lib/apiProxy';
 import { uploadSubmitSchema, validateInput, sanitizeObject } from '@/lib/inputSanitizer';
 import { validateCsrfToken } from '@/lib/csrf';
+import { apiRateLimiter } from '@/lib/rateLimiter';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  // === RATE LIMITING ===
+  const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+  try {
+    await apiRateLimiter.consume(ip);
+  } catch {
+    return NextResponse.json(
+      { success: false, message: 'Too many requests. Try again later.' },
+      { status: 429 }
+    );
+  }
+
   const token = await getTokenFromCookie();
   if (!token) return unauthorizedResponse();
 

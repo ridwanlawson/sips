@@ -1,12 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { ABSENSI_BASE, buildFilteredUrl, getTokenFromCookie, safeJson } from '@/utils/absensiProxy';
 import { attendanceFilterSchema, attendanceApiResponseSchema } from '@/lib/validations/attendance';
 import { applyUserDataScope } from '@/utils/requestScope';
+import { apiRateLimiter } from '@/lib/rateLimiter';
+import { validateCsrfToken } from '@/lib/csrf';
 
 export const dynamic = 'force-dynamic'; // no cache
 export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
+  // === RATE LIMITING ===
+  const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+  try {
+    await apiRateLimiter.consume(ip);
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: 'Too many requests. Try again later.' },
+      { status: 429 }
+    );
+  }
+
   const token = await getTokenFromCookie();
   if (!token) {
     return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
@@ -104,6 +118,24 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  // === RATE LIMITING ===
+  const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+  try {
+    await apiRateLimiter.consume(ip);
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: 'Too many requests. Try again later.' },
+      { status: 429 }
+    );
+  }
+
+  // === CSRF VALIDATION ===
+  const cookieStore = await cookies();
+  const csrfToken = cookieStore.get('csrf_token')?.value;
+  if (!csrfToken || !validateCsrfToken(req, csrfToken)) {
+    return NextResponse.json({ ok: false, error: 'Invalid CSRF token' }, { status: 403 });
+  }
+
   const token = await getTokenFromCookie();
   if (!token) {
     return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });

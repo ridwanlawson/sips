@@ -9,6 +9,17 @@ vi.mock('@/utils/absensiProxy', () => ({
   getTokenFromCookie: vi.fn(() => Promise.resolve('valid-token')),
 }));
 
+vi.mock('next/headers', () => ({
+  cookies: vi.fn(() =>
+    Promise.resolve({
+      get: vi.fn((name) => {
+        if (name === 'csrf_token') return { value: 'valid-csrf' };
+        return null;
+      }),
+    })
+  ),
+}));
+
 describe('LHM Submit API Security', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -17,7 +28,16 @@ describe('LHM Submit API Security', () => {
   it('should return generic error message and not leak upstream details on failure', async () => {
     const req = new NextRequest('http://localhost/api/approval/lhm/submit', {
       method: 'POST',
-      body: JSON.stringify({ data: [] }),
+      headers: {
+        'X-CSRF-Token': 'valid-csrf',
+      },
+      body: JSON.stringify({
+        nodokumen: 'DOC001',
+        kemandoran: 'GANG01',
+        tanggal: '2023-10-27',
+        signature: 'base64...',
+        data: [],
+      }),
     });
 
     // Mock upstream failure with sensitive info (e.g., SQL error, stack trace, etc.)
