@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ABSENSI_BASE, buildFilteredUrl, getTokenFromCookie, safeJson } from '@/utils/absensiProxy';
 import { attendanceFilterSchema, attendanceApiResponseSchema } from '@/lib/validations/attendance';
-import { applyUserDataScope } from '@/utils/requestScope';
 
 export const dynamic = 'force-dynamic'; // no cache
 export const runtime = 'nodejs';
@@ -25,7 +24,7 @@ export async function GET(req: NextRequest) {
   }
 
   const sp = new URLSearchParams(req.nextUrl.searchParams.toString());
-  applyUserDataScope(req, sp, { gangParam: 'gang' });
+
 
   // Build URL final ke API absensi upstream
   const upstreamUrl = buildFilteredUrl(ABSENSI_BASE, sp);
@@ -62,6 +61,22 @@ export async function GET(req: NextRequest) {
         status: upstream.status,
         data: rawData,
       });
+
+      // 404 / "tidak ditemukan" dari upstream → anggap empty dataset
+      const rawRecord =
+        rawData && typeof rawData === 'object' && !Array.isArray(rawData)
+          ? (rawData as Record<string, unknown>)
+          : null;
+      const isNotFound =
+        upstream.status === 404 ||
+        (rawRecord !== null &&
+          typeof rawRecord.message === 'string' &&
+          rawRecord.message.toLowerCase().includes('tidak ditemukan'));
+
+      if (isNotFound) {
+        return NextResponse.json({ ok: true, message: 'Data tidak ditemukan', data: [] });
+      }
+
       return NextResponse.json(
         { ok: false, error: 'Failed to fetch attendance data' },
         { status: upstream.status }

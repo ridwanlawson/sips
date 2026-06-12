@@ -1,5 +1,3 @@
-'use client';
-
 export interface BusinessUnit {
   fccode: string;
   fcname: string;

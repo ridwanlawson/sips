@@ -3,7 +3,6 @@
  * This function will ALWAYS logout the user, even if the token is invalid/expired.
  * Uses a special force-logout endpoint that can delete httpOnly cookies.
  */
-'use client';
 
 const COOKIE_EXCLUDE = new Set(['NEXT_LOCALE']);
 

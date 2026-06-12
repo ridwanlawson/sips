@@ -486,7 +486,13 @@ export default function UserDashboard() {
           await logoutAndRedirect();
           return [];
         }
-        throw new Error(`HTTP ${res.status}`);
+        // Baca error message dari response body untuk user-friendly feedback
+        let detail = `HTTP ${res.status}`;
+        try {
+          const errBody = await res.clone().json();
+          if (errBody?.error) detail = errBody.error;
+        } catch { /* fallback ke HTTP status */ }
+        throw new Error(detail);
       }
 
       const json: unknown = await res.json();
@@ -697,7 +703,11 @@ export default function UserDashboard() {
     gcTime: 6 * 60 * 1000,
   });
 
-  const error = attendanceError ? 'Gagal memuat data dashboard' : null;
+  const error = attendanceError
+    ? attendanceError instanceof Error
+      ? attendanceError.message
+      : 'Gagal memuat data dashboard'
+    : null;
 
   /* ===== Bootstrap user dari cookies ===== */
   useEffect(() => {

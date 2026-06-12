@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { SkeletonTable } from '@/app/components/skeletons';
 
 const Approval = dynamic(() => import('./approval-client'), {
-  ssr: false,
+  
   loading: () => (
     <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
       <div className="p-4 sm:p-6 max-w-screen-2xl mx-auto w-full">

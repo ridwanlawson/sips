@@ -1,7 +1,6 @@
 /**
  * Shared download utility extracted from duplicated code in login-client.tsx and navbar.tsx.
  */
-'use client';
 
 import { cookieStore } from '@/utils/cookieStore';
 import toast from 'react-hot-toast';

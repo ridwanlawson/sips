@@ -5,7 +5,6 @@ import { SkeletonTable } from '@/app/components/skeletons';
 
 // Lazy load the large component so it is not part of the initial bundle.
 const Attendance = dynamic(() => import('./attendance-client'), {
-  ssr: false,
   loading: () => (
     <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
       <div className="p-4 sm:p-6 max-w-screen-2xl mx-auto w-full">

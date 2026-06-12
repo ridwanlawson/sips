@@ -2,7 +2,6 @@
  * Centralized store for reading user info from cookies.
  * Handles inconsistent cookie naming conventions (e.g. user_Level vs user_level).
  */
-'use client';
 
 export interface UserInfo {
   fullName: string;

@@ -1,5 +1,3 @@
-'use client';
-
 function escapeCsvValue(value: unknown): string {
   const text = value === null || value === undefined ? '' : String(value);
   if (/[",\r\n]/.test(text)) {

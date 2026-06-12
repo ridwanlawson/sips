@@ -420,7 +420,13 @@ export default function Attendance() {
           await logoutAndRedirect();
           return [];
         }
-        throw new Error(`HTTP ${res.status}`);
+        // Baca error message dari response body untuk user-friendly feedback
+        let detail = `HTTP ${res.status}`;
+        try {
+          const errBody = await res.clone().json();
+          if (errBody?.error) detail = errBody.error;
+        } catch { /* fallback ke HTTP status */ }
+        throw new Error(detail);
       }
 
       const json: Record<string, unknown> = await res.json();
