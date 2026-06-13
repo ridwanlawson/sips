@@ -142,6 +142,17 @@ type MasterUser = {
 
 const normalizeNonNegative = (value: string) => (value.startsWith('-') ? '0' : value);
 
+const toNumber = (value: string | number | null | undefined): number => {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  if (!value) return 0;
+  const normalized = value.replace(',', '.').trim();
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const formatTotal = (value: number, localeTag = 'id-ID'): string =>
+  formatPerfNumber(value, localeTag, { maximumFractionDigits: 2 });
+
 const initialForm: FormState = {
   id: '',
   nopengangkutan: '',
@@ -317,10 +328,12 @@ export default function PengangkutanPage() {
           }))
         );
         setDriverOptions(
-          driverRows.map(row => ({
-            fccode: String(row.fccode || ''),
-            fullname: String(row.fullname || ''),
-          }))
+          driverRows
+            .filter(row => row.fccode)
+            .map(row => ({
+              fccode: String(row.fccode),
+              fullname: String(row.fullname || ''),
+            }))
         );
       } catch (err) {
         console.warn('Error initializing master data', err);
@@ -344,13 +357,15 @@ export default function PengangkutanPage() {
         }
         const rows = await fetchMasterUsers(params);
         setKeraniOptions(
-          rows.map(row => ({
-            fccode: String(row.fccode || ''),
-            fullname: String(row.fullname || ''),
-            fcba: String(row.fcba || ''),
-            afdeling: String(row.afdeling || ''),
-            gangcode: String(row.gangcode || ''),
-          }))
+          rows
+            .filter(row => row.fccode)
+            .map(row => ({
+              fccode: String(row.fccode),
+              fullname: String(row.fullname || ''),
+              fcba: String(row.fcba || ''),
+              afdeling: String(row.afdeling || ''),
+              gangcode: String(row.gangcode || ''),
+            }))
         );
       } catch (err) {
         console.error('Failed fetching kerani options', err);
@@ -504,10 +519,12 @@ export default function PengangkutanPage() {
             new Map(response.data.map(item => [item.employeecode, item])).values()
           );
           setTkbmOptions(
-            uniqueData.map(item => ({
-              fccode: String(item.employeecode || ''),
-              fullname: String(item.remarks || item.jobcode || ''),
-            }))
+            uniqueData
+              .filter(item => item.employeecode)
+              .map(item => ({
+                fccode: String(item.employeecode),
+                fullname: String(item.remarks || item.jobcode || ''),
+              }))
           );
         } else {
           setTkbmOptions([]);
@@ -952,6 +969,9 @@ export default function PengangkutanPage() {
           _rowKey: key,
           _displayDate: displayDate,
           _searchContent: searchContent,
+          // ⚡ Bolt Optimization: pre-calculate numeric values to avoid redundant parsing in loops
+          _totaljanjangNum: toNumber(it.totaljanjang),
+          _brondolanNum: toNumber(it.brondolan),
         };
       });
     },
@@ -971,15 +991,41 @@ export default function PengangkutanPage() {
     }
   }, [queryError]);
 
-  /* ===== Quick search lokal ===== */
-  const filtered = useMemo(() => {
-    if (!q.trim()) return items.map((it, idx) => ({ ...it, _index: idx + 1 }));
-    const s = q.toLowerCase();
-    // ⚡ Bolt Optimization: Use pre-calculated search content for O(1) string check per row
-    return items
-      .filter(it => it._searchContent?.includes(s))
-      .map((it, idx) => ({ ...it, _index: idx + 1 }));
+  /* ===== Quick search lokal & Totals ===== */
+  // ⚡ Bolt Optimization: Consolidate filtering and totals calculation into a single-pass O(N) loop.
+  const { filtered, totals } = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    const result: (Pengangkutan & { _index: number })[] = [];
+    const t = {
+      totaljanjang: 0,
+      brondolan: 0,
+    };
+
+    for (const it of items) {
+      if (!s || it._searchContent?.includes(s)) {
+        result.push({ ...it, _index: result.length + 1 });
+
+        // ⚡ Bolt Optimization: Use pre-calculated numbers to avoid thousands of O(N*M) toNumber/regex calls during search
+        t.totaljanjang += it._totaljanjangNum || 0;
+        t.brondolan += it._brondolanNum || 0;
+      }
+    }
+
+    return { filtered: result, totals: t };
   }, [q, items]);
+
+  const totalCards = [
+    {
+      label: 'Total Janjang',
+      value: totals.totaljanjang,
+      className: 'text-primary',
+    },
+    {
+      label: 'Total Brondolan',
+      value: totals.brondolan,
+      className: 'text-success',
+    },
+  ];
 
   const columns: TableColumn<Pengangkutan & { _index: number }>[] = useMemo(
     () => [
@@ -1277,19 +1323,36 @@ export default function PengangkutanPage() {
             >
               Export
             </button>
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={openNewRecord}
-              title="Tambah pengangkutan baru"
-              disabled={!canModify}
-            >
-              + Tambah Pengangkutan
-            </button>
+            {canModify && (
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={openNewRecord}
+                title="Tambah pengangkutan baru"
+              >
+                + Tambah Pengangkutan
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="mb-3 flex justify-end animate-slideUp [animation-delay:100ms]">
-          <div className="relative w-full md:w-96 group">
+        <div className="mb-3 flex flex-col md:flex-row items-center gap-4 animate-slideUp [animation-delay:100ms]">
+          {/* TOTAL CARDS (di kiri) */}
+          <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+            {totalCards.map(card => (
+              <div
+                key={card.label}
+                className="bg-base-100 border border-base-200 rounded-lg px-3 py-2 shadow-sm whitespace-nowrap"
+              >
+                <div className="text-[10px] opacity-70 leading-none">{card.label}</div>
+                <div className={`text-sm font-semibold ${card.className}`}>
+                  {formatTotal(card.value, localeTag)}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* SEARCH (dorong ke kanan) */}
+          <div className="ml-auto w-full md:w-96 group relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg
                 xmlns="http://www.w3.org/2000/svg"

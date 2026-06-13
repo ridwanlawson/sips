@@ -1237,7 +1237,9 @@ export default function HarvestPage() {
           try {
             const errBody = await res.clone().json();
             if (errBody?.error) detail = errBody.error;
-          } catch { /* fallback ke HTTP status */ }
+          } catch {
+            /* fallback ke HTTP status */
+          }
           throw new Error(detail);
         }
         const json = await res.json();
@@ -1633,7 +1635,7 @@ export default function HarvestPage() {
         name: 'No Dokumen',
         selector: row => row.nodokumen,
         sortable: true,
-        width: '240px',
+        width: '250px',
       },
       {
         name: 'Tanggal',
