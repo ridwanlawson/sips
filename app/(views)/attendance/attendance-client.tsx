@@ -16,6 +16,7 @@ import { exportJsonToCsv } from '@/utils/exportCsv';
 import { useTranslations } from 'next-intl';
 import { SearchSelect, type Option } from '@/app/components/search-select';
 import { EmptyState } from '@/app/components/empty-state';
+import { useSearchShortcut } from '@/hooks/useSearchShortcut';
 
 /* =========================
    T Y P E S
@@ -291,6 +292,8 @@ export default function Attendance() {
   const queryClient = useQueryClient();
   const t = useTranslations('Attendance');
   const [q, setQ] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchInputRef = useSearchShortcut();
   const [showFilters, setShowFilters] = useState(false);
 
   const [filters, setFilters] = useState<Filters>(() => {
@@ -1171,24 +1174,36 @@ export default function Attendance() {
     selFcba,
   ]);
 
-  const empLabelMap = useMemo(() => {
-    const map = new Map<string, string>();
+  /**
+   * ⚡ Bolt Optimization: Use a Map for O(1) employee lookups by code.
+   * This replaces multiple O(N) .find() calls and consolidates the previous empLabelMap.
+   */
+  const employeeMap = useMemo(() => {
+    const map = new Map<string, Employee>();
     for (const e of employees) {
       const code = (e.fccode || '').trim();
-      if (!code) continue;
-      const label = e.fullname ? `${code} - ${e.fullname}` : code;
-      if (!map.has(code)) map.set(code, label);
+      if (code && !map.has(code)) map.set(code, e);
     }
     return map;
   }, [employees]);
 
+  /** Helper to get employee label from the map */
+  const getEmpLabel = useCallback(
+    (code: string) => {
+      const emp = employeeMap.get(code);
+      if (!emp) return code;
+      return emp.fullname ? `${code} - ${emp.fullname}` : code;
+    },
+    [employeeMap]
+  );
+
   const selectedMandorGang = useMemo(() => {
-    const mandor = employees.find(e => e.fccode === form.kode_karyawan_mandor);
+    const mandor = employeeMap.get(form.kode_karyawan_mandor);
     return mandor?.gangcode || form.kemandoran || '';
-  }, [employees, form.kode_karyawan_mandor, form.kemandoran]);
+  }, [employeeMap, form.kode_karyawan_mandor, form.kemandoran]);
 
   const onChangeMandor = (fccode: string) => {
-    const mandor = employees.find(e => e.fccode === fccode);
+    const mandor = employeeMap.get(fccode);
     setForm(s => ({
       ...s,
       kode_karyawan_mandor: fccode,
@@ -1209,7 +1224,7 @@ export default function Attendance() {
   };
 
   const onChangeEmployee = (fccode: string) => {
-    const emp = employees.find(e => e.fccode === fccode);
+    const emp = employeeMap.get(fccode);
     setForm(s => ({
       ...s,
       kode_karyawan: fccode,
@@ -1679,13 +1694,13 @@ export default function Attendance() {
         sortFunction: (a, b) =>
           sortByLabel(a, b, r => {
             const code = r.kode_karyawan_mandor || '';
-            const label = (code && (empLabelMap.get(code) || code)) || '';
-            return label;
+            const label = code && getEmpLabel(code);
+            return label || '';
           }),
         cell: r => {
           const code = r.kode_karyawan_mandor || '';
           if (!code) return <>-</>;
-          const label = empLabelMap.get(code) || code;
+          const label = getEmpLabel(code);
           const [fccode, fullname] = label.includes(' - ') ? label.split(' - ', 2) : [label, ''];
           return (
             <div className="min-w-0">
@@ -1878,7 +1893,7 @@ export default function Attendance() {
         ignoreRowClick: true,
       },
     ],
-    [handleDetail, handleDelete, empLabelMap, userLevel]
+    [handleDetail, handleDelete, getEmpLabel, userLevel]
   );
 
   /* ===== EXPORT EXCEL ===== */
@@ -1996,13 +2011,21 @@ export default function Attendance() {
               </svg>
             </div>
             <input
+              ref={searchInputRef}
               className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
               placeholder={t('searchPlaceholder')}
               value={q}
               onChange={e => setQ(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
               aria-label={t('quickSearch')}
               title={t('quickSearch')}
             />
+            {!isSearchFocused && !q && (
+              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none animate-fadeIn">
+                <kbd className="kbd kbd-sm bg-base-200/50 opacity-50">/</kbd>
+              </div>
+            )}
             {q && (
               <button
                 onClick={() => setQ('')}
