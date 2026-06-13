@@ -25,3 +25,7 @@
 ## 2025-06-08 - [Multi-pass Aggregate Calculation Anti-pattern]
 **Learning:** Using multiple O(N) passes (e.g., .reduce() followed by several .filter().length) to calculate dashboard statistics creates unnecessary iterations and intermediate array allocations.
 **Action:** Consolidate aggregate calculations into a single-pass loop (e.g., for...of) to maintain O(N) complexity regardless of the number of metrics being derived.
+
+## 2026-06-12 - [O(N) Render-path Lookup Anti-pattern]
+**Learning:** Performing repeated O(N) array scans (like `.find()`) inside a render loop or during frequent user interactions (like form updates) leads to significant UI lag as the dataset (e.g., employees) grows.
+**Action:** Pre-calculate a `Map` using `useMemo` for O(1) constant-time lookups. Consolidate legacy label-only maps into this single-pass O(N) map generation to maintain high performance with large datasets.
