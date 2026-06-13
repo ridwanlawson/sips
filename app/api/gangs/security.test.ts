@@ -23,7 +23,7 @@ describe('Gangs API Security', () => {
   });
 
   it('should return 401 if user is not authenticated', async () => {
-    vi.mocked(getTokenFromCookie).mockResolvedValue(null);
+    vi.mocked(getTokenFromCookie).mockResolvedValue(undefined);
 
     const req = new NextRequest('http://localhost/api/gangs');
     const res = await GET(req);

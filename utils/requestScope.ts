@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { UserLevel } from '@/lib/constants';
+import { UserLevel, CookieName } from '@/lib/constants';
 
 type GangParam = 'gang' | 'gangcode' | 'kemandoran';
 
@@ -35,13 +35,27 @@ export function applyUserDataScope(
   searchParams: URLSearchParams,
   options: ApplyUserDataScopeOptions = {}
 ) {
-  const level = normalizeLevel(getCookieValue(req, ['user_Level', 'user_LEVEL', 'user_level']));
+  // SECURITY: Prioritize SECURE_* (httpOnly) cookies to prevent client-side manipulation (CWE-807)
+  const level = normalizeLevel(
+    getCookieValue(req, [
+      CookieName.SECURE_USER_LEVEL,
+      CookieName.USER_LEVEL,
+      'user_LEVEL',
+      'user_level',
+    ])
+  );
 
   if (!level || ADMIN_LEVELS.has(level)) return searchParams;
 
-  const fcba = getCookieValue(req, ['user_Fcba', 'user_FCBA', 'user_fcba']);
+  const fcba = getCookieValue(req, [
+    CookieName.SECURE_USER_FCBA,
+    CookieName.USER_FCBA,
+    'user_FCBA',
+    'user_fcba',
+  ]);
   const afdeling = getCookieValue(req, [
-    'user_Afdeling',
+    CookieName.SECURE_USER_AFDELING,
+    CookieName.USER_AFDELING,
     'user_AFDELING',
     'user_afdeling',
     'user_Section',
@@ -49,7 +63,8 @@ export function applyUserDataScope(
     'user_section',
   ]);
   const gang = getCookieValue(req, [
-    'user_Gang',
+    CookieName.SECURE_USER_GANG,
+    CookieName.USER_GANG,
     'user_GANG',
     'user_gang',
     'user_GangCode',
