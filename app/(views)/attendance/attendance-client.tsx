@@ -16,6 +16,7 @@ import { exportJsonToCsv } from '@/utils/exportCsv';
 import { useTranslations } from 'next-intl';
 import { SearchSelect, type Option } from '@/app/components/search-select';
 import { EmptyState } from '@/app/components/empty-state';
+import { useSearchShortcut } from '@/hooks/useSearchShortcut';
 
 /* =========================
    T Y P E S
@@ -291,6 +292,8 @@ export default function Attendance() {
   const queryClient = useQueryClient();
   const t = useTranslations('Attendance');
   const [q, setQ] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchInputRef = useSearchShortcut();
   const [showFilters, setShowFilters] = useState(false);
 
   const [filters, setFilters] = useState<Filters>(() => {
@@ -1996,13 +1999,21 @@ export default function Attendance() {
               </svg>
             </div>
             <input
+              ref={searchInputRef}
               className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
               placeholder={t('searchPlaceholder')}
               value={q}
               onChange={e => setQ(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
               aria-label={t('quickSearch')}
               title={t('quickSearch')}
             />
+            {!isSearchFocused && !q && (
+              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none animate-fadeIn">
+                <kbd className="kbd kbd-sm bg-base-200/50 opacity-50">/</kbd>
+              </div>
+            )}
             {q && (
               <button
                 onClick={() => setQ('')}
