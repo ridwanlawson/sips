@@ -36,7 +36,11 @@ describe('APK Upload Security', () => {
   it('should return 403 if user is not an administrator', async () => {
     (getTokenFromCookie as Mock).mockResolvedValue('valid-token');
     (cookies as Mock).mockResolvedValue({
-      get: vi.fn().mockReturnValue({ value: 'user-123' }),
+      get: vi.fn().mockImplementation((name: string) => {
+        if (name === 'log_id') return { value: 'user-123' };
+        if (name === 'csrf_token') return { value: 'valid-csrf' };
+        return null;
+      }),
     });
 
     // Mock upstream profile check returning a non-admin role
@@ -50,6 +54,9 @@ describe('APK Upload Security', () => {
 
     const req = new NextRequest('http://localhost/api/apk-upload', {
       method: 'POST',
+      headers: {
+        'X-CSRF-Token': 'valid-csrf',
+      },
     });
     const res = await POST(req);
 
@@ -62,7 +69,11 @@ describe('APK Upload Security', () => {
   it('should succeed if user is an administrator', async () => {
     (getTokenFromCookie as Mock).mockResolvedValue('valid-token');
     (cookies as Mock).mockResolvedValue({
-      get: vi.fn().mockReturnValue({ value: 'admin-123' }),
+      get: vi.fn().mockImplementation((name: string) => {
+        if (name === 'log_id') return { value: 'admin-123' };
+        if (name === 'csrf_token') return { value: 'valid-csrf' };
+        return null;
+      }),
     });
 
     // First fetch: profile check
@@ -83,6 +94,9 @@ describe('APK Upload Security', () => {
 
     const req = new NextRequest('http://localhost/api/apk-upload', {
       method: 'POST',
+      headers: {
+        'X-CSRF-Token': 'valid-csrf',
+      },
       body: JSON.stringify({ filename: 'app.apk' }),
     });
     const res = await POST(req);

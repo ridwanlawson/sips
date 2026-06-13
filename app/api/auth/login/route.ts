@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { BACKEND_URL } from '@/utils/absensiProxy';
 import { loginRateLimiter } from '@/lib/rateLimiter';
 import { validateCsrfToken } from '@/lib/csrf';
+import { CookieName } from '@/lib/constants';
 import * as CryptoJS from 'crypto-js';
 
 const loginSchema = z.object({
@@ -115,6 +116,12 @@ export async function POST(request: Request) {
     if (userLevel) res.cookies.set('user_Level', String(userLevel), clientBase);
     if (userPosition) res.cookies.set('user_Position', String(userPosition), clientBase);
     if (userPhoto) res.cookies.set('user_Photo', String(userPhoto), clientBase);
+
+    // SECURITY: Mirroring sensitive scope info to httpOnly cookies for server-side logic (CWE-807)
+    if (userLevel) res.cookies.set(CookieName.SECURE_USER_LEVEL, String(userLevel), base);
+    if (userFcba) res.cookies.set(CookieName.SECURE_USER_FCBA, String(userFcba), base);
+    if (userAfdeling) res.cookies.set(CookieName.SECURE_USER_AFDELING, String(userAfdeling), base);
+    if (userGang) res.cookies.set(CookieName.SECURE_USER_GANG, String(userGang), base);
 
     return res;
   } catch {
