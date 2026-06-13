@@ -375,16 +375,45 @@ export default function Open() {
   }, [appliedFilters, userLevel, homeFcba, homeAfdeling, homeGang, fetchData]);
 
   /* ===== Quick search ===== */
-  const filtered = useMemo(() => {
-    if (!q.trim()) return items;
+  // ⚡ Bolt Optimization: Consolidated filtering and totals calculation in a single pass
+  const { filtered, lhmTotals } = useMemo(() => {
+    if (!q.trim()) {
+      const totals = items.reduce(
+        (acc, it) => ({
+          jjg: acc.jjg + Number(it.jjg || 0),
+          totalalljjg: acc.totalalljjg + Number(it.totalalljjg || 0),
+          brd: acc.brd + Number(it.brd || 0),
+          total: acc.total + Number(it.total || 0),
+        }),
+        { jjg: 0, totalalljjg: 0, brd: 0, total: 0 }
+      );
+      return { filtered: items, lhmTotals: totals };
+    }
+
     const s = q.toLowerCase();
     // ⚡ Bolt Optimization: Use pre-calculated search content for O(1) string check per row
     const filteredItems = items.filter(it => it._searchContent?.includes(s));
 
-    // Jika pencarian attendance tidak ditemukan, tampilkan error
-    if (q && items.length > 0) {
-      // ⚡ Bolt Optimization: Reuse searchContent logic for consistency and performance
-      const attendanceExists = filteredItems.some(item =>
+    const totals = filteredItems.reduce(
+      (acc, it) => ({
+        jjg: acc.jjg + Number(it.jjg || 0),
+        totalalljjg: acc.totalalljjg + Number(it.totalalljjg || 0),
+        brd: acc.brd + Number(it.brd || 0),
+        total: acc.total + Number(it.total || 0),
+      }),
+      { jjg: 0, totalalljjg: 0, brd: 0, total: 0 }
+    );
+
+    return { filtered: filteredItems, lhmTotals: totals };
+  }, [q, items]);
+
+  // ⚡ Bolt Optimization: Side-effects (setError) moved out of useMemo to useEffect
+  useEffect(() => {
+    if (!q || items.length === 0) {
+      setError(null);
+    } else {
+      const s = q.toLowerCase();
+      const attendanceExists = items.some(item =>
         (item.attendance || '').toLowerCase().includes(s)
       );
       if (!attendanceExists) {
@@ -393,8 +422,25 @@ export default function Open() {
         setError(null);
       }
     }
-    return filteredItems;
-  }, [q, items]);
+  }, [q, items.length]);
+
+  const totalCards = [
+    {
+      label: 'Total Janjang (JJG)',
+      value: lhmTotals.jjg,
+      className: 'text-primary',
+    },
+    {
+      label: 'Total Brondolan (BRD)',
+      value: lhmTotals.brd,
+      className: 'text-success',
+    },
+    {
+      label: 'Total Gaji',
+      value: lhmTotals.total,
+      className: 'text-warning',
+    },
+  ];
 
   /* ===== Row selection ===== */
   const handleRowSelected = useCallback((state: { selectedRows: LhmData[] }) => {
@@ -959,9 +1005,23 @@ export default function Open() {
           </div>
         )}
 
-        {/* Quick Search */}
-        <div className="mb-3 flex justify-end animate-slideUp [animation-delay:100ms]">
-          <div className="relative w-full md:w-96 group">
+        {/* Quick Search + Total Cards */}
+        <div className="mb-3 flex flex-col sm:flex-row items-start sm:items-center gap-2 animate-slideUp [animation-delay:100ms]">
+          {/* Total Cards */}
+          <div className="flex gap-2 overflow-x-auto flex-1 min-w-0">
+            {totalCards.map(card => (
+              <div
+                key={card.label}
+                className="bg-base-100 border border-base-200 rounded-lg px-3 py-2 shadow-sm whitespace-nowrap shrink-0"
+              >
+                <div className="text-[10px] opacity-70 leading-none">{card.label}</div>
+                <div className={`text-sm font-semibold ${card.className}`}>
+                  {formatPerfNumber(String(card.value), localeTag)}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="relative w-full sm:w-72 md:w-80 group shrink-0">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
