@@ -19,8 +19,13 @@ import { EmptyState } from '@/app/components/empty-state';
 ========================= */
 type LhmData = {
   _rowKey?: string;
-  // ⚡ Bolt Optimization: cached search values
+  // ⚡ Bolt Optimization: cached search and display values
   _searchContent?: string;
+  _displayDate?: string;
+  _jjgNum?: number;
+  _brdNum?: number;
+  _totalalljjgNum?: number;
+  _totalNum?: number;
 
   id: string;
   rowdata: string;
@@ -265,11 +270,16 @@ export default function Lhm() {
               while (seen.has(key)) key = `${key}_`;
               seen.add(key);
 
+              const dateOnly = (it.fddate || '').split(' ')[0];
+              const displayDate = dateOnly ? formatDateDMY(dateOnly) : '-';
+
               // ⚡ Bolt Optimization: pre-calculate search content string
               const searchContent = [
                 it.employeecode,
                 it.nama,
                 it.fddate,
+                dateOnly,
+                displayDate,
                 it.kemandoran,
                 it.blok,
                 it.fcba,
@@ -284,7 +294,17 @@ export default function Lhm() {
                 .join(' ')
                 .toLowerCase();
 
-              return { ...it, _rowKey: key, _searchContent: searchContent };
+              return {
+                ...it,
+                _rowKey: key,
+                _displayDate: displayDate,
+                _searchContent: searchContent,
+                // ⚡ Bolt Optimization: pre-calculate numeric values to avoid redundant parsing in loops
+                _jjgNum: Number(it.jjg || 0),
+                _brdNum: Number(it.brd || 0),
+                _totalalljjgNum: Number(it.totalalljjg || 0),
+                _totalNum: Number(it.total || 0),
+              };
             });
             setItems(data);
           }
@@ -311,37 +331,39 @@ export default function Lhm() {
   }, [appliedFilters, userLevel, homeFcba, fetchData]);
 
   /* ===== Quick search ===== */
-  // ⚡ Bolt Optimization: Consolidated filtering and attendance check in a single pass
-  // to avoid redundant O(N) loops.
+  // ⚡ Bolt Optimization: Consolidated filtering and aggregate calculations into a single-pass O(N) loop.
+  // This eliminates multiple redundant passes over the dataset and reduces overall iteration overhead.
   const { filtered, attendanceMatch, lhmTotals } = useMemo(() => {
-    if (!q.trim())
-      return {
-        filtered: items,
-        attendanceMatch: true,
-        lhmTotals: items.reduce(
-          (acc, it) => ({
-            jjg: acc.jjg + Number(it.jjg || 0),
-            totalalljjg: acc.totalalljjg + Number(it.totalalljjg || 0),
-            brd: acc.brd + Number(it.brd || 0),
-            total: acc.total + Number(it.total || 0),
-          }),
-          { jjg: 0, totalalljjg: 0, brd: 0, total: 0 }
-        ),
-      };
+    const s = q.trim().toLowerCase();
+    const result: LhmData[] = [];
+    let hasAttendance = true;
+    const totals = { jjg: 0, totalalljjg: 0, brd: 0, total: 0 };
 
-    const s = q.toLowerCase();
-    const result = items.filter(it => it._searchContent?.includes(s));
-    const hasAttendance = result.some(it => (it.attendance || '').toLowerCase().includes(s));
+    if (s) {
+      hasAttendance = false;
+      for (const it of items) {
+        if (it._searchContent?.includes(s)) {
+          result.push(it);
+          // ⚡ Bolt Optimization: Use pre-calculated numbers to avoid redundant O(N*M) parsing in loops
+          totals.jjg += it._jjgNum || 0;
+          totals.totalalljjg += it._totalalljjgNum || 0;
+          totals.brd += it._brdNum || 0;
+          totals.total += it._totalNum || 0;
 
-    const totals = result.reduce(
-      (acc, it) => ({
-        jjg: acc.jjg + Number(it.jjg || 0),
-        totalalljjg: acc.totalalljjg + Number(it.totalalljjg || 0),
-        brd: acc.brd + Number(it.brd || 0),
-        total: acc.total + Number(it.total || 0),
-      }),
-      { jjg: 0, totalalljjg: 0, brd: 0, total: 0 }
-    );
+          if (!hasAttendance && (it.attendance || '').toLowerCase().includes(s)) {
+            hasAttendance = true;
+          }
+        }
+      }
+    } else {
+      for (const it of items) {
+        result.push(it);
+        totals.jjg += it._jjgNum || 0;
+        totals.totalalljjg += it._totalalljjgNum || 0;
+        totals.brd += it._brdNum || 0;
+        totals.total += it._totalNum || 0;
+      }
+    }
 
     return { filtered: result, attendanceMatch: hasAttendance, lhmTotals: totals };
   }, [q, items]);
@@ -525,7 +547,7 @@ export default function Lhm() {
         width: '125px',
         cell: r => {
           const raw = (r.fddate || '').split(' ')[0];
-          return <span title={raw}>{formatDateDMY(raw)}</span>;
+          return <span title={raw}>{r._displayDate}</span>;
         },
       },
       {
@@ -577,14 +599,14 @@ export default function Lhm() {
       },
       {
         name: <span title="Janjang (JJG)">JJG</span>,
-        selector: r => r.jjg,
+        selector: r => r._jjgNum ?? 0,
         sortable: true,
         width: '70px',
         cell: r => numCell(r.jjg),
       },
       {
         name: <span title="Brondolan (BRD)">BRD</span>,
-        selector: r => r.brd,
+        selector: r => r._brdNum ?? 0,
         sortable: true,
         width: '70px',
         cell: r => numCell(r.brd),
@@ -638,7 +660,7 @@ export default function Lhm() {
       },
       {
         name: <span title="Hasil Netto Jjg">Hasil Netto (Jjg)</span>,
-        selector: r => r.totalalljjg,
+        selector: r => r._totalalljjgNum ?? 0,
         sortable: true,
         width: '80px',
         cell: r => numCell(r.totalalljjg),
@@ -757,7 +779,7 @@ export default function Lhm() {
       },
       {
         name: <span title="Total">Total</span>,
-        selector: r => r.total,
+        selector: r => r._totalNum ?? 0,
         sortable: true,
         width: '100px',
         cell: r => (
