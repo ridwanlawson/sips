@@ -85,4 +85,8 @@ export const CookieName = {
   OPT_FCBA: 'opt_fcba',
   OPT_SECTION: 'opt_section',
   OPT_GANG: 'opt_gang',
+  SECURE_USER_LEVEL: 'SECURE_USER_LEVEL',
+  SECURE_USER_FCBA: 'SECURE_USER_FCBA',
+  SECURE_USER_AFDELING: 'SECURE_USER_AFDELING',
+  SECURE_USER_GANG: 'SECURE_USER_GANG',
 } as const;

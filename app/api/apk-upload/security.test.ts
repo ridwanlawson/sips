@@ -4,10 +4,15 @@ import { NextRequest } from 'next/server';
 import { getTokenFromCookie } from '@/utils/absensiProxy';
 import { cookies } from 'next/headers';
 import { UserLevel } from '@/lib/constants';
+import { validateCsrfToken } from '@/lib/csrf';
 
 vi.mock('@/utils/absensiProxy', () => ({
   getTokenFromCookie: vi.fn(),
   BACKEND_URL: 'http://trusted-backend.com',
+}));
+
+vi.mock('@/lib/csrf', () => ({
+  validateCsrfToken: vi.fn(),
 }));
 
 vi.mock('next/headers', () => ({
@@ -35,8 +40,13 @@ describe('APK Upload Security', () => {
 
   it('should return 403 if user is not an administrator', async () => {
     (getTokenFromCookie as Mock).mockResolvedValue('valid-token');
+    (validateCsrfToken as Mock).mockReturnValue(true);
     (cookies as Mock).mockResolvedValue({
-      get: vi.fn().mockReturnValue({ value: 'user-123' }),
+      get: vi.fn().mockImplementation((key: string) => {
+        if (key === 'csrf_token') return { value: 'valid-csrf' };
+        if (key === 'log_id') return { value: 'user-123' };
+        return null;
+      }),
     });
 
     // Mock upstream profile check returning a non-admin role
@@ -61,8 +71,13 @@ describe('APK Upload Security', () => {
 
   it('should succeed if user is an administrator', async () => {
     (getTokenFromCookie as Mock).mockResolvedValue('valid-token');
+    (validateCsrfToken as Mock).mockReturnValue(true);
     (cookies as Mock).mockResolvedValue({
-      get: vi.fn().mockReturnValue({ value: 'admin-123' }),
+      get: vi.fn().mockImplementation((key: string) => {
+        if (key === 'csrf_token') return { value: 'valid-csrf' };
+        if (key === 'log_id') return { value: 'admin-123' };
+        return null;
+      }),
     });
 
     // First fetch: profile check

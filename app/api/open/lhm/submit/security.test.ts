@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST } from './route';
 import { NextRequest } from 'next/server';
+import { validateCsrfToken } from '@/lib/csrf';
 
 vi.stubGlobal('fetch', vi.fn());
 
@@ -9,12 +10,24 @@ vi.mock('@/utils/absensiProxy', () => ({
   getTokenFromCookie: vi.fn(() => Promise.resolve('valid-token')),
 }));
 
+vi.mock('@/lib/csrf', () => ({
+  validateCsrfToken: vi.fn(),
+}));
+
+vi.mock('next/headers', () => ({
+  cookies: vi.fn().mockImplementation(() => ({
+    get: vi.fn().mockReturnValue({ value: 'valid-csrf' }),
+  })),
+}));
+
 describe('Open LHM Submit API Security', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it('should return generic error message and not leak upstream details on failure', async () => {
+    vi.mocked(validateCsrfToken).mockReturnValue(true);
+
     const req = new NextRequest('http://localhost/api/open/lhm/submit', {
       method: 'POST',
       body: JSON.stringify({ data: [] }),

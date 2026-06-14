@@ -126,7 +126,11 @@ export function middleware(request: NextRequest) {
   }
 
   // Server-side role-based access control
-  const levelRaw = request.cookies.get(CookieName.USER_LEVEL)?.value || '';
+  // Prioritize SECURE_USER_LEVEL (httpOnly) over client-side USER_LEVEL (CWE-807)
+  const levelRaw =
+    request.cookies.get(CookieName.SECURE_USER_LEVEL)?.value ||
+    request.cookies.get(CookieName.USER_LEVEL)?.value ||
+    '';
   const level = normalizeLevel(levelRaw);
 
   const redirectForbidden = () => {
