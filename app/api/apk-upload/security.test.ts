@@ -14,6 +14,10 @@ vi.mock('next/headers', () => ({
   cookies: vi.fn(),
 }));
 
+vi.mock('@/lib/csrf', () => ({
+  validateCsrfToken: vi.fn(() => true),
+}));
+
 describe('APK Upload Security', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -36,7 +40,11 @@ describe('APK Upload Security', () => {
   it('should return 403 if user is not an administrator', async () => {
     (getTokenFromCookie as Mock).mockResolvedValue('valid-token');
     (cookies as Mock).mockResolvedValue({
-      get: vi.fn().mockReturnValue({ value: 'user-123' }),
+      get: vi.fn((key) => {
+        if (key === 'csrf_token') return { value: 'fake-csrf' };
+        if (key === 'log_id') return { value: 'user-123' };
+        return undefined;
+      }),
     });
 
     // Mock upstream profile check returning a non-admin role
@@ -62,7 +70,11 @@ describe('APK Upload Security', () => {
   it('should succeed if user is an administrator', async () => {
     (getTokenFromCookie as Mock).mockResolvedValue('valid-token');
     (cookies as Mock).mockResolvedValue({
-      get: vi.fn().mockReturnValue({ value: 'admin-123' }),
+      get: vi.fn((key) => {
+        if (key === 'csrf_token') return { value: 'fake-csrf' };
+        if (key === 'log_id') return { value: 'admin-123' };
+        return undefined;
+      }),
     });
 
     // First fetch: profile check
