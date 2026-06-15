@@ -13,6 +13,8 @@ import { exportJsonToCsv } from '@/utils/exportCsv';
 import { formatPerfNumber } from '@/utils/perf-formatter';
 import { useLocale } from '@/hooks/useLocale';
 import { EmptyState } from '@/app/components/empty-state';
+import AppTour from '@/app/components/app-tour';
+import type { TourStep } from '@/app/components/app-tour';
 
 /* =========================
    T Y P E S
@@ -613,6 +615,71 @@ export default function Approval() {
     [formatNumber]
   );
 
+  const tourSteps: TourStep[] = useMemo(
+    () => [
+      {
+        icon: '👋',
+        title: 'Selamat Datang',
+        content:
+          'Halaman ini digunakan untuk melakukan approval Laporan Harian Mandor (LHM). Anda akan dipandu melalui setiap fitur yang tersedia.',
+      },
+      {
+        icon: '🔍',
+        title: 'Filter & Aksi',
+        content:
+          'Gunakan tombol "Tampilkan Filter" untuk membuka panel filter lanjutan. Tombol "Refresh" untuk memuat ulang data, "Export" untuk mengekspor data ke CSV, dan "Approve" untuk menyetujui data yang telah dipilih.',
+        targetSelector: '[data-tour="action-buttons"]',
+      },
+      {
+        icon: '🔎',
+        title: 'Pencarian Cepat',
+        content:
+          'Ketik kata kunci di kolom pencarian untuk menyaring data secara instan berdasarkan attendance, nama, atau kode karyawan tanpa perlu membuka filter lanjutan.',
+        targetSelector: '[data-tour="quick-search"]',
+      },
+      {
+        icon: '📊',
+        title: 'Ringkasan Total',
+        content:
+          'Tiga kartu ringkasan menampilkan total Janjang (JJG), total Brondolan (BRD), dan total Gaji dari data yang sedang ditampilkan.',
+        targetSelector: '[data-tour="total-cards"]',
+      },
+      {
+        icon: '📋',
+        title: 'Filter Lanjutan',
+        content:
+          'Panel filter lanjutan memungkinkan Anda menyaring data berdasarkan rentang tanggal, kemandoran, kode karyawan, FCBA, afdeling, tahun tanam, blok, dan attendance.',
+        targetSelector: '[data-tour="filter-panel"]',
+        modalPosition: 'bottom',
+      },
+      {
+        icon: '📄',
+        title: 'Tabel Data LHM',
+        content:
+          'Tabel menampilkan seluruh data LHM yang dapat diurutkan (sort) dengan mengklik header kolom. Gunakan checkbox di setiap baris untuk memilih data yang akan diapprove.',
+        targetSelector: '[data-tour="data-table"]',
+        modalPosition: 'top',
+      },
+      {
+        icon: '✏️',
+        title: 'Input Hektar (HA)',
+        content:
+          'Khusus user level MDP, kolom HA (Hektar) dapat diedit langsung di dalam tabel. Klik input box pada kolom HA untuk mengubah nilai hektar panen.',
+        targetSelector: '[data-tour="ha-column"]',
+        modalPosition: 'bottom',
+      },
+      {
+        icon: '✅',
+        title: 'Proses Approval',
+        content:
+          'Centang checkbox pada baris data yang ingin diapprove (bisa pilih banyak sekaligus). Setelah itu klik tombol "Approve" di pojok kanan atas untuk menyetujui data tersebut. Data yang sudah diapprove akan diproses lebih lanjut oleh sistem.',
+        targetSelector: '[data-tour="approve-button"]',
+        modalPosition: 'top-left',
+      },
+    ],
+    []
+  );
+
   const columns: TableColumn<LhmData>[] = useMemo(
     () => [
       {
@@ -727,7 +794,11 @@ export default function Approval() {
         cell: r => numCell(r.brd),
       },
       {
-        name: <span title="Hektar (HA)">HA</span>,
+        name: (
+          <span title="Hektar (HA)" data-tour="ha-column">
+            HA
+          </span>
+        ),
         selector: r => r.ha,
         sortable: true,
         width: '90px',
@@ -937,7 +1008,19 @@ export default function Approval() {
           >
             Approval LHM
           </h1>
-          <div className="flex justify-start sm:justify-end gap-2 flex-wrap w-full">
+          <div
+            className="flex justify-start sm:justify-end gap-2 flex-wrap w-full"
+            data-tour="action-buttons"
+          >
+            <AppTour
+              steps={tourSteps}
+              storageKey="tour-approval-lhm"
+              onStepChange={stepIndex => {
+                if (stepIndex === 4) {
+                  setShowFilters(true);
+                }
+              }}
+            />
             <button
               className="btn btn-outline btn-sm"
               onClick={() => setShowFilters(s => !s)}
@@ -972,6 +1055,7 @@ export default function Approval() {
               onClick={handleApprove}
               disabled={selectedRows.length === 0 || submitting}
               title="Approve data LHM yang dipilih"
+              data-tour="approve-button"
             >
               {submitting ? (
                 <>
@@ -1008,7 +1092,7 @@ export default function Approval() {
         {/* Quick Search + Total Cards */}
         <div className="mb-3 flex flex-col sm:flex-row items-start sm:items-center gap-2 animate-slideUp [animation-delay:100ms]">
           {/* Total Cards */}
-          <div className="flex gap-2 overflow-x-auto flex-1 min-w-0">
+          <div className="flex gap-2 overflow-x-auto flex-1 min-w-0" data-tour="total-cards">
             {totalCards.map(card => (
               <div
                 key={card.label}
@@ -1021,7 +1105,7 @@ export default function Approval() {
               </div>
             ))}
           </div>
-          <div className="relative w-full sm:w-72 md:w-80 group shrink-0">
+          <div className="relative w-full sm:w-72 md:w-80 group shrink-0" data-tour="quick-search">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -1074,7 +1158,10 @@ export default function Approval() {
 
         {/* Filter Bar */}
         {showFilters && (
-          <div className="bg-base-100 p-4 rounded-xl shadow-sm mb-4 border border-base-200">
+          <div
+            className="bg-base-100 p-4 rounded-xl shadow-sm mb-4 border border-base-200"
+            data-tour="filter-panel"
+          >
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
               <input
                 type="date"
@@ -1195,7 +1282,10 @@ export default function Approval() {
         {/* Error visual dihilangkan, cukup toast saja yang muncul */}
 
         {/* DataTable */}
-        <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100 animate-slideUp [animation-delay:200ms]">
+        <div
+          className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100 animate-slideUp [animation-delay:200ms]"
+          data-tour="data-table"
+        >
           <div className="min-w-[900px] md:min-w-0">
             {loading ? (
               <div className="p-8">
