@@ -217,6 +217,16 @@ export const uploadSubmitSchema = z.object({
   ),
 });
 
+// LHM Data Schema (untuk Open & Approval LHM)
+export const lhmSubmitSchema = z.object({
+  data: z.array(
+    z.object({
+      ID: z.string(),
+      ROWDATA: z.string(),
+    })
+  ),
+});
+
 // Signature Schema
 export const signatureSubmitSchema = z.object({
   data: z.array(
@@ -240,7 +250,12 @@ export const signatureSubmitSchema = z.object({
 export function validateInput<T>(
   input: unknown,
   schema: z.ZodSchema<T>
-): { success: boolean; data?: T; error?: string } {
+): {
+  success: boolean;
+  data?: T;
+  error?: string;
+  issues?: Array<{ code: string; path: (string | number)[]; message: string }>;
+} {
   const result = schema.safeParse(input);
   if (result.success) {
     return { success: true, data: result.data };
@@ -248,6 +263,14 @@ export function validateInput<T>(
   return {
     success: false,
     error: result.error.issues[0].message,
+    issues: result.error.issues.map(issue => ({
+      code:
+        'code' in issue ? String((issue as unknown as Record<string, unknown>).code) : 'unknown',
+      path: (issue.path || []).filter(
+        (p): p is string | number => typeof p === 'string' || typeof p === 'number'
+      ),
+      message: issue.message,
+    })),
   };
 }
 
