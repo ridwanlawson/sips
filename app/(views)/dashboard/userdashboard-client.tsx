@@ -253,16 +253,26 @@ const extractTriplets = (payload: unknown): Triplet[] => {
   if ('ok' in payload && payload.ok === true && 'data' in payload) {
     const d = (payload as { data: unknown }).data;
     if (Array.isArray(d)) {
-      return d
-        .map(row => {
-          if (!isRecord(row)) return null;
-          const fcba = String(row.fcba ?? '').trim();
-          const sectionname = String(row.sectionname ?? '').trim();
-          const gangcode = String(row.gangcode ?? '').trim();
-          if (!fcba && !sectionname && !gangcode) return null;
-          return { fcba, sectionname, gangcode };
-        })
-        .filter((v): v is Triplet => v !== null);
+      // ⚡ Bolt Optimization: deduplicate triplets early using a Set and single-pass loop.
+      // This reduces memory pressure and speeds up subsequent filtering/rendering.
+      const triplets: Triplet[] = [];
+      const seen = new Set<string>();
+
+      for (const row of d) {
+        if (!isRecord(row)) continue;
+        const fcba = String(row.fcba ?? '').trim();
+        const sectionname = String(row.sectionname ?? '').trim();
+        const gangcode = String(row.gangcode ?? '').trim();
+
+        if (!fcba && !sectionname && !gangcode) continue;
+
+        const key = `${fcba}|${sectionname}|${gangcode}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          triplets.push({ fcba, sectionname, gangcode });
+        }
+      }
+      return triplets;
     }
     if (isRecord(d) && 'data' in d && Array.isArray((d as { data: unknown }).data)) {
       return extractTriplets({ ok: true, data: (d as { data: unknown }).data });
@@ -760,10 +770,18 @@ export default function UserDashboard() {
   }, []);
 
   /* ===== Options FCBA & Afdeling (chain) ===== */
+  // ⚡ Bolt Optimization: Replace multi-pass chains with single-pass loops and Set for O(N) complexity.
+  // This avoids redundant array allocations and multiple iterations over potentially large triplets datasets.
   const fcbaOptions: Option[] = useMemo(() => {
-    const uniq = Array.from(new Set(triplets.map(t => t.fcba).filter(Boolean))).sort();
+    const uniq = new Set<string>();
+    for (const t of triplets) {
+      if (t.fcba) uniq.add(t.fcba);
+    }
 
-    const base = uniq.map(v => ({ value: v, label: v }));
+    const base = Array.from(uniq)
+      .sort()
+      .map(v => ({ value: v, label: v }));
+
     if (userLevel === 'ADM') {
       return [{ value: 'ALL', label: 'ALL FCBA' }, ...base];
     }
@@ -771,20 +789,21 @@ export default function UserDashboard() {
   }, [triplets, userLevel]);
 
   const afdelingOptions: Option[] = useMemo(() => {
-    // Always include an option to select all afdeling (empty value means no afdeling filter)
-    if (!filterFcba || filterFcba === 'ALL') {
-      const uniq = Array.from(new Set(triplets.map(t => t.sectionname).filter(Boolean))).sort();
-      return [{ value: '', label: 'Semua Afdeling' }, ...uniq.map(v => ({ value: v, label: v }))];
+    const uniq = new Set<string>();
+    const isAllFcba = !filterFcba || filterFcba === 'ALL';
+
+    for (const t of triplets) {
+      if (t.sectionname && (isAllFcba || t.fcba === filterFcba)) {
+        uniq.add(t.sectionname);
+      }
     }
-    const uniq = Array.from(
-      new Set(
-        triplets
-          .filter(t => t.fcba === filterFcba)
-          .map(t => t.sectionname)
-          .filter(Boolean)
-      )
-    ).sort();
-    return [{ value: '', label: 'Semua Afdeling' }, ...uniq.map(v => ({ value: v, label: v }))];
+
+    const options = Array.from(uniq)
+      .sort()
+      .map(v => ({ value: v, label: v }));
+
+    // Always include an option to select all afdeling (empty value means no afdeling filter)
+    return [{ value: '', label: 'Semua Afdeling' }, ...options];
   }, [triplets, filterFcba]);
 
   /* ===== Consolidated Attendance Data Processing (O(n) single-pass) ===== */
