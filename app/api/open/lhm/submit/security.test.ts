@@ -9,6 +9,19 @@ vi.mock('@/utils/absensiProxy', () => ({
   getTokenFromCookie: vi.fn(() => Promise.resolve('valid-token')),
 }));
 
+vi.mock('next/headers', () => ({
+  cookies: vi.fn().mockReturnValue({
+    get: vi.fn((key) => {
+      if (key === 'csrf_token') return { value: 'fake-csrf' };
+      return undefined;
+    }),
+  }),
+}));
+
+vi.mock('@/lib/csrf', () => ({
+  validateCsrfToken: vi.fn(() => true),
+}));
+
 describe('Open LHM Submit API Security', () => {
   beforeEach(() => {
     vi.clearAllMocks();

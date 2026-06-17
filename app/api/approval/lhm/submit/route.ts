@@ -45,16 +45,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     if (!response.ok) {
+      // SECURITY: Log detailed error server-side but return generic message to client (CWE-209)
       console.error('[API_LHM_SUBMIT_POST_ERROR]', { status: response.status, data });
-      // Forward actual error from backend for debugging
-      const upstreamMsg =
-        data && typeof data === 'object'
-          ? (data as Record<string, unknown>).message || (data as Record<string, unknown>).error
-          : null;
       return NextResponse.json(
         {
           success: false,
-          message: upstreamMsg || 'Submit failed',
+          message: 'Submit failed',
         },
         { status: response.status }
       );
