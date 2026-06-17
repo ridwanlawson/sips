@@ -133,6 +133,7 @@ export default function Home() {
         {fireflies.map((f, idx) => (
           <span
             key={idx}
+            aria-hidden="true"
             className="firefly"
             style={{
               top: `${f.top}%`,
@@ -258,6 +259,7 @@ export default function Home() {
                   type="text"
                   className="grow bg-transparent outline-none"
                   placeholder="Username"
+                  aria-label="Username"
                   value={username}
                   onChange={e => setUsername(e.target.value)}
                   disabled={isLoading}
@@ -286,6 +288,8 @@ export default function Home() {
                   type={showPassword ? 'text' : 'password'}
                   className="grow bg-transparent outline-none"
                   placeholder="Password"
+                  aria-label="Password"
+                  aria-describedby="password-hint"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   disabled={isLoading}
@@ -297,6 +301,7 @@ export default function Home() {
                   onClick={() => setShowPassword(prev => !prev)}
                   className="btn btn-ghost btn-square btn-xs opacity-70 hover:text-primary"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  title={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? (
                     <svg
@@ -325,14 +330,24 @@ export default function Home() {
               </label>
 
               {error && (
-                <span className="text-error flex items-center gap-2 px-1 text-[0.6875rem] animate-fadeIn [animation-duration:300ms]">
-                  <span className="status status-error inline-block" />
+                <span
+                  role="alert"
+                  aria-live="polite"
+                  className="text-error flex items-center gap-2 px-1 text-[0.6875rem] animate-fadeIn [animation-duration:300ms]"
+                >
+                  <span className="status status-error inline-block" aria-hidden="true" />
                   {error}
                 </span>
               )}
               {!error && (
-                <span className="text-base-content/60 flex items-center gap-2 px-1 text-[0.6875rem]">
-                  <span className="status status-warning inline-block animate-pulse [animation-duration:2s]" />
+                <span
+                  id="password-hint"
+                  className="text-base-content/60 flex items-center gap-2 px-1 text-[0.6875rem]"
+                >
+                  <span
+                    className="status status-warning inline-block animate-pulse [animation-duration:2s]"
+                    aria-hidden="true"
+                  />
                   Password must be 8+ characters
                 </span>
               )}
@@ -345,8 +360,16 @@ export default function Home() {
                 type="submit"
                 className="btn btn-primary w-full transition-transform duration-200 hover:-translate-y-[1px] active:scale-95"
                 disabled={isLoading}
+                aria-label={isLoading ? 'Logging in...' : 'Login'}
               >
-                {isLoading ? <span className="loading loading-spinner loading-sm" /> : 'Login'}
+                {isLoading ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm" />
+                    Logging in...
+                  </>
+                ) : (
+                  'Login'
+                )}
               </button>
             </div>
           </form>
