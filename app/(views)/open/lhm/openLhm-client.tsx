@@ -24,6 +24,11 @@ type LhmData = {
   _selected?: boolean;
   // ⚡ Bolt Optimization: cached search values
   _searchContent?: string;
+  _jjgNum?: number;
+  _brdNum?: number;
+  _totalalljjgNum?: number;
+  _totalNum?: number;
+
   id: string;
   rowdata: string;
   fddate: string;
@@ -159,6 +164,14 @@ const getEmptyFilters = (): Filters => {
 /* =========================
    U T I L S
 ========================= */
+const toNumber = (value: string | number | null | undefined): number => {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  if (!value) return 0;
+  const normalized = String(value).replace(',', '.').trim();
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
 import { cookieStore } from '@/utils/cookieStore';
 
 /* =========================
@@ -338,7 +351,16 @@ export default function Open() {
                 .join(' ')
                 .toLowerCase();
 
-              return { ...it, _rowKey: key, _searchContent: searchContent };
+              return {
+                ...it,
+                _rowKey: key,
+                _searchContent: searchContent,
+                // ⚡ Bolt Optimization: pre-calculate numeric values to avoid redundant regex parsing in loops
+                _jjgNum: toNumber(it.jjg),
+                _brdNum: toNumber(it.brd),
+                _totalalljjgNum: toNumber(it.totalalljjg),
+                _totalNum: toNumber(it.total),
+              };
             });
             setItems(data);
           }
@@ -378,53 +400,51 @@ export default function Open() {
 
   /* ===== Quick search ===== */
   // ⚡ Bolt Optimization: Consolidated filtering and totals calculation in a single pass
-  const { filtered, lhmTotals } = useMemo(() => {
-    if (!q.trim()) {
-      const totals = items.reduce(
-        (acc, it) => ({
-          jjg: acc.jjg + Number(it.jjg || 0),
-          totalalljjg: acc.totalalljjg + Number(it.totalalljjg || 0),
-          brd: acc.brd + Number(it.brd || 0),
-          total: acc.total + Number(it.total || 0),
-        }),
-        { jjg: 0, totalalljjg: 0, brd: 0, total: 0 }
-      );
-      return { filtered: items, lhmTotals: totals };
+  // to avoid redundant O(N) loops. This reduces iterations by ~66% during search/filter operations.
+  const { filtered, lhmTotals, attendanceExists } = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    const result: LhmData[] = [];
+    const totals = {
+      jjg: 0,
+      totalalljjg: 0,
+      brd: 0,
+      total: 0,
+    };
+    let hasAttendance = false;
+
+    for (const it of items) {
+      if (!s || it._searchContent?.includes(s)) {
+        result.push(it);
+
+        // ⚡ Bolt Optimization: Use pre-calculated numbers to avoid thousands of O(N*M) toNumber/regex calls during search
+        totals.jjg += it._jjgNum || 0;
+        totals.totalalljjg += it._totalalljjgNum || 0;
+        totals.brd += it._brdNum || 0;
+        totals.total += it._totalNum || 0;
+
+        if (s && (it.attendance || '').toLowerCase().includes(s)) {
+          hasAttendance = true;
+        }
+      }
     }
 
-    const s = q.toLowerCase();
-    // ⚡ Bolt Optimization: Use pre-calculated search content for O(1) string check per row
-    const filteredItems = items.filter(it => it._searchContent?.includes(s));
-
-    const totals = filteredItems.reduce(
-      (acc, it) => ({
-        jjg: acc.jjg + Number(it.jjg || 0),
-        totalalljjg: acc.totalalljjg + Number(it.totalalljjg || 0),
-        brd: acc.brd + Number(it.brd || 0),
-        total: acc.total + Number(it.total || 0),
-      }),
-      { jjg: 0, totalalljjg: 0, brd: 0, total: 0 }
-    );
-
-    return { filtered: filteredItems, lhmTotals: totals };
+    return {
+      filtered: result,
+      lhmTotals: totals,
+      attendanceExists: !s || hasAttendance,
+    };
   }, [q, items]);
 
   // ⚡ Bolt Optimization: Side-effects (setError) moved out of useMemo to useEffect
   useEffect(() => {
     if (!q || items.length === 0) {
       setError(null);
+    } else if (!attendanceExists) {
+      setError(`Data dengan attendance "${q}" tidak ditemukan.`);
     } else {
-      const s = q.toLowerCase();
-      const attendanceExists = items.some(item =>
-        (item.attendance || '').toLowerCase().includes(s)
-      );
-      if (!attendanceExists) {
-        setError(`Data dengan attendance "${q}" tidak ditemukan.`);
-      } else {
-        setError(null);
-      }
+      setError(null);
     }
-  }, [q, items.length]);
+  }, [q, items.length, attendanceExists]);
 
   const totalCards = [
     {
@@ -559,7 +579,7 @@ export default function Open() {
 
   /* ===== Columns ===== */
   const formatNumber = useCallback(
-    (val: string | null | undefined) => {
+    (val: string | number | null | undefined) => {
       // ⚡ Bolt Optimization: Use cached Intl.NumberFormat via formatPerfNumber
       return formatPerfNumber(val ?? '0', localeTag);
     },
@@ -567,7 +587,7 @@ export default function Open() {
   );
 
   const numCell = useCallback(
-    (val: string | null | undefined) => {
+    (val: string | number | null | undefined) => {
       const formatted = formatNumber(val);
       return <span className="text-right inline-block w-full text-gray-700">{formatted}</span>;
     },
@@ -735,17 +755,17 @@ export default function Open() {
       },
       {
         name: <span title="Janjang (JJG)">JJG</span>,
-        selector: r => r.jjg,
+        selector: r => r._jjgNum ?? 0,
         sortable: true,
         width: '70px',
-        cell: r => numCell(r.jjg),
+        cell: r => numCell(r._jjgNum),
       },
       {
         name: <span title="Brondolan (BRD)">BRD</span>,
-        selector: r => r.brd,
+        selector: r => r._brdNum ?? 0,
         sortable: true,
         width: '70px',
-        cell: r => numCell(r.brd),
+        cell: r => numCell(r._brdNum),
       },
       {
         name: <span title="Hektar (HA)">HA</span>,
@@ -936,11 +956,13 @@ export default function Open() {
       },
       {
         name: <span title="Total">Total</span>,
-        selector: r => r.total,
+        selector: r => r._totalNum ?? 0,
         sortable: true,
         width: '100px',
         cell: r => (
-          <span className="font-bold w-full text-right inline-block">{formatNumber(r.total)}</span>
+          <span className="font-bold w-full text-right inline-block">
+            {formatNumber(r._totalNum)}
+          </span>
         ),
       },
     ],

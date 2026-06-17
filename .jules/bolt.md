@@ -29,3 +29,7 @@
 ## 2026-06-12 - [O(N) Render-path Lookup Anti-pattern]
 **Learning:** Performing repeated O(N) array scans (like `.find()`) inside a render loop or during frequent user interactions (like form updates) leads to significant UI lag as the dataset (e.g., employees) grows.
 **Action:** Pre-calculate a `Map` using `useMemo` for O(1) constant-time lookups. Consolidate legacy label-only maps into this single-pass O(N) map generation to maintain high performance with large datasets.
+
+## 2026-06-12 - [O(N*M) Multi-pass Table Processing Anti-pattern]
+**Learning:** Using multiple O(N) iterations (filter -> some -> reduce) in `useMemo` for table search and aggregation creates redundant work and intermediate allocations. Combining this with expensive string-to-number parsing during search causes severe lag on large datasets.
+**Action:** Pre-calculate all numeric values and search content strings during the data fetch/mapping phase. Consolidate all filtering, aggregation, and condition checks into a single-pass `for...of` loop within `useMemo` to maintain O(N) complexity regardless of the number of metrics derived.
