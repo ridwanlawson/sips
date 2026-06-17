@@ -6,6 +6,7 @@ import DataTable from '@/app/components/dynamic-data-table';
 import type { TableColumn } from 'react-data-table-component';
 import { logoutAndRedirect } from '@/utils/authHelper';
 import { getProxiedImageUrl, PLACEHOLDER_IMAGE } from '@/utils/imageHelper';
+import { extractArrayData } from '@/utils/apiHelpers';
 
 /* =========================
    T Y P E S
@@ -15,6 +16,8 @@ type Absensi = {
   // ⚡ Bolt Optimization: cached display and search values
   _displayDate?: string;
   _searchContent?: string;
+  _mandorCode?: string;
+  _mandorName?: string;
   id: string;
   tanggal: string;
   kode_karyawan_mandor?: string | null;
@@ -72,20 +75,6 @@ const LocationButton: React.FC<{ loc?: string | null; label?: string }> = ({ loc
       <span aria-hidden>📍</span> {label ?? 'Maps'}
     </a>
   );
-};
-
-const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
-
-const extractArrayData = <T,>(payload: unknown): T[] => {
-  if (!isObject(payload)) return [];
-  if ('ok' in payload && payload.ok === true && 'data' in payload) {
-    const d = (payload as { data: unknown }).data;
-    if (Array.isArray(d)) return d as T[];
-    if (isObject(d) && 'data' in d && Array.isArray((d as { data: unknown }).data)) {
-      return (d as { data: T[] }).data;
-    }
-  }
-  return [];
 };
 
 /* =========================
@@ -192,30 +181,32 @@ export default function AttendanceApproval() {
       const json: unknown = await res.json();
       const raw = extractArrayData<Absensi>(json);
 
-      // include only data that is not Approved or Rejected
-      const pending = raw.filter(row => {
+      // ⚡ Bolt Optimization: Consolidate filtering, deduplication, and key generation
+      // into a single-pass O(N) loop to reduce intermediate allocations and iterations.
+      const result: Absensi[] = [];
+      const seenIds = new Set<string>();
+      const seenKeys = new Set<string>();
+
+      for (const row of raw) {
+        if (!row?.id || seenIds.has(row.id)) continue;
+
         const st = (row.status_attendance || '').toLowerCase();
-        return st !== 'approved' && st !== 'reject';
-      });
+        if (st === 'approved' || st === 'reject') continue;
 
-      // hilangkan duplikat by ID + tambah _rowKey
-      const byId = new Map<string, Absensi>();
-      for (const row of pending) {
-        if (row?.id && !byId.has(row.id)) byId.set(row.id, row);
-      }
-      const unique = Array.from(byId.values());
+        seenIds.add(row.id);
 
-      const seen = new Set<string>();
-      const withKey = unique.map((it, idx) => {
-        const dateOnly = (it.tanggal || '').split(' ')[0];
-        const candidate = [it.id || '', it.kode_karyawan || '', dateOnly, String(idx)].join('|');
+        const dateOnly = (row.tanggal || '').split(' ')[0];
+        const candidate = [row.id, row.kode_karyawan || '', dateOnly, String(result.length)].join(
+          '|'
+        );
         let key = candidate;
-        while (seen.has(key)) key = `${key}_`;
-        seen.add(key);
-        return { ...it, _rowKey: key };
-      });
+        while (seenKeys.has(key)) key = `${key}_`;
+        seenKeys.add(key);
 
-      setItems(withKey);
+        result.push({ ...row, _rowKey: key });
+      }
+
+      setItems(result);
     } catch (e) {
       console.error(e);
       showAlert('Gagal memuat data', 'error');
@@ -236,10 +227,19 @@ export default function AttendanceApproval() {
       const dateOnly = (it.tanggal || '').split(' ')[0];
       const displayDate = dateOnly ? formatPerfDate(dateOnly, localeTag) : '-';
 
+      // ⚡ Bolt Optimization: Pre-calculate Mandor display components to avoid expensive
+      // render-time string operations and Map lookups.
+      const mCode = it.kode_karyawan_mandor || '';
+      const mLabel = mCode ? mandorLabelMap[mCode] || mCode : '';
+      const [mandorCode, mandorName] = mLabel.includes(' - ')
+        ? mLabel.split(' - ', 2)
+        : [mLabel, ''];
+
       const searchContent = [
         it.namakaryawan,
         it.kode_karyawan,
         it.kode_karyawan_mandor,
+        mLabel,
         it.fcba,
         it.fcba_destination,
         it.section,
@@ -265,9 +265,11 @@ export default function AttendanceApproval() {
         ...it,
         _displayDate: displayDate,
         _searchContent: searchContent,
+        _mandorCode: mandorCode,
+        _mandorName: mandorName,
       };
     });
-  }, [items, localeTag]);
+  }, [items, localeTag, mandorLabelMap]);
 
   useEffect(() => {
     if (!scopeReady) return;
@@ -345,19 +347,17 @@ export default function AttendanceApproval() {
         name: <span title="Mandor (atasan langsung)">Mandor</span>,
         sortable: true,
         width: '200px',
-        selector: r => r.kode_karyawan_mandor || '',
+        // ⚡ Bolt Optimization: Use pre-calculated fields for selector and cell to improve render performance.
+        selector: r => r._mandorCode || '',
         cell: r => {
-          const code = r.kode_karyawan_mandor || '';
-          if (!code) return <>-</>;
-          const label = mandorLabelMap[code] || code;
-          const [fccode, fullname] = label.includes(' - ') ? label.split(' - ', 2) : [label, ''];
+          if (!r._mandorCode) return <>-</>;
           return (
             <div className="min-w-0">
-              <div className="font-medium truncate" title={fullname || '-'}>
-                {fullname || '-'}
+              <div className="font-medium truncate" title={r._mandorName || '-'}>
+                {r._mandorName || '-'}
               </div>
-              <div className="text-xs opacity-70 truncate" title={fccode}>
-                {fccode}
+              <div className="text-xs opacity-70 truncate" title={r._mandorCode}>
+                {r._mandorCode}
               </div>
             </div>
           );
@@ -523,7 +523,7 @@ export default function AttendanceApproval() {
         ignoreRowClick: true,
       },
     ],
-    [mandorLabelMap]
+    []
   );
 
   // 👇 cast sekali, tanpa `any`, supaya TypeScript & ESLint sama-sama aman
