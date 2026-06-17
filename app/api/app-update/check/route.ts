@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BACKEND_URL } from '@/utils/backendConfig';
+import { z } from 'zod';
+import { cookies } from 'next/headers';
+import { apiRateLimiter } from '@/lib/rateLimiter';
+import { validateCsrfToken } from '@/lib/csrf';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+
+const updateCheckSchema = z.object({
+  action: z.string().min(1).max(50),
+  platform: z.string().min(1).max(50),
+  app_name: z.string().min(1).max(100),
+});
 
 export async function POST(req: NextRequest) {
   if (!BACKEND_URL) {
@@ -12,10 +22,33 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const body = await req.json();
-  const authorization = req.headers.get('authorization') ?? '';
-
   try {
+    // === RATE LIMITING ===
+    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    try {
+      await apiRateLimiter.consume(ip);
+    } catch {
+      return NextResponse.json(
+        { message: 'Terlalu banyak permintaan. Silakan coba lagi nanti.' },
+        { status: 429 }
+      );
+    }
+
+    // === CSRF VALIDATION ===
+    const cookieStore = await cookies();
+    const csrfToken = cookieStore.get('csrf_token')?.value;
+    if (!csrfToken || !validateCsrfToken(req, csrfToken)) {
+      return NextResponse.json({ message: 'Invalid CSRF token' }, { status: 403 });
+    }
+
+    const body = await req.json();
+    const parsed = updateCheckSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ message: 'Input tidak valid.' }, { status: 400 });
+    }
+
+    const authorization = req.headers.get('authorization') ?? '';
+
     const upstream = await fetch(`https://skj.my.id/app_archive.asp`, {
       method: 'POST',
       headers: {
@@ -23,7 +56,7 @@ export async function POST(req: NextRequest) {
         Accept: 'application/json',
         Authorization: authorization,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(parsed.data),
     });
 
     const data = await upstream.text();
