@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 
 export type TourStep = {
   title: string;
@@ -28,6 +29,7 @@ const POSITION_CLASSES: Record<string, string> = {
 };
 
 export default function AppTour({ steps, storageKey, onStepChange }: AppTourProps) {
+  const t = useTranslations('Tour');
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const highlightRef = useRef<HTMLElement | null>(null);
@@ -128,6 +130,16 @@ export default function AppTour({ steps, storageKey, onStepChange }: AppTourProp
     setIsOpen(true);
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        handleSkip();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, handleSkip]);
+
   const step = steps[currentStep];
   const isFirst = currentStep === 0;
   const isLast = currentStep === steps.length - 1;
@@ -144,8 +156,8 @@ export default function AppTour({ steps, storageKey, onStepChange }: AppTourProp
       <button
         className="btn btn-warning btn-sm gap-1.5 shadow-sm hover:shadow-md transition-all duration-200"
         onClick={handleOpen}
-        title="Panduan penggunaan halaman"
-        aria-label="Bantuan"
+        title={t('helpHint')}
+        aria-label={t('help')}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -161,7 +173,7 @@ export default function AppTour({ steps, storageKey, onStepChange }: AppTourProp
             d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
           />
         </svg>
-        <span>Bantuan</span>
+        <span>{t('help')}</span>
       </button>
 
       {/* Tour Overlay — no backdrop dimming so highlighted elements stay fully visible */}
@@ -194,7 +206,7 @@ export default function AppTour({ steps, storageKey, onStepChange }: AppTourProp
             {/* Step counter */}
             <div className="px-6">
               <span className="text-xs font-medium text-base-content/40">
-                Langkah {currentStep + 1} dari {steps.length}
+                {t('step')} {currentStep + 1} {t('of')} {steps.length}
               </span>
             </div>
 
@@ -216,22 +228,28 @@ export default function AppTour({ steps, storageKey, onStepChange }: AppTourProp
               <button
                 className="btn btn-ghost btn-xs text-base-content/50 hover:text-base-content/80"
                 onClick={handleSkip}
+                aria-label={t('close')}
               >
-                Tutup
+                {t('close')}
               </button>
 
               <div className="flex gap-2">
                 {!isFirst && (
-                  <button className="btn btn-outline btn-sm" onClick={handlePrev}>
-                    &larr; Kembali
+                  <button
+                    className="btn btn-outline btn-sm"
+                    onClick={handlePrev}
+                    aria-label={t('back')}
+                  >
+                    &larr; {t('back')}
                   </button>
                 )}
 
                 <button
                   className={`btn btn-sm ${isLast ? 'btn-success' : 'btn-primary'}`}
                   onClick={handleNext}
+                  aria-label={isLast ? t('finish') : t('next')}
                 >
-                  {isLast ? 'Selesai' : 'Selanjutnya'}
+                  {isLast ? t('finish') : t('next')}
                   {!isLast && <span className="ml-1">&rarr;</span>}
                 </button>
               </div>

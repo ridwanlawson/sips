@@ -144,7 +144,7 @@ export const Drawer = () => {
       {/* Progress Bar */}
       {isNavigating && (
         <div className="fixed top-0 left-0 right-0 z-[9999]">
-          <div className="h-3 bg-primary animate-pulse shadow-md"></div>
+          <div className="h-1 bg-primary animate-pulse"></div>
         </div>
       )}
       <div className="drawer">
