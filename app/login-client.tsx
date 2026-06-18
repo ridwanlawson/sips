@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { checkAndDownloadApp } from '@/utils/downloadapp';
+
 import { isValidRedirect } from '@/utils/sanitization';
 
 const LOADING_TIPS = [
@@ -28,7 +28,6 @@ export default function Home() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingDownload, setIsCheckingDownload] = useState(false);
   const [tipIndex, setTipIndex] = useState(0);
   const searchParams = useSearchParams();
 
@@ -79,15 +78,6 @@ export default function Home() {
     const interval = setInterval(() => setTipIndex(prev => (prev + 1) % LOADING_TIPS.length), 2200);
     return () => clearInterval(interval);
   }, [isLoading]);
-
-  const handleDownload = async () => {
-    setIsCheckingDownload(true);
-    try {
-      await checkAndDownloadApp();
-    } finally {
-      setIsCheckingDownload(false);
-    }
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,11 +180,7 @@ export default function Home() {
             target="_blank"
             rel="noopener noreferrer"
             href="https://skj.my.id/app_archive.asp"
-            onClick={e => {
-              e.preventDefault();
-              void handleDownload();
-            }}
-            className={`mt-4 inline-flex items-center gap-3 rounded-2xl bg-base-100/80 px-3 py-2 shadow-md animate-bounce transition hover:bg-base-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary outline-none ${isCheckingDownload ? 'opacity-60 cursor-not-allowed' : ''}`}
+            className="mt-4 inline-flex items-center gap-3 rounded-2xl bg-base-100/80 px-3 py-2 shadow-md animate-bounce transition hover:bg-base-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary outline-none"
           >
             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
               <svg
@@ -211,9 +197,6 @@ export default function Home() {
                 Download SIPS Mobile & Geo Lens Now!
               </p>
             </div>
-            {isCheckingDownload && (
-              <span className="loading loading-spinner loading-sm text-primary" />
-            )}
           </a>
         </section>
 
