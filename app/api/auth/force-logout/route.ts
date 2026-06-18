@@ -33,6 +33,10 @@ const COOKIES_TO_DELETE = [
   CookieName.OPT_SECTION,
   CookieName.OPT_GANG,
   CookieName.OPT_TRIPLETS,
+  CookieName.SECURE_USER_LEVEL,
+  CookieName.SECURE_USER_FCBA,
+  CookieName.SECURE_USER_AFDELING,
+  CookieName.SECURE_USER_GANG,
 ];
 
 export async function POST() {
