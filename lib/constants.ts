@@ -85,6 +85,7 @@ export const CookieName = {
   SECURE_USER_AFDELING: 'SECURE_USER_AFDELING',
   SECURE_USER_GANG: 'SECURE_USER_GANG',
   NEXT_LOCALE: 'NEXT_LOCALE',
+  CSRF_TOKEN: 'csrf_token',
   OPT_TRIPLETS: 'opt_triplets',
   OPT_FCBA: 'opt_fcba',
   OPT_SECTION: 'opt_section',

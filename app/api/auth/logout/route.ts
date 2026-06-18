@@ -23,6 +23,7 @@ const COOKIES_TO_DELETE = [
   CookieName.SECURE_USER_FCBA,
   CookieName.SECURE_USER_AFDELING,
   CookieName.SECURE_USER_GANG,
+  CookieName.CSRF_TOKEN,
 ];
 
 export async function POST(): Promise<NextResponse> {
