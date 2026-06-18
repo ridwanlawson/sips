@@ -73,5 +73,15 @@
     "late": "Telat",
     "earlyLeave": "Pulang Awal",
     "absent": "Alpa"
+  },
+  "Tour": {
+    "help": "Bantuan",
+    "helpHint": "Panduan penggunaan halaman",
+    "close": "Tutup",
+    "next": "Selanjutnya",
+    "back": "Kembali",
+    "finish": "Selesai",
+    "step": "Langkah",
+    "of": "dari"
   }
 }

@@ -73,5 +73,15 @@
     "late": "Late",
     "earlyLeave": "Early Leave",
     "absent": "Absent"
+  },
+  "Tour": {
+    "help": "Help",
+    "helpHint": "Page usage guide",
+    "close": "Close",
+    "next": "Next",
+    "back": "Back",
+    "finish": "Finish",
+    "step": "Step",
+    "of": "of"
   }
 }
