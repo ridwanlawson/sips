@@ -479,13 +479,16 @@ export default function Approval() {
 
     setSubmitting(true);
     try {
-      // Map selected rows ke urutan dan tipe data sesuai backend
-      const dataArr = selectedRows.map(row => {
-        return {
-          ID: String(row.id ?? ''),
-          ROWDATA: String(row.rowdata ?? ''),
-        };
-      });
+      // Map selected rows — baca HA dari `items` (source of truth) karena
+      // data-table internal selection masih menyimpan referensi row lama
+      const selectedKeys = new Set(selectedRows.map(r => r._rowKey));
+      const dataArr = items
+        .filter(item => selectedKeys.has(item._rowKey))
+        .map(item => ({
+          ID: String(item.id ?? ''),
+          ROWDATA: String(item.rowdata ?? ''),
+          HA: String(item.ha ?? ''),
+        }));
 
       const payload = { data: dataArr };
 
@@ -781,7 +784,7 @@ export default function Approval() {
         width: '90px',
         cell: r => {
           // jika MDP → jadi input
-          if (userLevel === 'MDP') {
+          if (userLevel === 'MDP' || userLevel === 'ADM') {
             return (
               <input
                 type="number"
