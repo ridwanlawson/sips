@@ -329,6 +329,8 @@ export default function Attendance() {
   const [userLevel, setUserLevel] = useState<UserLevel>('OTHER');
   const [destFcba, setDestFcba] = useState<string>('');
   const [destSection, setDestSection] = useState<string>('');
+  const [destSections, setDestSections] = useState<SectionMaster[]>([]);
+  const [isLoadingDestSections, setIsLoadingDestSections] = useState(false);
   const [optFcba, setOptFcba] = useState<string[]>([]);
 
   const isKemandoranScopedUser = (level: UserLevel) => ['MDP', 'KRT', 'KRP'].includes(level);
@@ -428,7 +430,9 @@ export default function Attendance() {
         try {
           const errBody = await res.clone().json();
           if (errBody?.error) detail = errBody.error;
-        } catch { /* fallback ke HTTP status */ }
+        } catch {
+          /* fallback ke HTTP status */
+        }
         throw new Error(detail);
       }
 
@@ -670,7 +674,10 @@ export default function Attendance() {
         let message = 'Gagal mengambil lokasi. Coba lagi.';
         if (err.code === 1 || err.code === window.GeolocationPositionError?.PERMISSION_DENIED) {
           message = 'Izin lokasi ditolak. Aktifkan izin lokasi di browser.';
-        } else if (err.code === 2 || err.code === window.GeolocationPositionError?.POSITION_UNAVAILABLE) {
+        } else if (
+          err.code === 2 ||
+          err.code === window.GeolocationPositionError?.POSITION_UNAVAILABLE
+        ) {
           message = 'Lokasi tidak tersedia.';
         } else if (err.code === 3 || err.code === window.GeolocationPositionError?.TIMEOUT) {
           message = 'Timeout saat mengambil lokasi.';
@@ -766,11 +773,6 @@ export default function Attendance() {
   const selectedFcbaCodeForMaster = useMemo(
     () => resolveBusinessUnitCode(selFcba || homeFcba || '', buLookups),
     [selFcba, homeFcba, buLookups]
-  );
-
-  const selectedDestFcbaCodeForMaster = useMemo(
-    () => resolveBusinessUnitCode(destFcba || '', buLookups),
-    [destFcba, buLookups]
   );
 
   const { data: masterSections = [], isLoading: isLoadingSections } = useQuery({
@@ -1087,8 +1089,7 @@ export default function Attendance() {
   const destSectionOptions: Option[] = useMemo(() => {
     if (!destFcba) return [];
 
-    const sectionsFromMaster = masterSections
-      .filter(section => section.fcba === selectedDestFcbaCodeForMaster)
+    return destSections
       .filter(section => section.fccode !== selSection)
       .map(section => ({
         value: section.fccode,
@@ -1098,32 +1099,7 @@ export default function Attendance() {
             : section.fccode,
       }))
       .sort((a, b) => a.label.localeCompare(b.label));
-
-    if (sectionsFromMaster.length) return sectionsFromMaster;
-
-    if (!triplets.length) return [];
-
-    // Match by fcba field in triplets (triplets use fcba name, not fccode)
-    // Need to handle both cases: destFcba being fccode or fcba name
-    return Array.from(
-      new Set(
-        triplets
-          .filter(t => {
-            // Direct match with fcba field
-            if (t.fcba === destFcba) return true;
-            // Also try to match by extracting fcba from business units if destFcba is fccode
-            const buMatch = buLookups.codeMap.get(destFcba);
-            if (buMatch && t.fcba === buMatch.fcname) return true;
-            return false;
-          })
-          .map(t => t.sectionname)
-          .filter(section => section !== selSection)
-          .filter(Boolean)
-      )
-    )
-      .sort()
-      .map(v => ({ value: v, label: v }));
-  }, [destFcba, triplets, buLookups, masterSections, selectedDestFcbaCodeForMaster, selSection]);
+  }, [destFcba, destSections, selSection]);
 
   const mandorOptions: Option[] = useMemo(() => {
     const fcba = currentFcbaForForm || form.fcba || homeFcbaCode || homeFcba || '';
@@ -1234,7 +1210,11 @@ export default function Attendance() {
 
   const onChangeDestFcba = (v: string) => {
     setDestFcba(v);
-    setDestSection('');
+    setForm(s => ({ ...s, fcba_destination: v }));
+    if (!v) {
+      setDestSections([]);
+      setDestSection('');
+    }
   };
   const onChangeDestSection = (v: string) => {
     if (v && v === selSection) {
@@ -1242,7 +1222,38 @@ export default function Attendance() {
       return;
     }
     setDestSection(v);
+    setForm(s => ({ ...s, section_destination: v }));
   };
+
+  // Fetch destination sections dari API saat FCBA destination berubah (hanya jika ada nilai)
+  useEffect(() => {
+    if (!destFcba) return;
+
+    const destCode = resolveBusinessUnitCode(destFcba, buLookups);
+
+    setIsLoadingDestSections(true);
+    fetchSections({ fcba: destCode })
+      .then(sections => {
+        setDestSections(sections);
+
+        // Auto-populate section destination
+        const filtered = sections.filter(s => s.fccode !== selSection);
+        if (filtered.length > 0) {
+          const firstSection = filtered[0].fccode;
+          setDestSection(firstSection);
+          setForm(s => ({ ...s, section_destination: firstSection }));
+        } else {
+          setDestSection('');
+        }
+      })
+      .catch(() => {
+        setDestSections([]);
+        setDestSection('');
+      })
+      .finally(() => {
+        setIsLoadingDestSections(false);
+      });
+  }, [destFcba, buLookups, selSection]);
 
   /* ===== Defaults for add mode ===== */
   const setDefaultsForAdd = () => {
@@ -2279,19 +2290,24 @@ export default function Attendance() {
         {/* MODAL ADD/EDIT */}
         {open && (
           <div className="modal modal-open">
-            <div className="modal-box max-w-5xl relative">
-              <button
-                type="button"
-                className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
-                onClick={() => setOpen(false)}
-                aria-label={t('close')}
-                title={t('close')}
-              >
-                ✕
-              </button>
-              <h3 className="font-bold text-xl mb-3">
-                {isEditing ? 'Edit Data Absensi' : 'Tambah Absensi'}
-              </h3>
+            <div className="modal-box max-w-[calc(100vw-1rem)] sm:max-w-5xl mx-2 sm:mx-0 p-2 sm:p-6">
+              {/* Sticky Header */}
+              <div className="sticky top-0 z-10 bg-base-100 pb-2 -mx-2 sm:-mx-6 px-2 sm:px-6 border-b border-base-300">
+                <div className="flex items-start justify-between">
+                  <h3 className="font-bold text-xl">
+                    {isEditing ? 'Edit Data Absensi' : 'Tambah Absensi'}
+                  </h3>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-circle btn-ghost"
+                    onClick={() => setOpen(false)}
+                    aria-label={t('close')}
+                    title={t('close')}
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
               {detailLoading && (
                 <div className="absolute inset-0 bg-base-100/70 backdrop-blur-sm flex items-center justify-center rounded-2xl z-10">
                   <div className="flex items-center gap-3">
@@ -2300,7 +2316,11 @@ export default function Attendance() {
                   </div>
                 </div>
               )}
-              <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-2">
+              <form
+                id="attendance-form"
+                onSubmit={handleSubmit}
+                className="grid grid-cols-12 gap-2 max-h-[80vh] overflow-y-auto"
+              >
                 <div className="col-span-12">
                   <h4 className="text-sm font-semibold text-base-content/80">Informasi Absensi</h4>
                   <div className="mt-1 border-t border-base-300" />
@@ -2387,20 +2407,24 @@ export default function Attendance() {
                   <fieldset className="fieldset col-span-12 md:col-span-4">
                     <legend className="fieldset-legend">Section Destination *</legend>
                     <SearchSelect
+                      key={`section-dest-${destFcba}`}
                       options={destSectionOptions}
                       value={destSection ?? ''}
                       onChange={onChangeDestSection}
                       placeholder={
-                        isLoadingBU
+                        isLoadingBU || isLoadingDestSections
                           ? 'Memuat...'
                           : destFcba
-                            ? isLoadingSections
-                              ? 'Memuat Section tujuan...'
-                              : 'Pilih Section tujuan'
+                            ? destSectionOptions.length > 0
+                              ? 'Pilih Section tujuan'
+                              : 'Tidak ada Section tujuan'
                             : 'Pilih FCBA tujuan dulu'
                       }
                       disabled={
-                        !destFcba || disableUnlessAllowed(false) || isLoadingBU || isLoadingSections
+                        !destFcba ||
+                        disableUnlessAllowed(false) ||
+                        isLoadingBU ||
+                        isLoadingDestSections
                       }
                     />
                   </fieldset>
@@ -2824,12 +2848,16 @@ export default function Attendance() {
                     </div>
                   )}
                 </div>
-
-                <div className="modal-action col-span-12">
+              </form>
+              {/* Sticky Footer */}
+              <div className="sticky bottom-0 z-10 bg-base-100 pt-2 -mx-2 sm:-mx-6 px-2 sm:px-6 border-t border-base-300">
+                <div className="flex flex-wrap gap-2 justify-end">
                   <button type="button" className="btn" onClick={() => setOpen(false)}>
                     Batal
                   </button>
                   <button
+                    type="submit"
+                    form="attendance-form"
                     className={`btn btn-primary ${mutation.isPending ? 'btn-disabled' : ''}`}
                     disabled={mutation.isPending}
                   >
@@ -2842,7 +2870,7 @@ export default function Attendance() {
                     )}
                   </button>
                 </div>
-              </form>
+              </div>
             </div>
           </div>
         )}

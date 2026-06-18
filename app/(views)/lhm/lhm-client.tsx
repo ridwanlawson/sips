@@ -30,6 +30,7 @@ type LhmData = {
   rowdata: string;
   fddate: string;
   kemandoran: string;
+  level_user_detail: string;
   fcba: string;
   afdeling: string;
   employeecode: string;
@@ -539,6 +540,12 @@ export default function Lhm() {
         width: '70px',
         cell: (_r, i) => <span>{i + 1}</span>,
         ignoreRowClick: true,
+      },
+      {
+        name: <span title="Approval">Next Approval</span>,
+        selector: r => r.level_user_detail,
+        sortable: true,
+        width: '150px',
       },
       {
         name: <span title="Tanggal panen">Tanggal</span>,

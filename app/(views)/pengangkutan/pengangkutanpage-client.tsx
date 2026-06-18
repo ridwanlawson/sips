@@ -886,7 +886,8 @@ export default function PengangkutanPage() {
 
   const {
     data: items = [],
-    isLoading: loading,
+    isLoading,
+    isFetching,
     error: queryError,
   } = useQuery({
     queryKey: ['pengangkutan', filters, userLevel, homeFcba, homeSection, homeGang],
@@ -978,6 +979,8 @@ export default function PengangkutanPage() {
     enabled: scopeReady,
   });
 
+  const loading = isLoading || isFetching;
+
   // Show toast on error
   useEffect(() => {
     if (queryError) {
@@ -1039,7 +1042,7 @@ export default function PengangkutanPage() {
               <>
                 <button
                   type="button"
-                  className="btn btn-xs"
+                  className="btn btn-xs btn-outline"
                   onClick={() => openEditRecord(r)}
                   title="Edit pengangkutan"
                 >
@@ -1608,20 +1611,25 @@ export default function PengangkutanPage() {
 
         {open && (
           <div className="modal modal-open">
-            <div className="modal-box max-w-5xl relative">
-              <button
-                type="button"
-                className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
-                onClick={() => setOpen(false)}
-                aria-label="Tutup"
-                title="Tutup"
-              >
-                ✕
-              </button>
-              <h3 className="font-bold text-xl mb-3">
-                {isEditing ? 'Edit Pengangkutan' : 'Tambah Pengangkutan'}
-              </h3>
-              <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-3">
+            <div className="modal-box max-w-[calc(100vw-1rem)] sm:max-w-5xl mx-2 sm:mx-0 p-2 sm:p-6">
+              {/* Sticky Header */}
+              <div className="sticky top-0 z-10 bg-base-100 pb-2 -mx-2 sm:-mx-6 px-2 sm:px-6 border-b border-base-300">
+                <div className="flex items-start justify-between">
+                  <h3 className="font-bold text-xl">
+                    {isEditing ? 'Edit Pengangkutan' : 'Tambah Pengangkutan'}
+                  </h3>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-circle btn-ghost"
+                    onClick={() => setOpen(false)}
+                    aria-label="Tutup"
+                    title="Tutup"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+              <form id="pengangkutan-form" onSubmit={handleSubmit} className="grid grid-cols-12 gap-3 max-h-[80vh] overflow-y-auto">
                 <fieldset className="fieldset col-span-12 md:col-span-4">
                   <legend className="fieldset-legend">No Pengangkutan *</legend>
                   <input
@@ -2019,26 +2027,30 @@ export default function PengangkutanPage() {
                   </fieldset>
                 </div>
 
-                <div className="col-span-12 flex flex-wrap gap-2 justify-end pt-3 border-t border-base-300">
+              </form>
+              {/* Sticky Footer */}
+              <div className="sticky bottom-0 z-10 bg-base-100 pt-2 -mx-2 sm:-mx-6 px-2 sm:px-6 border-t border-base-300">
+                <div className="flex flex-wrap gap-2 justify-end">
                   <button type="button" className="btn btn-outline" onClick={() => setOpen(false)}>
                     Batal
                   </button>
                   <button
                     type="submit"
+                    form="pengangkutan-form"
                     className="btn btn-primary"
                     disabled={submitLoading || shouldDisableForm}
                   >
                     {submitLoading ? 'Menyimpan...' : isEditing ? 'Simpan Perubahan' : 'Simpan'}
                   </button>
                 </div>
-              </form>
+              </div>
             </div>
           </div>
         )}
 
         {deleteOpen && (
           <div className="modal modal-open">
-            <div className="modal-box max-w-lg relative">
+            <div className="modal-box w-full sm:max-w-lg mx-2 sm:mx-0">
               <button
                 type="button"
                 className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"

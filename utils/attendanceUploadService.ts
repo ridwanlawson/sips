@@ -73,7 +73,7 @@ export async function fetchAttendanceUpload(
     }
   });
 
-  console.log('Fetching from:', url.toString());
+  // console.log('Fetching from:', url.toString());
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -86,11 +86,11 @@ export async function fetchAttendanceUpload(
     credentials: 'include',
   });
 
-  console.log('Response status:', response.status);
+  // console.log('Response status:', response.status);
 
   // Parse response JSON terlebih dahulu
   const data = await response.json();
-  console.log('Response data:', data);
+  // console.log('Response data:', data);
 
   // Throw only when the failure is not an empty-data response
   if (!response.ok) {

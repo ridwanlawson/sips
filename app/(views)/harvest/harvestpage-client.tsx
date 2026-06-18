@@ -484,7 +484,8 @@ export default function HarvestPage() {
 
   const {
     data: items = [],
-    isLoading: loading,
+    isLoading,
+    isFetching,
     error: queryError,
   } = useQuery({
     queryKey: ['harvest', filters, userLevel, homeFcba, homeSection, homeGang],
@@ -570,6 +571,8 @@ export default function HarvestPage() {
     },
     enabled: !!homeFcba || userLevel === 'ADM',
   });
+
+  const loading = isLoading || isFetching;
 
   // Show toast on error
   useEffect(() => {
@@ -680,7 +683,7 @@ export default function HarvestPage() {
     queryKey: ['businessUnits'],
     queryFn: async () => {
       try {
-        const bu = await fetchBusinessUnits();
+        const bu = await fetchBusinessUnits({ fctype: 'E' });
         localStorage.setItem('business_units', JSON.stringify(bu));
         return bu;
       } catch (err) {
@@ -709,7 +712,7 @@ export default function HarvestPage() {
       if (userLevel === 'AST') {
         if (homeFcba) params.append('fcba', homeFcba);
         if (homeSection) params.append('sectionname', homeSection);
-      } else if (userLevel === 'ADM' || userLevel === 'MGR' || userLevel === 'KSI') {
+      } else if (userLevel === 'MGR' || userLevel === 'KSI') {
         // ADM, MGR, KSI get employees by fcba (can select afdeling in UI)
         if (homeFcba) params.append('fcba', homeFcba);
       }
@@ -1216,7 +1219,9 @@ export default function HarvestPage() {
       params.append('tanggal', form.tanggal);
 
       // Filter berdasarkan fcba login user
-      if (homeFcba) params.append('fcba', homeFcba);
+      if (['KRP', 'MDP', 'KRA', 'MD1', 'AST', 'KSI', 'MGR'].includes(userLevel)) {
+        if (homeFcba) params.append('fcba', homeFcba);
+      }
 
       // Filter berdasarkan level user
       if (['KRP', 'MDP', 'KRA', 'MD1', 'AST'].includes(userLevel)) {
@@ -2180,35 +2185,38 @@ export default function HarvestPage() {
       {/* Modal Form */}
       {open && (
         <div className="modal modal-open">
-          <div className="modal-box max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-start justify-between mb-4">
-              <h3 className="font-bold text-lg">
-                {isEditing ? 'Edit Data Panen' : 'Tambah Data Panen'}
-              </h3>
-              <button
-                type="button"
-                className="btn btn-sm btn-circle btn-ghost"
-                onClick={() => {
-                  setOpen(false);
-                  setPreview('');
-                }}
-                aria-label="Tutup"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+          <div className="modal-box max-w-[calc(100vw-1rem)] sm:max-w-4xl mx-2 sm:mx-0 p-2 sm:p-6">
+            {/* Sticky Header */}
+            <div className="sticky top-0 z-10 bg-base-100 pb-2 -mx-2 sm:-mx-6 px-2 sm:px-6 border-b border-base-300">
+              <div className="flex items-start justify-between">
+                <h3 className="font-bold text-lg">
+                  {isEditing ? 'Edit Data Panen' : 'Tambah Data Panen'}
+                </h3>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-circle btn-ghost"
+                  onClick={() => {
+                    setOpen(false);
+                    setPreview('');
+                  }}
+                  aria-label="Tutup"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
             </div>
 
             {detailLoading ? (
@@ -2217,7 +2225,7 @@ export default function HarvestPage() {
                 <p className="mt-2">Memuat detail...</p>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-2">
+              <form id="harvest-form" onSubmit={handleSubmit} className="grid grid-cols-12 gap-2 max-h-[80vh] overflow-y-auto">
                 <div className="col-span-12">
                   <h4 className="text-sm font-semibold text-base-content/80">Informasi Absensi</h4>
                   <div className="mt-1 border-t border-base-300" />
@@ -2703,31 +2711,38 @@ export default function HarvestPage() {
                   </fieldset>
                 </div>
 
-                {/* Actions */}
-                <div className="modal-action col-span-12">
-                  <button
-                    type="button"
-                    className="btn"
-                    onClick={() => {
-                      setOpen(false);
-                      setPreview('');
-                    }}
-                  >
-                    Batal
-                  </button>
-                  <button type="submit" className="btn btn-primary" disabled={mutation.isPending}>
-                    {mutation.isPending ? (
-                      <>
-                        <span className="loading loading-spinner loading-sm"></span>
-                        Menyimpan...
-                      </>
-                    ) : (
-                      'Simpan'
-                    )}
-                  </button>
-                </div>
               </form>
             )}
+            {/* Sticky Footer */}
+            <div className="sticky bottom-0 z-10 bg-base-100 pt-2 -mx-2 sm:-mx-6 px-2 sm:px-6 border-t border-base-300">
+              <div className="flex flex-wrap gap-2 justify-end">
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => {
+                    setOpen(false);
+                    setPreview('');
+                  }}
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  form="harvest-form"
+                  className="btn btn-primary"
+                  disabled={mutation.isPending}
+                >
+                  {mutation.isPending ? (
+                    <>
+                      <span className="loading loading-spinner loading-sm"></span>
+                      Menyimpan...
+                    </>
+                  ) : (
+                    'Simpan'
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
           <div
             className="modal-backdrop"
@@ -2741,7 +2756,7 @@ export default function HarvestPage() {
 
       {deleteOpen && (
         <div className="modal modal-open">
-          <div className="modal-box max-w-lg">
+          <div className="modal-box w-full sm:max-w-lg mx-2 sm:mx-0">
             <h3 className="font-bold text-lg">Hapus Data Panen</h3>
             <p className="mt-2 text-sm text-base-content/70">
               Upload lampiran BA Delete dalam format PDF sebelum menghapus data.

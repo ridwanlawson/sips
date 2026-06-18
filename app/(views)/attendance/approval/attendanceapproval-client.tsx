@@ -583,11 +583,19 @@ export default function AttendanceApproval() {
           </div>
           <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-end">
             <button
-              className="btn btn-outline btn-sm"
+              className={`btn btn-sm btn-outline ${loading ? 'btn-disabled' : ''}`}
               onClick={() => fetchList()}
+              disabled={loading}
               title="Refresh data absensi pending"
             >
-              Refresh
+              {loading ? (
+                <>
+                  <span className="loading loading-spinner loading-xs" />
+                  Memuat...
+                </>
+              ) : (
+                'Refresh'
+              )}
             </button>
           </div>
         </div>
