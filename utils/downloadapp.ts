@@ -4,6 +4,7 @@
 
 import { cookieStore } from '@/utils/cookieStore';
 import toast from 'react-hot-toast';
+import { postWithCsrf } from '@/lib/fetchWithCsrf';
 
 interface DownloadCheckResponse {
   download_url?: string;
@@ -20,15 +21,13 @@ export async function checkAndDownloadApp() {
   const endpoint = '/api/app-update/check';
 
   try {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
+    const response = await postWithCsrf(
+      endpoint,
+      { action: 'check', platform: 'android', app_name: 'sipsmobile' },
+      {
         Authorization: token ? `Bearer ${token}` : '',
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify({ action: 'check', platform: 'android', app_name: 'sipsmobile' }),
-    });
+      }
+    );
 
     const data: DownloadCheckResponse = await response.json();
 
