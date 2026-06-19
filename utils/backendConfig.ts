@@ -1,11 +1,11 @@
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.BACKEND_URL || '';
 const isProduction = process.env.NODE_ENV === 'production';
 
-// Warn jika production tapi URL tidak HTTPS
+// Enforce HTTPS for BACKEND_URL in production (CWE-319)
 if (isProduction && backendUrl && !backendUrl.startsWith('https://')) {
-  console.warn(
-    '⚠️ SECURITY WARNING: BACKEND_URL should use HTTPS in production. ' +
-      'Plaintext HTTP will expose passwords and tokens to MITM attacks.'
+  throw new Error(
+    '🛑 SECURITY ERROR: BACKEND_URL must use HTTPS in production. ' +
+      'Plaintext HTTP is forbidden as it exposes sensitive credentials to MITM attacks.'
   );
 }
 

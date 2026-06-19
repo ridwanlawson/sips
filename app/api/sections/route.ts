@@ -11,19 +11,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
   }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // 🛡️  GUARD: Jangan hapus block ini. Parameter `fcba` sengaja dipertahankan
-  //     eksplisit untuk keperluan destination/assistensi, meskipun
-  //     applyUserDataScope akan meng-override-nya dengan FCBA user.
-  // ────────────────────────────────────────────────────────────────────────────
-  const hasExplicitFcba = req.nextUrl.searchParams.has('fcba');
-
   const params = applyUserDataScope(req, new URLSearchParams(req.nextUrl.searchParams.toString()));
-
-  if (hasExplicitFcba) {
-    params.set('fcba', req.nextUrl.searchParams.get('fcba')!);
-  }
-  // ────────────────────────────────────────────────────────────────────────────
 
   // Filter allowed params for upstream
   const upstreamParams = new URLSearchParams();
