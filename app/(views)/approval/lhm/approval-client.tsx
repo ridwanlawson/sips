@@ -53,6 +53,7 @@ type LhmData = {
   jumlahdenda: string;
   totalalljjg: string;
   basis: string;
+  basis_ha: string;
   rpbasis: string;
   premilv1: string;
   rate1: string;
@@ -488,6 +489,9 @@ export default function Approval() {
           ID: String(item.id ?? ''),
           ROWDATA: String(item.rowdata ?? ''),
           HA: String(item.ha ?? ''),
+          BASIS_HA: String(item.basis_ha ?? ''),
+          FCBA: String(item.fcba ?? ''),
+          FDDATE: String(item.fddate ?? ''),
         }));
 
       const payload = { data: dataArr };
