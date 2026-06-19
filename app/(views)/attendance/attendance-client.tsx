@@ -18,6 +18,7 @@ import { SearchSelect, type Option } from '@/app/components/search-select';
 import { EmptyState } from '@/app/components/empty-state';
 import { useSearchShortcut } from '@/hooks/useSearchShortcut';
 import { useLocale } from '@/hooks/useLocale';
+import { formatPerfDate } from '@/utils/perf-formatter';
 
 /* =========================
    T Y P E S
