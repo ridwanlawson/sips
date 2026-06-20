@@ -11,7 +11,8 @@ import { getFilterCriteria, getLockedFields } from '@/utils/filterHelper';
 import { formatPerfNumber, formatPerfDate } from '@/utils/perf-formatter';
 import { centerHeaderStyle } from '@/utils/tableHelper';
 import { fetchBusinessUnits } from '@/utils/businessUnitService';
-import { fetchAttendanceUpload } from '@/utils/attendanceUploadService';
+import { SearchSelect, type Option } from '@/app/components/search-select';
+import { extractArrayData } from '@/utils/apiHelpers';
 import { exportJsonToCsv } from '@/utils/exportCsv';
 import { useLocale } from '@/hooks/useLocale';
 import { useTranslations } from 'next-intl';
@@ -133,6 +134,7 @@ type DeleteTarget = {
 
 type MasterUser = {
   fccode?: string;
+  idkaryawan?: string;
   fullname?: string;
   fcba?: string;
   afdeling?: string;
@@ -281,15 +283,19 @@ export default function PengangkutanPage() {
   const [deleteFile, setDeleteFile] = useState<File | null>(null);
 
   const [pabrikOptions, setPabrikOptions] = useState<Array<{ fccode: string; fcname: string }>>([]);
-  const [tkbmOptions, setTkbmOptions] = useState<Array<{ fccode: string; fullname: string }>>([]);
   const [driverOptions, setDriverOptions] = useState<Array<{ fccode: string; fullname: string }>>(
     []
   );
-  const [keraniOptions, setKeraniOptions] = useState<Array<MasterUser>>([]);
   const [harvestMatched, setHarvestMatched] = useState(false);
-  const [harvestSource, setHarvestSource] = useState<{ fcba: string; afdeling: string } | null>(
-    null
-  );
+  const [harvestSource, setHarvestSource] = useState<{
+    fcba: string;
+    afdeling: string;
+    fieldcode: string;
+    tph: string;
+    totaljanjang: string;
+    output: string;
+    brondolan: string;
+  } | null>(null);
   const [harvestStatus, setHarvestStatus] = useState('');
 
   const deleteFileRef = useRef<HTMLInputElement | null>(null);
@@ -318,7 +324,9 @@ export default function PengangkutanPage() {
       try {
         const [pabrikRows, driverRows] = await Promise.all([
           fetchBusinessUnits({ fctype: 'M' }),
-          fetchMasterUsers({ fcba: 'CNT' }),
+          fetch('/api/karyawans?fcba=CNT', { credentials: 'include' }).then(r =>
+            r.ok ? r.json() : { data: [] }
+          ),
         ]);
 
         setPabrikOptions(
@@ -328,11 +336,11 @@ export default function PengangkutanPage() {
           }))
         );
         setDriverOptions(
-          driverRows
+          extractArrayData<{ fccode?: string; fcname?: string }>(driverRows)
             .filter(row => row.fccode)
             .map(row => ({
               fccode: String(row.fccode),
-              fullname: String(row.fullname || ''),
+              fullname: String(row.fcname || ''),
             }))
         );
       } catch (err) {
@@ -342,38 +350,52 @@ export default function PengangkutanPage() {
     init();
   }, []);
 
-  useEffect(() => {
-    const loadKeraniOptions = async () => {
-      try {
-        const params: Record<string, string> = {
-          level: 'KRT',
-          fcba: form.fcba || homeFcba,
-          afdeling: form.afdeling || homeSection,
-        };
-        const hasFilter = params.fcba || params.afdeling;
-        if (!hasFilter) {
-          setKeraniOptions([]);
-          return;
-        }
-        const rows = await fetchMasterUsers(params);
-        setKeraniOptions(
-          rows
-            .filter(row => row.fccode)
-            .map(row => ({
-              fccode: String(row.fccode),
-              fullname: String(row.fullname || ''),
-              fcba: String(row.fcba || ''),
-              afdeling: String(row.afdeling || ''),
-              gangcode: String(row.gangcode || ''),
-            }))
-        );
-      } catch (err) {
-        console.error('Failed fetching kerani options', err);
-      }
-    };
+  const { data: keraniOptions = [] } = useQuery({
+    queryKey: ['kerani-options', form.fcba, homeFcba],
+    queryFn: async () => {
+      const fcba = form.fcba || homeFcba;
+      if (!fcba) return [];
+      const rows = await fetchMasterUsers({ level: 'KRT', fcba });
+      return rows
+        .filter(row => row.idkaryawan)
+        .map(row => ({
+          idkaryawan: String(row.idkaryawan),
+          fullname: String(row.fullname || ''),
+          fcba: String(row.fcba || ''),
+          afdeling: String(row.afdeling || ''),
+          gangcode: String(row.gangcode || ''),
+        }));
+    },
+    enabled: !!(form.fcba || homeFcba) && scopeReady,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
 
-    loadKeraniOptions();
-  }, [form.fcba, form.afdeling, homeFcba, homeSection]);
+  const { data: kendaraanData = [] } = useQuery({
+    queryKey: ['sips-kendaraan'],
+    queryFn: async () => {
+      const url = new URL('/api/master/sips-kendaraan', window.location.origin);
+      url.searchParams.append('vehiclegroupcode', 'DT,TR,MB');
+      const res = await fetch(url.toString(), { credentials: 'include' });
+      if (!res.ok) return [];
+      const json = await res.json();
+      return extractArrayData<{ fccode?: string; fcname?: string }>(json);
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+
+  const kendaraanOptionsAsOptions: Option[] = useMemo(
+    () =>
+      kendaraanData
+        .filter(row => row.fccode)
+        .map(row => ({
+          value: String(row.fccode),
+          label: `${String(row.fccode)} - ${String(row.fcname || '')}`,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [kendaraanData]
+  );
 
   useEffect(() => {
     if (!form.nodokumen?.trim()) {
@@ -411,10 +433,23 @@ export default function PengangkutanPage() {
         const first = json.data[0];
         const harvestFcba = String(first.fcba || '');
         const harvestAfdeling = String(first.afdeling || '');
-        setHarvestSource({ fcba: harvestFcba, afdeling: harvestAfdeling });
+        const harvestFieldcode = String(first.fieldcode || '');
+        const harvestTph = String(first.tph || '');
+        const harvestTotaljanjang = String(first.totaljanjang || first.output || '0');
+        const harvestOutput = String(first.output || '0');
+        const harvestBrondolan = String(first.brondolan || '0');
+        setHarvestSource({
+          fcba: harvestFcba,
+          afdeling: harvestAfdeling,
+          fieldcode: harvestFieldcode,
+          tph: harvestTph,
+          totaljanjang: harvestTotaljanjang,
+          output: harvestOutput,
+          brondolan: harvestBrondolan,
+        });
 
         const selectedKerani = keraniOptions.find(
-          option => option.fccode === form.kode_karyawan_kerani
+          option => option.idkaryawan === form.kode_karyawan_kerani
         );
 
         if (selectedKerani) {
@@ -425,6 +460,11 @@ export default function PengangkutanPage() {
               afdeling: harvestAfdeling,
               fcba_destination: '',
               afdeling_destination: '',
+              fieldcode: harvestFieldcode,
+              tph: harvestTph,
+              totaljanjang: harvestTotaljanjang,
+              output: harvestOutput,
+              brondolan: harvestBrondolan,
             }));
           } else {
             setForm(current => ({
@@ -433,6 +473,11 @@ export default function PengangkutanPage() {
               afdeling: selectedKerani.afdeling || current.afdeling || '',
               fcba_destination: harvestFcba,
               afdeling_destination: harvestAfdeling,
+              fieldcode: harvestFieldcode,
+              tph: harvestTph,
+              totaljanjang: harvestTotaljanjang,
+              output: harvestOutput,
+              brondolan: harvestBrondolan,
             }));
           }
         } else {
@@ -442,6 +487,11 @@ export default function PengangkutanPage() {
             afdeling: harvestAfdeling,
             fcba_destination: '',
             afdeling_destination: '',
+            fieldcode: harvestFieldcode,
+            tph: harvestTph,
+            totaljanjang: harvestTotaljanjang,
+            output: harvestOutput,
+            brondolan: harvestBrondolan,
           }));
         }
 
@@ -463,9 +513,8 @@ export default function PengangkutanPage() {
   }, [form.nodokumen, form.kode_karyawan_kerani, keraniOptions]);
 
   useEffect(() => {
-    let ignore = false;
     const selectedKerani = keraniOptions.find(
-      option => option.fccode === form.kode_karyawan_kerani
+      option => option.idkaryawan === form.kode_karyawan_kerani
     );
 
     if (harvestMatched && harvestSource) {
@@ -497,51 +546,8 @@ export default function PengangkutanPage() {
         afdeling: current.afdeling || selectedKerani.afdeling || '',
       }));
     }
-
-    const loadTkbmOptions = async () => {
-      const params = {
-        tanggal: form.tanggal,
-        fcba: selectedKerani?.fcba || form.fcba || homeFcba,
-        afdeling: selectedKerani?.afdeling || form.afdeling || homeSection,
-        gangcode: selectedKerani?.gangcode || homeGang,
-      };
-
-      if (!params.tanggal || !params.fcba || !params.afdeling || !params.gangcode) {
-        setTkbmOptions([]);
-        return;
-      }
-
-      try {
-        const response = await fetchAttendanceUpload(params);
-        if (ignore) return;
-        if (response.success && Array.isArray(response.data)) {
-          const uniqueData = Array.from(
-            new Map(response.data.map(item => [item.employeecode, item])).values()
-          );
-          setTkbmOptions(
-            uniqueData
-              .filter(item => item.employeecode)
-              .map(item => ({
-                fccode: String(item.employeecode),
-                fullname: String(item.remarks || item.jobcode || ''),
-              }))
-          );
-        } else {
-          setTkbmOptions([]);
-        }
-      } catch (err) {
-        console.error('Failed to load TKBM options', err);
-        if (!ignore) setTkbmOptions([]);
-      }
-    };
-
-    loadTkbmOptions();
-    return () => {
-      ignore = true;
-    };
   }, [
     form.kode_karyawan_kerani,
-    form.tanggal,
     form.fcba,
     form.afdeling,
     keraniOptions,
@@ -549,8 +555,65 @@ export default function PengangkutanPage() {
     harvestSource,
     homeFcba,
     homeSection,
-    homeGang,
   ]);
+
+  useEffect(() => {
+    if (isEditing || !harvestMatched || !form.type_pengangkutan || !form.tanggal) return;
+
+    const fcba = harvestSource?.fcba || form.fcba;
+    const afdeling = harvestSource?.afdeling || form.afdeling;
+    if (!fcba || !afdeling) return;
+
+    const now = new Date(form.tanggal);
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = String(now.getFullYear()).slice(-2);
+    const afdeling2 = afdeling.slice(-2);
+
+    const typeDigit = form.type_pengangkutan;
+
+    const noPengPrefix = `${fcba}${typeDigit}${afdeling2}${month}${year}`;
+    const noSpbPrefix = `SPB${fcba}${afdeling2}${month}${year}`;
+
+    const generate = async () => {
+      const p = new URLSearchParams();
+      const firstDay = `${now.getFullYear()}-${month}-01`;
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+      p.set('tanggal', firstDay);
+      p.set('tanggal_end', lastDay);
+      const res = await fetch(`/api/pengangkutans?${p.toString()}`, {
+        credentials: 'include',
+      });
+      if (!res.ok) return;
+      const json = await res.json();
+      const rows = (json.data || []) as Array<{
+        nopengangkutan?: string;
+        nospb?: string;
+      }>;
+
+      let maxNoPeng = 0;
+      let maxNoSpb = 0;
+      for (const row of rows) {
+        const rp = parseInt((row.nopengangkutan || '').slice(-4), 10);
+        if (!Number.isNaN(rp) && rp > maxNoPeng) maxNoPeng = rp;
+        const rs = parseInt((row.nospb || '').slice(-4), 10);
+        if (!Number.isNaN(rs) && rs > maxNoSpb) maxNoSpb = rs;
+      }
+
+      const nextNoPeng = maxNoPeng + 1;
+      const nextNoSpb = maxNoSpb + 1;
+
+      setForm(current => ({
+        ...current,
+        nopengangkutan: `${noPengPrefix}${String(nextNoPeng).padStart(4, '0')}`,
+        nospb:
+          typeDigit === '2'
+            ? `${noSpbPrefix}${String(nextNoSpb).padStart(4, '0')}`
+            : current.nospb,
+      }));
+    };
+
+    generate();
+  }, [isEditing, harvestMatched, form.type_pengangkutan, form.tanggal, form.fcba, form.afdeling, harvestSource]);
 
   // Initialize user defaults
   useEffect(() => {
@@ -594,9 +657,12 @@ export default function PengangkutanPage() {
   }, [scopeReady, userLevel, homeFcba, homeSection, homeGang]);
 
   const resetForm = () => {
+    const now = new Date();
+    const etd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     setForm({
       ...initialForm,
       tanggal: getTodayISO(),
+      etd,
       fcba: isFcbaLocked ? homeFcba : '',
       afdeling: isAfdelingLocked ? homeSection : '',
     });
@@ -837,6 +903,9 @@ export default function PengangkutanPage() {
   );
 
   const shouldDisableForm = !!form.nodokumen.trim() && !harvestMatched;
+  const formDisabled = !form.type_pengangkutan || shouldDisableForm;
+  const formBelowNodokumenDisabled =
+    !form.type_pengangkutan || !form.nodokumen?.trim() || shouldDisableForm;
 
   const handleExport = () => {
     if (items.length === 0) {
@@ -980,6 +1049,136 @@ export default function PengangkutanPage() {
   });
 
   const loading = isLoading || isFetching;
+
+  // Resolve effective TKBM attendance params from selected kerani (avoid duplicate fetches during auto-fill)
+  const tkbmAttendanceParams = useMemo(() => {
+    const selectedKerani = keraniOptions.find(
+      option => option.idkaryawan === form.kode_karyawan_kerani
+    );
+    return {
+      tanggal: form.tanggal,
+      fcba: selectedKerani?.fcba || form.fcba || homeFcba,
+      afdeling: selectedKerani?.afdeling || form.afdeling || homeSection,
+      gangcode: selectedKerani?.gangcode || homeGang,
+    };
+  }, [
+    form.tanggal,
+    form.kode_karyawan_kerani,
+    form.fcba,
+    form.afdeling,
+    keraniOptions,
+    homeFcba,
+    homeSection,
+    homeGang,
+  ]);
+
+  // TKBM attendance data — fetched from /api/attendance only when kerani is selected
+  const { data: tkbmAttendanceData = [], isLoading: isLoadingTkbm } = useQuery({
+    queryKey: [
+      'tkbm-attendance',
+      tkbmAttendanceParams.tanggal,
+      tkbmAttendanceParams.fcba,
+      tkbmAttendanceParams.afdeling,
+      tkbmAttendanceParams.gangcode,
+    ],
+    queryFn: async () => {
+      const { tanggal, fcba, afdeling, gangcode } = tkbmAttendanceParams;
+      if (!tanggal || !fcba || !afdeling || !gangcode) return [];
+
+      const params = new URLSearchParams();
+      params.append('tanggal', tanggal);
+      params.append('fcba', fcba);
+      params.append('afdeling', afdeling);
+      params.append('kemandoran', gangcode);
+
+      const res = await fetch(`/api/attendance?${params.toString()}`, {
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        if (res.status === 404) return [];
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const json = await res.json();
+      const rowsRaw = extractArrayData<Record<string, unknown>>(json);
+
+      const mapEmp = new Map<string, { fccode: string; fullname?: string }>();
+      for (const it of rowsRaw) {
+        const fccode = String(it.kode_karyawan ?? it.fccode ?? '').trim();
+        if (!fccode) continue;
+        if (!mapEmp.has(fccode)) {
+          mapEmp.set(fccode, {
+            fccode,
+            fullname: typeof it.namakaryawan === 'string' ? it.namakaryawan : undefined,
+          });
+        }
+      }
+      return Array.from(mapEmp.values());
+    },
+    enabled: !!form.tanggal && !!form.kode_karyawan_kerani && (!!homeFcba || userLevel === 'ADM'),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+  });
+
+  const tkbmOptions: Option[] = useMemo(() => {
+    if (!tkbmAttendanceData.length) return [];
+    return tkbmAttendanceData
+      .map(e => ({
+        value: e.fccode,
+        label: e.fullname ? `${e.fccode} - ${e.fullname}` : e.fccode,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [tkbmAttendanceData]);
+
+  const tkbmOptions2 = useMemo(
+    () => tkbmOptions.filter(o => o.value !== form.tkbm1),
+    [tkbmOptions, form.tkbm1]
+  );
+  const tkbmOptions3 = useMemo(
+    () => tkbmOptions.filter(o => o.value !== form.tkbm1 && o.value !== form.tkbm2),
+    [tkbmOptions, form.tkbm1, form.tkbm2]
+  );
+  const tkbmOptions4 = useMemo(
+    () =>
+      tkbmOptions.filter(
+        o => o.value !== form.tkbm1 && o.value !== form.tkbm2 && o.value !== form.tkbm3
+      ),
+    [tkbmOptions, form.tkbm1, form.tkbm2, form.tkbm3]
+  );
+  const tkbmOptions5 = useMemo(
+    () =>
+      tkbmOptions.filter(
+        o =>
+          o.value !== form.tkbm1 &&
+          o.value !== form.tkbm2 &&
+          o.value !== form.tkbm3 &&
+          o.value !== form.tkbm4
+      ),
+    [tkbmOptions, form.tkbm1, form.tkbm2, form.tkbm3, form.tkbm4]
+  );
+
+  const keraniOptionsAsOptions: Option[] = useMemo(
+    () =>
+      keraniOptions
+        .filter(k => k.idkaryawan)
+        .map(k => ({
+          value: String(k.idkaryawan),
+          label: k.fullname ? `${k.idkaryawan} - ${k.fullname}` : String(k.idkaryawan),
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [keraniOptions]
+  );
+
+  const driverOptionsAsOptions: Option[] = useMemo(
+    () =>
+      driverOptions
+        .filter(d => d.fccode)
+        .map(d => ({
+          value: d.fccode,
+          label: `${d.fccode} - ${d.fullname}`,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [driverOptions]
+  );
 
   // Show toast on error
   useEffect(() => {
@@ -1629,7 +1828,77 @@ export default function PengangkutanPage() {
                   </button>
                 </div>
               </div>
-              <form id="pengangkutan-form" onSubmit={handleSubmit} className="grid grid-cols-12 gap-3 max-h-[80vh] overflow-y-auto">
+              <form
+                id="pengangkutan-form"
+                onSubmit={handleSubmit}
+                className="grid grid-cols-12 gap-3 max-h-[80vh] overflow-y-auto"
+              >
+                <div className="col-span-12 grid grid-cols-12 gap-3">
+                  <fieldset className="fieldset col-span-12 md:col-span-3">
+                    <legend className="fieldset-legend">Tanggal *</legend>
+                    <input
+                      type="date"
+                      className="input input-bordered w-full"
+                      value={form.tanggal}
+                      onChange={e => setForm(s => ({ ...s, tanggal: e.target.value }))}
+                      disabled={formDisabled}
+                      required
+                    />
+                  </fieldset>
+                  <fieldset className="fieldset col-span-12 md:col-span-2">
+                    <legend className="fieldset-legend">Tipe Pengangkutan *</legend>
+                    <select
+                      className="select select-bordered w-full"
+                      value={form.type_pengangkutan}
+                      onChange={e => setForm(s => ({ ...s, type_pengangkutan: e.target.value }))}
+                      disabled={shouldDisableForm}
+                      required
+                    >
+                      <option value="">Pilih tipe</option>
+                      <option value="1">Langsir</option>
+                      <option value="2">Direct</option>
+                    </select>
+                  </fieldset>
+                  <fieldset className="fieldset col-span-12 md:col-span-3">
+                    <legend className="fieldset-legend">Pabrik Tujuan</legend>
+                    <select
+                      className="select select-bordered w-full"
+                      value={form.pabrik_tujuan}
+                      onChange={e => setForm(s => ({ ...s, pabrik_tujuan: e.target.value }))}
+                      disabled={formDisabled}
+                      required
+                    >
+                      <option value="">Pilih pabrik</option>
+                      {pabrikOptions.map(option => (
+                        <option key={option.fccode} value={option.fccode}>
+                          {option.fccode} - {option.fcname}
+                        </option>
+                      ))}
+                    </select>
+                  </fieldset>
+                  <fieldset className="fieldset col-span-12 md:col-span-4">
+                    <legend className="fieldset-legend">Kerani</legend>
+                    <SearchSelect
+                      options={keraniOptionsAsOptions}
+                      value={form.kode_karyawan_kerani}
+                      onChange={v => setForm(s => ({ ...s, kode_karyawan_kerani: v }))}
+                       placeholder={keraniOptions.length === 0 ? 'Tidak ada Kerani' : 'Pilih Kerani'}
+                      required
+                      translationNamespace="Transport"
+                    />
+                  </fieldset>
+                </div>
+                <fieldset className="fieldset col-span-12 md:col-span-4">
+                  <legend className="fieldset-legend">No Dokumen</legend>
+                  <input
+                    type="text"
+                    className="input input-bordered w-full"
+                    value={form.nodokumen}
+                    onChange={e => setForm(s => ({ ...s, nodokumen: e.target.value }))}
+                    disabled={formDisabled}
+                    required
+                  />
+                </fieldset>
                 <fieldset className="fieldset col-span-12 md:col-span-4">
                   <legend className="fieldset-legend">No Pengangkutan *</legend>
                   <input
@@ -1637,7 +1906,7 @@ export default function PengangkutanPage() {
                     className="input input-bordered w-full"
                     value={form.nopengangkutan}
                     onChange={e => setForm(s => ({ ...s, nopengangkutan: e.target.value }))}
-                    disabled={shouldDisableForm}
+                    disabled={formBelowNodokumenDisabled}
                     required
                   />
                 </fieldset>
@@ -1648,16 +1917,7 @@ export default function PengangkutanPage() {
                     className="input input-bordered w-full"
                     value={form.nospb}
                     onChange={e => setForm(s => ({ ...s, nospb: e.target.value }))}
-                    disabled={shouldDisableForm}
-                  />
-                </fieldset>
-                <fieldset className="fieldset col-span-12 md:col-span-4">
-                  <legend className="fieldset-legend">No Dokumen</legend>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full"
-                    value={form.nodokumen}
-                    onChange={e => setForm(s => ({ ...s, nodokumen: e.target.value }))}
+                    disabled={formBelowNodokumenDisabled}
                   />
                 </fieldset>
                 {form.nodokumen.trim() ? (
@@ -1667,39 +1927,191 @@ export default function PengangkutanPage() {
                     </p>
                   </div>
                 ) : null}
-                <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">Tanggal *</legend>
-                  <input
-                    type="date"
-                    className="input input-bordered w-full"
-                    value={form.tanggal}
-                    onChange={e => setForm(s => ({ ...s, tanggal: e.target.value }))}
-                    disabled={shouldDisableForm}
+                <fieldset className="fieldset col-span-12 md:col-span-6">
+                  <legend className="fieldset-legend">Kode Kendaraan</legend>
+                  <SearchSelect
+                    options={kendaraanOptionsAsOptions}
+                    value={form.kode_kendaraan}
+                    onChange={v => setForm(s => ({ ...s, kode_kendaraan: v }))}
+                    placeholder={
+                      kendaraanData.length === 0 ? 'Tidak ada kendaraan' : 'Pilih Kendaraan'
+                    }
+                    disabled={formBelowNodokumenDisabled}
                     required
+                    translationNamespace="Transport"
                   />
                 </fieldset>
-                <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">Tipe Pengangkutan *</legend>
-                  <select
-                    className="select select-bordered w-full"
-                    value={form.type_pengangkutan}
-                    onChange={e => setForm(s => ({ ...s, type_pengangkutan: e.target.value }))}
-                    disabled={shouldDisableForm}
+                <fieldset className="fieldset col-span-12 md:col-span-6">
+                  <legend className="fieldset-legend">Driver</legend>
+                  <SearchSelect
+                    options={driverOptionsAsOptions}
+                    value={form.kode_karyawan_driver}
+                    onChange={v => setForm(s => ({ ...s, kode_karyawan_driver: v }))}
+                    placeholder={driverOptions.length === 0 ? 'Tidak ada Driver' : 'Pilih Driver'}
+                    disabled={formBelowNodokumenDisabled}
                     required
-                  >
-                    <option value="">Pilih tipe</option>
-                    <option value="1">Langsir</option>
-                    <option value="2">Direct</option>
-                  </select>
+                    translationNamespace="Transport"
+                  />
                 </fieldset>
+
+                <div className="col-span-12 grid grid-cols-12 gap-3">
+                  <fieldset className="fieldset col-span-12 md:col-span-4">
+                    <legend className="fieldset-legend">TKBM 1</legend>
+                    <SearchSelect
+                      options={tkbmOptions}
+                      value={form.tkbm1}
+                      onChange={v => setForm(s => ({ ...s, tkbm1: v }))}
+                      placeholder={
+                        !form.tanggal
+                          ? 'Isi Tanggal dulu'
+                          : !form.kode_karyawan_kerani
+                            ? 'Pilih Kerani dulu'
+                            : isLoadingTkbm
+                              ? 'Memuat TKBM...'
+                              : tkbmOptions.length === 0
+                                ? 'Tidak ada TKBM'
+                                : 'Pilih TKBM'
+                      }
+                      disabled={
+                        formBelowNodokumenDisabled ||
+                        !form.tanggal ||
+                        !form.kode_karyawan_kerani ||
+                        isLoadingTkbm
+                      }
+                      required
+                      translationNamespace="Transport"
+                    />
+                  </fieldset>
+                  <fieldset className="fieldset col-span-12 md:col-span-4">
+                    <legend className="fieldset-legend">TKBM 2</legend>
+                    <SearchSelect
+                      options={tkbmOptions2}
+                      value={form.tkbm2}
+                      onChange={v => setForm(s => ({ ...s, tkbm2: v }))}
+                      placeholder={
+                        !form.tanggal
+                          ? 'Isi Tanggal dulu'
+                          : !form.kode_karyawan_kerani
+                            ? 'Pilih Kerani dulu'
+                            : isLoadingTkbm
+                              ? 'Memuat TKBM...'
+                              : tkbmOptions.length === 0
+                                ? 'Tidak ada TKBM'
+                                : 'Pilih TKBM'
+                      }
+                      disabled={
+                        formBelowNodokumenDisabled ||
+                        !form.tanggal ||
+                        !form.kode_karyawan_kerani ||
+                        isLoadingTkbm
+                      }
+                      translationNamespace="Transport"
+                    />
+                  </fieldset>
+                  <fieldset className="fieldset col-span-12 md:col-span-4">
+                    <legend className="fieldset-legend">TKBM 3</legend>
+                    <SearchSelect
+                      options={tkbmOptions3}
+                      value={form.tkbm3}
+                      onChange={v => setForm(s => ({ ...s, tkbm3: v }))}
+                      placeholder={
+                        !form.tanggal
+                          ? 'Isi Tanggal dulu'
+                          : !form.kode_karyawan_kerani
+                            ? 'Pilih Kerani dulu'
+                            : isLoadingTkbm
+                              ? 'Memuat TKBM...'
+                              : tkbmOptions.length === 0
+                                ? 'Tidak ada TKBM'
+                                : 'Pilih TKBM'
+                      }
+                      disabled={
+                        formBelowNodokumenDisabled ||
+                        !form.tanggal ||
+                        !form.kode_karyawan_kerani ||
+                        isLoadingTkbm
+                      }
+                      translationNamespace="Transport"
+                    />
+                  </fieldset>
+                  <fieldset className="fieldset col-span-12 md:col-span-4">
+                    <legend className="fieldset-legend">TKBM 4</legend>
+                    <SearchSelect
+                      options={tkbmOptions4}
+                      value={form.tkbm4}
+                      onChange={v => setForm(s => ({ ...s, tkbm4: v }))}
+                      placeholder={
+                        !form.tanggal
+                          ? 'Isi Tanggal dulu'
+                          : !form.kode_karyawan_kerani
+                            ? 'Pilih Kerani dulu'
+                            : isLoadingTkbm
+                              ? 'Memuat TKBM...'
+                              : tkbmOptions.length === 0
+                                ? 'Tidak ada TKBM'
+                                : 'Pilih TKBM'
+                      }
+                      disabled={
+                        formBelowNodokumenDisabled ||
+                        !form.tanggal ||
+                        !form.kode_karyawan_kerani ||
+                        isLoadingTkbm
+                      }
+                      translationNamespace="Transport"
+                    />
+                  </fieldset>
+                  <fieldset className="fieldset col-span-12 md:col-span-4">
+                    <legend className="fieldset-legend">TKBM 5</legend>
+                    <SearchSelect
+                      options={tkbmOptions5}
+                      value={form.tkbm5}
+                      onChange={v => setForm(s => ({ ...s, tkbm5: v }))}
+                      placeholder={
+                        !form.tanggal
+                          ? 'Isi Tanggal dulu'
+                          : !form.kode_karyawan_kerani
+                            ? 'Pilih Kerani dulu'
+                            : isLoadingTkbm
+                              ? 'Memuat TKBM...'
+                              : tkbmOptions.length === 0
+                                ? 'Tidak ada TKBM'
+                                : 'Pilih TKBM'
+                      }
+                      disabled={
+                        formBelowNodokumenDisabled ||
+                        !form.tanggal ||
+                        !form.kode_karyawan_kerani ||
+                        isLoadingTkbm
+                      }
+                      translationNamespace="Transport"
+                    />
+                  </fieldset>
+                </div>
                 <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">Kode Kendaraan</legend>
+                  <legend className="fieldset-legend">FCBA</legend>
                   <input
                     type="text"
                     className="input input-bordered w-full"
-                    value={form.kode_kendaraan}
-                    onChange={e => setForm(s => ({ ...s, kode_kendaraan: e.target.value }))}
-                    disabled={shouldDisableForm}
+                    value={form.fcba}
+                    readOnly
+                  />
+                </fieldset>
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">Afdeling</legend>
+                  <input
+                    type="text"
+                    className="input input-bordered w-full"
+                    value={form.afdeling}
+                    readOnly
+                  />
+                </fieldset>
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">Field Code</legend>
+                  <input
+                    type="text"
+                    className="input input-bordered w-full"
+                    value={form.fieldcode}
+                    readOnly
                   />
                 </fieldset>
                 <fieldset className="fieldset col-span-12 md:col-span-3">
@@ -1708,198 +2120,30 @@ export default function PengangkutanPage() {
                     type="text"
                     className="input input-bordered w-full"
                     value={form.tph}
-                    onChange={e => setForm(s => ({ ...s, tph: e.target.value }))}
-                    disabled={shouldDisableForm}
+                    readOnly
+                  />
+                </fieldset>
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">FCBA Tujuan</legend>
+                  <input
+                    type="text"
+                    className="input input-bordered w-full"
+                    value={form.fcba_destination}
+                    readOnly
+                  />
+                </fieldset>
+                <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <legend className="fieldset-legend">Afdeling Tujuan</legend>
+                  <input
+                    type="text"
+                    className="input input-bordered w-full"
+                    value={form.afdeling_destination}
+                    readOnly
                   />
                 </fieldset>
 
                 <div className="col-span-12 grid grid-cols-12 gap-3">
-                  <fieldset className="fieldset col-span-12 md:col-span-4">
-                    <legend className="fieldset-legend">Kerani</legend>
-                    <input
-                      type="text"
-                      list="kerani-options"
-                      className="input input-bordered w-full"
-                      value={form.kode_karyawan_kerani}
-                      onChange={e => setForm(s => ({ ...s, kode_karyawan_kerani: e.target.value }))}
-                      disabled={shouldDisableForm}
-                    />
-                    <datalist id="kerani-options">
-                      {keraniOptions.map(option => (
-                        <option key={option.fccode} value={option.fccode}>
-                          {option.fccode} - {option.fullname}
-                        </option>
-                      ))}
-                    </datalist>
-                  </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-4">
-                    <legend className="fieldset-legend">Driver</legend>
-                    <input
-                      type="text"
-                      list="driver-options"
-                      className="input input-bordered w-full"
-                      value={form.kode_karyawan_driver}
-                      onChange={e => setForm(s => ({ ...s, kode_karyawan_driver: e.target.value }))}
-                      disabled={shouldDisableForm}
-                    />
-                    <datalist id="driver-options">
-                      {driverOptions.map(option => (
-                        <option key={option.fccode} value={option.fccode}>
-                          {option.fccode} - {option.fullname}
-                        </option>
-                      ))}
-                    </datalist>
-                  </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-4">
-                    <legend className="fieldset-legend">Card ID</legend>
-                    <input
-                      type="text"
-                      className="input input-bordered w-full"
-                      value={form.card_id}
-                      onChange={e => setForm(s => ({ ...s, card_id: e.target.value }))}
-                      disabled={shouldDisableForm}
-                    />
-                  </fieldset>
-                </div>
-
-                <div className="col-span-12 grid grid-cols-12 gap-3">
-                  <fieldset className="fieldset col-span-12 md:col-span-4">
-                    <legend className="fieldset-legend">TKBM 1</legend>
-                    <input
-                      type="text"
-                      list="tkbm-options"
-                      className="input input-bordered w-full"
-                      value={form.tkbm1}
-                      onChange={e => setForm(s => ({ ...s, tkbm1: e.target.value }))}
-                      disabled={shouldDisableForm}
-                    />
-                  </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-4">
-                    <legend className="fieldset-legend">TKBM 2</legend>
-                    <input
-                      type="text"
-                      list="tkbm-options"
-                      className="input input-bordered w-full"
-                      value={form.tkbm2}
-                      onChange={e => setForm(s => ({ ...s, tkbm2: e.target.value }))}
-                      disabled={shouldDisableForm}
-                    />
-                  </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-4">
-                    <legend className="fieldset-legend">TKBM 3</legend>
-                    <input
-                      type="text"
-                      list="tkbm-options"
-                      className="input input-bordered w-full"
-                      value={form.tkbm3}
-                      onChange={e => setForm(s => ({ ...s, tkbm3: e.target.value }))}
-                      disabled={shouldDisableForm}
-                    />
-                  </fieldset>
-                </div>
-                <datalist id="tkbm-options">
-                  {tkbmOptions.map(option => (
-                    <option key={option.fccode} value={option.fccode}>
-                      {option.fccode} - {option.fullname}
-                    </option>
-                  ))}
-                </datalist>
-                <div className="col-span-12 grid grid-cols-12 gap-3">
-                  <fieldset className="fieldset col-span-12 md:col-span-4">
-                    <legend className="fieldset-legend">TKBM 4</legend>
-                    <input
-                      type="text"
-                      list="tkbm-options"
-                      className="input input-bordered w-full"
-                      value={form.tkbm4}
-                      onChange={e => setForm(s => ({ ...s, tkbm4: e.target.value }))}
-                      disabled={shouldDisableForm}
-                    />
-                  </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-4">
-                    <legend className="fieldset-legend">TKBM 5</legend>
-                    <input
-                      type="text"
-                      list="tkbm-options"
-                      className="input input-bordered w-full"
-                      value={form.tkbm5}
-                      onChange={e => setForm(s => ({ ...s, tkbm5: e.target.value }))}
-                      disabled={shouldDisableForm}
-                    />
-                  </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-4">
-                    <legend className="fieldset-legend">Field Code</legend>
-                    <input
-                      type="text"
-                      className="input input-bordered w-full"
-                      value={form.fieldcode}
-                      onChange={e => setForm(s => ({ ...s, fieldcode: e.target.value }))}
-                      disabled={shouldDisableForm}
-                    />
-                  </fieldset>
-                </div>
-
-                <div className="col-span-12 grid grid-cols-12 gap-3">
-                  <fieldset className="fieldset col-span-12 md:col-span-3">
-                    <legend className="fieldset-legend">FCBA</legend>
-                    <input
-                      type="text"
-                      className="input input-bordered w-full"
-                      value={form.fcba}
-                      onChange={e => setForm(s => ({ ...s, fcba: e.target.value }))}
-                      disabled={shouldDisableForm}
-                    />
-                  </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-3">
-                    <legend className="fieldset-legend">Afdeling</legend>
-                    <input
-                      type="text"
-                      className="input input-bordered w-full"
-                      value={form.afdeling}
-                      onChange={e => setForm(s => ({ ...s, afdeling: e.target.value }))}
-                      disabled={shouldDisableForm}
-                    />
-                  </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-3">
-                    <legend className="fieldset-legend">FCBA Tujuan</legend>
-                    <input
-                      type="text"
-                      className="input input-bordered w-full"
-                      value={form.fcba_destination}
-                      onChange={e => setForm(s => ({ ...s, fcba_destination: e.target.value }))}
-                      disabled={shouldDisableForm}
-                    />
-                  </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-3">
-                    <legend className="fieldset-legend">Afdeling Tujuan</legend>
-                    <input
-                      type="text"
-                      className="input input-bordered w-full"
-                      value={form.afdeling_destination}
-                      onChange={e => setForm(s => ({ ...s, afdeling_destination: e.target.value }))}
-                      disabled={shouldDisableForm}
-                    />
-                  </fieldset>
-                </div>
-
-                <div className="col-span-12 grid grid-cols-12 gap-3">
-                  <fieldset className="fieldset col-span-12 md:col-span-3">
-                    <legend className="fieldset-legend">Pabrik Tujuan</legend>
-                    <select
-                      className="select select-bordered w-full"
-                      value={form.pabrik_tujuan}
-                      onChange={e => setForm(s => ({ ...s, pabrik_tujuan: e.target.value }))}
-                      disabled={shouldDisableForm}
-                    >
-                      <option value="">Pilih pabrik</option>
-                      {pabrikOptions.map(option => (
-                        <option key={option.fccode} value={option.fccode}>
-                          {option.fccode} - {option.fcname}
-                        </option>
-                      ))}
-                    </select>
-                  </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <fieldset className="fieldset col-span-12 md:col-span-2">
                     <legend className="fieldset-legend">Total Janjang</legend>
                     <input
                       type="number"
@@ -1910,10 +2154,11 @@ export default function PengangkutanPage() {
                       onChange={e =>
                         setForm(s => ({ ...s, totaljanjang: normalizeNonNegative(e.target.value) }))
                       }
-                      disabled={shouldDisableForm}
+                      disabled={formBelowNodokumenDisabled}
+                      required
                     />
                   </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <fieldset className="fieldset col-span-12 md:col-span-2">
                     <legend className="fieldset-legend">Output</legend>
                     <input
                       type="number"
@@ -1924,10 +2169,11 @@ export default function PengangkutanPage() {
                       onChange={e =>
                         setForm(s => ({ ...s, output: normalizeNonNegative(e.target.value) }))
                       }
-                      disabled={shouldDisableForm}
+                      disabled={formBelowNodokumenDisabled}
+                      required
                     />
                   </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <fieldset className="fieldset col-span-12 md:col-span-2">
                     <legend className="fieldset-legend">Janjang Normal</legend>
                     <input
                       type="number"
@@ -1941,13 +2187,11 @@ export default function PengangkutanPage() {
                           janjangnormal: normalizeNonNegative(e.target.value),
                         }))
                       }
-                      disabled={shouldDisableForm}
+                      disabled={formBelowNodokumenDisabled}
+                      required
                     />
                   </fieldset>
-                </div>
-
-                <div className="col-span-12 grid grid-cols-12 gap-3">
-                  <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <fieldset className="fieldset col-span-12 md:col-span-2">
                     <legend className="fieldset-legend">Brondolan</legend>
                     <input
                       type="number"
@@ -1958,10 +2202,11 @@ export default function PengangkutanPage() {
                       onChange={e =>
                         setForm(s => ({ ...s, brondolan: normalizeNonNegative(e.target.value) }))
                       }
-                      disabled={shouldDisableForm}
+                      disabled={formBelowNodokumenDisabled}
+                      required
                     />
                   </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <fieldset className="fieldset col-span-12 md:col-span-2">
                     <legend className="fieldset-legend">Mentah</legend>
                     <input
                       type="number"
@@ -1972,10 +2217,11 @@ export default function PengangkutanPage() {
                       onChange={e =>
                         setForm(s => ({ ...s, mentah: normalizeNonNegative(e.target.value) }))
                       }
-                      disabled={shouldDisableForm}
+                      disabled={formBelowNodokumenDisabled}
+                      required
                     />
                   </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-3">
+                  <fieldset className="fieldset col-span-12 md:col-span-2">
                     <legend className="fieldset-legend">Abnormal</legend>
                     <input
                       type="number"
@@ -1986,26 +2232,25 @@ export default function PengangkutanPage() {
                       onChange={e =>
                         setForm(s => ({ ...s, abnormal: normalizeNonNegative(e.target.value) }))
                       }
-                      disabled={shouldDisableForm}
+                      disabled={formBelowNodokumenDisabled}
+                      required
                     />
                   </fieldset>
                 </div>
 
                 <div className="col-span-12 grid grid-cols-12 gap-3">
-                  <fieldset className="fieldset col-span-12 md:col-span-6">
+                  <fieldset className="fieldset col-span-12 md:col-span-4">
                     <legend className="fieldset-legend">ETD</legend>
                     <input
                       type="datetime-local"
                       className="input input-bordered w-full"
                       value={form.etd}
                       onChange={e => setForm(s => ({ ...s, etd: e.target.value }))}
-                      disabled={shouldDisableForm}
+                      disabled={formBelowNodokumenDisabled}
+                      required
                     />
                   </fieldset>
-                </div>
-
-                <div className="col-span-12 grid grid-cols-12 gap-3">
-                  <fieldset className="fieldset col-span-12 md:col-span-6">
+                  <fieldset className="fieldset col-span-12 md:col-span-4">
                     <legend className="fieldset-legend">BA PDF *</legend>
                     <input
                       type="file"
@@ -2013,20 +2258,20 @@ export default function PengangkutanPage() {
                       className="file-input file-input-bordered w-full"
                       onChange={handleNoBaExcaChange}
                       required={!isEditing}
-                      disabled={shouldDisableForm}
+                      disabled={formBelowNodokumenDisabled}
                     />
                   </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-6">
+                  <fieldset className="fieldset col-span-12 md:col-span-4">
                     <legend className="fieldset-legend">Exception Case</legend>
                     <textarea
                       className="textarea textarea-bordered w-full h-24"
                       value={form.exception_case}
                       onChange={e => setForm(s => ({ ...s, exception_case: e.target.value }))}
-                      disabled={shouldDisableForm}
+                      disabled={formBelowNodokumenDisabled}
+                      required
                     />
                   </fieldset>
                 </div>
-
               </form>
               {/* Sticky Footer */}
               <div className="sticky bottom-0 z-10 bg-base-100 pt-2 -mx-2 sm:-mx-6 px-2 sm:px-6 border-t border-base-300">
@@ -2038,7 +2283,7 @@ export default function PengangkutanPage() {
                     type="submit"
                     form="pengangkutan-form"
                     className="btn btn-primary"
-                    disabled={submitLoading || shouldDisableForm}
+                    disabled={submitLoading || formBelowNodokumenDisabled}
                   >
                     {submitLoading ? 'Menyimpan...' : isEditing ? 'Simpan Perubahan' : 'Simpan'}
                   </button>

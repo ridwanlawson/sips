@@ -60,7 +60,9 @@
     "clearSearch": "Clear search",
     "searchPlaceholder": "Search (transport no, SPB, driver, fcba...)",
     "noData": "No data",
-    "noDataHint": "Try adjusting your filters or search to find what you're looking for."
+    "noDataHint": "Try adjusting your filters or search to find what you're looking for.",
+    "select": "Select...",
+    "typeToSearch": "Type to search..."
   },
   "Dashboard": {
     "noDataBar": "📊 No data available",

@@ -60,7 +60,9 @@
     "clearSearch": "Hapus pencarian",
     "searchPlaceholder": "Cari (no pengangkutan, SPB, driver, fcba...)",
     "noData": "Tidak ada data",
-    "noDataHint": "Coba sesuaikan filter atau pencarian Anda untuk menemukan apa yang Anda cari."
+    "noDataHint": "Coba sesuaikan filter atau pencarian Anda untuk menemukan apa yang Anda cari.",
+    "select": "Pilih...",
+    "typeToSearch": "Ketik untuk mencari..."
   },
   "Dashboard": {
     "noDataBar": "📊 Tidak ada data tersedia",
