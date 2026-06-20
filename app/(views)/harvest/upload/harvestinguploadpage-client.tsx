@@ -48,6 +48,15 @@ interface HarvestingUploadData {
   lasttime?: string;
   lastupdate?: string;
   _rowKey?: string;
+  /**
+   * ⚡ Bolt Optimization: Cached values to avoid O(N*M) lookups and
+   * expensive regex-based number parsing in render/search loops.
+   */
+  _searchContent?: string;
+  _bunchNum?: number;
+  _estateWeightNum?: number;
+  _millWeightBrutoNum?: number;
+  _millWeightNettoNum?: number;
   [key: string]: unknown;
 }
 
@@ -196,36 +205,44 @@ export default function HarvestingUploadPage() {
           ...item,
           _rowKey: `${item.nospb}-${item.chitno}-${idx}`,
           _searchContent,
+          // ⚡ Bolt Optimization: pre-calculate numeric values to avoid redundant regex parsing in loops
+          _bunchNum: Number(item.bunch) || 0,
+          _estateWeightNum: Number(item.bunch_estateweight) || 0,
+          _millWeightBrutoNum: Number(item.mill_weight_bruto) || 0,
+          _millWeightNettoNum: Number(item.mill_weight_netto) || 0,
         };
       }),
     [data]
   );
 
-  const filteredDataWithKey = useMemo(() => {
-    if (!searchTerm.trim()) return dataWithKey;
-    const search = searchTerm.toLowerCase();
-    // ⚡ Bolt Optimization: Use pre-calculated search content for O(N) filtering.
-    return dataWithKey.filter(r => r._searchContent?.includes(search));
-  }, [dataWithKey, searchTerm]);
+  const { filteredDataWithKey, summary } = useMemo(() => {
+    const search = searchTerm.trim().toLowerCase();
+    const result: (HarvestingUploadData & { _rowKey: string; _searchContent: string })[] = [];
+    const stats = {
+      count: 0,
+      totalBunch: 0,
+      totalEstateWeight: 0,
+    };
 
-  const summary = useMemo(() => {
-    // ⚡ Bolt Optimization: Consolidate multi-pass .reduce() into a single-pass loop (O(N)).
-    let totalBunch = 0;
-    let totalEstateWeight = 0;
+    for (const item of dataWithKey) {
+      if (!search || (item._searchContent && item._searchContent.includes(search))) {
+        result.push(item as HarvestingUploadData & { _rowKey: string; _searchContent: string });
 
-    for (const r of filteredDataWithKey) {
-      totalBunch += Number(r.bunch) || 0;
-      totalEstateWeight += Number(r.bunch_estateweight) || 0;
+        // ⚡ Bolt Optimization: Use pre-calculated numbers to avoid thousands of O(N*M) parsing calls during search
+        stats.count++;
+        stats.totalBunch += item._bunchNum || 0;
+        stats.totalEstateWeight += item._estateWeightNum || 0;
+      }
     }
 
-    const count = filteredDataWithKey.length;
     return {
-      count,
-      totalBunch,
-      avgBunch: count > 0 ? (totalBunch / count).toFixed(2) : 0,
-      totalEstateWeight,
+      filteredDataWithKey: result,
+      summary: {
+        ...stats,
+        avgBunch: stats.count > 0 ? (stats.totalBunch / stats.count).toFixed(2) : 0,
+      },
     };
-  }, [filteredDataWithKey]);
+  }, [dataWithKey, searchTerm]);
 
   const columns: TableColumn<HarvestingUploadData>[] = useMemo(
     () => [
@@ -242,13 +259,15 @@ export default function HarvestingUploadPage() {
         name: 'Reception Date',
         sortable: true,
         width: '130px',
-        selector: r => formatPerfDate(r.receptiondate || '', localeTag) || '-',
+        selector: r => r.receptiondate || '',
+        cell: r => formatPerfDate(r.receptiondate || '', localeTag) || '-',
       },
       {
         name: 'Harvest Date',
         sortable: true,
         width: '130px',
-        selector: r => formatPerfDate(r.harvestdate || '', localeTag) || '-',
+        selector: r => r.harvestdate || '',
+        cell: r => formatPerfDate(r.harvestdate || '', localeTag) || '-',
       },
       { name: 'Vehicle', selector: r => r.vehicle || '-', sortable: true, width: '110px' },
       { name: 'Driver', selector: r => r.driver || '-', sortable: true, width: '110px' },
@@ -257,27 +276,31 @@ export default function HarvestingUploadPage() {
       { name: 'Product Code', selector: r => r.productcode || '-', sortable: true, width: '120px' },
       {
         name: 'Bunch',
-        selector: r => formatPerfNumber(r.bunch || 0, localeTag),
+        selector: r => r._bunchNum || 0,
         sortable: true,
         width: '100px',
+        cell: r => formatPerfNumber(r._bunchNum || 0, localeTag),
       },
       {
         name: 'Estate Weight (kg)',
-        selector: r => formatPerfNumber(r.bunch_estateweight || 0, localeTag),
+        selector: r => r._estateWeightNum || 0,
         sortable: true,
         width: '140px',
+        cell: r => formatPerfNumber(r._estateWeightNum || 0, localeTag),
       },
       {
         name: 'Mill Weight Bruto',
-        selector: r => formatPerfNumber(r.mill_weight_bruto || 0, localeTag),
+        selector: r => r._millWeightBrutoNum || 0,
         sortable: true,
         width: '140px',
+        cell: r => formatPerfNumber(r._millWeightBrutoNum || 0, localeTag),
       },
       {
         name: 'Mill Weight Netto',
-        selector: r => formatPerfNumber(r.mill_weight_netto || 0, localeTag),
+        selector: r => r._millWeightNettoNum || 0,
         sortable: true,
         width: '140px',
+        cell: r => formatPerfNumber(r._millWeightNettoNum || 0, localeTag),
       },
       { name: 'FCBA', selector: r => r.fcba || '-', sortable: true, width: '100px' },
       { name: 'Keterangan', selector: r => r.keterangan || '-', sortable: true, width: '150px' },
