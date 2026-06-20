@@ -33,3 +33,7 @@
 ## 2026-06-12 - [O(N*M) Multi-pass Table Processing Anti-pattern]
 **Learning:** Using multiple O(N) iterations (filter -> some -> reduce) in `useMemo` for table search and aggregation creates redundant work and intermediate allocations. Combining this with expensive string-to-number parsing during search causes severe lag on large datasets.
 **Action:** Pre-calculate all numeric values and search content strings during the data fetch/mapping phase. Consolidate all filtering, aggregation, and condition checks into a single-pass `for...of` loop within `useMemo` to maintain O(N) complexity regardless of the number of metrics derived.
+
+## 2026-06-15 - [Pre-calculating Numeric Values and Labels in Pengangkutan]
+**Learning:** Performing redundant string-to-number parsing and conditional label mapping (e.g., Langsir/Direct) inside DataTable selectors and cell renderers leads to degraded performance as the dataset grows. It also prevents efficient native numeric sorting in the table.
+**Action:** Pre-calculate all numeric values and display labels during the data fetch/mapping phase (e.g., in useQuery). Use these pre-calculated fields in the DataTable columns to ensure O(1) access during render and correct O(N log N) numeric sorting without overhead.
