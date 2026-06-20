@@ -15,6 +15,7 @@ import { SearchSelect, type Option } from '@/app/components/search-select';
 import { extractArrayData } from '@/utils/apiHelpers';
 import { exportJsonToCsv } from '@/utils/exportCsv';
 import { useLocale } from '@/hooks/useLocale';
+import { useSearchShortcut } from '@/hooks/useSearchShortcut';
 import { useTranslations } from 'next-intl';
 import { EmptyState } from '@/app/components/empty-state';
 import toast from 'react-hot-toast';
@@ -269,6 +270,8 @@ export default function PengangkutanPage() {
   });
 
   const [q, setQ] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchInputRef = useSearchShortcut();
   const [showFilters, setShowFilters] = useState(false);
   const queryClient = useQueryClient();
   const [userLevel, setUserLevel] = useState<
@@ -1595,13 +1598,21 @@ export default function PengangkutanPage() {
               </svg>
             </div>
             <input
+              ref={searchInputRef}
               className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
               placeholder={t('searchPlaceholder')}
               value={q}
               onChange={e => setQ(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
               aria-label={t('quickSearch')}
               title={t('quickSearch')}
             />
+            {!isSearchFocused && !q && (
+              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none animate-fadeIn">
+                <kbd className="kbd kbd-sm bg-base-200/50 opacity-50">/</kbd>
+              </div>
+            )}
             {q && (
               <button
                 type="button"

@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { SkeletonTable } from '@/app/components/skeletons';
+import { useSearchShortcut } from '@/hooks/useSearchShortcut';
 import { centerHeaderStyle } from '@/utils/tableHelper';
 import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/authHelper';
 import { exportJsonToCsv } from '@/utils/exportCsv';
@@ -330,6 +331,8 @@ export default function HarvestPage() {
   const tH = useTranslations('Harvest');
   const queryClient = useQueryClient();
   const [q, setQ] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchInputRef = useSearchShortcut();
   const [showFilters, setShowFilters] = useState(false);
 
   const [filters, setFilters] = useState<Filters>(() => {
@@ -2006,13 +2009,21 @@ export default function HarvestPage() {
               </svg>
             </div>
             <input
+              ref={searchInputRef}
               className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
               placeholder={tH('searchPlaceholder')}
               value={q}
               onChange={e => setQ(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
               aria-label={tH('quickSearch')}
               title={tH('quickSearch')}
             />
+            {!isSearchFocused && !q && (
+              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none animate-fadeIn">
+                <kbd className="kbd kbd-sm bg-base-200/50 opacity-50">/</kbd>
+              </div>
+            )}
             {q && (
               <button
                 onClick={() => setQ('')}
