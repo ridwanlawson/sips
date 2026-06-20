@@ -21,7 +21,8 @@
     "userAvatar": "User avatar",
     "theme": "Theme",
     "scrollToTop": "Scroll to top",
-    "skipToContent": "Skip to main content"
+    "skipToContent": "Skip to main content",
+    "close": "Close"
   },
   "Auth": {
     "login": "Login",

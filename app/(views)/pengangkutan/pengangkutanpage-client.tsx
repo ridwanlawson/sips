@@ -29,6 +29,13 @@ type Pengangkutan = {
   // ⚡ Bolt Optimization: cached display and search values
   _displayDate?: string;
   _searchContent?: string;
+  _outputNum?: number;
+  _janjangnormalNum?: number;
+  _mentahNum?: number;
+  _abnormalNum?: number;
+  _totaljanjangNum?: number;
+  _brondolanNum?: number;
+  _typeLabel?: string;
   id: string;
   nopengangkutan: string;
   nospb?: string | null;
@@ -1008,6 +1015,16 @@ export default function PengangkutanPage() {
         // ⚡ Bolt Optimization: pre-calculate display date using cached formatter
         const displayDate = dateOnly ? formatPerfDate(dateOnly, localeTag) : '-';
 
+        // ⚡ Bolt Optimization: Pre-calculate Type Label
+        const typeLabel =
+          String(it.type_pengangkutan) === '1'
+            ? 'Langsir'
+            : String(it.type_pengangkutan) === '2'
+              ? 'Direct'
+              : it.type_pengangkutan
+                ? String(it.type_pengangkutan)
+                : '-';
+
         // ⚡ Bolt Optimization: pre-calculate search content string
         const searchContent = [
           it.nopengangkutan,
@@ -1024,6 +1041,7 @@ export default function PengangkutanPage() {
           it.card_id,
           dateOnly,
           displayDate,
+          typeLabel,
         ]
           .filter(Boolean)
           .join(' ')
@@ -1039,9 +1057,14 @@ export default function PengangkutanPage() {
           _rowKey: key,
           _displayDate: displayDate,
           _searchContent: searchContent,
+          _typeLabel: typeLabel,
           // ⚡ Bolt Optimization: pre-calculate numeric values to avoid redundant parsing in loops
           _totaljanjangNum: toNumber(it.totaljanjang),
+          _outputNum: toNumber(it.output),
+          _janjangnormalNum: toNumber(it.janjangnormal),
           _brondolanNum: toNumber(it.brondolan),
+          _mentahNum: toNumber(it.mentah),
+          _abnormalNum: toNumber(it.abnormal),
         };
       });
     },
@@ -1336,14 +1359,9 @@ export default function PengangkutanPage() {
       },
       {
         name: <span title="Tipe pengangkutan">Type</span>,
-        selector: r => String(r.type_pengangkutan || ''),
+        selector: r => r._typeLabel || '-',
         sortable: true,
         width: '90px',
-        cell: r => {
-          if (String(r.type_pengangkutan) === '1') return 'Langsir';
-          if (String(r.type_pengangkutan) === '2') return 'Direct';
-          return r.type_pengangkutan ? String(r.type_pengangkutan) : '-';
-        },
       },
       {
         name: <span title="Kode / Nama kendaraan">Kendaraan</span>,
@@ -1383,69 +1401,73 @@ export default function PengangkutanPage() {
       },
       {
         name: 'Total Janjang',
-        selector: r => r.totaljanjang || '-',
+        selector: r => r._totaljanjangNum || 0,
         sortable: true,
         width: '120px',
         style: { justifyContent: 'center' },
         cell: r => (
           <span className="text-center w-full">
-            {formatPerfNumber(r.totaljanjang || '0', localeTag)}
+            {formatPerfNumber(r._totaljanjangNum || 0, localeTag)}
           </span>
         ),
       },
       {
         name: 'Output',
-        selector: r => r.output || '-',
+        selector: r => r._outputNum || 0,
         sortable: true,
         width: '100px',
         style: { justifyContent: 'center' },
         cell: r => (
-          <span className="text-center w-full">{formatPerfNumber(r.output || '0', localeTag)}</span>
+          <span className="text-center w-full">
+            {formatPerfNumber(r._outputNum || 0, localeTag)}
+          </span>
         ),
       },
       {
         name: <span title="Janjang Normal">Janjang Normal</span>,
-        selector: r => r.janjangnormal || '-',
+        selector: r => r._janjangnormalNum || 0,
         sortable: true,
         width: '120px',
         style: { justifyContent: 'center' },
         cell: r => (
           <span className="text-center w-full">
-            {formatPerfNumber(r.janjangnormal || '0', localeTag)}
+            {formatPerfNumber(r._janjangnormalNum || 0, localeTag)}
           </span>
         ),
       },
       {
         name: <span title="Brondolan">Brondolan</span>,
-        selector: r => r.brondolan || '-',
+        selector: r => r._brondolanNum || 0,
         sortable: true,
         width: '100px',
         style: { justifyContent: 'center' },
         cell: r => (
           <span className="text-center w-full">
-            {formatPerfNumber(r.brondolan || '0', localeTag)}
+            {formatPerfNumber(r._brondolanNum || 0, localeTag)}
           </span>
         ),
       },
       {
         name: <span title="Mentah">Mentah</span>,
-        selector: r => r.mentah || '-',
-        sortable: true,
-        width: '100px',
-        style: { justifyContent: 'center' },
-        cell: r => (
-          <span className="text-center w-full">{formatPerfNumber(r.mentah || '0', localeTag)}</span>
-        ),
-      },
-      {
-        name: <span title="Abnormal">Abnormal</span>,
-        selector: r => r.abnormal || '-',
+        selector: r => r._mentahNum || 0,
         sortable: true,
         width: '100px',
         style: { justifyContent: 'center' },
         cell: r => (
           <span className="text-center w-full">
-            {formatPerfNumber(r.abnormal || '0', localeTag)}
+            {formatPerfNumber(r._mentahNum || 0, localeTag)}
+          </span>
+        ),
+      },
+      {
+        name: <span title="Abnormal">Abnormal</span>,
+        selector: r => r._abnormalNum || 0,
+        sortable: true,
+        width: '100px',
+        style: { justifyContent: 'center' },
+        cell: r => (
+          <span className="text-center w-full">
+            {formatPerfNumber(r._abnormalNum || 0, localeTag)}
           </span>
         ),
       },

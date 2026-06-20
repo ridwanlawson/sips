@@ -21,7 +21,8 @@
     "userAvatar": "Avatar pengguna",
     "theme": "Tema",
     "scrollToTop": "Kembali ke atas",
-    "skipToContent": "Lanjut ke konten utama"
+    "skipToContent": "Lanjut ke konten utama",
+    "close": "Tutup"
   },
   "Auth": {
     "login": "Masuk",

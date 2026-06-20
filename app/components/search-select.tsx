@@ -97,6 +97,7 @@ const SearchSelectInner: React.FC<SearchSelectProps> = ({
         } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
         onClick={() => !disabled && setOpen(s => !s)}
         aria-expanded={open}
+        aria-haspopup="listbox"
         title={currentLabel || placeholder}
         disabled={disabled}
       >
@@ -152,8 +153,16 @@ const SearchSelectInner: React.FC<SearchSelectProps> = ({
                 autoFocus
                 className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                 placeholder={t('typeToSearch')}
+                aria-label={t('typeToSearch')}
                 value={q}
                 onChange={e => setQ(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Escape') {
+                    setOpen(false);
+                    // Return focus to the trigger button
+                    boxRef.current?.querySelector('button')?.focus();
+                  }
+                }}
               />
               {q && (
                 <button
