@@ -25,6 +25,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import { toTitleCase } from '@/utils/textManipulation';
 import { getProxiedImageUrl } from '@/utils/imageHelper';
 import type { UserProfile } from '@/app/types';
@@ -80,7 +81,6 @@ function useChangePassword() {
     newPassword: '',
     confirmPassword: '',
   });
-  const [showPasswords, setShowPasswords] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -151,13 +151,11 @@ function useChangePassword() {
 
   return {
     form,
-    showPasswords,
     loading,
     error,
     success,
     isConfirmMismatch,
     updateField,
-    setShowPasswords,
     submitChangePassword,
   };
 }
@@ -169,33 +167,82 @@ function PasswordField({
   label,
   placeholder,
   value,
-  isVisible,
   hasError = false,
   onChange,
 }: {
   label: string;
   placeholder: string;
   value: string;
-  isVisible: boolean;
   hasError?: boolean;
   onChange: (value: string) => void;
 }) {
+  const tAuth = useTranslations('Auth');
+  const [show, setShow] = useState(false);
+  const inputId = `password-${label.replace(/\s+/g, '-').toLowerCase()}`;
+
   return (
-    <div className="form-control">
-      <label className="label">
+    <div className="form-control gap-1">
+      <label htmlFor={inputId} className="label py-1">
         <span className="label-text font-medium">{label}</span>
       </label>
-      <input
-        type={isVisible ? 'text' : 'password'}
-        placeholder={placeholder}
-        className={`input input-bordered w-full focus:input-primary transition-all ${
-          hasError ? 'input-error' : ''
-        }`}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        required
-        minLength={8}
-      />
+      <label
+        className={`input input-bordered flex max-w-none items-center gap-2 transition-all duration-300 focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary/70 ${hasError ? 'border-error' : ''}`}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 16 16"
+          fill="currentColor"
+          className="h-4 w-4 opacity-70"
+          aria-hidden="true"
+        >
+          <path
+            fillRule="evenodd"
+            d="M14 6a4 4 0 0 1-4.899 3.899l-1.955 1.955a.5.5 0 0 1-.353.146H5v1.5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1-.5-.5v-2.293a.5.5 0 0 1 .146-.353l3.955-3.955A4 4 0 1 1 14 6Zm-4-2a.75.75 0 0 0 0 1.5.5.5 0 0 1 .5.5.75.75 0 0 0 1.5 0 2 2 0 0 0-2-2Z"
+            clipRule="evenodd"
+          />
+        </svg>
+        <input
+          id={inputId}
+          type={show ? 'text' : 'password'}
+          placeholder={placeholder}
+          className="grow bg-transparent outline-none"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          required
+          minLength={8}
+        />
+        <button
+          type="button"
+          onClick={() => setShow(prev => !prev)}
+          className="btn btn-ghost btn-square btn-xs opacity-70 hover:text-primary"
+          aria-label={show ? tAuth('hidePassword') : tAuth('showPassword')}
+          title={show ? tAuth('hidePassword') : tAuth('showPassword')}
+        >
+          {show ? (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              className="h-4 w-4"
+              aria-hidden="true"
+            >
+              <path d="M13.359 11.238C15.28 9.504 16 8 16 8s-3-5.5-8-5.5a7.027 7.027 0 0 0-3.646.98L3.468 3.538A8.08 8.08 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.827 8c-.058.087-.122.176-.195.268a13.134 13.134 0 0 1-1.66 2.043C11.88 11.332 10.12 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.173 8Z" />
+              <path d="M10.477 11.085 8.4 9.008a2 2 0 1 1-2.83-2.83L4.914 4.78A4.978 4.978 0 0 0 3.5 8c0 2.12 1.168 3.879 2.457 5.168a13.133 13.133 0 0 0 2.043 1.66c.12.08.236.148.345.208l1.677-1.677a7.027 7.027 0 0 1-1.545-.274ZM8 6.5a1.5 1.5 0 0 0-1.356 2.121L8.879 9.15A1.5 1.5 0 0 0 8 6.5Z" />
+            </svg>
+          ) : (
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              className="h-4 w-4"
+              aria-hidden="true"
+            >
+              <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8ZM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.827 8c-.058.087-.122.176-.195.268a13.134 13.134 0 0 1-1.66 2.043C11.88 11.332 10.12 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.173 8Z" />
+              <path d="M8 5.5A2.5 2.5 0 1 0 8 10.5a2.5 2.5 0 0 0 0-5Z" />
+            </svg>
+          )}
+        </button>
+      </label>
     </div>
   );
 }
@@ -288,13 +335,11 @@ function UserProfileCard({ profile }: { profile: UserProfile | null }) {
 function ChangePasswordForm() {
   const {
     form,
-    showPasswords,
     loading,
     error,
     success,
     isConfirmMismatch,
     updateField,
-    setShowPasswords,
     submitChangePassword,
   } = useChangePassword();
 
@@ -329,7 +374,6 @@ function ChangePasswordForm() {
             label="Password Saat Ini"
             placeholder="Masukkan password lama"
             value={form.currentPassword}
-            isVisible={showPasswords}
             onChange={value => updateField('currentPassword', value)}
           />
 
@@ -338,14 +382,12 @@ function ChangePasswordForm() {
               label="Password Baru"
               placeholder="Minimal 8 karakter"
               value={form.newPassword}
-              isVisible={showPasswords}
               onChange={value => updateField('newPassword', value)}
             />
             <PasswordField
               label="Konfirmasi Password"
               placeholder="Ulangi password baru"
               value={form.confirmPassword}
-              isVisible={showPasswords}
               hasError={isConfirmMismatch}
               onChange={value => updateField('confirmPassword', value)}
             />
@@ -353,18 +395,6 @@ function ChangePasswordForm() {
 
           {error && <FormAlert type="error" message={error} />}
           {success && <FormAlert type="success" message={success} />}
-
-          <div className="form-control">
-            <label className="label cursor-pointer justify-start gap-2">
-              <input
-                type="checkbox"
-                className="checkbox checkbox-primary checkbox-sm"
-                checked={showPasswords}
-                onChange={e => setShowPasswords(e.target.checked)}
-              />
-              <span className="label-text">Tampilkan Password</span>
-            </label>
-          </div>
 
           <div className="form-control mt-4">
             <button
