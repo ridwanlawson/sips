@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
 import { authHeaders, parseJsonSafe } from '@/lib/apiProxy';
+import { validateCsrfToken } from '@/lib/csrf';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -53,6 +55,13 @@ export async function PUT(
     return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
   }
 
+  // === CSRF VALIDATION ===
+  const cookieStore = await cookies();
+  const csrfToken = cookieStore.get('csrf_token')?.value;
+  if (!csrfToken || !validateCsrfToken(req, csrfToken)) {
+    return NextResponse.json({ ok: false, error: 'Invalid CSRF token' }, { status: 403 });
+  }
+
   const incoming = await req.formData();
   const form = new FormData();
   for (const [key, value] of incoming.entries()) {
@@ -99,6 +108,13 @@ export async function DELETE(
   const token = await getTokenFromCookie();
   if (!token) {
     return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
+  }
+
+  // === CSRF VALIDATION ===
+  const cookieStore = await cookies();
+  const csrfToken = cookieStore.get('csrf_token')?.value;
+  if (!csrfToken || !validateCsrfToken(req, csrfToken)) {
+    return NextResponse.json({ ok: false, error: 'Invalid CSRF token' }, { status: 403 });
   }
 
   const incoming = await req.formData();
@@ -148,6 +164,13 @@ export async function POST(
   const token = await getTokenFromCookie();
   if (!token) {
     return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
+  }
+
+  // === CSRF VALIDATION ===
+  const cookieStore = await cookies();
+  const csrfToken = cookieStore.get('csrf_token')?.value;
+  if (!csrfToken || !validateCsrfToken(req, csrfToken)) {
+    return NextResponse.json({ ok: false, error: 'Invalid CSRF token' }, { status: 403 });
   }
 
   const incoming = await req.formData();

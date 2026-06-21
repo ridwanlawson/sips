@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { BACKEND_URL, getTokenFromCookie, safeJson } from '@/utils/absensiProxy';
+import { validateCsrfToken } from '@/lib/csrf';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -36,6 +38,13 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
   const token = await getTokenFromCookie();
   if (!token) {
     return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
+  }
+
+  // === CSRF VALIDATION ===
+  const cookieStore = await cookies();
+  const csrfToken = cookieStore.get('csrf_token')?.value;
+  if (!csrfToken || !validateCsrfToken(req, csrfToken)) {
+    return NextResponse.json({ ok: false, error: 'Invalid CSRF token' }, { status: 403 });
   }
 
   // Ambil form dari client
@@ -82,6 +91,13 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
   const token = await getTokenFromCookie();
   if (!token) return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
 
+  // === CSRF VALIDATION ===
+  const cookieStore = await cookies();
+  const csrfToken = cookieStore.get('csrf_token')?.value;
+  if (!csrfToken || !validateCsrfToken(req, csrfToken)) {
+    return NextResponse.json({ ok: false, error: 'Invalid CSRF token' }, { status: 403 });
+  }
+
   const incoming = await req.formData();
   const baDeleted = incoming.get('ba_deleted');
   if (!(baDeleted instanceof File)) {
@@ -116,6 +132,13 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   const id = params.id;
   const token = await getTokenFromCookie();
   if (!token) return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
+
+  // === CSRF VALIDATION ===
+  const cookieStore = await cookies();
+  const csrfToken = cookieStore.get('csrf_token')?.value;
+  if (!csrfToken || !validateCsrfToken(req, csrfToken)) {
+    return NextResponse.json({ ok: false, error: 'Invalid CSRF token' }, { status: 403 });
+  }
 
   const incoming = await req.formData();
   const methodOverride = (incoming.get('_method') as string | null) || '';
