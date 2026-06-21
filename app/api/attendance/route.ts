@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ABSENSI_BASE, buildFilteredUrl, getTokenFromCookie, safeJson } from '@/utils/absensiProxy';
+import { validateSecurity } from '@/lib/security';
 import { attendanceFilterSchema, attendanceApiResponseSchema } from '@/lib/validations/attendance';
 import { applyUserDataScope } from '@/utils/requestScope';
 
@@ -120,6 +121,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const securityError = await validateSecurity(req);
+  if (securityError) return securityError;
+
   const token = await getTokenFromCookie();
   if (!token) {
     return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
