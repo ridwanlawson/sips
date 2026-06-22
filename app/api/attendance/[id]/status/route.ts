@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { ABSENSI_BASE, getTokenFromCookie } from '@/utils/absensiProxy';
+import { validateCsrfToken } from '@/lib/csrf';
 
 export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const params = await Promise.resolve(context.params);
   const { id } = params;
 
   try {
-    const body = await req.json();
-
     const token = await getTokenFromCookie();
 
     if (!token) {
@@ -19,6 +19,15 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
         { status: 401 }
       );
     }
+
+    // === CSRF VALIDATION ===
+    const cookieStore = await cookies();
+    const csrfToken = cookieStore.get('csrf_token')?.value;
+    if (!csrfToken || !validateCsrfToken(req, csrfToken)) {
+      return NextResponse.json({ ok: false, error: 'Invalid CSRF token' }, { status: 403 });
+    }
+
+    const body = await req.json();
 
     const res = await fetch(`${ABSENSI_BASE}/${id}/status`, {
       method: 'PATCH',
