@@ -88,5 +88,23 @@
     "finish": "Finish",
     "step": "Step",
     "of": "of"
+  },
+  "Profile": {
+    "changePassword": "Change Password",
+    "changePasswordSubtitle": "Update your account password regularly.",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
+    "currentPasswordPlaceholder": "Enter old password",
+    "newPasswordPlaceholder": "Minimum 8 characters",
+    "confirmPasswordPlaceholder": "Repeat new password",
+    "passwordHint": "Password must be 8+ characters",
+    "saveChanges": "Save Changes",
+    "saving": "Saving...",
+    "mismatchError": "New password and confirmation do not match.",
+    "lengthError": "New password must be at least {min} characters.",
+    "success": "Password changed successfully.",
+    "unexpectedError": "An unexpected error occurred.",
+    "failedLoadProfile": "Failed to load profile data."
   }
 }

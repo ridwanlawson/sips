@@ -17,3 +17,8 @@
 **Learning:** Using a single global checkbox to toggle multiple password fields (like "Current", "New", and "Confirm") is a sub-optimal UX pattern. Independent toggles on each field, implemented via local component state, provide better control and follow modern security standards. Consistency in input styling (icons, borders) between login and profile pages creates a more cohesive user experience.
 
 **Action:** Replace form-level password visibility checkboxes with individual toggle buttons inside each password input. Ensure these toggles have localized ARIA labels and titles, and use a consistent flex-based input container (e.g., DaisyUI's `label.input.input-bordered`) for grouping icons with inputs.
+
+## 2025-07-23 - [Localized Profile Management & Accessible Hints]
+**Learning:** Extending accessibility patterns (like `aria-describedby` for hints and `aria-live` for alerts) to all user-facing forms, including Profile and Change Password, ensures a consistent and predictable experience for assistive technology users. Using a dedicated `Profile` translation namespace helps centralize management of account-related strings and prevents duplication across components.
+
+**Action:** Consistently apply `aria-describedby` for field-specific requirements and `aria-live="polite"` for form-level status alerts across all operational and profile-related forms. Always utilize the centralized `Profile` namespace for account management UI strings.
