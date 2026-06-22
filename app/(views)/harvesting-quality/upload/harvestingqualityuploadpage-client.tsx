@@ -49,6 +49,23 @@ interface HarvestingQualityUploadData {
   lasttime?: string;
   documentno: string;
   _rowKey?: string;
+  _searchContent?: string;
+  _displayDate?: string;
+  _underRipeNum?: number;
+  _overripeNum?: number;
+  _abnormalNum?: number;
+  _longStalkNum?: number;
+  _eatenByRatNum?: number;
+  _unharvestFfbNum?: number;
+  _uncollectLfCircleNum?: number;
+  _uncollectLfPieceNum?: number;
+  _unarrangeFfbNum?: number;
+  _unpruneFrondNum?: number;
+  _qe1Num?: number;
+  _qe2Num?: number;
+  _qe3Num?: number;
+  _qe4Num?: number;
+  _qe5Num?: number;
   [key: string]: unknown;
 }
 
@@ -177,8 +194,18 @@ export default function HarvestingQualityUploadPage() {
   const dataWithKey = useMemo(
     () =>
       data.map((item, i) => {
+        // ⚡ Bolt Optimization: Pre-calculate display date using cached formatters.
+        const _displayDate = item.fddate ? formatPerfDate(item.fddate, localeTag) : '-';
+
         // ⚡ Bolt Optimization: Pre-calculate search content and row keys to avoid O(N*M) string operations during search.
-        const _searchContent = [item.empcode, item.fddate, item.fieldcode, item.fcba, item.documentno]
+        const _searchContent = [
+          item.empcode,
+          item.fddate,
+          _displayDate,
+          item.fieldcode,
+          item.fcba,
+          item.documentno,
+        ]
           .filter(Boolean)
           .join(' ')
           .toLowerCase();
@@ -187,14 +214,31 @@ export default function HarvestingQualityUploadPage() {
           ...item,
           _rowKey: `${item.empcode}-${item.fddate}-${item.fieldcode}-${item.documentno}-${i}`,
           _searchContent,
+          _displayDate,
+          // ⚡ Bolt Optimization: pre-calculate numeric values to avoid redundant regex parsing in loops and enable correct sorting.
+          _underRipeNum: n(item.under_ripe),
+          _overripeNum: n(item.overripe),
+          _abnormalNum: n(item.abnormal),
+          _longStalkNum: n(item.long_stalk),
+          _eatenByRatNum: n(item.eaten_by_rat),
+          _unharvestFfbNum: n(item.unharvest_ffb),
+          _uncollectLfCircleNum: n(item.uncollect_lf_circle),
+          _uncollectLfPieceNum: n(item.uncollect_lf_piece),
+          _unarrangeFfbNum: n(item.unarrange_ffb),
+          _unpruneFrondNum: n(item.unprune_frond),
+          _qe1Num: n(item.qe_1_pelepah_tidak_disusun),
+          _qe2Num: n(item.qe_2_buah_matahari),
+          _qe3Num: n(item.qe_3_buah_busuk),
+          _qe4Num: n(item.qe_4_buah_mentah_diperam),
+          _qe5Num: n(item.qe_5_over_pruning),
         };
       }),
-    [data]
+    [data, localeTag]
   );
 
   const { filteredDataWithKey, summary } = useMemo(() => {
     const search = searchTerm.trim().toLowerCase();
-    const filtered: (HarvestingQualityUploadData & { _rowKey: string; _searchContent: string })[] = [];
+    const filtered: HarvestingQualityUploadData[] = [];
     const stats = {
       count: 0,
       totalUnderripe: 0,
@@ -203,13 +247,14 @@ export default function HarvestingQualityUploadPage() {
     };
 
     for (const item of dataWithKey) {
-      if (!search || item._searchContent.includes(search)) {
+      if (!search || (item._searchContent && item._searchContent.includes(search))) {
         filtered.push(item);
 
+        // ⚡ Bolt Optimization: Use pre-calculated numbers to avoid thousands of O(N*M) parsing calls during search.
         stats.count++;
-        stats.totalUnderripe += Number(item.under_ripe) || 0;
-        stats.totalOverripe += Number(item.overripe) || 0;
-        stats.totalAbnormal += Number(item.abnormal) || 0;
+        stats.totalUnderripe += item._underRipeNum || 0;
+        stats.totalOverripe += item._overripeNum || 0;
+        stats.totalAbnormal += item._abnormalNum || 0;
       }
     }
 
@@ -229,97 +274,113 @@ export default function HarvestingQualityUploadPage() {
         name: 'FD Date',
         sortable: true,
         width: '120px',
-        selector: r => formatPerfDate(r.fddate, localeTag) || '-',
+        selector: r => r.fddate || '',
+        cell: r => r._displayDate || '-',
       },
       { name: 'Field Code', selector: r => r.fieldcode || '-', sortable: true, width: '110px' },
       { name: 'Document No', selector: r => r.documentno || '-', sortable: true, width: '120px' },
       {
         name: 'Under Ripe',
-        selector: r => formatPerfNumber(r.under_ripe || 0, localeTag),
+        selector: r => r._underRipeNum || 0,
+        cell: r => formatPerfNumber(r._underRipeNum || 0, localeTag),
         sortable: true,
         width: '110px',
       },
       {
         name: 'Overripe',
-        selector: r => formatPerfNumber(r.overripe || 0, localeTag),
+        selector: r => r._overripeNum || 0,
+        cell: r => formatPerfNumber(r._overripeNum || 0, localeTag),
         sortable: true,
         width: '110px',
       },
       {
         name: 'Abnormal',
-        selector: r => formatPerfNumber(r.abnormal || 0, localeTag),
+        selector: r => r._abnormalNum || 0,
+        cell: r => formatPerfNumber(r._abnormalNum || 0, localeTag),
         sortable: true,
         width: '110px',
       },
       {
         name: 'Long Stalk',
-        selector: r => formatPerfNumber(r.long_stalk || 0, localeTag),
+        selector: r => r._longStalkNum || 0,
+        cell: r => formatPerfNumber(r._longStalkNum || 0, localeTag),
         sortable: true,
         width: '110px',
       },
       {
         name: 'Eaten by Rat',
-        selector: r => formatPerfNumber(r.eaten_by_rat || 0, localeTag),
+        selector: r => r._eatenByRatNum || 0,
+        cell: r => formatPerfNumber(r._eatenByRatNum || 0, localeTag),
         sortable: true,
         width: '120px',
       },
       {
         name: 'Unharvest FFB',
-        selector: r => formatPerfNumber(r.unharvest_ffb || 0, localeTag),
+        selector: r => r._unharvestFfbNum || 0,
+        cell: r => formatPerfNumber(r._unharvestFfbNum || 0, localeTag),
         sortable: true,
         width: '120px',
       },
       {
         name: 'Uncollect LF Circle',
-        selector: r => formatPerfNumber(r.uncollect_lf_circle || 0, localeTag),
+        selector: r => r._uncollectLfCircleNum || 0,
+        cell: r => formatPerfNumber(r._uncollectLfCircleNum || 0, localeTag),
         sortable: true,
         width: '140px',
       },
       {
         name: 'Uncollect LF Piece',
-        selector: r => formatPerfNumber(r.uncollect_lf_piece || 0, localeTag),
+        selector: r => r._uncollectLfPieceNum || 0,
+        cell: r => formatPerfNumber(r._uncollectLfPieceNum || 0, localeTag),
         sortable: true,
         width: '135px',
       },
       {
         name: 'Unarrange FFB',
-        selector: r => formatPerfNumber(r.unarrange_ffb || 0, localeTag),
+        selector: r => r._unarrangeFfbNum || 0,
+        cell: r => formatPerfNumber(r._unarrangeFfbNum || 0, localeTag),
         sortable: true,
         width: '125px',
       },
       {
         name: 'Unprune Frond',
-        selector: r => formatPerfNumber(r.unprune_frond || 0, localeTag),
+        selector: r => r._unpruneFrondNum || 0,
+        cell: r => formatPerfNumber(r._unpruneFrondNum || 0, localeTag),
         sortable: true,
         width: '125px',
       },
       {
         name: 'QE 1 - Pelepah',
-        selector: r => formatPerfNumber(r.qe_1_pelepah_tidak_disusun || 0, localeTag),
+        selector: r => r._qe1Num || 0,
+        cell: r => formatPerfNumber(r._qe1Num || 0, localeTag),
         sortable: true,
         width: '125px',
       },
       {
         name: 'QE 2 - Buah Matahari',
-        selector: r => formatPerfNumber(r.qe_2_buah_matahari || 0, localeTag),
+        selector: r => r._qe2Num || 0,
+        cell: r => formatPerfNumber(r._qe2Num || 0, localeTag),
         sortable: true,
         width: '140px',
       },
       {
         name: 'QE 3 - Buah Busuk',
-        selector: r => formatPerfNumber(r.qe_3_buah_busuk || 0, localeTag),
+        selector: r => r._qe3Num || 0,
+        cell: r => formatPerfNumber(r._qe3Num || 0, localeTag),
         sortable: true,
         width: '125px',
       },
       {
         name: 'QE 4 - Mentah Diperam',
-        selector: r => formatPerfNumber(r.qe_4_buah_mentah_diperam || 0, localeTag),
+        selector: r => r._qe4Num || 0,
+        cell: r => formatPerfNumber(r._qe4Num || 0, localeTag),
         sortable: true,
         width: '145px',
       },
       {
         name: 'QE 5 - Over Pruning',
-        selector: r => formatPerfNumber(r.qe_5_over_pruning || 0, localeTag),
+        selector: r => r._qe5Num || 0,
+        cell: r => formatPerfNumber(r._qe5Num || 0, localeTag),
         sortable: true,
         width: '135px',
       },
