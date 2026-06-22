@@ -27,7 +27,9 @@
   "Auth": {
     "login": "Masuk",
     "username": "Nama Pengguna",
-    "password": "Kata Sandi"
+    "password": "Kata Sandi",
+    "showPassword": "Tampilkan kata sandi",
+    "hidePassword": "Sembunyikan kata sandi"
   },
   "Attendance": {
     "quickSearch": "Pencarian Cepat",

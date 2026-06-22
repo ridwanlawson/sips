@@ -27,7 +27,9 @@
   "Auth": {
     "login": "Login",
     "username": "Username",
-    "password": "Password"
+    "password": "Password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
   },
   "Attendance": {
     "quickSearch": "Quick Search",

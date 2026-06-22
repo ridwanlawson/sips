@@ -12,3 +12,8 @@
 **Learning:** Custom components like `SearchSelect` need explicit keyboard handling (like the `Escape` key) to meet accessibility standards. Closing a dropdown should ideally return focus to its trigger button to maintain the user's place. Additionally, all `aria-label` attributes must be localized via translation files to ensure a consistent experience for screen reader users across all supported languages.
 
 **Action:** Implement `Escape` key listeners in custom dropdowns that close the menu and return focus to the trigger. Always use localized strings for `aria-label` and `title` attributes.
+
+## 2025-06-21 - [Standardized Independent Password Toggles]
+**Learning:** Using a single global checkbox to toggle multiple password fields (like "Current", "New", and "Confirm") is a sub-optimal UX pattern. Independent toggles on each field, implemented via local component state, provide better control and follow modern security standards. Consistency in input styling (icons, borders) between login and profile pages creates a more cohesive user experience.
+
+**Action:** Replace form-level password visibility checkboxes with individual toggle buttons inside each password input. Ensure these toggles have localized ARIA labels and titles, and use a consistent flex-based input container (e.g., DaisyUI's `label.input.input-bordered`) for grouping icons with inputs.
