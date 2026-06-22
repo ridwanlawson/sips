@@ -17,7 +17,12 @@ export async function validateSecurity(req: NextRequest): Promise<NextResponse |
     await apiRateLimiter.consume(ip);
   } catch {
     return NextResponse.json(
-      { ok: false, error: 'Too many requests. Try again later.' },
+      {
+        ok: false,
+        success: false,
+        error: 'Too many requests. Try again later.',
+        message: 'Too many requests. Try again later.',
+      },
       { status: 429 }
     );
   }
@@ -26,7 +31,15 @@ export async function validateSecurity(req: NextRequest): Promise<NextResponse |
   const cookieStore = await cookies();
   const csrfToken = cookieStore.get('csrf_token')?.value;
   if (!csrfToken || !validateCsrfToken(req, csrfToken)) {
-    return NextResponse.json({ ok: false, error: 'Invalid CSRF token' }, { status: 403 });
+    return NextResponse.json(
+      {
+        ok: false,
+        success: false,
+        error: 'Invalid CSRF token',
+        message: 'Invalid CSRF token',
+      },
+      { status: 403 }
+    );
   }
 
   return null;
