@@ -4,8 +4,7 @@ import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
 import { applyUserDataScope } from '@/utils/requestScope';
 import { authHeaders, isRecord, parseJsonSafe } from '@/lib/apiProxy';
 import { sanitizeHtml, sanitizeFilename } from '@/lib/inputSanitizer';
-import { cookies } from 'next/headers';
-import { validateCsrfToken } from '@/lib/csrf';
+import { validateSecurity } from '@/lib/security';
 
 const PENGANGKUTAN_BASE = `${BACKEND_URL}/api/apps/pengangkutans`;
 
@@ -102,19 +101,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  const securityError = await validateSecurity(req);
+  if (securityError) return securityError;
+
   const token = await getTokenFromCookie();
   if (!token) {
     return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
-  }
-
-  // === CSRF VALIDATION ===
-  const cookieStore = await cookies();
-  const csrfToken = cookieStore.get('csrf_token')?.value;
-  if (!csrfToken || !validateCsrfToken(req, csrfToken)) {
-    return NextResponse.json(
-      { ok: false, error: 'Invalid CSRF token' },
-      { status: 403 }
-    );
   }
 
   // === INPUT SANITIZATION ===
