@@ -88,5 +88,23 @@
     "finish": "Selesai",
     "step": "Langkah",
     "of": "dari"
+  },
+  "Profile": {
+    "changePassword": "Ganti Password",
+    "changePasswordSubtitle": "Perbarui kata sandi akun Anda secara berkala.",
+    "currentPassword": "Password Saat Ini",
+    "newPassword": "Password Baru",
+    "confirmPassword": "Konfirmasi Password",
+    "currentPasswordPlaceholder": "Masukkan password lama",
+    "newPasswordPlaceholder": "Minimal 8 karakter",
+    "confirmPasswordPlaceholder": "Ulangi password baru",
+    "passwordHint": "Password minimal 8 karakter",
+    "saveChanges": "Simpan Perubahan",
+    "saving": "Menyimpan...",
+    "mismatchError": "Password baru dan konfirmasi tidak cocok.",
+    "lengthError": "Password baru minimal {min} karakter.",
+    "success": "Password berhasil diubah.",
+    "unexpectedError": "Terjadi kesalahan tidak terduga.",
+    "failedLoadProfile": "Gagal memuat data profil."
   }
 }

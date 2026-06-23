@@ -63,19 +63,24 @@ const FALLBACK_AVATAR =
 
 // ─── Pure Validators (Clean Code: pure functions) ─────────────────────────────
 
-function validatePasswordMatch(newPassword: string, confirmPassword: string): string | null {
-  if (newPassword !== confirmPassword) return 'Password baru dan konfirmasi tidak cocok.';
+function validatePasswordMatch(
+  newPassword: string,
+  confirmPassword: string,
+  message: string
+): string | null {
+  if (newPassword !== confirmPassword) return message;
   return null;
 }
 
-function validatePasswordLength(password: string, minLength = 8): string | null {
-  if (password.length < minLength) return `Password baru minimal ${minLength} karakter.`;
+function validatePasswordLength(password: string, message: string, minLength = 8): string | null {
+  if (password.length < minLength) return message;
   return null;
 }
 
 // ─── Custom Hook (SRP: enkapsulasi form logic) ────────────────────────────────
 
 function useChangePassword() {
+  const t = useTranslations('Profile');
   const [form, setForm] = useState<ChangePasswordFormState>({
     currentPassword: '',
     newPassword: '',
@@ -105,13 +110,17 @@ function useChangePassword() {
     setError('');
     setSuccess('');
 
-    const matchError = validatePasswordMatch(form.newPassword, form.confirmPassword);
+    const matchError = validatePasswordMatch(
+      form.newPassword,
+      form.confirmPassword,
+      t('mismatchError')
+    );
     if (matchError) {
       setError(matchError);
       return;
     }
 
-    const lengthError = validatePasswordLength(form.newPassword);
+    const lengthError = validatePasswordLength(form.newPassword, t('lengthError', { min: 8 }));
     if (lengthError) {
       setError(lengthError);
       return;
@@ -137,13 +146,13 @@ function useChangePassword() {
       const data = await res.json();
 
       if (res.ok) {
-        setSuccess(data.message || 'Password berhasil diubah.');
+        setSuccess(data.message || t('success'));
         resetForm();
       } else {
-        setError(data.message || 'Gagal mengubah password.');
+        setError(data.message || t('unexpectedError'));
       }
     } catch {
-      setError('Terjadi kesalahan tidak terduga.');
+      setError(t('unexpectedError'));
     } finally {
       setLoading(false);
     }
@@ -168,12 +177,14 @@ function PasswordField({
   placeholder,
   value,
   hasError = false,
+  ariaDescribedBy,
   onChange,
 }: {
   label: string;
   placeholder: string;
   value: string;
   hasError?: boolean;
+  ariaDescribedBy?: string;
   onChange: (value: string) => void;
 }) {
   const tAuth = useTranslations('Auth');
@@ -210,6 +221,8 @@ function PasswordField({
           onChange={e => onChange(e.target.value)}
           required
           minLength={8}
+          aria-describedby={ariaDescribedBy}
+          aria-invalid={hasError ? 'true' : 'false'}
         />
         <button
           type="button"
@@ -254,6 +267,7 @@ function FormAlert({ type, message }: { type: 'error' | 'success'; message: stri
     <div
       className={`alert ${isError ? 'alert-error' : 'alert-success'} shadow-sm text-sm animate-fadeIn`}
       role="alert"
+      aria-live="polite"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -285,11 +299,13 @@ function FormAlert({ type, message }: { type: 'error' | 'success'; message: stri
 
 /** Menampilkan kartu profil pengguna di sisi kiri. */
 function UserProfileCard({ profile }: { profile: UserProfile | null }) {
+  const t = useTranslations('Profile');
+
   if (!profile) {
     return (
       <div className="card bg-base-100 shadow-xl border border-base-300 h-full">
         <div className="card-body items-center justify-center">
-          <p className="text-base-content/60">Gagal memuat data profil.</p>
+          <p className="text-base-content/60">{t('failedLoadProfile')}</p>
         </div>
       </div>
     );
@@ -333,6 +349,7 @@ function UserProfileCard({ profile }: { profile: UserProfile | null }) {
 
 /** Form ganti password. */
 function ChangePasswordForm() {
+  const t = useTranslations('Profile');
   const {
     form,
     loading,
@@ -362,31 +379,35 @@ function ChangePasswordForm() {
             </svg>
           </div>
           <div>
-            <h2 className="card-title text-xl">Ganti Password</h2>
-            <p className="text-xs text-base-content/60">
-              Perbarui kata sandi akun Anda secara berkala.
-            </p>
+            <h2 className="card-title text-xl">{t('changePassword')}</h2>
+            <p className="text-xs text-base-content/60">{t('changePasswordSubtitle')}</p>
           </div>
         </div>
 
         <form onSubmit={submitChangePassword} className="flex flex-col gap-5" noValidate>
           <PasswordField
-            label="Password Saat Ini"
-            placeholder="Masukkan password lama"
+            label={t('currentPassword')}
+            placeholder={t('currentPasswordPlaceholder')}
             value={form.currentPassword}
             onChange={value => updateField('currentPassword', value)}
           />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1">
+              <PasswordField
+                label={t('newPassword')}
+                placeholder={t('newPasswordPlaceholder')}
+                value={form.newPassword}
+                ariaDescribedBy="new-password-hint"
+                onChange={value => updateField('newPassword', value)}
+              />
+              <span id="new-password-hint" className="text-[0.7rem] text-base-content/60 px-1">
+                {t('passwordHint')}
+              </span>
+            </div>
             <PasswordField
-              label="Password Baru"
-              placeholder="Minimal 8 karakter"
-              value={form.newPassword}
-              onChange={value => updateField('newPassword', value)}
-            />
-            <PasswordField
-              label="Konfirmasi Password"
-              placeholder="Ulangi password baru"
+              label={t('confirmPassword')}
+              placeholder={t('confirmPasswordPlaceholder')}
               value={form.confirmPassword}
               hasError={isConfirmMismatch}
               onChange={value => updateField('confirmPassword', value)}
@@ -401,11 +422,15 @@ function ChangePasswordForm() {
               type="submit"
               className="btn btn-primary w-full sm:w-auto sm:self-end min-w-[150px]"
               disabled={loading}
+              aria-label={loading ? t('saving') : t('saveChanges')}
             >
               {loading ? (
-                <span className="loading loading-spinner loading-sm" aria-label="Loading" />
+                <>
+                  <span className="loading loading-spinner loading-sm" />
+                  {t('saving')}
+                </>
               ) : (
-                'Simpan Perubahan'
+                t('saveChanges')
               )}
             </button>
           </div>
