@@ -189,7 +189,12 @@ function PasswordField({
 }) {
   const tAuth = useTranslations('Auth');
   const [show, setShow] = useState(false);
+  const [isCapsLock, setIsCapsLock] = useState(false);
   const inputId = `password-${label.replace(/\s+/g, '-').toLowerCase()}`;
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    setIsCapsLock(e.getModifierState('CapsLock'));
+  };
 
   return (
     <div className="form-control gap-1">
@@ -219,6 +224,8 @@ function PasswordField({
           className="grow bg-transparent outline-none"
           value={value}
           onChange={e => onChange(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onKeyUp={handleKeyDown}
           required
           minLength={8}
           aria-describedby={ariaDescribedBy}
@@ -256,6 +263,16 @@ function PasswordField({
           )}
         </button>
       </label>
+      {isCapsLock && (
+        <span
+          className="text-warning flex items-center gap-2 px-1 text-[0.6875rem] animate-fadeIn"
+          role="alert"
+          aria-live="polite"
+        >
+          <span className="status status-warning inline-block" aria-hidden="true" />
+          {tAuth('capsLock')}
+        </span>
+      )}
     </div>
   );
 }

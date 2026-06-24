@@ -22,3 +22,8 @@
 **Learning:** Extending accessibility patterns (like `aria-describedby` for hints and `aria-live` for alerts) to all user-facing forms, including Profile and Change Password, ensures a consistent and predictable experience for assistive technology users. Using a dedicated `Profile` translation namespace helps centralize management of account-related strings and prevents duplication across components.
 
 **Action:** Consistently apply `aria-describedby` for field-specific requirements and `aria-live="polite"` for form-level status alerts across all operational and profile-related forms. Always utilize the centralized `Profile` namespace for account management UI strings.
+
+## 2025-08-25 - [Caps Lock Detection for Password Fields]
+**Learning:** Entering passwords with Caps Lock inadvertently active is a common user error. Providing a localized, accessible warning (using 'role="alert"' and 'aria-live="polite"') significantly improves the login and password-change experience by offering immediate corrective feedback.
+
+**Action:** Use 'getModifierState("CapsLock")' on 'keydown' and 'keyup' events to detect Caps Lock state. Display the warning message (localized via the 'Auth' namespace) below the input field, utilizing existing 'text-warning' and 'animate-fadeIn' classes for visual consistency.

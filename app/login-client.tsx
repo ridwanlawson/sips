@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 
+import { useTranslations } from 'next-intl';
+
 import { isValidRedirect } from '@/utils/sanitization';
 
 const LOADING_TIPS = [
@@ -23,9 +25,11 @@ type Firefly = {
 
 export default function Home() {
   const router = useRouter();
+  const tAuth = useTranslations('Auth');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isCapsLock, setIsCapsLock] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [tipIndex, setTipIndex] = useState(0);
@@ -78,6 +82,10 @@ export default function Home() {
     const interval = setInterval(() => setTipIndex(prev => (prev + 1) % LOADING_TIPS.length), 2200);
     return () => clearInterval(interval);
   }, [isLoading]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    setIsCapsLock(e.getModifierState('CapsLock'));
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -275,6 +283,8 @@ export default function Home() {
                   aria-describedby="password-hint"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onKeyUp={handleKeyDown}
                   disabled={isLoading}
                   required
                   minLength={8}
@@ -320,6 +330,16 @@ export default function Home() {
                 >
                   <span className="status status-error inline-block" aria-hidden="true" />
                   {error}
+                </span>
+              )}
+              {isCapsLock && (
+                <span
+                  className="text-warning flex items-center gap-2 px-1 text-[0.6875rem] animate-fadeIn"
+                  role="alert"
+                  aria-live="polite"
+                >
+                  <span className="status status-warning inline-block" aria-hidden="true" />
+                  {tAuth('capsLock')}
                 </span>
               )}
               {!error && (
