@@ -27,3 +27,8 @@
 **Learning:** Entering passwords with Caps Lock inadvertently active is a common user error. Providing a localized, accessible warning (using 'role="alert"' and 'aria-live="polite"') significantly improves the login and password-change experience by offering immediate corrective feedback.
 
 **Action:** Use 'getModifierState("CapsLock")' on 'keydown' and 'keyup' events to detect Caps Lock state. Display the warning message (localized via the 'Auth' namespace) below the input field, utilizing existing 'text-warning' and 'animate-fadeIn' classes for visual consistency.
+
+## 2025-09-10 - [Handling Multiple ARIA Descriptions for Inputs]
+**Learning:** Inputs often require both a persistent hint (e.g., character requirements) and a dynamic error message. Accessibility is compromised if the error message replaces the hint in `aria-describedby`. Concatenating multiple IDs in the attribute ensures the screen reader provides full context to the user.
+
+**Action:** Dynamically compute the `aria-describedby` value by filtering and joining all applicable IDs (hints, errors, status messages). Ensure each piece of feedback has a unique, stable ID.
