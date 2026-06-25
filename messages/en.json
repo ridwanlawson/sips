@@ -29,7 +29,8 @@
     "username": "Username",
     "password": "Password",
     "showPassword": "Show password",
-    "hidePassword": "Hide password"
+    "hidePassword": "Hide password",
+    "capsLock": "Caps Lock is ON"
   },
   "Attendance": {
     "quickSearch": "Quick Search",

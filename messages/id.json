@@ -29,7 +29,8 @@
     "username": "Nama Pengguna",
     "password": "Kata Sandi",
     "showPassword": "Tampilkan kata sandi",
-    "hidePassword": "Sembunyikan kata sandi"
+    "hidePassword": "Sembunyikan kata sandi",
+    "capsLock": "Caps Lock AKTIF"
   },
   "Attendance": {
     "quickSearch": "Pencarian Cepat",
