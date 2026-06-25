@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { BACKEND_URL } from '@/utils/absensiProxy';
 import { CookieName } from '@/lib/constants';
+import { validateSecurity } from '@/lib/security';
 
 // Single source of truth; force-logout uses the same list.
 const COOKIES_TO_DELETE = [
@@ -26,7 +27,10 @@ const COOKIES_TO_DELETE = [
   CookieName.CSRF_TOKEN,
 ];
 
-export async function POST(): Promise<NextResponse> {
+export async function POST(req: NextRequest): Promise<NextResponse> {
+  const securityError = await validateSecurity(req);
+  if (securityError) return securityError;
+
   const cookieStore = await cookies();
   const token = cookieStore.get(CookieName.AUTH_TOKEN)?.value;
 
