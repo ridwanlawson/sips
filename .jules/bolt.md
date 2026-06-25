@@ -37,3 +37,7 @@
 ## 2026-06-15 - [Pre-calculating Numeric Values and Labels in Pengangkutan]
 **Learning:** Performing redundant string-to-number parsing and conditional label mapping (e.g., Langsir/Direct) inside DataTable selectors and cell renderers leads to degraded performance as the dataset grows. It also prevents efficient native numeric sorting in the table.
 **Action:** Pre-calculate all numeric values and display labels during the data fetch/mapping phase (e.g., in useQuery). Use these pre-calculated fields in the DataTable columns to ensure O(1) access during render and correct O(N log N) numeric sorting without overhead.
+
+## 2026-06-20 - [O(K*N) Cookie Retrieval Anti-pattern]
+**Learning:** Performing multiple regex-based lookups on `document.cookie` for a set of related fields (like user profile) causes O(K*N) complexity where N is cookie length and K is number of fields/variants. This leads to redundant string scanning and regex overhead on every page load or component mount.
+**Action:** Implement a single-pass parser that converts `document.cookie` into a `Map` or plain object exactly once. Use this cached map for O(1) field lookups, reducing retrieval complexity to O(N + K).
