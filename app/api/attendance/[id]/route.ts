@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { ABSENSI_BASE, getTokenFromCookie, safeJson } from '@/utils/absensiProxy';
-import { validateCsrfToken } from '@/lib/csrf';
+import { validateSecurity } from '@/lib/security';
+import { apiRateLimiter } from '@/lib/rateLimiter';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export async function GET(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  // === RATE LIMITING ===
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || req.headers.get('x-real-ip') || 'unknown';
+  try {
+    await apiRateLimiter.consume(ip);
+  } catch {
+    return NextResponse.json({ ok: false, error: 'Too many requests' }, { status: 429 });
+  }
+
   const params = await Promise.resolve(context.params);
   const id = params.id;
   const token = await getTokenFromCookie();
@@ -31,18 +39,14 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
 }
 
 export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const securityError = await validateSecurity(req);
+  if (securityError) return securityError;
+
   const params = await Promise.resolve(context.params);
   const id = params.id;
   const token = await getTokenFromCookie();
   if (!token) {
     return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
-  }
-
-  // === CSRF VALIDATION ===
-  const cookieStore = await cookies();
-  const csrfToken = cookieStore.get('csrf_token')?.value;
-  if (!csrfToken || !validateCsrfToken(req, csrfToken)) {
-    return NextResponse.json({ ok: false, error: 'Invalid CSRF token' }, { status: 403 });
   }
 
   // Ambil form dari client
@@ -85,17 +89,13 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
 }
 
 export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const securityError = await validateSecurity(req);
+  if (securityError) return securityError;
+
   const params = await Promise.resolve(context.params);
   const id = params.id;
   const token = await getTokenFromCookie();
   if (!token) return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
-
-  // === CSRF VALIDATION ===
-  const cookieStore = await cookies();
-  const csrfToken = cookieStore.get('csrf_token')?.value;
-  if (!csrfToken || !validateCsrfToken(req, csrfToken)) {
-    return NextResponse.json({ ok: false, error: 'Invalid CSRF token' }, { status: 403 });
-  }
 
   const incoming = await req.formData();
   const baDeleted = incoming.get('ba_deleted');
@@ -127,17 +127,13 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
 
 // Accept POST with _method override so clients can upload files (Laravel expects multipart POST)
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const securityError = await validateSecurity(req);
+  if (securityError) return securityError;
+
   const params = await Promise.resolve(context.params);
   const id = params.id;
   const token = await getTokenFromCookie();
   if (!token) return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
-
-  // === CSRF VALIDATION ===
-  const cookieStore = await cookies();
-  const csrfToken = cookieStore.get('csrf_token')?.value;
-  if (!csrfToken || !validateCsrfToken(req, csrfToken)) {
-    return NextResponse.json({ ok: false, error: 'Invalid CSRF token' }, { status: 403 });
-  }
 
   const incoming = await req.formData();
   const methodOverride = (incoming.get('_method') as string | null) || '';
