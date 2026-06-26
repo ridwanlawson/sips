@@ -177,6 +177,7 @@ function PasswordField({
   placeholder,
   value,
   hasError = false,
+  errorText,
   ariaDescribedBy,
   onChange,
 }: {
@@ -184,6 +185,7 @@ function PasswordField({
   placeholder: string;
   value: string;
   hasError?: boolean;
+  errorText?: string;
   ariaDescribedBy?: string;
   onChange: (value: string) => void;
 }) {
@@ -191,10 +193,15 @@ function PasswordField({
   const [show, setShow] = useState(false);
   const [isCapsLock, setIsCapsLock] = useState(false);
   const inputId = `password-${label.replace(/\s+/g, '-').toLowerCase()}`;
+  const errorId = `${inputId}-error`;
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     setIsCapsLock(e.getModifierState('CapsLock'));
   };
+
+  const describedBy = [ariaDescribedBy, hasError && errorText ? errorId : null]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <div className="form-control gap-1">
@@ -228,7 +235,7 @@ function PasswordField({
           onKeyUp={handleKeyDown}
           required
           minLength={8}
-          aria-describedby={ariaDescribedBy}
+          aria-describedby={describedBy || undefined}
           aria-invalid={hasError ? 'true' : 'false'}
         />
         <button
@@ -263,6 +270,17 @@ function PasswordField({
           )}
         </button>
       </label>
+      {hasError && errorText && (
+        <span
+          id={errorId}
+          role="alert"
+          aria-live="polite"
+          className="text-error flex items-center gap-2 px-1 text-[0.6875rem] animate-fadeIn"
+        >
+          <span className="status status-error inline-block" aria-hidden="true" />
+          {errorText}
+        </span>
+      )}
       {isCapsLock && (
         <span
           className="text-warning flex items-center gap-2 px-1 text-[0.6875rem] animate-fadeIn"
@@ -427,6 +445,7 @@ function ChangePasswordForm() {
               placeholder={t('confirmPasswordPlaceholder')}
               value={form.confirmPassword}
               hasError={isConfirmMismatch}
+              errorText={isConfirmMismatch ? t('mismatchError') : undefined}
               onChange={value => updateField('confirmPassword', value)}
             />
           </div>
