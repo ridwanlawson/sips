@@ -25,8 +25,31 @@ type LhmData = {
   _dateOnly?: string;
   _jjgNum?: number;
   _brdNum?: number;
+  _haNum?: number;
+  _mentahqtyNum?: number;
+  _mentahrpNum?: number;
+  _emptybunchqtyNum?: number;
+  _emptybunchrpNum?: number;
+  _jumlahdendaNum?: number;
   _totalalljjgNum?: number;
+  _basisNum?: number;
+  _rpbasisNum?: number;
+  _premilv1Num?: number;
+  _rate1Num?: number;
+  _rplv1Num?: number;
+  _premilv2Num?: number;
+  _rate2Num?: number;
+  _rplv2Num?: number;
+  _premilv3Num?: number;
+  _rate3Num?: number;
+  _rplv3Num?: number;
+  _totalrppremiNum?: number;
+  _brd_rpNum?: number;
+  _kurangbasisNum?: number;
+  _hariliburNum?: number;
+  _rphkNum?: number;
   _totalNum?: number;
+  _premiPanenNum?: number;
 
   id: string;
   rowdata: string;
@@ -268,8 +291,6 @@ export default function Lhm() {
             const seen = new Set<string>();
             const data = json.data.map((it: LhmData, idx: number) => {
               const dateOnly = (it.fddate || '').split(' ')[0];
-              // ⚡ Bolt Optimization: pre-calculate display date using cached formatter (~50x faster)
-              const displayDate = dateOnly ? formatPerfDate(dateOnly, localeTag) : '-';
 
               const candidate = [
                 it.employeecode || '',
@@ -284,38 +305,10 @@ export default function Lhm() {
               while (seen.has(key)) key = `${key}_`;
               seen.add(key);
 
-              // ⚡ Bolt Optimization: pre-calculate search content string
-              const searchContent = [
-                it.employeecode,
-                it.nama,
-                it.fddate,
-                dateOnly,
-                displayDate,
-                it.kemandoran,
-                it.blok,
-                it.fcba,
-                it.afdeling,
-                it.attendance,
-                it.tahuntanam,
-                it.documentno,
-                it.fcentry,
-                it.lastupdate,
-              ]
-                .filter(Boolean)
-                .join(' ')
-                .toLowerCase();
-
               return {
                 ...it,
                 _rowKey: key,
                 _dateOnly: dateOnly,
-                _displayDate: displayDate,
-                _searchContent: searchContent,
-                // ⚡ Bolt Optimization: pre-calculate numeric values to avoid redundant regex parsing in loops
-                _jjgNum: toNumber(it.jjg),
-                _brdNum: toNumber(it.brd),
-                _totalalljjgNum: toNumber(it.totalalljjg),
-                _totalNum: toNumber(it.total),
               };
             });
             setItems(data);
@@ -333,7 +326,7 @@ export default function Lhm() {
         setLoading(false);
       }
     },
-    [getScopedFilters, localeTag]
+    [getScopedFilters]
   );
 
   useEffect(() => {
@@ -341,6 +334,102 @@ export default function Lhm() {
       fetchData(appliedFilters);
     }
   }, [appliedFilters, userLevel, homeFcba, fetchData]);
+
+  /**
+   * ⚡ Bolt Optimization:
+   * 1. Single-pass enrichment to add display labels, numeric values, and search content.
+   * 2. Uses formatPerfDate and formatPerfNumber with cached formatters (~50x faster).
+   * 3. Moves ALL string-to-number parsing and localization logic out of the render loop.
+   */
+  const enrichedItems = useMemo(() => {
+    return items.map(it => {
+      const dateOnly = it._dateOnly || '';
+      const displayDate = dateOnly ? formatPerfDate(dateOnly, localeTag) : '-';
+
+      // Pre-calculate ALL numeric fields
+      const _jjgNum = toNumber(it.jjg);
+      const _brdNum = toNumber(it.brd);
+      const _haNum = toNumber(it.ha);
+      const _mentahqtyNum = toNumber(it.mentahqty);
+      const _mentahrpNum = toNumber(it.mentahrp);
+      const _emptybunchqtyNum = toNumber(it.emptybunchqty);
+      const _emptybunchrpNum = toNumber(it.emptybunchrp);
+      const _jumlahdendaNum = toNumber(it.jumlahdenda);
+      const _totalalljjgNum = toNumber(it.totalalljjg);
+      const _basisNum = toNumber(it.basis);
+      const _rpbasisNum = toNumber(it.rpbasis);
+      const _premilv1Num = toNumber(it.premilv1);
+      const _rate1Num = toNumber(it.rate1);
+      const _rplv1Num = toNumber(it.rplv1);
+      const _premilv2Num = toNumber(it.premilv2);
+      const _rate2Num = toNumber(it.rate2);
+      const _rplv2Num = toNumber(it.rplv2);
+      const _premilv3Num = toNumber(it.premilv3);
+      const _rate3Num = toNumber(it.rate3);
+      const _rplv3Num = toNumber(it.rplv3);
+      const _totalrppremiNum = toNumber(it.totalrppremi);
+      const _brd_rpNum = toNumber(it.brd_rp);
+      const _kurangbasisNum = toNumber(it.kurangbasis);
+      const _hariliburNum = toNumber(it.harilibur);
+      const _rphkNum = toNumber(it.rphk);
+      const _totalNum = toNumber(it.total);
+      const _premiPanenNum = _totalrppremiNum + _rpbasisNum;
+
+      // ⚡ Bolt Optimization: pre-calculate search content string
+      const searchContent = [
+        it.employeecode,
+        it.nama,
+        it.fddate,
+        dateOnly,
+        displayDate,
+        it.kemandoran,
+        it.blok,
+        it.fcba,
+        it.afdeling,
+        it.attendance,
+        it.tahuntanam,
+        it.documentno,
+        it.fcentry,
+        it.lastupdate,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return {
+        ...it,
+        _displayDate: displayDate,
+        _searchContent: searchContent,
+        _jjgNum,
+        _brdNum,
+        _haNum,
+        _mentahqtyNum,
+        _mentahrpNum,
+        _emptybunchqtyNum,
+        _emptybunchrpNum,
+        _jumlahdendaNum,
+        _totalalljjgNum,
+        _basisNum,
+        _rpbasisNum,
+        _premilv1Num,
+        _rate1Num,
+        _rplv1Num,
+        _premilv2Num,
+        _rate2Num,
+        _rplv2Num,
+        _premilv3Num,
+        _rate3Num,
+        _rplv3Num,
+        _totalrppremiNum,
+        _brd_rpNum,
+        _kurangbasisNum,
+        _hariliburNum,
+        _rphkNum,
+        _totalNum,
+        _premiPanenNum,
+      };
+    });
+  }, [items, localeTag]);
 
   /* ===== Quick search ===== */
   // ⚡ Bolt Optimization: Consolidated filtering and totals calculation in a single pass
@@ -356,11 +445,11 @@ export default function Lhm() {
     };
     let hasAttendance = false;
 
-    for (const it of items) {
+    for (const it of enrichedItems) {
       if (!s || it._searchContent?.includes(s)) {
         result.push(it);
 
-        // ⚡ Bolt Optimization: Use pre-calculated numbers to avoid thousands of O(N*M) toNumber/regex calls during search
+        // ⚡ Bolt Optimization: Use pre-calculated numbers to avoid thousands of O(N*M) parsing/regex calls during search
         totals.jjg += it._jjgNum || 0;
         totals.totalalljjg += it._totalalljjgNum || 0;
         totals.brd += it._brdNum || 0;
@@ -377,7 +466,7 @@ export default function Lhm() {
       lhmTotals: totals,
       attendanceExists: !s || hasAttendance,
     };
-  }, [q, items]);
+  }, [q, enrichedItems]);
 
   // ⚡ Bolt Optimization: Side-effects (setError) moved out of useMemo to useEffect
   // to preserve existing error-reporting logic while avoiding React render-phase state updates.
@@ -627,31 +716,31 @@ export default function Lhm() {
       },
       {
         name: <span title="Hektar (HA)">HA</span>,
-        selector: r => r.ha,
+        selector: r => r._haNum ?? 0,
         sortable: true,
         width: '65px',
-        cell: r => numCell(r.ha),
+        cell: r => numCell(r._haNum),
       },
       {
         name: <span title="Mentah Qty">Mentah-A (Jjg)</span>,
-        selector: r => r.mentahqty,
+        selector: r => r._mentahqtyNum ?? 0,
         sortable: true,
         width: '110px',
-        cell: r => numCell(r.mentahqty),
+        cell: r => numCell(r._mentahqtyNum),
       },
       {
         name: <span title="Mentah Rp">Mentah-A (Rp)</span>,
-        selector: r => r.mentahrp,
+        selector: r => r._mentahrpNum ?? 0,
         sortable: true,
         width: '110px',
-        cell: r => numCell(r.mentahrp),
+        cell: r => numCell(r._mentahrpNum),
       },
       {
         name: <span title="Empty Bunch Qty">E (Jjg)</span>,
-        selector: r => r.emptybunchqty,
+        selector: r => r._emptybunchqtyNum ?? 0,
         sortable: true,
         width: '70px',
-        cell: r => numCell(r.emptybunchqty),
+        cell: r => numCell(r._emptybunchqtyNum),
       },
       {
         name: (
@@ -660,136 +749,136 @@ export default function Lhm() {
             (Rp)
           </span>
         ),
-        selector: r => r.emptybunchrp,
+        selector: r => r._emptybunchrpNum ?? 0,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r.emptybunchrp),
+        cell: r => numCell(r._emptybunchrpNum),
       },
       {
         name: <span title="Jumlah Denda">Jumlah (Rp)</span>,
-        selector: r => r.jumlahdenda,
+        selector: r => r._jumlahdendaNum ?? 0,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r.jumlahdenda),
+        cell: r => numCell(r._jumlahdendaNum),
       },
       {
         name: <span title="Hasil Netto Jjg">Hasil Netto (Jjg)</span>,
-        selector: r => r.totalalljjg,
+        selector: r => r._totalalljjgNum ?? 0,
         sortable: true,
         width: '80px',
-        cell: r => numCell(r.totalalljjg),
+        cell: r => numCell(r._totalalljjgNum),
       },
       {
         name: <span title="Janjang Basis">Basis (Jjg)</span>,
-        selector: r => r.basis,
+        selector: r => r._basisNum ?? 0,
         sortable: true,
         width: '70px',
-        cell: r => numCell(r.basis),
+        cell: r => numCell(r._basisNum),
       },
       {
         name: <span title="Rupiah Siap Basis">Siap Basis (Rp)</span>,
-        selector: r => r.rpbasis,
+        selector: r => r._rpbasisNum ?? 0,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r.rpbasis),
+        cell: r => numCell(r._rpbasisNum),
       },
       {
         name: <span title="Jumlah Janjang Lebih Basis Level 1">Level 1 Jlh Jjg</span>,
-        selector: r => r.premilv1,
+        selector: r => r._premilv1Num ?? 0,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r.premilv1),
+        cell: r => numCell(r._premilv1Num),
       },
       {
         name: <span title="Rupiah / Janjang Level 1">Level 1 Rp/Jjg</span>,
-        selector: r => r.rate1,
+        selector: r => r._rate1Num ?? 0,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r.rate1),
+        cell: r => numCell(r._rate1Num),
       },
       {
         name: <span title="Rupiah Level 1">Level 1 Rp</span>,
-        selector: r => r.rplv1,
+        selector: r => r._rplv1Num ?? 0,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r.rplv1),
+        cell: r => numCell(r._rplv1Num),
       },
       {
         name: <span title="Jumlah Janjang Lebih Basis Level 2">Level 2 Jlh Jjg</span>,
-        selector: r => r.premilv2,
+        selector: r => r._premilv2Num ?? 0,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r.premilv2),
+        cell: r => numCell(r._premilv2Num),
       },
       {
         name: <span title="Rupiah / Janjang Level 2">Level 2 Rp/Jjg</span>,
-        selector: r => r.rate2,
+        selector: r => r._rate2Num ?? 0,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r.rate2),
+        cell: r => numCell(r._rate2Num),
       },
       {
         name: <span title="Rupiah Level 2">Level 2 Rp</span>,
-        selector: r => r.rplv2,
+        selector: r => r._rplv2Num ?? 0,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r.rplv2),
+        cell: r => numCell(r._rplv2Num),
       },
       {
         name: <span title="Jumlah Janjang Lebih Basis Level 3">Level 3 Jlh Jjg</span>,
-        selector: r => r.premilv3,
+        selector: r => r._premilv3Num ?? 0,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r.premilv3),
+        cell: r => numCell(r._premilv3Num),
       },
       {
         name: <span title="Rupiah / Janjang Level 3">Level 3 Rp/Jjg</span>,
-        selector: r => r.rate3,
+        selector: r => r._rate3Num ?? 0,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r.rate3),
+        cell: r => numCell(r._rate3Num),
       },
       {
         name: <span title="Rupiah Level 3">Level 3 Rp</span>,
-        selector: r => r.rplv3,
+        selector: r => r._rplv3Num ?? 0,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r.rplv3),
+        cell: r => numCell(r._rplv3Num),
       },
       {
         name: <span title="Jumlah Premi (Rp)">Jumlah Premi (Rp)</span>,
-        selector: r => r.totalrppremi,
+        selector: r => r._totalrppremiNum ?? 0,
         sortable: true,
         width: '95px',
-        cell: r => numCell(r.totalrppremi),
+        cell: r => numCell(r._totalrppremiNum),
       },
       {
         name: <span title="Upah Pokok (Rp)">Upah Pokok (Rp)</span>,
-        selector: r => r.rphk,
+        selector: r => r._rphkNum ?? 0,
         sortable: true,
         width: '95px',
-        cell: r => numCell(r.rphk),
+        cell: r => numCell(r._rphkNum),
       },
       {
         name: <span title="Tidak Capai Basis (Rp)">Tidak Capai Basis (Rp)</span>,
-        selector: r => r.kurangbasis,
+        selector: r => r._kurangbasisNum ?? 0,
         sortable: true,
         width: '95px',
-        cell: r => numCell(r.kurangbasis),
+        cell: r => numCell(r._kurangbasisNum),
       },
       {
         name: <span title="Premi Panen (Rp)">Premi Panen (Rp)</span>,
-        selector: r => Number(r.totalrppremi || 0) + Number(r.rpbasis || 0),
+        selector: r => r._premiPanenNum ?? 0,
         sortable: true,
         width: '95px',
-        cell: r => numCell(String(Number(r.totalrppremi || 0) + Number(r.rpbasis || 0))),
+        cell: r => numCell(r._premiPanenNum),
       },
       {
         name: <span title="Premi Brondol (Rp)">Premi Brondol (Rp)</span>,
-        selector: r => r.brd_rp,
+        selector: r => r._brd_rpNum ?? 0,
         sortable: true,
         width: '95px',
-        cell: r => numCell(r.brd_rp),
+        cell: r => numCell(r._brd_rpNum),
       },
       {
         name: <span title="Total">Total</span>,
