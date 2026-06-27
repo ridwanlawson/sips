@@ -61,6 +61,9 @@ type SipsUser = {
   status?: UserStatus;
 };
 
+/** ⚡ Bolt Optimization: Enriched type with pre-calculated search string */
+type EnrichedSipsUser = SipsUser & { _search: string };
+
 const LEVEL_OPTIONS: Option[] = [
   { value: 'MGR', label: 'MGR - Manager' },
   { value: 'KSI', label: 'KSI - Kepala Administrator' },
@@ -205,16 +208,47 @@ export default function UsersClient() {
 
   const buLookups = useMemo(() => getBusinessUnitLookups(businessUnits), [businessUnits]);
 
+  /** ⚡ Bolt Optimization: Single-pass enrichment and unique value extraction */
+  const enrichedData = useMemo(() => {
+    const afdSet = new Set<string>();
+    const gangSet = new Set<string>();
+    const fcbaSet = new Set<string>();
+
+    const enrichedItems: EnrichedSipsUser[] = users.map(u => {
+      if (u.afdeling) afdSet.add(u.afdeling);
+      if (u.gangcode) gangSet.add(u.gangcode);
+      if (u.fcba) fcbaSet.add(u.fcba);
+
+      return {
+        ...u,
+        _search:
+          `${u.username ?? ''} ${u.fullname ?? ''} ${u.email ?? ''} ${u.phone ?? ''} ${u.fcba ?? ''} ${u.afdeling ?? ''} ${u.gangcode ?? ''} ${u.level ?? ''} ${u.position ?? ''} ${u.idkaryawan ?? ''}`.toLowerCase(),
+      };
+    });
+
+    const afdelingFilterOptions: Option[] = Array.from(afdSet)
+      .sort()
+      .map(v => ({ value: v, label: v }));
+
+    const gangcodeFilterOptions: Option[] = Array.from(gangSet)
+      .sort()
+      .map(v => ({ value: v, label: v }));
+
+    const fcbaFallbackOptions: Option[] = Array.from(fcbaSet)
+      .sort()
+      .map(v => ({ value: v, label: v }));
+
+    return { enrichedItems, afdelingFilterOptions, gangcodeFilterOptions, fcbaFallbackOptions };
+  }, [users]);
+
   const fcbaOptions: Option[] = useMemo(() => {
     if (businessUnits.length) {
       return businessUnits
         .map(b => ({ value: b.fccode, label: b.fcname ? `${b.fccode} - ${b.fcname}` : b.fccode }))
         .sort((a, b) => a.label.localeCompare(b.label));
     }
-    return Array.from(new Set(users.map(u => u.fcba).filter(Boolean) as string[]))
-      .sort()
-      .map(v => ({ value: v, label: v }));
-  }, [businessUnits, users]);
+    return enrichedData.fcbaFallbackOptions;
+  }, [businessUnits, enrichedData.fcbaFallbackOptions]);
 
   const isFcbaRestricted = userLevel !== '' && userLevel !== 'ADM' && !!userFcba;
   const scopedFcbaOptions = useMemo<Option[]>(() => {
@@ -222,27 +256,14 @@ export default function UsersClient() {
     return fcbaOptions.filter(o => o.value === userFcba);
   }, [fcbaOptions, isFcbaRestricted, userFcba]);
 
-  const afdelingFilterOptions = useMemo(() => {
-    return Array.from(new Set(users.map(u => u.afdeling).filter(Boolean) as string[]))
-      .sort()
-      .map(v => ({ value: v, label: v }));
-  }, [users]);
-
-  const gangcodeFilterOptions = useMemo(() => {
-    return Array.from(new Set(users.map(u => u.gangcode).filter(Boolean) as string[]))
-      .sort()
-      .map(v => ({ value: v, label: v }));
-  }, [users]);
+  const afdelingFilterOptions = enrichedData.afdelingFilterOptions;
+  const gangcodeFilterOptions = enrichedData.gangcodeFilterOptions;
 
   const filteredUsers = useMemo(() => {
-    if (!q.trim()) return users;
+    if (!q.trim()) return enrichedData.enrichedItems;
     const s = q.toLowerCase();
-    return users.filter(u =>
-      `${u.username ?? ''} ${u.fullname ?? ''} ${u.email ?? ''} ${u.phone ?? ''} ${u.fcba ?? ''} ${u.afdeling ?? ''} ${u.gangcode ?? ''} ${u.level ?? ''} ${u.position ?? ''} ${u.idkaryawan ?? ''}`
-        .toLowerCase()
-        .includes(s)
-    );
-  }, [users, q]);
+    return enrichedData.enrichedItems.filter(u => u._search.includes(s));
+  }, [enrichedData.enrichedItems, q]);
 
   // Single add form cascading state
   const [selFcba, setSelFcba] = useState('');
@@ -572,7 +593,7 @@ export default function UsersClient() {
     exportJsonToCsv(dataToExport, `Users_${new Date().toISOString().slice(0, 10)}.csv`);
   };
 
-  const columns: TableColumn<SipsUser>[] = useMemo(
+  const columns: TableColumn<EnrichedSipsUser>[] = useMemo(
     () => [
       {
         name: <span className="block text-center w-full">No</span>,

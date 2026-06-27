@@ -45,3 +45,7 @@
 ## 2026-06-25 - [Eliminating Redundant Network Fetches on Locale Change]
 **Learning:** Including `localeTag` in a data-fetching dependency array (like `useQuery` or `fetchData`) causes entire datasets to be re-fetched from the network whenever the user toggles the UI language, even if the underlying data is identical.
 **Action:** Remove `localeTag` from network dependencies. Instead, move localization-dependent display formatting (e.g., `formatPerfDate`) into an `enrichedItems` `useMemo` hook that depends on both the data and the `localeTag`. This ensures the UI updates instantly without network overhead.
+
+## 2025-06-27 - [Pre-calculating Search Strings in User Management]
+**Learning:** Performing expensive string concatenations and `.toLowerCase()` operations on every row during a user search filter causes noticeable UI lag as the user list grows.
+**Action:** Use the `enrichedItems` pattern to pre-calculate a single lowercased `_search` string once per data fetch inside a `useMemo`. This converts O(N) string operations during user input into simple O(N) `.includes()` checks, significantly improving search responsiveness.
