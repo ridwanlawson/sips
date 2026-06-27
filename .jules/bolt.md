@@ -41,3 +41,7 @@
 ## 2026-06-20 - [O(K*N) Cookie Retrieval Anti-pattern]
 **Learning:** Performing multiple regex-based lookups on `document.cookie` for a set of related fields (like user profile) causes O(K*N) complexity where N is cookie length and K is number of fields/variants. This leads to redundant string scanning and regex overhead on every page load or component mount.
 **Action:** Implement a single-pass parser that converts `document.cookie` into a `Map` or plain object exactly once. Use this cached map for O(1) field lookups, reducing retrieval complexity to O(N + K).
+
+## 2026-06-25 - [Eliminating Redundant Network Fetches on Locale Change]
+**Learning:** Including `localeTag` in a data-fetching dependency array (like `useQuery` or `fetchData`) causes entire datasets to be re-fetched from the network whenever the user toggles the UI language, even if the underlying data is identical.
+**Action:** Remove `localeTag` from network dependencies. Instead, move localization-dependent display formatting (e.g., `formatPerfDate`) into an `enrichedItems` `useMemo` hook that depends on both the data and the `localeTag`. This ensures the UI updates instantly without network overhead.
