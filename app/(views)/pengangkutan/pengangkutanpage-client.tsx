@@ -776,23 +776,23 @@ export default function PengangkutanPage() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isEditing && !form.id) {
-      toast.error('ID pengangkutan tidak tersedia untuk update');
+      toast.error(t('toastIdRequired'));
       return;
     }
     if (!form.nopengangkutan) {
-      toast.error('No Pengangkutan wajib diisi');
+      toast.error(t('toastNoPengangkutanRequired'));
       return;
     }
     if (!form.type_pengangkutan) {
-      toast.error('Tipe Pengangkutan wajib dipilih');
+      toast.error(t('toastTypeRequired'));
       return;
     }
     if (form.nodokumen.trim() && !harvestMatched) {
-      toast.error('No Dokumen belum valid atau belum ditemukan di harvest');
+      toast.error(t('toastNoDokumenInvalid'));
       return;
     }
     if (!noBaExcaFile && !isEditing) {
-      toast.error('File BA wajib dilampirkan dalam format PDF');
+      toast.error(t('toastBaRequired'));
       return;
     }
     setSubmitLoading(true);
@@ -820,15 +820,15 @@ export default function PengangkutanPage() {
         return;
       }
       if (!res.ok || !json.ok) {
-        throw new Error(json.message || json.error || 'Gagal menyimpan data');
+        throw new Error(json.message || json.error || t('toastSaveError'));
       }
-      toast.success(isEditing ? 'Data berhasil diperbarui' : 'Data berhasil ditambahkan');
+      toast.success(isEditing ? t('toastSaveSuccess') : t('toastAddSuccess'));
       setOpen(false);
       resetForm();
       queryClient.invalidateQueries({ queryKey: ['pengangkutan'] });
     } catch (error) {
       console.error(error);
-      toast.error(error instanceof Error ? error.message : 'Gagal menyimpan data');
+      toast.error(error instanceof Error ? error.message : t('toastSaveError'));
     } finally {
       setSubmitLoading(false);
     }
@@ -873,12 +873,12 @@ export default function PengangkutanPage() {
         throw new Error('Unauthorized');
       }
       if (!res.ok || !json.ok) {
-        throw new Error(json.message || json.error || 'Gagal menghapus data');
+        throw new Error(json.message || json.error || t('toastDeleteError'));
       }
       return id;
     },
     onSuccess: () => {
-      toast.success('Data berhasil dihapus');
+      toast.success(t('toastDeleteSuccess'));
       setDeleteOpen(false);
       setDeleteTarget(null);
       setDeleteFile(null);
@@ -898,7 +898,7 @@ export default function PengangkutanPage() {
   const handleNoBaExcaChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
     if (file && file.type !== 'application/pdf') {
-      toast.error('File BA harus berformat PDF');
+      toast.error(t('toastPdfFormat'));
       event.target.value = '';
       setNoBaExcaFile(null);
       return;
@@ -919,7 +919,7 @@ export default function PengangkutanPage() {
 
   const handleExport = () => {
     if (items.length === 0) {
-      toast.error('Tidak ada data untuk diekspor');
+      toast.error(t('toastNoExportData'));
       return;
     }
 
@@ -1021,9 +1021,9 @@ export default function PengangkutanPage() {
         // ⚡ Bolt Optimization: Pre-calculate Type Label
         const typeLabel =
           String(it.type_pengangkutan) === '1'
-            ? 'Langsir'
+            ? t('typeLangsir')
             : String(it.type_pengangkutan) === '2'
-              ? 'Direct'
+              ? t('typeDirect')
               : it.type_pengangkutan
                 ? String(it.type_pengangkutan)
                 : '-';
@@ -1214,10 +1214,10 @@ export default function PengangkutanPage() {
           ? queryError
           : queryError instanceof Error
             ? queryError.message
-            : 'Terjadi kesalahan saat mengambil data';
+            : t('toastFetchError');
       toast.error(msg);
     }
-  }, [queryError]);
+  }, [queryError, t]);
 
   /* ===== Quick search lokal & Totals ===== */
   // ⚡ Bolt Optimization: Consolidate filtering and totals calculation into a single-pass O(N) loop.
@@ -1244,12 +1244,12 @@ export default function PengangkutanPage() {
 
   const totalCards = [
     {
-      label: 'Total Janjang',
+      label: t('totalJanjang'),
       value: totals.totaljanjang,
       className: 'text-primary',
     },
     {
-      label: 'Total Brondolan',
+      label: t('totalBrondolan'),
       value: totals.brondolan,
       className: 'text-success',
     },
@@ -1258,7 +1258,7 @@ export default function PengangkutanPage() {
   const columns: TableColumn<Pengangkutan & { _index: number }>[] = useMemo(
     () => [
       {
-        name: <span title="Aksi edit/hapus data pengangkutan">Aksi</span>,
+        name: <span title={t('colAksiTooltip')}>{t('colAksi')}</span>,
         width: '130px',
         style: { justifyContent: 'center' },
         cell: r => (
@@ -1288,7 +1288,7 @@ export default function PengangkutanPage() {
         ignoreRowClick: true,
       },
       {
-        name: <span title="Status persetujuan pengangkutan (Planned/Approved/dll)">Status</span>,
+        name: <span title={t('colStatusTooltip')}>{t('colStatus')}</span>,
         selector: r => r.status_pengangkutan ?? '-',
         sortable: true,
         width: '120px',
@@ -1307,37 +1307,37 @@ export default function PengangkutanPage() {
         ),
       },
       {
-        name: <span title="Nomor urut baris">#</span>,
+        name: <span title={t('colNoTooltip')}>{t('colNo')}</span>,
         selector: r => r._index,
         width: '60px',
       },
       {
-        name: <span title="Nomor pengangkutan">No Pengangkutan</span>,
+        name: <span title={t('colNoPengangkutanTooltip')}>{t('colNoPengangkutan')}</span>,
         selector: r => r.nopengangkutan,
         sortable: true,
         width: '200px',
       },
       {
-        name: <span title="Nomor SPB">No SPB</span>,
+        name: <span title={t('colNoSpbTooltip')}>{t('colNoSpb')}</span>,
         selector: r => r.nospb || '-',
         sortable: true,
         width: '180px',
       },
       {
-        name: <span title="Nomor dokumen">No Dokumen</span>,
+        name: <span title={t('colNoDokumenTooltip')}>{t('colNoDokumen')}</span>,
         selector: r => r.nodokumen || '-',
         sortable: true,
         width: '250px',
       },
       {
-        name: <span title="Tanggal pengangkutan (DD-MM-YYYY)">Tanggal</span>,
+        name: <span title={t('colTanggalTooltip')}>{t('colTanggal')}</span>,
         selector: r => r.tanggal || '-',
         cell: r => r._displayDate || '-',
         sortable: true,
         width: '120px',
       },
       {
-        name: <span title="Kerani (nama dan kode)">Kerani</span>,
+        name: <span title={t('colKeraniTooltip')}>{t('colKerani')}</span>,
         selector: r => r.nama_karyawan_kerani || r.kode_karyawan_kerani || '-',
         sortable: true,
         width: '220px',
@@ -1349,7 +1349,7 @@ export default function PengangkutanPage() {
         ),
       },
       {
-        name: <span title="Driver (nama dan kode)">Driver</span>,
+        name: <span title={t('colDriverTooltip')}>{t('colDriver')}</span>,
         selector: r => r.nama_karyawan_driver || r.kode_karyawan_driver || '-',
         sortable: true,
         width: '220px',
@@ -1361,49 +1361,49 @@ export default function PengangkutanPage() {
         ),
       },
       {
-        name: <span title="Tipe pengangkutan">Type</span>,
+        name: <span title={t('colTypeTooltip')}>{t('colType')}</span>,
         selector: r => r._typeLabel || '-',
         sortable: true,
         width: '90px',
       },
       {
-        name: <span title="Kode / Nama kendaraan">Kendaraan</span>,
+        name: <span title={t('colKendaraanTooltip')}>{t('colKendaraan')}</span>,
         selector: r => r.nama_kendaraan || r.kode_kendaraan || '-',
         sortable: true,
         width: '160px',
       },
       {
-        name: <span title="FCBA asal (kebun/estate)">FCBA</span>,
+        name: <span title={t('colFcbaTooltip')}>{t('colFcba')}</span>,
         selector: r => r.fcba || '-',
         sortable: true,
         width: '100px',
       },
       {
-        name: <span title="Pabrik tujuan">Pabrik</span>,
+        name: <span title={t('colPabrikTooltip')}>{t('colPabrik')}</span>,
         selector: r => r.pabrik_tujuan || '-',
         sortable: true,
         width: '100px',
       },
       {
-        name: <span title="Afdeling / Section">Afdeling</span>,
+        name: <span title={t('colAfdelingTooltip')}>{t('colAfdeling')}</span>,
         selector: r => r.afdeling || '-',
         sortable: true,
         width: '100px',
       },
       {
-        name: <span title="TPH (Tempat Penampungan Hasil)">TPH</span>,
+        name: <span title={t('colTphTooltip')}>{t('colTph')}</span>,
         selector: r => r.tph || '-',
         sortable: true,
         width: '80px',
       },
       {
-        name: <span title="Field code">Field</span>,
+        name: <span title={t('colFieldTooltip')}>{t('colField')}</span>,
         selector: r => r.fieldcode || '-',
         sortable: true,
         width: '110px',
       },
       {
-        name: 'Total Janjang',
+        name: t('colTotalJanjang'),
         selector: r => r._totaljanjangNum || 0,
         sortable: true,
         width: '120px',
@@ -1415,7 +1415,7 @@ export default function PengangkutanPage() {
         ),
       },
       {
-        name: 'Output',
+        name: t('colOutput'),
         selector: r => r._outputNum || 0,
         sortable: true,
         width: '100px',
@@ -1427,7 +1427,7 @@ export default function PengangkutanPage() {
         ),
       },
       {
-        name: <span title="Janjang Normal">Janjang Normal</span>,
+        name: <span title={t('colJanjangNormalTooltip')}>{t('colJanjangNormal')}</span>,
         selector: r => r._janjangnormalNum || 0,
         sortable: true,
         width: '120px',
@@ -1439,7 +1439,7 @@ export default function PengangkutanPage() {
         ),
       },
       {
-        name: <span title="Brondolan">Brondolan</span>,
+        name: <span title={t('colBrondolanTooltip')}>{t('colBrondolan')}</span>,
         selector: r => r._brondolanNum || 0,
         sortable: true,
         width: '100px',
@@ -1451,7 +1451,7 @@ export default function PengangkutanPage() {
         ),
       },
       {
-        name: <span title="Mentah">Mentah</span>,
+        name: <span title={t('colMentahTooltip')}>{t('colMentah')}</span>,
         selector: r => r._mentahNum || 0,
         sortable: true,
         width: '100px',
@@ -1463,7 +1463,7 @@ export default function PengangkutanPage() {
         ),
       },
       {
-        name: <span title="Abnormal">Abnormal</span>,
+        name: <span title={t('colAbnormalTooltip')}>{t('colAbnormal')}</span>,
         selector: r => r._abnormalNum || 0,
         sortable: true,
         width: '100px',
@@ -1475,13 +1475,13 @@ export default function PengangkutanPage() {
         ),
       },
       {
-        name: 'Card ID',
+        name: t('colCardId'),
         selector: r => r.card_id || '-',
         sortable: true,
         width: '150px',
       },
       {
-        name: <span title="Foto pendukung pengangkutan (bila ada)">Foto</span>,
+        name: <span title={t('colFotoTooltip')}>{t('colFoto')}</span>,
         width: '90px',
         cell: r =>
           r.images ? (
@@ -1489,7 +1489,7 @@ export default function PengangkutanPage() {
               href={getProxiedImageUrl(r.images)}
               target="_blank"
               rel="noopener noreferrer"
-              title="Buka foto"
+              title={t('openPhoto')}
             >
               <Image
                 src={getProxiedImageUrl(r.images) || PLACEHOLDER_IMAGE}
@@ -1506,7 +1506,7 @@ export default function PengangkutanPage() {
         ignoreRowClick: true,
       },
     ],
-    [localeTag, canModify, handleDeleteRecord, openEditRecord]
+    [localeTag, canModify, handleDeleteRecord, openEditRecord, t]
   );
 
   return (
@@ -1515,48 +1515,51 @@ export default function PengangkutanPage() {
         <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start animate-slideUp">
           <h1
             className="text-2xl sm:text-3xl font-bold min-w-0 truncate"
-            title="Halaman pengelolaan Pengangkutan"
+            title={t('pageTitleTooltip')}
           >
-            Transport (Pengangkutan)
+            {t('pageTitle')}
           </h1>
           <div className="flex justify-start sm:justify-end gap-2 flex-wrap w-full">
             <button
               className="btn btn-outline btn-sm"
               onClick={() => setShowFilters(s => !s)}
-              title="Tampilkan / sembunyikan filter lanjutan"
+              title={t('filterToggleTooltip')}
             >
-              {showFilters ? 'Sembunyikan Filter' : 'Tampilkan Filter'}
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+              {showFilters ? t('hideFilters') : t('showFilters')}
             </button>
             <button
               className={`btn btn-sm ${loading ? 'btn-disabled' : ''}`}
               onClick={() => queryClient.invalidateQueries({ queryKey: ['pengangkutan'] })}
-              title="Refresh data pengangkutan"
+              title={t('refreshTooltip')}
               disabled={loading}
             >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
               {loading ? (
                 <>
                   <span className="loading loading-spinner loading-xs" />
-                  Memuat...
+                  {t('loading')}
                 </>
               ) : (
-                'Refresh'
+                t('refresh')
               )}
             </button>
             <button
               className="btn btn-sm btn-outline"
               onClick={handleExport}
-              title="Ekspor semua data pengangkutan ke CSV"
+              title={t('exportTooltip')}
               disabled={items.length === 0}
             >
-              Export
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              {t('export')}
             </button>
             {canModify && (
               <button
                 className="btn btn-primary btn-sm"
                 onClick={openNewRecord}
-                title="Tambah pengangkutan baru"
+                title={t('addTransportTooltip')}
               >
-                + Tambah Pengangkutan
+                {t('addTransport')}
               </button>
             )}
           </div>
@@ -1649,43 +1652,43 @@ export default function PengangkutanPage() {
                 className="input input-bordered w-full"
                 value={filters.tanggal || ''}
                 onChange={e => setFilters(s => ({ ...s, tanggal: e.target.value }))}
-                title="Filter tanggal awal pengangkutan"
+                title={t('filterDateStartTooltip')}
               />
               <input
                 type="date"
                 className="input input-bordered w-full"
                 value={filters.tanggal_end || ''}
                 onChange={e => setFilters(s => ({ ...s, tanggal_end: e.target.value }))}
-                title="Filter tanggal akhir pengangkutan"
+                title={t('filterDateEndTooltip')}
               />
               <input
                 type="text"
                 className="input input-bordered w-full"
-                placeholder="No Pengangkutan"
+                placeholder={t('filterNoPengangkutan')}
                 value={filters.nopengangkutan || ''}
                 onChange={e => setFilters(s => ({ ...s, nopengangkutan: e.target.value }))}
-                title="Filter berdasarkan nomor pengangkutan"
+                title={t('filterNoPengangkutanTooltip')}
               />
               <input
                 type="text"
                 className="input input-bordered w-full"
-                placeholder="No SPB"
+                placeholder={t('filterNoSpb')}
                 value={filters.nospb || ''}
                 onChange={e => setFilters(s => ({ ...s, nospb: e.target.value }))}
-                title="Filter berdasarkan nomor SPB"
+                title={t('filterNoSpbTooltip')}
               />
               <input
                 type="text"
                 className="input input-bordered w-full"
-                placeholder="No Dokumen"
+                placeholder={t('filterNoDokumen')}
                 value={filters.nodokumen || ''}
                 onChange={e => setFilters(s => ({ ...s, nodokumen: e.target.value }))}
-                title="Filter berdasarkan nomor dokumen harvest"
+                title={t('filterNoDokumenTooltip')}
               />
               <input
                 type="text"
                 className="input input-bordered w-full"
-                placeholder="Driver"
+                placeholder={t('filterDriver')}
                 value={filters.kode_karyawan_driver || ''}
                 onChange={e =>
                   setFilters(s => ({
@@ -1693,12 +1696,12 @@ export default function PengangkutanPage() {
                     kode_karyawan_driver: e.target.value,
                   }))
                 }
-                title="Filter berdasarkan kode driver"
+                title={t('filterDriverTooltip')}
               />
               <input
                 type="text"
                 className="input input-bordered w-full"
-                placeholder="Kerani"
+                placeholder={t('filterKerani')}
                 value={filters.kode_karyawan_kerani || ''}
                 onChange={e =>
                   setFilters(s => ({
@@ -1706,34 +1709,34 @@ export default function PengangkutanPage() {
                     kode_karyawan_kerani: e.target.value,
                   }))
                 }
-                title="Filter berdasarkan kode kerani"
+                title={t('filterKeraniTooltip')}
               />
               <input
                 type="text"
                 className="input input-bordered w-full"
-                placeholder="FCBA"
+                placeholder={t('filterFcba')}
                 value={filters.fcba || ''}
                 onChange={e => setFilters(s => ({ ...s, fcba: e.target.value }))}
                 disabled={isFcbaLocked}
-                title="Filter berdasarkan FCBA"
+                title={t('filterFcbaTooltip')}
               />
               <input
                 type="text"
                 className="input input-bordered w-full"
-                placeholder="Afdeling"
+                placeholder={t('filterAfdeling')}
                 value={filters.afdeling || ''}
                 onChange={e => setFilters(s => ({ ...s, afdeling: e.target.value }))}
                 disabled={isAfdelingLocked}
-                title="Filter berdasarkan Afdeling"
+                title={t('filterAfdelingTooltip')}
               />
               <input
                 type="text"
                 className="input input-bordered w-full"
-                placeholder="Kemandoran"
+                placeholder={t('filterKemandoran')}
                 value={filters.kemandoran || ''}
                 onChange={e => setFilters(s => ({ ...s, kemandoran: e.target.value }))}
                 disabled={isKemandoranLocked}
-                title="Filter berdasarkan Kemandoran"
+                title={t('filterKemandoranTooltip')}
               />
               <select
                 className="select select-bordered w-full"
@@ -1744,12 +1747,12 @@ export default function PengangkutanPage() {
                     status_pengangkutan: e.target.value,
                   }))
                 }
-                title="Filter berdasarkan status pengangkutan"
+                title={t('filterStatusTooltip')}
               >
-                <option value="">Status</option>
-                <option value="Approved">Approved</option>
-                <option value="Planned">Planned</option>
-                <option value="Completed">Completed</option>
+                <option value="">{t('filterStatus')}</option>
+                <option value="Approved">{t('filterStatusOptionsApproved')}</option>
+                <option value="Planned">{t('filterStatusOptionsPlanned')}</option>
+                <option value="Completed">{t('filterStatusOptionsCompleted')}</option>
               </select>
             </div>
 
@@ -1758,15 +1761,15 @@ export default function PengangkutanPage() {
                 className={`btn btn-outline ${loading ? 'btn-disabled' : ''}`}
                 onClick={() => queryClient.invalidateQueries({ queryKey: ['pengangkutan'] })}
                 disabled={loading}
-                title="Terapkan filter"
+                title={t('filterApplyTooltip')}
               >
                 {loading ? (
                   <>
                     <span className="loading loading-spinner loading-xs" />
-                    Memuat...
+                    {t('loading')}
                   </>
                 ) : (
-                  'Terapkan Filter'
+                  t('filterApply')
                 )}
               </button>
               <button
@@ -1792,15 +1795,15 @@ export default function PengangkutanPage() {
                   setFilters(reset);
                 }}
                 disabled={loading}
-                title="Reset semua filter"
+                title={t('filterResetTooltip')}
               >
                 {loading ? (
                   <>
                     <span className="loading loading-spinner loading-xs" />
-                    Memuat...
+                    {t('loading')}
                   </>
                 ) : (
-                  'Reset'
+                  t('filterReset')
                 )}
               </button>
             </div>
@@ -1848,14 +1851,14 @@ export default function PengangkutanPage() {
               <div className="sticky top-0 z-10 bg-base-100 pb-2 -mx-2 sm:-mx-6 px-2 sm:px-6 border-b border-base-300">
                 <div className="flex items-start justify-between">
                   <h3 className="font-bold text-xl">
-                    {isEditing ? 'Edit Pengangkutan' : 'Tambah Pengangkutan'}
+                    {isEditing ? t('modalEditTitle') : t('modalAddTitle')}
                   </h3>
                   <button
                     type="button"
                     className="btn btn-sm btn-circle btn-ghost"
                     onClick={() => setOpen(false)}
-                    aria-label="Tutup"
-                    title="Tutup"
+                    aria-label={t('modalClose')}
+                    title={t('modalClose')}
                   >
                     ✕
                   </button>
@@ -1868,7 +1871,7 @@ export default function PengangkutanPage() {
               >
                 <div className="col-span-12 grid grid-cols-12 gap-3">
                   <fieldset className="fieldset col-span-12 md:col-span-3">
-                    <legend className="fieldset-legend">Tanggal *</legend>
+                    <legend className="fieldset-legend">{t('formTanggal')}</legend>
                     <input
                       type="date"
                       className="input input-bordered w-full"
@@ -1879,7 +1882,7 @@ export default function PengangkutanPage() {
                     />
                   </fieldset>
                   <fieldset className="fieldset col-span-12 md:col-span-2">
-                    <legend className="fieldset-legend">Tipe Pengangkutan *</legend>
+                    <legend className="fieldset-legend">{t('formTipe')}</legend>
                     <select
                       className="select select-bordered w-full"
                       value={form.type_pengangkutan}
@@ -1893,7 +1896,7 @@ export default function PengangkutanPage() {
                     </select>
                   </fieldset>
                   <fieldset className="fieldset col-span-12 md:col-span-3">
-                    <legend className="fieldset-legend">Pabrik Tujuan</legend>
+                    <legend className="fieldset-legend">{t('formPabrik')}</legend>
                     <select
                       className="select select-bordered w-full"
                       value={form.pabrik_tujuan}
@@ -1910,7 +1913,7 @@ export default function PengangkutanPage() {
                     </select>
                   </fieldset>
                   <fieldset className="fieldset col-span-12 md:col-span-4">
-                    <legend className="fieldset-legend">Kerani</legend>
+                    <legend className="fieldset-legend">{t('formKerani')}</legend>
                     <SearchSelect
                       options={keraniOptionsAsOptions}
                       value={form.kode_karyawan_kerani}
@@ -1922,7 +1925,7 @@ export default function PengangkutanPage() {
                   </fieldset>
                 </div>
                 <fieldset className="fieldset col-span-12 md:col-span-4">
-                  <legend className="fieldset-legend">No Dokumen</legend>
+                  <legend className="fieldset-legend">{t('formNoDokumen')}</legend>
                   <input
                     type="text"
                     className="input input-bordered w-full"
@@ -1933,7 +1936,7 @@ export default function PengangkutanPage() {
                   />
                 </fieldset>
                 <fieldset className="fieldset col-span-12 md:col-span-4">
-                  <legend className="fieldset-legend">No Pengangkutan *</legend>
+                  <legend className="fieldset-legend">{t('formNoPengangkutan')}</legend>
                   <input
                     type="text"
                     className="input input-bordered w-full"
@@ -1944,7 +1947,7 @@ export default function PengangkutanPage() {
                   />
                 </fieldset>
                 <fieldset className="fieldset col-span-12 md:col-span-4">
-                  <legend className="fieldset-legend">No SPB</legend>
+                  <legend className="fieldset-legend">{t('formNoSpb')}</legend>
                   <input
                     type="text"
                     className="input input-bordered w-full"
@@ -1961,7 +1964,7 @@ export default function PengangkutanPage() {
                   </div>
                 ) : null}
                 <fieldset className="fieldset col-span-12 md:col-span-6">
-                  <legend className="fieldset-legend">Kode Kendaraan</legend>
+                  <legend className="fieldset-legend">{t('formKendaraan')}</legend>
                   <SearchSelect
                     options={kendaraanOptionsAsOptions}
                     value={form.kode_kendaraan}
@@ -1975,7 +1978,7 @@ export default function PengangkutanPage() {
                   />
                 </fieldset>
                 <fieldset className="fieldset col-span-12 md:col-span-6">
-                  <legend className="fieldset-legend">Driver</legend>
+                  <legend className="fieldset-legend">{t('formDriver')}</legend>
                   <SearchSelect
                     options={driverOptionsAsOptions}
                     value={form.kode_karyawan_driver}
@@ -1989,7 +1992,7 @@ export default function PengangkutanPage() {
 
                 <div className="col-span-12 grid grid-cols-12 gap-3">
                   <fieldset className="fieldset col-span-12 md:col-span-4">
-                    <legend className="fieldset-legend">TKBM 1</legend>
+                    <legend className="fieldset-legend">{t('formTkbm1')}</legend>
                     <SearchSelect
                       options={tkbmOptions}
                       value={form.tkbm1}
@@ -2310,7 +2313,7 @@ export default function PengangkutanPage() {
               <div className="sticky bottom-0 z-10 bg-base-100 pt-2 -mx-2 sm:-mx-6 px-2 sm:px-6 border-t border-base-300">
                 <div className="flex flex-wrap gap-2 justify-end">
                   <button type="button" className="btn btn-outline" onClick={() => setOpen(false)}>
-                    Batal
+                    {t('modalCancel')}
                   </button>
                   <button
                     type="submit"
@@ -2318,7 +2321,7 @@ export default function PengangkutanPage() {
                     className="btn btn-primary"
                     disabled={submitLoading || formBelowNodokumenDisabled}
                   >
-                    {submitLoading ? 'Menyimpan...' : isEditing ? 'Simpan Perubahan' : 'Simpan'}
+                    {submitLoading ? t('modalSaving') : isEditing ? t('modalUpdate') : t('modalSave')}
                   </button>
                 </div>
               </div>
@@ -2333,20 +2336,19 @@ export default function PengangkutanPage() {
                 type="button"
                 className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
                 onClick={closeDeleteModal}
-                aria-label="Tutup"
-                title="Tutup"
+                aria-label={t('modalClose')}
+                title={t('modalClose')}
               >
                 ✕
               </button>
-              <h3 className="font-bold text-xl mb-3">Hapus Pengangkutan</h3>
+              <h3 className="font-bold text-xl mb-3">{t('modalDeleteTitle')}</h3>
               <p className="mb-4">
-                Hapus data pengangkutan <strong>{deleteTarget?.nopengangkutan}</strong>? File BA
-                delete wajib dilampirkan.
+                {t('modalDeleteDesc', { noPengangkutan: deleteTarget?.nopengangkutan ?? '' })}
               </p>
               <div className="space-y-3">
                 <div>
                   <label className="label">
-                    <span className="label-text">File BA Delete</span>
+                    <span className="label-text">{t('modalDeleteLabel')}</span>
                   </label>
                   <input
                     type="file"
@@ -2359,7 +2361,7 @@ export default function PengangkutanPage() {
               </div>
               <div className="mt-4 flex justify-end gap-2">
                 <button type="button" className="btn btn-outline" onClick={closeDeleteModal}>
-                  Batal
+                  {t('modalCancel')}
                 </button>
                 <button
                   type="button"
@@ -2370,10 +2372,10 @@ export default function PengangkutanPage() {
                   {deleteMutation.isPending ? (
                     <>
                       <span className="loading loading-spinner loading-xs" />
-                      Menghapus...
+                      {t('modalDeleting')}
                     </>
                   ) : (
-                    'Hapus'
+                    t('modalDelete')
                   )}
                 </button>
               </div>

@@ -70,11 +70,13 @@ export const Drawer = () => {
     <svg
       xmlns="http://www.w3.org/2000/svg"
       className={size}
+      fill="none"
       viewBox="0 0 24 24"
-      fill="currentColor"
+      stroke="currentColor"
+      strokeWidth={2}
       aria-hidden="true"
     >
-      <path d={iconPath} />
+      <path strokeLinecap="round" strokeLinejoin="round" d={iconPath} />
     </svg>
   );
 

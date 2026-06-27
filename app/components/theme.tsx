@@ -38,24 +38,27 @@ export const Theme = () => {
         <div className="flex items-center gap-3">
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5"
+            fill="none"
             viewBox="0 0 24 24"
-            fill="currentColor"
+            strokeWidth={2}
+            stroke="currentColor"
+            className="h-5 w-5"
             aria-hidden="true"
           >
-            <path d="M12 2C6.49 2 2 6.49 2 12s4.49 10 10 10c1.38 0 2.5-1.12 2.5-2.5 0-.61-.23-1.21-.64-1.67-.08-.09-.13-.21-.13-.33 0-.28.22-.5.5-.5H16c3.31 0 6-2.69 6-6 0-4.96-4.49-9-10-9zm-5 11c-.83 0-1.5-.67-1.5-1.5S6.17 10 7 10s1.5.67 1.5 1.5S7.83 13 7 13zm3-4c-.83 0-1.5-.67-1.5-1.5S9.17 6 10 6s1.5.67 1.5 1.5S10.83 9 10 9zm4 0c-.83 0-1.5-.67-1.5-1.5S13.17 6 14 6s1.5.67 1.5 1.5S14.83 9 14 9zm3 4c-.83 0-1.5-.67-1.5-1.5S16.17 10 17 10s1.5.67 1.5 1.5S17.83 13 17 13z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.876-5.814a1.151 1.151 0 0 0-1.597-1.597L14.146 6.32a15.996 15.996 0 0 0-4.649 4.763m3.42 3.42a6.776 6.776 0 0 0-3.42-3.42" />
           </svg>
           <span>{t('theme')}</span>
         </div>
         <svg
-          width="12px"
-          height="12px"
-          className="h-2 w-2 fill-current opacity-60"
           xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 2048 2048"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={2}
+          stroke="currentColor"
+          className="h-3 w-3 opacity-60"
           aria-hidden="true"
         >
-          <path d="M1799 349l242 241-1017 1017L7 590l242-241 775 775 775-775z"></path>
+          <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
         </svg>
       </div>
       <ul

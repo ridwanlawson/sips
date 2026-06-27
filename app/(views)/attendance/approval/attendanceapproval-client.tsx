@@ -59,6 +59,7 @@ type EmployeesApiRow = {
 import { cookieStore } from '@/utils/cookieStore';
 import { buildMapUrl } from '@/utils/mapHelper';
 import { useLocale } from '@/hooks/useLocale';
+import { useTranslations } from 'next-intl';
 import { formatPerfDate } from '@/utils/perf-formatter';
 
 const LocationButton: React.FC<{ loc?: string | null; label?: string }> = ({ loc, label }) => {
@@ -82,6 +83,7 @@ const LocationButton: React.FC<{ loc?: string | null; label?: string }> = ({ loc
 ========================= */
 export default function AttendanceApproval() {
   const localeTag = useLocale();
+  const t = useTranslations('AttendanceApproval');
   const [items, setItems] = useState<Absensi[]>([]);
   const [loading, setLoading] = useState(false);
   const [q, setQ] = useState('');
@@ -209,11 +211,11 @@ export default function AttendanceApproval() {
       setItems(result);
     } catch (e) {
       console.error(e);
-      showAlert('Gagal memuat data', 'error');
+      showAlert(t('toastFetchError'), 'error');
     } finally {
       setLoading(false);
     }
-  }, [showAlert, userLevel, homeFcba, homeSection]);
+  }, [showAlert, userLevel, homeFcba, homeSection, t]);
 
   /**
    * ⚡ Bolt Optimization:
@@ -293,7 +295,7 @@ export default function AttendanceApproval() {
   const columns: TableColumn<Absensi>[] = useMemo(
     () => [
       {
-        name: <span title="Status persetujuan absensi (Planned/Approved/Reject)">Status</span>,
+        name: <span title={t('colStatusTooltip')}>{t('colStatus')}</span>,
         selector: r => r.status_attendance ?? '-',
         sortable: true,
         width: '120px',
@@ -311,13 +313,13 @@ export default function AttendanceApproval() {
         },
       },
       {
-        name: <span title="Nomor urut baris">#</span>,
+        name: <span title={t('colRowTooltip')}>{t('colRow')}</span>,
         width: '56px',
         cell: (_r, i) => <span>{i + 1}</span>,
         ignoreRowClick: true,
       },
       {
-        name: <span title="Tanggal absensi (DD-MM-YYYY)">Tanggal</span>,
+        name: <span title={t('colTanggalTooltip')}>{t('colTanggal')}</span>,
         selector: r => (r.tanggal || '').split(' ')[0],
         sortable: true,
         width: '110px',
@@ -327,7 +329,7 @@ export default function AttendanceApproval() {
         },
       },
       {
-        name: <span title="Nama dan kode karyawan">Karyawan</span>,
+        name: <span title={t('colKaryawanTooltip')}>{t('colKaryawan')}</span>,
         style: { flexGrow: 2 as number, minWidth: '220px' },
         width: '220px',
         sortable: true,
@@ -344,7 +346,7 @@ export default function AttendanceApproval() {
         ),
       },
       {
-        name: <span title="Mandor (atasan langsung)">Mandor</span>,
+        name: <span title={t('colMandorTooltip')}>{t('colMandor')}</span>,
         sortable: true,
         width: '200px',
         // ⚡ Bolt Optimization: Use pre-calculated fields for selector and cell to improve render performance.
@@ -364,80 +366,80 @@ export default function AttendanceApproval() {
         },
       },
       {
-        name: <span title="FCBA asal (kebun/estate)">FCBA</span>,
+        name: <span title={t('colFcbaTooltip')}>{t('colFcba')}</span>,
         selector: r => r.fcba ?? '-',
         sortable: true,
         width: '100px',
       },
       {
-        name: <span title="Afdeling / Section">Section</span>,
+        name: <span title={t('colSectionTooltip')}>{t('colSection')}</span>,
         selector: r => r.section || '-',
         sortable: true,
         width: '110px',
       },
       {
-        name: <span title="Kode gang kerja">Gang</span>,
+        name: <span title={t('colGangTooltip')}>{t('colGang')}</span>,
         selector: r => r.gang || '-',
         sortable: true,
         width: '90px',
       },
       {
-        name: <span title="Jenis absensi (REGULAR / ASSISTENSI)">Type</span>,
+        name: <span title={t('colTypeTooltip')}>{t('colType')}</span>,
         selector: r => r.attendance_type,
         sortable: true,
         width: '130px',
         cell: r => <span className="badge badge-outline">{r.attendance_type}</span>,
       },
       {
-        name: <span title="Kode kehadiran (KJ, WH, WS, dll)">Attd</span>,
+        name: <span title={t('colAttdTooltip')}>{t('colAttd')}</span>,
         selector: r => r.attendance,
         sortable: true,
         width: '80px',
       },
       {
-        name: <span title="Jam masuk (HH:MM)">Masuk</span>,
+        name: <span title={t('colMasukTooltip')}>{t('colMasuk')}</span>,
         selector: r => (r.time_in ? r.time_in.split(' ')[1]?.slice(0, 5) || r.time_in : '-'),
         sortable: true,
         width: '110px',
       },
       {
-        name: <span title="Jam pulang (HH:MM)">Pulang</span>,
+        name: <span title={t('colPulangTooltip')}>{t('colPulang')}</span>,
         selector: r => (r.time_out ? r.time_out.split(' ')[1]?.slice(0, 5) || r.time_out : '-'),
         sortable: true,
         width: '110px',
       },
       {
-        name: <span title="Total keterlambatan (jam:menit)">Late</span>,
+        name: <span title={t('colLateTooltip')}>{t('colLate')}</span>,
         selector: r => r.total_late_time || '-',
         sortable: true,
         width: '90px',
       },
       {
-        name: <span title="Total pulang cepat (jam:menit)">Home Early</span>,
+        name: <span title={t('colHomeEarlyTooltip')}>{t('colHomeEarly')}</span>,
         selector: r => r.go_home_early || '-',
         sortable: true,
         width: '100px',
       },
       {
-        name: <span title="Pengancakan diambil dari NOANCAK karyawan">Pengancakan</span>,
+        name: <span title={t('colPengancakanTooltip')}>{t('colPengancakan')}</span>,
         selector: r => r.pengancakan || '-',
         sortable: true,
         style: { flexGrow: 1.1 as number, minWidth: '145px' },
       },
       {
-        name: <span title="HK (mandays)">HK</span>,
+        name: <span title={t('colHkTooltip')}>{t('colHk')}</span>,
         selector: r => (r.mandays != null ? String(r.mandays) : '-'),
         sortable: true,
         width: '90px',
       },
       {
-        name: <span title="FCBA tujuan (khusus ASSISTENSI)">Dest</span>,
+        name: <span title={t('colDestTooltip')}>{t('colDest')}</span>,
         selector: r => r.fcba_destination || '-',
         sortable: true,
         width: '110px',
       },
       {
-        name: <span title="Lokasi koordinat masuk (Google Maps)">Loc In</span>,
+        name: <span title={t('colLocInTooltip')}>{t('colLocIn')}</span>,
         style: { flexGrow: 1.2 as number, minWidth: '140px' },
         sortable: false,
         cell: r => (
@@ -447,7 +449,7 @@ export default function AttendanceApproval() {
         ),
       },
       {
-        name: <span title="Lokasi koordinat pulang (Google Maps)">Loc Out</span>,
+        name: <span title={t('colLocOutTooltip')}>{t('colLocOut')}</span>,
         style: { flexGrow: 1.2 as number, minWidth: '140px' },
         sortable: false,
         cell: r => (
@@ -457,13 +459,13 @@ export default function AttendanceApproval() {
         ),
       },
       {
-        name: <span title="Exception Case (alasan/keterangan khusus)">Exc</span>,
+        name: <span title={t('colExcTooltip')}>{t('colExc')}</span>,
         selector: r => r.exception_case || '-',
         sortable: true,
         style: { flexGrow: 1.1 as number, minWidth: '160px' },
       },
       {
-        name: <span title="Nomor BA EXCA (link ke PDF)">BA EXCA</span>,
+        name: <span title={t('colBaExcaTooltip')}>{t('colBaExca')}</span>,
         selector: r => r.no_ba_exca || '-',
         sortable: true,
         width: '120px',
@@ -483,19 +485,19 @@ export default function AttendanceApproval() {
           ),
       },
       {
-        name: <span title="Informasi device yang digunakan absen">Device</span>,
+        name: <span title={t('colDeviceTooltip')}>{t('colDevice')}</span>,
         selector: r => r.id_device || '-',
         sortable: true,
         width: '180px',
       },
       {
-        name: <span title="Pseudo MAC address device">MAC</span>,
+        name: <span title={t('colMacTooltip')}>{t('colMac')}</span>,
         selector: r => r.mac_address || '-',
         sortable: true,
         width: '160px',
       },
       {
-        name: <span title="Foto pendukung absensi (bila ada)">Foto</span>,
+        name: <span title={t('colFotoTooltip')}>{t('colFoto')}</span>,
         width: '90px',
         cell: r =>
           r.images ? (
@@ -523,7 +525,7 @@ export default function AttendanceApproval() {
         ignoreRowClick: true,
       },
     ],
-    []
+    [t]
   );
 
   // 👇 cast sekali, tanpa `any`, supaya TypeScript & ESLint sama-sama aman
@@ -559,7 +561,7 @@ export default function AttendanceApproval() {
             <div className={`alert ${alert.type === 'success' ? 'alert-success' : 'alert-error'}`}>
               <div>
                 <span className="font-semibold">
-                  {alert.type === 'success' ? 'Berhasil' : 'Gagal'}
+                  {alert.type === 'success' ? t('toastSuccessLabel') : t('toastErrorLabel')}
                 </span>
                 <span className="ml-2 whitespace-pre-line">{alert.msg}</span>
               </div>
@@ -572,9 +574,9 @@ export default function AttendanceApproval() {
           <div>
             <h1
               className="text-2xl sm:text-3xl font-bold min-w-0 truncate"
-              title="Data Absensi Pending"
+              title={t('pageTitleTooltip')}
             >
-              Data Absensi Pending
+              {t('pageTitle')}
             </h1>
             <p className="text-sm opacity-70">
               Menampilkan hanya data absensi yang belum <b>Approved</b> dan belum <b>Reject</b>{' '}
@@ -586,15 +588,15 @@ export default function AttendanceApproval() {
               className={`btn btn-sm btn-outline ${loading ? 'btn-disabled' : ''}`}
               onClick={() => fetchList()}
               disabled={loading}
-              title="Refresh data absensi pending"
+              title={t('refreshTooltip')}
             >
               {loading ? (
                 <>
                   <span className="loading loading-spinner loading-xs" />
-                  Memuat...
+                  {t('loading')}
                 </>
               ) : (
-                'Refresh'
+                <><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>{t('refresh')}</>
               )}
             </button>
           </div>
@@ -608,10 +610,10 @@ export default function AttendanceApproval() {
 
           <input
             className="input input-bordered w-full md:w-80"
-            placeholder="Cari (nama, kode, FCBA, mandor, lokasi...)"
+            placeholder={t('filterPlaceholder')}
             value={q}
             onChange={e => setQ(e.target.value)}
-            title="Pencarian cepat di data pending"
+            title={t('filterTooltip')}
           />
         </div>
 
@@ -633,7 +635,7 @@ export default function AttendanceApproval() {
               persistTableHead
               responsive
               noDataComponent={
-                <div className="py-8 text-base-content/70">Tidak ada data pending.</div>
+                <div className="py-8 text-base-content/70">{t('noDataPending')}</div>
               }
             />
           </div>

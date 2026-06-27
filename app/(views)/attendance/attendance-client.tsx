@@ -227,6 +227,7 @@ import { getReadableDevice, getOrCreateDeviceIds } from '@/utils/deviceHelper';
 import { extractArrayData, extractSingleData } from '@/utils/apiHelpers';
 
 const LocationButton: React.FC<{ loc?: string | null; label?: string }> = ({ loc, label }) => {
+  const t = useTranslations('Attendance');
   if (!loc) return <>-</>;
   const href = buildMapUrl(loc);
   return (
@@ -237,7 +238,7 @@ const LocationButton: React.FC<{ loc?: string | null; label?: string }> = ({ loc
       className="btn btn-ghost btn-xs gap-1"
       title={loc}
     >
-      <span aria-hidden>📍</span> {label ?? 'Maps'}
+      <span aria-hidden>📍</span> {label ?? t('gpsDefaultLabel')}
     </a>
   );
 };
@@ -480,10 +481,10 @@ export default function Attendance() {
           ? queryError
           : queryError instanceof Error
             ? queryError.message
-            : 'Terjadi kesalahan saat mengambil data';
+            : t('toastFetchError');
       toast.error(msg);
     }
-  }, [queryError]);
+  }, [queryError, t]);
 
   // Mutations
   const mutation = useMutation({
@@ -569,14 +570,14 @@ export default function Attendance() {
             ? json.message
             : typeof json.error === 'string'
               ? json.error
-              : 'Gagal hapus';
+              : t('toastDeleteError');
         throw new Error(errorMsg);
       }
       return id;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
-      toast.success('Data berhasil dihapus 🗑️');
+      toast.success(t('toastDeleteSuccess'));
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -616,7 +617,7 @@ export default function Attendance() {
 
   const handleGetLocation = (target: 'in' | 'out') => {
     if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
-      toast.error('Browser tidak mendukung GPS / geolocation. Isi manual saja.');
+      toast.error(t('toastGeolocUnsupported'));
       return;
     }
 
@@ -635,16 +636,16 @@ export default function Attendance() {
       },
       err => {
         console.error('Geolocation error:', err);
-        let message = 'Gagal mengambil lokasi. Coba lagi.';
+        let message = t('toastGeolocError');
         if (err.code === 1 || err.code === window.GeolocationPositionError?.PERMISSION_DENIED) {
-          message = 'Izin lokasi ditolak. Aktifkan izin lokasi di browser.';
+          message = t('toastGeolocDenied');
         } else if (
           err.code === 2 ||
           err.code === window.GeolocationPositionError?.POSITION_UNAVAILABLE
         ) {
-          message = 'Lokasi tidak tersedia.';
+          message = t('toastGeolocUnavailable');
         } else if (err.code === 3 || err.code === window.GeolocationPositionError?.TIMEOUT) {
-          message = 'Timeout saat mengambil lokasi.';
+          message = t('toastGeolocTimeout');
         }
         toast.error(message);
         setLocLoading(null);
@@ -1173,7 +1174,7 @@ export default function Attendance() {
   };
   const onChangeDestSection = (v: string) => {
     if (v && v === selSection) {
-      toast.error('Section Destination tidak boleh sama dengan Afdeling (Section)');
+      toast.error(t('toastSectionDestSame'));
       return;
     }
     setDestSection(v);
@@ -1309,16 +1310,16 @@ export default function Attendance() {
     if (mutation.isPending) return;
 
     try {
-      if (!form.tanggal) throw new Error('Tanggal wajib diisi');
-      if (!form.time_in) throw new Error('Time In wajib diisi');
-      if (!form.location_in) throw new Error('Location In wajib diisi');
-      if (!form.kode_karyawan) throw new Error('Pilih Karyawan');
+      if (!form.tanggal) throw new Error(t('valDateRequired'));
+      if (!form.time_in) throw new Error(t('valTimeInRequired'));
+      if (!form.location_in) throw new Error(t('valLocInRequired'));
+      if (!form.kode_karyawan) throw new Error(t('valEmployeeRequired'));
 
       let finalFcba = currentFcbaForForm || form.fcba || '';
       if (userLevel !== 'ADM' && userLevel !== 'KSI') {
         finalFcba = homeFcba || finalFcba;
       }
-      if (!finalFcba) throw new Error('Fcba akun tidak ditemukan (cookie)');
+      if (!finalFcba) throw new Error(t('valFcbaNotFound'));
       const finalSection =
         (userLevel === 'AST' ||
           userLevel === 'KRA' ||
@@ -1338,11 +1339,11 @@ export default function Attendance() {
       const baExcaRequired = !isEditing;
 
       if (exceptionRequired && !hasException) {
-        throw new Error('Exception Case wajib diisi.');
+        throw new Error(t('valExceptionRequired'));
       }
 
       if (baExcaRequired && !hasUploadedPdf && !hasExistingPdf) {
-        throw new Error('No BA Exca (PDF) wajib diisi.'); // Fixed: was 'No BA ExlA' changed to 'No BA Exca'
+        throw new Error(t('valBaExcaRequired')); // Fixed: was 'No BA ExlA' changed to 'No BA Exca'
       }
 
       const timeInApi = combineToApiString(form.tanggal, form.time_in);
@@ -1373,10 +1374,10 @@ export default function Attendance() {
       fd.append('mac_address', form.mac_address || pseudoMac);
 
       if (form.attendance_type === 'ASSISTENSI') {
-        if (!destFcba) throw new Error('Fcba Destination wajib diisi untuk ASSISTENSI');
-        if (!destSection) throw new Error('Section Destination wajib diisi untuk ASSISTENSI');
+        if (!destFcba) throw new Error(t('valFcbaDestRequired'));
+        if (!destSection) throw new Error(t('valSectionDestRequired'));
         if (finalSection && destSection === finalSection) {
-          throw new Error('Section Destination tidak boleh sama dengan Afdeling (Section)');
+          throw new Error(t('valSectionDestConflict'));
         }
 
         // Validate that the destination FCBA exists in opt_fcba or business units
@@ -1384,7 +1385,7 @@ export default function Attendance() {
         const destExistsInBu =
           Array.isArray(businessUnits) && businessUnits.some(bu => bu.fccode === destFcba);
         if (!destExistsInOptFcba && !destExistsInBu) {
-          throw new Error('FCBA Destination tidak valid');
+          throw new Error(t('valFcbaDestInvalid'));
         }
 
         fd.append('fcba_destination', destFcba);
@@ -1408,13 +1409,13 @@ export default function Attendance() {
         {
           onSuccess: () => {
             toast.success(
-              isEditing ? 'Data berhasil diperbarui ✅' : 'Data berhasil ditambahkan ✅'
+              isEditing ? t('toastSaveSuccess') : t('toastAddSuccess')
             );
           },
         }
       );
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Terjadi kesalahan saat menyimpan';
+      const message = e instanceof Error ? e.message : t('toastSaveError');
       toast.error(message);
     }
   };
@@ -1439,15 +1440,15 @@ export default function Attendance() {
   const handleConfirmDelete = () => {
     if (!deleteTargetId) return;
     if (!deleteFile) {
-      toast.error('Lampiran BA delete PDF wajib diisi');
+      toast.error(t('toastPdfRequired'));
       return;
     }
     if (deleteFile.type !== 'application/pdf') {
-      toast.error('Lampiran BA delete harus berupa file PDF');
+      toast.error(t('toastPdfFormat'));
       return;
     }
     if (deleteFile.size > 2 * 1024 * 1024) {
-      toast.error('Lampiran BA delete maksimal 2 MB');
+      toast.error(t('toastPdfSize'));
       return;
     }
 
@@ -1526,13 +1527,13 @@ export default function Attendance() {
         setDestSection(d.section_destination || '');
         setPreview(d.images || '');
       } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Gagal memuat detail';
+        const msg = e instanceof Error ? e.message : t('toastFetchDetailError');
         toast.error(msg);
       } finally {
         setDetailLoading(false);
       }
     },
-    [homeFcbaCode, homeSection]
+    [homeFcbaCode, homeSection, t]
   );
 
   /* ===== PREVIEW FOTO ===== */
@@ -1558,7 +1559,7 @@ export default function Attendance() {
   const columns: TableColumn<Absensi>[] = useMemo(
     () => [
       {
-        name: <span title="Aksi edit/hapus data absensi">Aksi</span>,
+        name: <span title={t('colAksiTooltip')}>{t('colAksi')}</span>,
         width: '120px',
         cell: (row: Absensi) => {
           const status = (row.status_attendance || '').toLowerCase();
@@ -1576,9 +1577,9 @@ export default function Attendance() {
                   className={`btn btn-xs ${canEdit ? 'btn-outline' : 'btn-disabled'}`}
                   onClick={() => canEdit && handleDetail(row.id)}
                   disabled={!canEdit}
-                  title={canEdit ? 'Edit' : 'Hanya bisa edit saat Planned (ADM & KSI saja)'}
+                  title={canEdit ? t('edit') : t('editDisabledTooltip')}
                 >
-                  Edit
+                  {t('edit')}
                 </button>
               )}
 
@@ -1586,9 +1587,9 @@ export default function Attendance() {
                 <button
                   className="btn btn-xs btn-error"
                   onClick={() => handleDelete(row.id)}
-                  title="Hapus (hanya ADM & belum Approved)"
+                  title={t('deleteDisabledTooltip')}
                 >
-                  Hapus
+                  {t('delete')}
                 </button>
               )}
             </div>
@@ -1597,7 +1598,7 @@ export default function Attendance() {
         ignoreRowClick: true,
       },
       {
-        name: <span title="Status persetujuan absensi (Planned/Approved/dll)">Status</span>,
+        name: <span title={t('colStatusTooltip')}>{t('colStatus')}</span>,
         selector: r => r.status_attendance ?? '-',
         sortable: true,
         width: '120px',
@@ -1616,26 +1617,26 @@ export default function Attendance() {
         ),
       },
       {
-        name: <span title="Nomor urut baris">#</span>,
+        name: <span title={t('colNoTooltip')}>{t('colNo')}</span>,
         width: '56px',
         cell: (_r, i) => <span>{i + 1}</span>,
         ignoreRowClick: true,
       },
       {
-        name: <span title="Tanggal absensi (DD-MM-YYYY)">Tanggal</span>,
+        name: <span title={t('colTanggalTooltip')}>{t('colTanggal')}</span>,
         selector: r => r._dateOnly ?? '',
         sortable: true,
         width: '100px',
         cell: r => <span title={r._dateOnly}>{r._displayDate}</span>,
       },
       {
-        name: <span title="Kemandoran">Kemandoran</span>,
+        name: <span title={t('colKemandoran')}>{t('colKemandoran')}</span>,
         selector: r => r.kemandoran ?? '-',
         sortable: true,
         width: '120px',
       },
       {
-        name: <span title="Nama dan kode karyawan">Karyawan</span>,
+        name: <span title={t('colKaryawanTooltip')}>{t('colKaryawan')}</span>,
         style: { flexGrow: 2 as number, minWidth: '220px' },
         width: '240px',
         sortable: true,
@@ -1656,7 +1657,7 @@ export default function Attendance() {
         },
       },
       {
-        name: <span title="Mandor (atasan langsung) karyawan">Mandor</span>,
+        name: <span title={t('colMandorTooltip')}>{t('colMandor')}</span>,
         width: '200px',
         style: { flexGrow: 1.5 as number, minWidth: '220px' },
         sortable: true,
@@ -1678,86 +1679,86 @@ export default function Attendance() {
         },
       },
       {
-        name: <span title="FCBA asal (kebun/estate)">FCBA</span>,
+        name: <span title={t('colFcbaTooltip')}>{t('colFcba')}</span>,
         selector: r => r.fcba ?? '-',
         sortable: true,
         width: '100px',
       },
       {
-        name: <span title="Afdeling / Section">Section</span>,
+        name: <span title={t('colSectionTooltip')}>{t('colSection')}</span>,
         selector: r => r.section || '-',
         sortable: true,
         width: '110px',
       },
       {
-        name: <span title="Kode gang kerja">Gang</span>,
+        name: <span>{t('colGang')}</span>,
         selector: r => r.gang || '-',
         sortable: true,
         width: '90px',
       },
       {
-        name: <span title="Jenis absensi (REGULAR atau ASSISTENSI)">Type</span>,
+        name: <span title={t('colTypeTooltip')}>{t('colType')}</span>,
         selector: r => r.attendance_type,
         sortable: true,
         width: '130px',
         cell: r => <span className="badge badge-outline">{r.attendance_type}</span>,
       },
       {
-        name: <span title="Kode kehadiran (KJ, WH, WS, dll)">Attd</span>,
+        name: <span title={t('colAttdTooltip')}>{t('colAttd')}</span>,
         selector: r => r.attendance,
         sortable: true,
         width: '80px',
       },
       {
-        name: <span title="Jam masuk (HH:MM)">Masuk</span>,
+        name: <span title={t('colMasukTooltip')}>{t('colMasuk')}</span>,
         selector: r => (r.time_in ? r.time_in.split(' ')[1]?.slice(0, 5) || r.time_in : '-'),
         sortable: true,
         width: '110px',
       },
       {
-        name: <span title="Jam pulang (HH:MM)">Pulang</span>,
+        name: <span title={t('colPulangTooltip')}>{t('colPulang')}</span>,
         selector: r => (r.time_out ? r.time_out.split(' ')[1]?.slice(0, 5) || r.time_out : '-'),
         sortable: true,
         width: '110px',
       },
       {
-        name: <span title="Total keterlambatan (jam:menit)">Late</span>,
+        name: <span title={t('colLateTooltip')}>{t('colLate')}</span>,
         selector: r => r.total_late_time || '-',
         sortable: true,
         width: '90px',
       },
       {
-        name: <span title="Total pulang cepat (jam:menit)">Home Early</span>,
+        name: <span title={t('colHomeEarlyTooltip')}>{t('colHomeEarly')}</span>,
         selector: r => r.go_home_early || '-',
         sortable: true,
         width: '100px',
       },
       {
-        name: <span title="Pengancakan diambil dari NOANCAK karyawan">Pengancakan</span>,
+        name: <span title={t('colPengancakanTooltip')}>{t('colPengancakan')}</span>,
         selector: r => r.pengancakan || '-',
         sortable: true,
         style: { flexGrow: 1.1 as number, minWidth: '145px' },
       },
       {
-        name: <span title="HK (mandays), hanya >0 untuk KJ/WH/WS">HK</span>,
+        name: <span title={t('colHkTooltip')}>{t('colHk')}</span>,
         selector: r => (r.mandays != null ? String(r.mandays) : '-'),
         sortable: true,
         width: '90px',
       },
       {
-        name: <span title="FCBA tujuan (khusus ASSISTENSI)">FCBA Dest</span>,
+        name: <span title={t('colFcbaDestTooltip')}>{t('colFcbaDest')}</span>,
         selector: r => r.fcba_destination || '-',
         sortable: true,
         width: '110px',
       },
       {
-        name: <span title="Afdeling tujuan (khusus ASSISTENSI)">Section Dest</span>,
+        name: <span title={t('colSectionDestTooltip')}>{t('colSectionDest')}</span>,
         selector: r => r.section_destination || '-',
         sortable: true,
         width: '110px',
       },
       {
-        name: <span title="Lokasi koordinat masuk (Google Maps)">Loc In</span>,
+        name: <span title={t('colLocInTooltip')}>{t('colLocIn')}</span>,
         style: { flexGrow: 1.2 as number, minWidth: '140px' },
         sortable: false,
         cell: r => (
@@ -1767,7 +1768,7 @@ export default function Attendance() {
         ),
       },
       {
-        name: <span title="Lokasi koordinat pulang (Google Maps)">Loc Out</span>,
+        name: <span title={t('colLocOutTooltip')}>{t('colLocOut')}</span>,
         style: { flexGrow: 1.2 as number, minWidth: '140px' },
         sortable: false,
         cell: r => (
@@ -1777,13 +1778,13 @@ export default function Attendance() {
         ),
       },
       {
-        name: <span title="Exception Case (alasan/keterangan khusus)">Exc</span>,
+        name: <span title={t('colExcTooltip')}>{t('colExc')}</span>,
         selector: r => r.exception_case || '-',
         sortable: true,
         style: { flexGrow: 1.1 as number, minWidth: '160px' },
       },
       {
-        name: <span title="Nomor BA Exca (link ke PDF)">BA Exca</span>,
+        name: <span title={t('colBaExcaTooltip')}>{t('colBaExca')}</span>,
         selector: r => r.no_ba_exca || '-',
         sortable: true,
         width: '120px',
@@ -1794,7 +1795,7 @@ export default function Attendance() {
               target="_blank"
               rel="noopener noreferrer"
               className="link link-primary"
-              title="Buka PDF BA Exca"
+              title={t('openPdfBaExca')}
             >
               PDF
             </a>
@@ -1803,19 +1804,19 @@ export default function Attendance() {
           ),
       },
       {
-        name: <span title="Informasi device yang digunakan absen">Device</span>,
+        name: <span title={t('colDeviceTooltip')}>{t('colDevice')}</span>,
         selector: r => r.id_device || '-',
         sortable: true,
         width: '180px',
       },
       {
-        name: <span title="Pseudo MAC address device">MAC</span>,
+        name: <span title={t('colMacTooltip')}>{t('colMac')}</span>,
         selector: r => r.mac_address || '-',
         sortable: true,
         width: '160px',
       },
       {
-        name: <span title="Foto pendukung absensi (bila ada)">Foto</span>,
+        name: <span title={t('colFotoTooltip')}>{t('colFoto')}</span>,
         width: '90px',
         cell: (r: Absensi) =>
           r.images ? (
@@ -1823,7 +1824,7 @@ export default function Attendance() {
               href={getProxiedImageUrl(r.images)}
               target="_blank"
               rel="noopener noreferrer"
-              title="Buka foto"
+              title={t('openPhoto')}
             >
               {/*
                 Changed: use container with fixed size and Image fill to avoid aspect ratio warnings.
@@ -1856,34 +1857,34 @@ export default function Attendance() {
         ignoreRowClick: true,
       },
     ],
-    [handleDetail, handleDelete, userLevel]
+    [handleDetail, handleDelete, userLevel, t]
   );
 
   /* ===== EXPORT EXCEL ===== */
   const handleExport = async () => {
     if (filtered.length === 0) {
-      toast.error('Tidak ada data untuk diekspor');
+      toast.error(t('toastNoExportData'));
       return;
     }
 
     const dataToExport = filtered.map((r, idx) => ({
-      No: idx + 1,
-      Tanggal: (r.tanggal || '').split(' ')[0],
-      Kemandoran: r.kemandoran || '-',
-      Kode: r.kode_karyawan || '-',
-      Nama: r.namakaryawan || '-',
-      Mandor: r.kode_karyawan_mandor || '-',
-      FCBA: r.fcba || '-',
-      Section: r.section || '-',
-      Gang: r.gang || '-',
-      Type: r.attendance_type || '-',
-      Attendance: r.attendance || '-',
-      Masuk: r.time_in ? r.time_in.split(' ')[1]?.slice(0, 5) || r.time_in : '-',
-      Pulang: r.time_out ? r.time_out.split(' ')[1]?.slice(0, 5) || r.time_out : '-',
-      Late: r.total_late_time || '-',
-      'Home Early': r.go_home_early || '-',
-      HK: r.mandays != null ? String(r.mandays) : '-',
-      Status: r.status_attendance || '-',
+      [t('exportColNo')]: idx + 1,
+      [t('exportColTanggal')]: (r.tanggal || '').split(' ')[0],
+      [t('exportColKemandoran')]: r.kemandoran || '-',
+      [t('exportColKode')]: r.kode_karyawan || '-',
+      [t('exportColNama')]: r.namakaryawan || '-',
+      [t('exportColMandor')]: r.kode_karyawan_mandor || '-',
+      [t('exportColFcba')]: r.fcba || '-',
+      [t('exportColSection')]: r.section || '-',
+      [t('exportColGang')]: r.gang || '-',
+      [t('exportColType')]: r.attendance_type || '-',
+      [t('exportColAttendance')]: r.attendance || '-',
+      [t('exportColMasuk')]: r.time_in ? r.time_in.split(' ')[1]?.slice(0, 5) || r.time_in : '-',
+      [t('exportColPulang')]: r.time_out ? r.time_out.split(' ')[1]?.slice(0, 5) || r.time_out : '-',
+      [t('exportColLate')]: r.total_late_time || '-',
+      [t('exportColHomeEarly')]: r.go_home_early || '-',
+      [t('exportColHk')]: r.mandays != null ? String(r.mandays) : '-',
+      [t('exportColStatus')]: r.status_attendance || '-',
     }));
 
     exportJsonToCsv(dataToExport, `Attendance_${filters.tanggal}_${filters.tanggal_end}.csv`);
@@ -1969,47 +1970,49 @@ export default function Attendance() {
         <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start animate-slideUp">
           <h1
             className="text-2xl sm:text-3xl font-bold min-w-0 truncate"
-            title="Halaman pengelolaan Attendance (Absensi)"
+            title={t('pageTitleTooltip')}
           >
-            Attendance (Absensi)
+            {t('pageTitle')}
           </h1>
           <div className="flex justify-start sm:justify-end gap-2 flex-wrap w-full">
             <button
               className="btn btn-outline btn-sm"
               onClick={() => setShowFilters(s => !s)}
-              title="Tampilkan / sembunyikan filter lanjutan"
+              title={t('filterToggleTooltip')}
             >
-              {showFilters ? 'Sembunyikan Filter' : 'Tampilkan Filter'}
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+              {showFilters ? t('hideFilters') : t('showFilters')}
             </button>
             <button
               className={`btn btn-sm ${loading ? 'btn-disabled' : ''}`}
               onClick={() => queryClient.invalidateQueries({ queryKey: ['attendance'] })}
               disabled={loading}
-              title="Refresh data absensi"
+              title={t('refreshTooltip')}
             >
               {loading ? (
                 <>
                   <span className="loading loading-spinner loading-xs" />
-                  Memuat...
+                  {t('loading')}
                 </>
               ) : (
-                'Refresh'
+                <><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg> {t('refresh')}</>
               )}
             </button>
             <button
               className="btn btn-outline btn-sm"
               onClick={handleExport}
-              title="Ekspor data yang difilter ke Excel"
+              title={t('exportTooltip')}
             >
-              Export
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              {t('export')}
             </button>
             {canAddOrEdit && (
               <button
                 className="btn btn-primary btn-sm"
                 onClick={onAddClick}
-                title="Tambah data absensi baru (hanya ADM & KSI)"
+                title={t('addAttendanceTooltip')}
               >
-                + Tambah Absensi
+                {t('addAttendance')}
               </button>
             )}
           </div>
@@ -2084,38 +2087,38 @@ export default function Attendance() {
               <input
                 type="date"
                 className="input input-bordered w-full"
-                placeholder="Tanggal Awal"
+                placeholder={t('filterDateStart')}
                 value={filters.tanggal ?? ''}
                 onChange={e => setFilters(s => ({ ...s, tanggal: e.target.value }))}
-                title="Filter tanggal awal absensi"
+                title={t('filterDateStartTooltip')}
               />
               {/* Tanggal Akhir */}
               <input
                 type="date"
                 className="input input-bordered w-full"
-                placeholder="Tanggal Akhir"
+                placeholder={t('filterDateEnd')}
                 value={filters.tanggal_end ?? ''}
                 onChange={e => setFilters(s => ({ ...s, tanggal_end: e.target.value }))}
-                title="Filter tanggal akhir absensi"
+                title={t('filterDateEndTooltip')}
               />
               <input
                 className="input input-bordered w-full"
-                placeholder="Kemandoran"
+                placeholder={t('filterKemandoran')}
                 value={filters.kemandoran ?? ''}
                 onChange={e => setFilters(s => ({ ...s, kemandoran: e.target.value }))}
-                title="Filter berdasarkan Kemandoran"
+                title={t('filterKemandoranTooltip')}
                 disabled={isKemandoranLocked}
               />
               <input
                 className="input input-bordered w-full"
-                placeholder="Kode Karyawan"
+                placeholder={t('filterKodeKaryawan')}
                 value={filters.kode_karyawan ?? ''}
                 onChange={e => setFilters(s => ({ ...s, kode_karyawan: e.target.value }))}
-                title="Filter berdasarkan kode karyawan"
+                title={t('filterKodeKaryawanTooltip')}
               />
               <input
                 className="input input-bordered w-full"
-                placeholder="Mandor"
+                placeholder={t('filterMandor')}
                 value={filters.kode_karyawan_mandor ?? ''}
                 onChange={e =>
                   setFilters(s => ({
@@ -2123,36 +2126,36 @@ export default function Attendance() {
                     kode_karyawan_mandor: e.target.value,
                   }))
                 }
-                title="Filter berdasarkan kode mandor"
+                title={t('filterMandorTooltip')}
               />
               <input
                 className="input input-bordered w-full"
-                placeholder="FCBA"
+                placeholder={t('filterFcba')}
                 value={filters.fcba ?? ''}
                 onChange={e => setFilters(s => ({ ...s, fcba: e.target.value }))}
-                title="Filter berdasarkan FCBA"
+                title={t('filterFcbaTooltip')}
                 disabled={isFcbaLocked}
               />
               <input
                 className="input input-bordered w-full"
-                placeholder="Afdeling"
+                placeholder={t('filterAfdeling')}
                 value={filters.afdeling ?? ''}
                 onChange={e => setFilters(s => ({ ...s, afdeling: e.target.value }))}
-                title="Filter berdasarkan Afdeling / Section"
+                title={t('filterAfdelingTooltip')}
                 disabled={isAfdelingLocked}
               />
               <input
                 className="input input-bordered w-full"
-                placeholder="Gang"
+                placeholder={t('filterGang')}
                 value={filters.gang ?? ''}
                 onChange={e => setFilters(s => ({ ...s, gang: e.target.value }))}
-                title="Filter berdasarkan kode Gang"
+                title={t('filterGangTooltip')}
               />
               <select
                 className="select select-bordered w-full"
                 value={filters.attendance ?? ''}
                 onChange={e => setFilters(s => ({ ...s, attendance: e.target.value }))}
-                title="Filter berdasarkan kode attendance"
+                title={t('filterKodeAttendanceTooltip')}
               >
                 <option value="">Attendance</option>
                 {['KJ', 'MK', 'WH', 'WS', 'ML', 'P1', 'KB', 'OT'].map(v => (
@@ -2165,7 +2168,7 @@ export default function Attendance() {
                 className="select select-bordered w-full"
                 value={filters.attendance_type ?? ''}
                 onChange={e => setFilters(s => ({ ...s, attendance_type: e.target.value }))}
-                title="Filter berdasarkan jenis attendance"
+                title={t('filterJenisAttendanceTooltip')}
               >
                 <option value="">Type</option>
                 <option value="REGULAR">REGULAR</option>
@@ -2180,7 +2183,7 @@ export default function Attendance() {
                     status_attendance: e.target.value,
                   }))
                 }
-                title="Filter berdasarkan status attendance"
+                title={t('filterStatusAttendanceTooltip')}
               >
                 <option value="">Status</option>
                 <option value="Approved">Approved</option>
@@ -2189,7 +2192,7 @@ export default function Attendance() {
               </select>
               <input
                 className="input input-bordered w-full"
-                placeholder="FCBA Tujuan"
+                placeholder={t('filterFcbaTujuan')}
                 value={filters.fcba_destination ?? ''}
                 onChange={e =>
                   setFilters(s => ({
@@ -2197,11 +2200,11 @@ export default function Attendance() {
                     fcba_destination: e.target.value,
                   }))
                 }
-                title="Filter berdasarkan FCBA tujuan"
+                title={t('filterFcbaTujuanTooltip')}
               />
               <input
                 className="input input-bordered w-full"
-                placeholder="Afdeling Tujuan"
+                placeholder={t('filterAfdelingTujuan')}
                 value={filters.section_destination ?? ''}
                 onChange={e =>
                   setFilters(s => ({
@@ -2209,7 +2212,7 @@ export default function Attendance() {
                     section_destination: e.target.value,
                   }))
                 }
-                title="Filter berdasarkan Afdeling tujuan"
+                title={t('filterAfdelingTujuanTooltip')}
               />
             </div>
 
@@ -2218,15 +2221,15 @@ export default function Attendance() {
                 className={`btn btn-outline ${loading ? 'btn-disabled' : ''}`}
                 onClick={() => queryClient.invalidateQueries({ queryKey: ['attendance'] })}
                 disabled={loading}
-                title="Terapkan filter"
+                title={t('filterApplyTooltip')}
               >
                 {loading ? (
                   <>
                     <span className="loading loading-spinner loading-xs" />
-                    Memuat...
+                    {t('loading')}
                   </>
                 ) : (
-                  'Terapkan Filter'
+                  t('filterApply')
                 )}
               </button>
               <button
@@ -2250,15 +2253,15 @@ export default function Attendance() {
                   setFilters(getScopedFilters(resetFilters));
                 }}
                 disabled={loading}
-                title="Reset semua filter"
+                title={t('filterResetTooltip')}
               >
                 {loading ? (
                   <>
                     <span className="loading loading-spinner loading-xs" />
-                    Memuat...
+                    {t('loading')}
                   </>
                 ) : (
-                  'Reset'
+                  t('filterReset')
                 )}
               </button>
             </div>
@@ -2308,7 +2311,7 @@ export default function Attendance() {
               <div className="sticky top-0 z-10 bg-base-100 pb-2 -mx-2 sm:-mx-6 px-2 sm:px-6 border-b border-base-300">
                 <div className="flex items-start justify-between">
                   <h3 className="font-bold text-xl">
-                    {isEditing ? 'Edit Data Absensi' : 'Tambah Absensi'}
+                    {isEditing ? t('modalEditTitle') : t('modalAddTitle')}
                   </h3>
                   <button
                     type="button"
@@ -2325,7 +2328,7 @@ export default function Attendance() {
                 <div className="absolute inset-0 bg-base-100/70 backdrop-blur-sm flex items-center justify-center rounded-2xl z-10">
                   <div className="flex items-center gap-3">
                     <span className="loading loading-spinner loading-lg" />
-                    <span>Memuat detail...</span>
+                    <span>{t('modalLoadingDetail')}</span>
                   </div>
                 </div>
               )}
@@ -2335,13 +2338,13 @@ export default function Attendance() {
                 className="grid grid-cols-12 gap-2 max-h-[80vh] overflow-y-auto"
               >
                 <div className="col-span-12">
-                  <h4 className="text-sm font-semibold text-base-content/80">Informasi Absensi</h4>
+                  <h4 className="text-sm font-semibold text-base-content/80">{t('formInfoTitle')}</h4>
                   <div className="mt-1 border-t border-base-300" />
                 </div>
 
                 {/* Tanggal */}
                 <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">Tanggal *</legend>
+                  <legend className="fieldset-legend">{t('formTanggal')}</legend>
                   <input
                     type="date"
                     className="input input-bordered w-full"
@@ -2350,13 +2353,13 @@ export default function Attendance() {
                     onChange={e => setForm(s => ({ ...s, tanggal: e.target.value }))}
                     required
                     disabled={disableUnlessAllowed(false)}
-                    title="Tanggal absensi"
+                    title={t('formTanggalTooltip')}
                   />
                 </fieldset>
 
                 {/* Type */}
                 <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">Attendance Type *</legend>
+                  <legend className="fieldset-legend">{t('formAttendanceType')}</legend>
                   <SearchSelect
                     options={[
                       { value: 'REGULAR', label: 'REGULAR' },
@@ -2375,7 +2378,7 @@ export default function Attendance() {
 
                 {/* Attendance */}
                 <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">Attendance *</legend>
+                  <legend className="fieldset-legend">{t('formAttendance')}</legend>
                   <SearchSelect
                     options={['KJ', 'MK', 'WH', 'WS', 'ML', 'P1', 'KB', 'OT'].map(v => ({
                       value: v,
@@ -2395,7 +2398,7 @@ export default function Attendance() {
                 {form.attendance_type === 'ASSISTENSI' && (
                   <div className="col-span-12 mt-1">
                     <h4 className="text-sm font-semibold text-base-content/80">
-                      Tujuan Assistensi
+                      {t('formDestTitle')}
                     </h4>
                     <div className="mt-1 border-t border-base-300" />
                   </div>
@@ -2404,7 +2407,7 @@ export default function Attendance() {
                 {/* FCBA Dest */}
                 {form.attendance_type === 'ASSISTENSI' && (
                   <fieldset className="fieldset col-span-12 md:col-span-4">
-                    <legend className="fieldset-legend">FCBA Destination *</legend>
+                    <legend className="fieldset-legend">{t('formFcbaDest')}</legend>
                     <SearchSelect
                       options={destOptions}
                       value={destFcba ?? ''}
@@ -2418,7 +2421,7 @@ export default function Attendance() {
                 {/* Section Dest */}
                 {form.attendance_type === 'ASSISTENSI' && (
                   <fieldset className="fieldset col-span-12 md:col-span-4">
-                    <legend className="fieldset-legend">Section Destination *</legend>
+                    <legend className="fieldset-legend">{t('formSectionDest')}</legend>
                     <SearchSelect
                       key={`section-dest-${destFcba}`}
                       options={destSectionOptions}
@@ -2444,14 +2447,14 @@ export default function Attendance() {
                 )}
 
                 <div className="col-span-12 mt-1">
-                  <h4 className="text-sm font-semibold text-base-content/80">Asal</h4>
+                  <h4 className="text-sm font-semibold text-base-content/80">{t('formOriginTitle')}</h4>
                   <div className="mt-1 border-t border-base-300" />
                 </div>
 
                 {/* FCBA */}
                 <fieldset className="fieldset col-span-12 md:col-span-3">
                   <legend className="fieldset-legend">
-                    {userLevel === 'ADM' ? 'FCBA' : 'FCBA (akun)'}
+                    {userLevel === 'ADM' ? t('formFcba') : t('formFcbaAccount')}
                   </legend>
                   {userLevel === 'ADM' ? (
                     <SearchSelect
@@ -2486,7 +2489,7 @@ export default function Attendance() {
 
                 {/* Section / Gang / Karyawan */}
                 <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">Afdeling (Section)</legend>
+                  <legend className="fieldset-legend">{t('formAfdeling')}</legend>
                   <SearchSelect
                     options={sectionOptions}
                     value={selSection ?? ''}
@@ -2510,7 +2513,7 @@ export default function Attendance() {
                 </fieldset>
 
                 <fieldset className="fieldset col-span-12 md:col-span-4">
-                  <legend className="fieldset-legend">Gang</legend>
+                  <legend className="fieldset-legend">{t('formGang')}</legend>
                   <SearchSelect
                     options={gangOptions}
                     value={selGang ?? ''}
@@ -2527,13 +2530,13 @@ export default function Attendance() {
                 </fieldset>
 
                 <div className="col-span-12 mt-1">
-                  <h4 className="text-sm font-semibold text-base-content/80">Personel</h4>
+                  <h4 className="text-sm font-semibold text-base-content/80">{t('formPersonnelTitle')}</h4>
                   <div className="mt-1 border-t border-base-300" />
                 </div>
 
                 {/* Mandor */}
                 <fieldset className="fieldset col-span-12 md:col-span-4">
-                  <legend className="fieldset-legend">Mandor (opsional)</legend>
+                  <legend className="fieldset-legend">{t('formMandor')}</legend>
                   <SearchSelect
                     options={mandorOptions}
                     value={form.kode_karyawan_mandor ?? ''}
@@ -2545,19 +2548,19 @@ export default function Attendance() {
 
                 {/* Kemandoran */}
                 <fieldset className="fieldset col-span-12 md:col-span-2">
-                  <legend className="fieldset-legend">Kemandoran (otomatis)</legend>
+                  <legend className="fieldset-legend">{t('formKemandoran')}</legend>
                   <input
                     type="text"
                     className="input input-bordered w-full"
                     value={selectedMandorGang}
                     readOnly
                     disabled
-                    title="Kemandoran otomatis dari Mandor yang dipilih"
+                    title={t('formKemandoranTooltip')}
                   />
                 </fieldset>
 
                 <fieldset className="fieldset col-span-12 md:col-span-4">
-                  <legend className="fieldset-legend">Karyawan *</legend>
+                  <legend className="fieldset-legend">{t('formKaryawan')}</legend>
                   <SearchSelect
                     options={employeeOptions}
                     value={form.kode_karyawan ?? ''}
@@ -2575,7 +2578,7 @@ export default function Attendance() {
 
                 {/* Pengancakan */}
                 <fieldset className="fieldset col-span-12 md:col-span-2">
-                  <legend className="fieldset-legend">Pengancakan (No Ancak)</legend>
+                  <legend className="fieldset-legend">{t('formPengancakan')}</legend>
                   <SearchSelect
                     options={pengancakanOptions}
                     value={form.pengancakan ?? ''}
@@ -2592,13 +2595,13 @@ export default function Attendance() {
                 </fieldset>
 
                 <div className="col-span-12 mt-1">
-                  <h4 className="text-sm font-semibold text-base-content/80">Waktu & Lokasi</h4>
+                  <h4 className="text-sm font-semibold text-base-content/80">{t('formTimeLocationTitle')}</h4>
                   <div className="mt-1 border-t border-base-300" />
                 </div>
 
                 {/* Time & Location */}
                 <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">Time In (HH:MM) *</legend>
+                  <legend className="fieldset-legend">{t('formTimeIn')}</legend>
                   <input
                     type="time"
                     className="input input-bordered w-full"
@@ -2608,12 +2611,12 @@ export default function Attendance() {
                     disabled={disableUnlessAllowed(false)}
                   />
                   <p className="text-xs mt-1 opacity-70">
-                    Default 06:00. Jika di atas 06:00, kolom Late otomatis terisi.
+                    {t('hintTimeIn')}
                   </p>
                 </fieldset>
 
                 <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">Time Out (HH:MM)</legend>
+                  <legend className="fieldset-legend">{t('formTimeOut')}</legend>
                   <input
                     type="time"
                     className="input input-bordered w-full"
@@ -2622,12 +2625,12 @@ export default function Attendance() {
                     disabled={disableUnlessAllowed(false)}
                   />
                   <p className="text-xs mt-1 opacity-70">
-                    Default 14:00. Jika sebelum 14:00, kolom Go Home Early otomatis terisi.
+                    {t('hintTimeOut')}
                   </p>
                 </fieldset>
 
                 <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">Location In *</legend>
+                  <legend className="fieldset-legend">{t('formLocIn')}</legend>
                   <div className="flex gap-2">
                     <input
                       type="text"
@@ -2642,7 +2645,7 @@ export default function Attendance() {
                       className={`btn btn-square ${locLoading === 'in' ? 'btn-disabled' : ''}`}
                       onClick={() => handleGetLocation('in')}
                       disabled={disableUnlessAllowed(false) || locLoading !== null}
-                      title="Ambil lokasi otomatis dari GPS"
+                      title={t('gpsGetLocation')}
                     >
                       {locLoading === 'in' ? (
                         <span className="loading loading-spinner loading-xs" />
@@ -2659,14 +2662,14 @@ export default function Attendance() {
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        Buka di Google Maps
+                        {t('gpsOpenMaps')}
                       </a>
                     </div>
                   )}
                 </fieldset>
 
                 <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">Location Out</legend>
+                  <legend className="fieldset-legend">{t('formLocOut')}</legend>
                   <div className="flex gap-2">
                     <input
                       type="text"
@@ -2680,7 +2683,7 @@ export default function Attendance() {
                       className={`btn btn-square ${locLoading === 'out' ? 'btn-disabled' : ''}`}
                       onClick={() => handleGetLocation('out')}
                       disabled={disableUnlessAllowed(false) || locLoading !== null}
-                      title="Ambil lokasi otomatis dari GPS"
+                      title={t('gpsGetLocation')}
                     >
                       {locLoading === 'out' ? (
                         <span className="loading loading-spinner loading-xs" />
@@ -2697,7 +2700,7 @@ export default function Attendance() {
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        Buka di Google Maps
+                        {t('gpsOpenMaps')}
                       </a>
                     </div>
                   )}
@@ -2705,14 +2708,14 @@ export default function Attendance() {
 
                 <div className="col-span-12 mt-1">
                   <h4 className="text-sm font-semibold text-base-content/80">
-                    Perhitungan & Perangkat
+                    {t('formCalcDeviceTitle')}
                   </h4>
                   <div className="mt-1 border-t border-base-300" />
                 </div>
 
                 {/* Lain-lain */}
                 <fieldset className="fieldset col-span-6 md:col-span-2">
-                  <legend className="fieldset-legend">Total Late (H:MM)</legend>
+                  <legend className="fieldset-legend">{t('formTotalLate')}</legend>
                   <input
                     type="text"
                     className="input input-bordered input-sm w-full text-center pointer-events-none select-none"
@@ -2723,7 +2726,7 @@ export default function Attendance() {
                 </fieldset>
 
                 <fieldset className="fieldset col-span-6 md:col-span-2">
-                  <legend className="fieldset-legend">Go Home Early (H:MM)</legend>
+                  <legend className="fieldset-legend">{t('formHomeEarly')}</legend>
                   <input
                     type="text"
                     className="input input-bordered input-sm w-full text-center pointer-events-none select-none"
@@ -2735,7 +2738,7 @@ export default function Attendance() {
 
                 {/* Mandays/HK */}
                 <fieldset className="fieldset col-span-12 md:col-span-2">
-                  <legend className="fieldset-legend">HK (otomatis)</legend>
+                  <legend className="fieldset-legend">{t('formHk')}</legend>
                   <input
                     type="text"
                     className="input input-bordered input-sm w-full text-center"
@@ -2745,7 +2748,7 @@ export default function Attendance() {
                 </fieldset>
 
                 <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">MAC Address (pseudo)</legend>
+                  <legend className="fieldset-legend">{t('formMac')}</legend>
                   <input
                     type="text"
                     className="input input-bordered w-full"
@@ -2756,7 +2759,7 @@ export default function Attendance() {
 
                 {/* Device */}
                 <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">ID Device (auto)</legend>
+                  <legend className="fieldset-legend">{t('formDeviceId')}</legend>
                   <input
                     type="text"
                     className="input input-bordered w-full"
@@ -2767,7 +2770,7 @@ export default function Attendance() {
 
                 <div className="col-span-12 mt-1">
                   <h4 className="text-sm font-semibold text-base-content/80">
-                    Dokumen & Keterangan
+                    {t('formDocNotesTitle')}
                   </h4>
                   <div className="mt-1 border-t border-base-300" />
                 </div>
@@ -2775,7 +2778,7 @@ export default function Attendance() {
                 {/* Exception Case */}
                 <fieldset className="fieldset col-span-12 md:col-span-6">
                   <legend className="fieldset-legend">
-                    Exception Case
+                    {t('formExceptionCase')}
                     {!isEditing ? ' *' : ''}
                   </legend>
                   <textarea
@@ -2789,7 +2792,7 @@ export default function Attendance() {
                 {/* BA EXCA PDF */}
                 <fieldset className="fieldset col-span-12 md:col-span-6">
                   <legend className="fieldset-legend">
-                    File BA Exca (PDF)
+                    {t('formBaExca')}
                     {!isEditing ? ' *' : ''}
                   </legend>
                   <input
@@ -2813,19 +2816,19 @@ export default function Attendance() {
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        Lihat BA EXCA saat ini (PDF)
+                        {t('hintLinkBaExca')}
                       </a>
                     </div>
                   )}
                   <p className="text-xs mt-1 opacity-70">
-                    Disimpan di folder yang sama dengan foto (images).
+                    {t('hintFoto')}
                   </p>
                 </fieldset>
 
                 {/* Upload Foto & Preview */}
                 <div className="col-span-12">
                   <fieldset className="fieldset">
-                    <legend className="fieldset-legend">Lampiran Foto</legend>
+                    <legend className="fieldset-legend">{t('formFoto')}</legend>
                     <input
                       ref={imgRef}
                       type="file"
@@ -2866,7 +2869,7 @@ export default function Attendance() {
               <div className="sticky bottom-0 z-10 bg-base-100 pt-2 -mx-2 sm:-mx-6 px-2 sm:px-6 border-t border-base-300">
                 <div className="flex flex-wrap gap-2 justify-end">
                   <button type="button" className="btn" onClick={() => setOpen(false)}>
-                    Batal
+                    {t('modalCancel')}
                   </button>
                   <button
                     type="submit"
@@ -2877,9 +2880,9 @@ export default function Attendance() {
                     {mutation.isPending ? (
                       <span className="loading loading-spinner" />
                     ) : isEditing ? (
-                      'Update'
+                      t('modalUpdate')
                     ) : (
-                      'Simpan'
+                      t('modalSave')
                     )}
                   </button>
                 </div>
@@ -2891,13 +2894,13 @@ export default function Attendance() {
         {deleteOpen && (
           <div className="modal modal-open">
             <div className="modal-box max-w-lg">
-              <h3 className="font-bold text-lg">Hapus Data Absensi</h3>
+              <h3 className="font-bold text-lg">{t('modalDeleteTitle')}</h3>
               <p className="mt-2 text-sm text-base-content/70">
-                Upload lampiran BA Delete dalam format PDF sebelum menghapus data.
+                {t('modalDeleteDesc')}
               </p>
 
               <fieldset className="fieldset mt-3">
-                <legend className="fieldset-legend">Lampiran BA Delete (PDF) *</legend>
+                <legend className="fieldset-legend">{t('modalDeleteLabel')}</legend>
                 <input
                   ref={deletePdfRef}
                   type="file"
@@ -2906,12 +2909,12 @@ export default function Attendance() {
                   onChange={e => setDeleteFile(e.target.files?.[0])}
                   required
                 />
-                <p className="text-xs opacity-70">Maksimal 2 MB.</p>
+                <p className="text-xs opacity-70">{t('modalDeleteHint')}</p>
               </fieldset>
 
               <div className="modal-action">
                 <button type="button" className="btn" onClick={closeDeleteModal}>
-                  Batal
+                  {t('modalCancel')}
                 </button>
                 <button
                   type="button"
@@ -2922,7 +2925,7 @@ export default function Attendance() {
                   {deleteMutation.isPending ? (
                     <span className="loading loading-spinner loading-sm" />
                   ) : (
-                    'Hapus'
+                    t('modalDelete')
                   )}
                 </button>
               </div>

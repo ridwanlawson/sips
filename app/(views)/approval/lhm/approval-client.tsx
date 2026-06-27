@@ -469,12 +469,12 @@ export default function Approval() {
   /* ===== Approve (submit to upstream) ===== */
   const handleApprove = async () => {
     if (selectedRows.length === 0) {
-      toast.error('Pilih data yang akan di-approve terlebih dahulu');
+      toast.error(tL('toastSelectApprove'));
       return;
     }
 
     const confirmed = confirm(
-      `Apakah Anda yakin ingin meng-approve ${selectedRows.length} data LHM?`
+      tL('modalConfirmApprove', { count: selectedRows.length })
     );
     if (!confirmed) return;
 
@@ -513,7 +513,7 @@ export default function Approval() {
       const json = await res.json();
 
       if (json.success) {
-        toast.success(`${selectedRows.length} data LHM berhasil di-approve ✅`);
+        toast.success(tL('toastApproveSuccess', { count: selectedRows.length }));
         setSelectedRows([]);
         setToggledClearRows(prev => !prev);
         if (appliedFilters) fetchData(appliedFilters);
@@ -532,7 +532,7 @@ export default function Approval() {
   /* ===== Export Excel ===== */
   const handleExport = async () => {
     if (filtered.length === 0) {
-      toast.error('Tidak ada data untuk diekspor');
+      toast.error(tL('toastNoData'));
       return;
     }
 
@@ -667,7 +667,7 @@ export default function Approval() {
   const columns: TableColumn<LhmData>[] = useMemo(
     () => [
       {
-        name: <span title="Aksi edit/hapus data absensi">Act</span>,
+        name: <span title={tL('colAksiTooltip')}>{tL('colAksi')}</span>,
         width: '50px',
         cell: r => {
           const tanggal = (r.fddate || '').split(' ')[0];
@@ -710,27 +710,27 @@ export default function Approval() {
         ignoreRowClick: true,
       },
       {
-        name: <span title="Tanggal panen">Tanggal</span>,
+        name: <span title={tL('colTanggalTooltip')}>{tL('colTanggal')}</span>,
         selector: r => r._dateOnly ?? '',
         sortable: true,
         width: '125px',
         cell: r => <span title={r._dateOnly}>{r._displayDate}</span>,
       },
       {
-        name: <span title="Kemandoran">Kemandoran</span>,
+        name: <span title={tL('colKemandoranTooltip')}>{tL('colKemandoran')}</span>,
         selector: r => r.kemandoran,
         sortable: true,
         width: '120px',
       },
       {
-        name: <span title="Kode Karyawan">Karyawan</span>,
+        name: <span title={tL('colKaryawanTooltip')}>{tL('colKaryawan')}</span>,
         selector: r => r.employeecode,
         sortable: true,
         width: '180px',
         style: { flexGrow: 2 as number, minWidth: '160px' },
       },
       {
-        name: <span title="Nama Karyawan">Nama</span>,
+        name: <span title={tL('colNamaTooltip')}>{tL('colNama')}</span>,
         selector: r => r.nama,
         sortable: true,
         width: '160px',
@@ -980,7 +980,7 @@ export default function Approval() {
         ),
       },
     ],
-    [formatNumber, numCell, userLevel]
+    [formatNumber, numCell, userLevel, tL]
   );
 
   return (
@@ -990,9 +990,9 @@ export default function Approval() {
         <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start animate-slideUp">
           <h1
             className="text-2xl sm:text-3xl font-bold min-w-0 truncate"
-            title="Halaman Approval LHM (Laporan Harian Mandor)"
+            title={tL('pageTitleTooltip')}
           >
-            Approval LHM
+            {tL('pageTitle')}
           </h1>
           <div
             className="flex justify-start sm:justify-end gap-2 flex-wrap w-full"
@@ -1010,31 +1010,35 @@ export default function Approval() {
             <button
               className="btn btn-outline btn-sm"
               onClick={() => setShowFilters(s => !s)}
-              title="Tampilkan / sembunyikan filter lanjutan"
+              title={tL('filterToggleTooltip')}
             >
-              {showFilters ? 'Sembunyikan Filter' : 'Tampilkan Filter'}
+              {showFilters ? tL('hideFilters') : tL('showFilters')}
             </button>
             <button
               className={`btn btn-sm ${loading ? 'btn-disabled' : ''}`}
               onClick={() => fetchData(appliedFilters ?? getScopedFilters(filters))}
               disabled={loading}
-              title="Refresh data LHM"
+              title={tL('refreshTooltip')}
             >
               {loading ? (
                 <>
                   <span className="loading loading-spinner loading-xs" />
-                  Memuat...
+                  {tL('loading')}
                 </>
               ) : (
-                'Refresh'
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                  {tL('refresh')}
+                </>
               )}
             </button>
             <button
               className="btn btn-outline btn-sm"
               onClick={handleExport}
-              title="Ekspor data yang difilter ke Excel"
+              title={tL('exportTooltip')}
             >
-              📤 Export
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              {tL('export')}
             </button>
             <button
               className={`btn btn-primary btn-sm ${submitting ? 'btn-disabled' : ''}`}
@@ -1060,7 +1064,7 @@ export default function Approval() {
           <div className="mb-3">
             <div className="badge badge-lg badge-success gap-2">
               <span>{selectedRows.length}</span>
-              <span>data dipilih untuk approval</span>
+              <span>{tL('selectedForApproval')}</span>
               <button
                 className="btn btn-ghost btn-xs"
                 onClick={() => {
@@ -1167,7 +1171,7 @@ export default function Approval() {
               />
               <input
                 className="input input-bordered w-full"
-                placeholder="Kemandoran"
+                placeholder={tL('filterKemandoran')}
                 value={filters.kemandoran ?? ''}
                 onChange={e => setFilters(s => ({ ...s, kemandoran: e.target.value }))}
                 title="Filter berdasarkan kemandoran"
@@ -1175,14 +1179,14 @@ export default function Approval() {
               />
               <input
                 className="input input-bordered w-full"
-                placeholder="Kode Karyawan"
+                placeholder={tL('filterKaryawan')}
                 value={filters.employeecode ?? ''}
                 onChange={e => setFilters(s => ({ ...s, employeecode: e.target.value }))}
                 title="Filter berdasarkan kode karyawan"
               />
               <input
                 className="input input-bordered w-full"
-                placeholder="FCBA"
+                placeholder={tL('filterFcba')}
                 value={filters.fcba ?? ''}
                 onChange={e => setFilters(s => ({ ...s, fcba: e.target.value }))}
                 title="Filter berdasarkan FCBA"
@@ -1190,7 +1194,7 @@ export default function Approval() {
               />
               <input
                 className="input input-bordered w-full"
-                placeholder="Afdeling"
+                placeholder={tL('filterAfdeling')}
                 value={filters.afdeling ?? ''}
                 onChange={e => setFilters(s => ({ ...s, afdeling: e.target.value }))}
                 title="Filter berdasarkan Afdeling"
@@ -1230,15 +1234,15 @@ export default function Approval() {
                 className={`btn btn-outline ${loading ? 'btn-disabled' : ''}`}
                 onClick={() => setAppliedFilters(getScopedFilters(filters))}
                 disabled={loading}
-                title="Terapkan filter"
+                title={tL('filterApplyTooltip')}
               >
                 {loading ? (
                   <>
                     <span className="loading loading-spinner loading-xs" />
-                    Memuat...
+                    {tL('loading')}
                   </>
                 ) : (
-                  'Terapkan Filter'
+                  tL('filterApply')
                 )}
               </button>
               <button
@@ -1249,15 +1253,15 @@ export default function Approval() {
                   setAppliedFilters(scopedResetFilters);
                 }}
                 disabled={loading}
-                title="Reset semua filter"
+                title={tL('filterResetTooltip')}
               >
                 {loading ? (
                   <>
                     <span className="loading loading-spinner loading-xs" />
-                    Memuat...
+                    {tL('loading')}
                   </>
                 ) : (
-                  'Reset'
+                  tL('filterReset')
                 )}
               </button>
             </div>

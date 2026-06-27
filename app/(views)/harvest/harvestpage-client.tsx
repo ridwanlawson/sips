@@ -585,10 +585,10 @@ export default function HarvestPage() {
           ? queryError
           : queryError instanceof Error
             ? queryError.message
-            : 'Terjadi kesalahan saat mengambil data';
+            : tH('toastFetchError');
       toast.error(msg);
     }
-  }, [queryError]);
+  }, [queryError, tH]);
 
   const { data: nextDocumentNo = '', isFetching: isFetchingDocumentNo } = useQuery({
     queryKey: [
@@ -965,7 +965,7 @@ export default function HarvestPage() {
   /* ===== Location handler ===== */
   const handleGetLocation = () => {
     if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
-      toast.error('Browser tidak mendukung GPS / geolocation. Isi manual saja.');
+      toast.error(tH('toastGeolocUnsupported'));
       return;
     }
 
@@ -982,8 +982,8 @@ export default function HarvestPage() {
         console.error('Geolocation error:', err);
         toast.error(
           err.code === err.PERMISSION_DENIED
-            ? 'Izin lokasi ditolak. Aktifkan izin lokasi di browser.'
-            : 'Gagal mengambil lokasi. Coba lagi.'
+            ? tH('toastGeolocDenied')
+            : tH('toastGeolocError')
         );
         setLocLoading(false);
       },
@@ -1036,7 +1036,7 @@ export default function HarvestPage() {
       setPreview('');
       if (imgRef.current) imgRef.current.value = '';
       if (pdfRef.current) pdfRef.current.value = '';
-      toast.success(isEditing ? 'Data berhasil diupdate' : 'Data berhasil ditambahkan');
+      toast.success(isEditing ? tH('toastSaveSuccess') : tH('toastAddSuccess'));
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -1069,14 +1069,14 @@ export default function HarvestPage() {
             ? json.message
             : typeof json.error === 'string'
               ? json.error
-              : 'Gagal hapus';
+              : tH('toastDeleteError');
         throw new Error(errorMsg);
       }
       return id;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['harvest'] });
-      toast.success('Data berhasil dihapus 🗑️');
+      toast.success(tH('toastDeleteSuccess'));
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -1144,14 +1144,14 @@ export default function HarvestPage() {
         setSelFcba(data.fcba || homeFcba || '');
         setSelSection(data.afdeling || homeSection || '');
       } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Gagal memuat detail';
+        const msg = e instanceof Error ? e.message : tH('toastFetchDetailError');
         toast.error(msg);
         setOpen(false);
       } finally {
         setDetailLoading(false);
       }
     },
-    [homeFcba, homeSection]
+    [homeFcba, homeSection, tH]
   );
 
   /* ===== Computed options for cascading selects ===== */
@@ -1385,25 +1385,25 @@ export default function HarvestPage() {
     e.preventDefault();
     if (mutation.isPending) return;
     if (!canModify) {
-      toast.error('Anda tidak memiliki akses untuk melakukan perubahan');
+      toast.error(tH('toastNoPermission'));
       return;
     }
 
     // Validasi semua field bertanda *
     const requiredFields: { value: string; label: string }[] = [
-      { value: form.tanggal, label: 'Tanggal' },
-      { value: form.kode_karyawan, label: 'Karyawan' },
-      { value: form.fcba, label: 'FCBA' },
-      { value: form.afdeling, label: 'Afdeling' },
-      { value: form.fieldcode, label: 'Field Code' },
-      { value: form.tph, label: 'TPH' },
-      { value: form.nodokumen, label: 'No Dokumen' },
-      { value: form.output, label: 'Output' },
+      { value: form.tanggal, label: tH('formTanggal') },
+      { value: form.kode_karyawan, label: tH('formKaryawan') },
+      { value: form.fcba, label: tH('formFcba') },
+      { value: form.afdeling, label: tH('formAfdeling') },
+      { value: form.fieldcode, label: tH('formFieldCode') },
+      { value: form.tph, label: tH('formTph') },
+      { value: form.nodokumen, label: tH('formNoDokumen') },
+      { value: form.output, label: tH('formOutput') },
     ];
     const emptyFields = requiredFields.filter(f => !f.value);
     if (emptyFields.length > 0) {
       const names = emptyFields.map(f => `'${f.label}'`).join(', ');
-      toast.error(`Lengkapi field wajib: ${names}`);
+      toast.error(tH('toastFieldRequired', { fields: names }));
       return;
     }
 
@@ -1411,11 +1411,11 @@ export default function HarvestPage() {
     if (!isEditing) {
       // Add: file wajib diisi
       if (!(form.images instanceof File)) {
-        toast.error('Foto wajib diupload');
+        toast.error(tH('toastPhotoRequired'));
         return;
       }
       if (!(form.no_ba_exca instanceof File)) {
-        toast.error('File BA ExCa (PDF) wajib diupload');
+        toast.error(tH('toastPdfUploadRequired'));
         return;
       }
     } else {
@@ -1424,7 +1424,7 @@ export default function HarvestPage() {
         !(form.no_ba_exca instanceof File) &&
         !(typeof form.no_ba_exca === 'string' && form.no_ba_exca)
       ) {
-        toast.error('File BA ExCa (PDF) wajib diupload');
+        toast.error(tH('toastPdfUploadRequired'));
         return;
       }
     }
@@ -1466,15 +1466,15 @@ export default function HarvestPage() {
   const handleConfirmDelete = () => {
     if (!deleteTargetId) return;
     if (!deleteFile) {
-      toast.error('Lampiran BA delete PDF wajib diisi');
+      toast.error(tH('toastPdfRequired'));
       return;
     }
     if (deleteFile.type !== 'application/pdf') {
-      toast.error('Lampiran BA delete harus berupa file PDF');
+      toast.error(tH('toastPdfFormat'));
       return;
     }
     if (deleteFile.size > 2 * 1024 * 1024) {
-      toast.error('Lampiran BA delete maksimal 2 MB');
+      toast.error(tH('toastPdfSize'));
       return;
     }
 
@@ -1523,12 +1523,12 @@ export default function HarvestPage() {
 
   const totalCards = [
     {
-      label: 'Total Janjang',
+      label: tH('totalJanjang'),
       value: harvestTotals.output,
       className: 'text-primary',
     },
     {
-      label: 'Total Brondolan',
+      label: tH('totalBrondolan'),
       value: harvestTotals.brondol,
       className: 'text-success',
     },
@@ -1537,7 +1537,7 @@ export default function HarvestPage() {
   /* ===== EXPORT EXCEL ===== */
   const handleExport = async () => {
     if (filtered.length === 0) {
-      toast.error('Tidak ada data untuk diekspor');
+      toast.error(tH('toastNoExportData'));
       return;
     }
 
@@ -1577,7 +1577,7 @@ export default function HarvestPage() {
   const columns: TableColumn<Harvest>[] = useMemo(
     () => [
       {
-        name: <span title="Aksi edit/hapus data panen">Aksi</span>,
+        name: <span title={tH('colAksiTooltip')}>{tH('colAksi')}</span>,
         width: '120px',
         cell: (row: Harvest) => {
           const status = (row.status_harvesting || '').toLowerCase();
@@ -1615,7 +1615,7 @@ export default function HarvestPage() {
         ignoreRowClick: true,
       },
       {
-        name: <span title="Status persetujuan panen (Planned/Approved/dll)">Status</span>,
+        name: <span title={tH('colStatusTooltip')}>{tH('colStatus')}</span>,
         selector: r => r.status_harvesting ?? '-',
         sortable: true,
         width: '120px',
@@ -1634,26 +1634,26 @@ export default function HarvestPage() {
         ),
       },
       {
-        name: <span title="Nomor urut baris">#</span>,
+        name: tH('colNo'),
         width: '56px',
         cell: (_r, i) => <span>{i + 1}</span>,
         ignoreRowClick: true,
       },
       {
-        name: 'No Dokumen',
+        name: tH('colNoDokumen'),
         selector: row => row.nodokumen,
         sortable: true,
         width: '250px',
       },
       {
-        name: 'Tanggal',
+        name: tH('colTanggal'),
         selector: row => row.tanggal,
         format: row => formatDateDMY(row.tanggal),
         sortable: true,
         width: '100px',
       },
       {
-        name: 'Karyawan',
+        name: tH('colKaryawan'),
         selector: row => row.nama_karyawan || row.kode_karyawan,
         sortable: true,
         width: '200px',
@@ -1665,37 +1665,37 @@ export default function HarvestPage() {
         ),
       },
       {
-        name: 'Kemandoran',
+        name: tH('colKemandoran'),
         selector: row => row.kemandoran || '-',
         sortable: true,
         width: '120px',
       },
       {
-        name: 'FCBA',
+        name: tH('colFcba'),
         selector: row => row.fcba,
         sortable: true,
         width: '80px',
       },
       {
-        name: 'Afd',
+        name: tH('colAfd'),
         selector: row => row.afdeling,
         sortable: true,
         width: '80px',
       },
       {
-        name: 'TPH',
+        name: tH('colTph'),
         selector: row => row.tph,
         sortable: true,
         width: '80px',
       },
       {
-        name: 'Field',
+        name: tH('colField'),
         selector: row => row.fieldcode,
         sortable: true,
         width: '80px',
       },
       {
-        name: 'Output',
+        name: tH('colOutput'),
         selector: row => row.output,
         sortable: true,
         width: '90px',
@@ -1707,7 +1707,7 @@ export default function HarvestPage() {
         ),
       },
       {
-        name: 'Mentah',
+        name: tH('colMentah'),
         selector: row => row.mentah,
         sortable: true,
         width: '90px',
@@ -1719,7 +1719,7 @@ export default function HarvestPage() {
         ),
       },
       {
-        name: 'Over',
+        name: tH('colOver'),
         selector: row => row.overripe,
         sortable: true,
         width: '90px',
@@ -1731,7 +1731,7 @@ export default function HarvestPage() {
         ),
       },
       {
-        name: 'Busuk',
+        name: tH('colBusuk'),
         selector: row => row.busuk,
         sortable: true,
         width: '90px',
@@ -1743,7 +1743,7 @@ export default function HarvestPage() {
         ),
       },
       {
-        name: 'Busuk 2',
+        name: tH('colBusuk2'),
         selector: row => row.busuk2,
         sortable: true,
         width: '90px',
@@ -1755,7 +1755,7 @@ export default function HarvestPage() {
         ),
       },
       {
-        name: 'Buah Kecil',
+        name: tH('colBuahKecil'),
         selector: row => row.buahkecil,
         sortable: true,
         width: '110px',
@@ -1767,7 +1767,7 @@ export default function HarvestPage() {
         ),
       },
       {
-        name: 'Parte No',
+        name: tH('colParteNo'),
         selector: row => row.parteno,
         sortable: true,
         width: '100px',
@@ -1779,7 +1779,7 @@ export default function HarvestPage() {
         ),
       },
       {
-        name: 'Parte No 50%+',
+        name: tH('colParteNo50'),
         selector: row => row.parteno50plus,
         sortable: true,
         width: '130px',
@@ -1791,7 +1791,7 @@ export default function HarvestPage() {
         ),
       },
       {
-        name: 'Brondol',
+        name: tH('colBrondol'),
         selector: row => row.brondol,
         sortable: true,
         width: '90px',
@@ -1803,7 +1803,7 @@ export default function HarvestPage() {
         ),
       },
       {
-        name: 'Al. Brondol',
+        name: tH('colAlBrondol'),
         selector: row => row.alasbrondol,
         sortable: true,
         width: '110px',
@@ -1815,7 +1815,7 @@ export default function HarvestPage() {
         ),
       },
       {
-        name: 'T.Panjang',
+        name: tH('colTPanjang'),
         selector: row => row.tangkaipanjang,
         sortable: true,
         width: '100px',
@@ -1828,8 +1828,8 @@ export default function HarvestPage() {
       },
       {
         name: (
-          <span title="Lokasi panen" className="text-center">
-            Lokasi
+          <span title={tH('colLokasiTooltip')} className="text-center">
+            {tH('colLokasi')}
           </span>
         ),
         selector: row => row.location || '',
@@ -1839,13 +1839,13 @@ export default function HarvestPage() {
         ),
       },
       {
-        name: <span title="Exception Case (alasan/keterangan khusus)">Exception Case</span>,
+        name: <span title={tH('colExceptionCaseTooltip')}>{tH('colExceptionCase')}</span>,
         selector: row => row.exception_case || '-',
         sortable: true,
         style: { flexGrow: 1.1 as number, minWidth: '160px' },
       },
       {
-        name: <span title="Lampiran BA EXCA atau file pendukung">Lampiran</span>,
+        name: <span title={tH('colLampiranTooltip')}>{tH('colLampiran')}</span>,
         selector: row => row.no_ba_exca || '-',
         sortable: true,
         width: '120px',
@@ -1856,7 +1856,7 @@ export default function HarvestPage() {
               target="_blank"
               rel="noopener noreferrer"
               className="link link-primary"
-              title="Buka lampiran"
+              title={tH('openAttachment')}
             >
               PDF
             </a>
@@ -1865,7 +1865,7 @@ export default function HarvestPage() {
           ),
       },
       {
-        name: <span title="Foto pendukung panen (bila ada)">Foto</span>,
+        name: <span title={tH('colFotoTooltip')}>{tH('colFoto')}</span>,
         width: '90px',
         cell: (r: Harvest) =>
           r.images ? (
@@ -1873,7 +1873,7 @@ export default function HarvestPage() {
               href={getProxiedImageUrl(r.images)}
               target="_blank"
               rel="noopener noreferrer"
-              title="Buka foto"
+              title={tH('openPhoto')}
             >
               <div className="relative w-10 h-10 rounded-lg ring-1 ring-base-300 bg-base-200 overflow-hidden">
                 <Image
@@ -1899,7 +1899,7 @@ export default function HarvestPage() {
         ignoreRowClick: true,
       },
     ],
-    [canModify, fetchDetail, handleDelete, userLevel, localeTag]
+    [canModify, fetchDetail, handleDelete, userLevel, localeTag, tH]
   );
 
   return (
@@ -1909,13 +1909,14 @@ export default function HarvestPage() {
         <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start animate-slideUp">
           <h1
             className="text-2xl sm:text-3xl font-bold min-w-0 truncate"
-            title="Halaman pengelolaan Harvesting (Panen)"
+            title={tH('pageTitleTooltip')}
           >
-            Harvesting (Panen)
+            {tH('pageTitle')}
           </h1>
           <div className="flex justify-start sm:justify-end gap-2 flex-wrap w-full">
             <button className="btn btn-outline btn-sm" onClick={() => setShowFilters(s => !s)}>
-              {showFilters ? 'Sembunyikan Filter' : 'Tampilkan Filter'}
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+              {showFilters ? tH('hideFilters') : tH('showFilters')}
             </button>
             <button
               className={`btn btn-sm ${loading ? 'btn-disabled' : ''}`}
@@ -1925,18 +1926,19 @@ export default function HarvestPage() {
               {loading ? (
                 <>
                   <span className="loading loading-spinner loading-xs" />
-                  Memuat...
+                  {tH('loading')}
                 </>
               ) : (
-                'Refresh'
+                <><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>{tH('refresh')}</>
               )}
             </button>
             <button
               className="btn btn-outline btn-sm"
               onClick={handleExport}
-              title="Ekspor data yang difilter ke Excel"
+              title={tH('exportTooltip')}
             >
-              Export
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              {tH('export')}
             </button>
             {canModify && (
               <button
@@ -1968,7 +1970,7 @@ export default function HarvestPage() {
                   }, 0);
                 }}
               >
-                + Tambah Panen
+                {tH('addHarvest')}
               </button>
             )}
           </div>
@@ -2069,21 +2071,21 @@ export default function HarvestPage() {
               <input
                 type="text"
                 className="input input-bordered w-full"
-                placeholder="No Dokumen"
+                placeholder={tH('filterNoDokumen')}
                 value={filters.nodokumen}
                 onChange={e => setFilters(s => ({ ...s, nodokumen: e.target.value }))}
               />
               <input
                 type="text"
                 className="input input-bordered w-full"
-                placeholder="Kode Karyawan"
+                placeholder={tH('filterKodeKaryawan')}
                 value={filters.kode_karyawan}
                 onChange={e => setFilters(s => ({ ...s, kode_karyawan: e.target.value }))}
               />
               <input
                 type="text"
                 className="input input-bordered w-full"
-                placeholder="Kemandoran"
+                placeholder={tH('filterKemandoran')}
                 value={filters.kemandoran}
                 disabled={isKemandoranLocked}
                 onChange={e => setFilters(s => ({ ...s, kemandoran: e.target.value }))}
@@ -2091,7 +2093,7 @@ export default function HarvestPage() {
               <input
                 type="text"
                 className="input input-bordered w-full"
-                placeholder="FCBA"
+                placeholder={tH('filterFcba')}
                 value={filters.fcba}
                 disabled={isFcbaLocked}
                 onChange={e => setFilters(s => ({ ...s, fcba: e.target.value }))}
@@ -2099,7 +2101,7 @@ export default function HarvestPage() {
               <input
                 type="text"
                 className="input input-bordered w-full"
-                placeholder="Afdeling"
+                placeholder={tH('filterAfdeling')}
                 value={filters.afdeling}
                 disabled={isAfdelingLocked}
                 onChange={e => setFilters(s => ({ ...s, afdeling: e.target.value }))}
@@ -2107,7 +2109,7 @@ export default function HarvestPage() {
               <input
                 type="text"
                 className="input input-bordered w-full"
-                placeholder="TPH"
+                placeholder={tH('filterTph')}
                 value={filters.tph}
                 onChange={e => setFilters(s => ({ ...s, tph: e.target.value }))}
               />
@@ -2118,15 +2120,15 @@ export default function HarvestPage() {
                 className={`btn btn-outline ${loading ? 'btn-disabled' : ''}`}
                 onClick={() => queryClient.invalidateQueries({ queryKey: ['harvest'] })}
                 disabled={loading}
-                title="Terapkan filter"
+                title={tH('filterApplyTooltip')}
               >
                 {loading ? (
                   <>
                     <span className="loading loading-spinner loading-xs" />
-                    Memuat...
+                    {tH('loading')}
                   </>
                 ) : (
-                  'Terapkan Filter'
+                  tH('filterApply')
                 )}
               </button>
               <button
@@ -2145,15 +2147,15 @@ export default function HarvestPage() {
                   setFilters(getScopedFilters(resetFilters));
                 }}
                 disabled={loading}
-                title="Reset semua filter"
+                title={tH('filterResetTooltip')}
               >
                 {loading ? (
                   <>
                     <span className="loading loading-spinner loading-xs" />
-                    Memuat...
+                    {tH('loading')}
                   </>
                 ) : (
-                  'Reset'
+                  tH('filterReset')
                 )}
               </button>
             </div>
@@ -2201,7 +2203,7 @@ export default function HarvestPage() {
             <div className="sticky top-0 z-10 bg-base-100 pb-2 -mx-2 sm:-mx-6 px-2 sm:px-6 border-b border-base-300">
               <div className="flex items-start justify-between">
                 <h3 className="font-bold text-lg">
-                  {isEditing ? 'Edit Data Panen' : 'Tambah Data Panen'}
+                  {isEditing ? tH('modalEditTitle') : tH('modalAddTitle')}
                 </h3>
                 <button
                   type="button"
@@ -2210,7 +2212,7 @@ export default function HarvestPage() {
                     setOpen(false);
                     setPreview('');
                   }}
-                  aria-label="Tutup"
+                  aria-label={tH('modalClose')}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -2233,12 +2235,12 @@ export default function HarvestPage() {
             {detailLoading ? (
               <div className="py-8 text-center">
                 <span className="loading loading-spinner loading-lg"></span>
-                <p className="mt-2">Memuat detail...</p>
+                <p className="mt-2">{tH('modalLoadingDetail')}</p>
               </div>
             ) : (
               <form id="harvest-form" onSubmit={handleSubmit} className="grid grid-cols-12 gap-2 max-h-[80vh] overflow-y-auto">
                 <div className="col-span-12">
-                  <h4 className="text-sm font-semibold text-base-content/80">Informasi Absensi</h4>
+                  <h4 className="text-sm font-semibold text-base-content/80">{tH('formInfoTitle')}</h4>
                   <div className="mt-1 border-t border-base-300" />
                 </div>
 
@@ -2246,7 +2248,7 @@ export default function HarvestPage() {
 
                 {/* Tanggal */}
                 <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">Tanggal *</legend>
+                  <legend className="fieldset-legend">{tH('formTanggal')}</legend>
                   <input
                     type="date"
                     className="input input-bordered w-full"
@@ -2259,7 +2261,7 @@ export default function HarvestPage() {
 
                 {/* Kode Karyawan - dari API absensi */}
                 <fieldset className="fieldset col-span-12 md:col-span-6">
-                  <legend className="fieldset-legend">Karyawan *</legend>
+                  <legend className="fieldset-legend">{tH('formKaryawan')}</legend>
                   <SearchSelect
                     options={employeeOptions}
                     value={form.kode_karyawan ?? ''}
@@ -2281,7 +2283,7 @@ export default function HarvestPage() {
 
                 {/* Kemandoran - hanya gang dengan prefix MD */}
                 <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">Kemandoran</legend>
+                  <legend className="fieldset-legend">{tH('formKemandoran')}</legend>
                   <SearchSelect
                     options={kemandoranOptions}
                     value={form.kemandoran ?? ''}
@@ -2303,7 +2305,7 @@ export default function HarvestPage() {
                 {/* FCBA: ADM/MGR/KSI bisa pilih, lainnya dikunci ke user_Fcba cookie */}
                 <fieldset className="fieldset col-span-12 md:col-span-3">
                   <legend className="fieldset-legend">
-                    {userLevel === 'ADM' ? 'FCBA *' : 'FCBA (akun)'}
+                    {userLevel === 'ADM' ? tH('formFcba') : tH('formFcbaAccount')}
                   </legend>
                   {userLevel === 'ADM' ? (
                     <SearchSelect
@@ -2330,8 +2332,8 @@ export default function HarvestPage() {
                 <fieldset className="fieldset col-span-12 md:col-span-3">
                   <legend className="fieldset-legend">
                     {userLevel === 'ADM' || userLevel === 'MGR' || userLevel === 'KSI'
-                      ? 'Afdeling (Section) *'
-                      : 'Afdeling (akun)'}
+                      ? tH('formAfdeling')
+                      : tH('formAfdelingAccount')}
                   </legend>
                   {userLevel === 'ADM' || userLevel === 'MGR' || userLevel === 'KSI' ? (
                     <SearchSelect
@@ -2358,7 +2360,7 @@ export default function HarvestPage() {
 
                 {/* Field Code - dari API TPH (fcba + afdeling) */}
                 <fieldset className="fieldset col-span-12 md:col-span-2">
-                  <legend className="fieldset-legend">Field Code *</legend>
+                  <legend className="fieldset-legend">{tH('formFieldCode')}</legend>
                   {isLoadingFieldcode ? (
                     <div className="skeleton h-10 w-full rounded-md animate-pulse bg-base-300" />
                   ) : (
@@ -2384,7 +2386,7 @@ export default function HarvestPage() {
 
                 {/* TPH - dari TPH API (fcba + afdeling + fieldcode) */}
                 <fieldset className="fieldset col-span-12 md:col-span-2">
-                  <legend className="fieldset-legend">TPH *</legend>
+                  <legend className="fieldset-legend">{tH('formTph')}</legend>
                   {isLoadingTph ? (
                     <div className="skeleton h-10 w-full rounded-md animate-pulse bg-base-300" />
                   ) : (
@@ -2411,7 +2413,7 @@ export default function HarvestPage() {
 
                 {/* No Ancak - otomatis dari TPH yang dipilih */}
                 <fieldset className="fieldset col-span-12 md:col-span-2">
-                  <legend className="fieldset-legend">No Ancak</legend>
+                  <legend className="fieldset-legend">{tH('formNoAncak')}</legend>
                   <input
                     type="text"
                     className="input input-bordered w-full"
@@ -2426,7 +2428,7 @@ export default function HarvestPage() {
 
                 {/* No Dokumen */}
                 <fieldset className="fieldset col-span-12">
-                  <legend className="fieldset-legend">No Dokumen *</legend>
+                  <legend className="fieldset-legend">{tH('formNoDokumen')}</legend>
                   <input
                     type="text"
                     className="input input-bordered w-full"
@@ -2445,7 +2447,7 @@ export default function HarvestPage() {
                 </fieldset>
 
                 <div className="col-span-12">
-                  <h4 className="text-sm font-semibold text-base-content/80">Hasil Panen</h4>
+                  <h4 className="text-sm font-semibold text-base-content/80">{tH('formResultsTitle')}</h4>
                   <div className="mt-1 border-t border-base-300" />
                 </div>
 
@@ -2453,7 +2455,7 @@ export default function HarvestPage() {
 
                 {/* Output */}
                 <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">Output *</legend>
+                  <legend className="fieldset-legend">{tH('formOutput')}</legend>
                   <input
                     type="number"
                     className="input input-bordered w-full"
@@ -2466,7 +2468,7 @@ export default function HarvestPage() {
 
                 {/* Mentah */}
                 <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">Mentah</legend>
+                  <legend className="fieldset-legend">{tH('formMentah')}</legend>
                   <input
                     type="number"
                     className="input input-bordered w-full"
@@ -2478,7 +2480,7 @@ export default function HarvestPage() {
 
                 {/* Overripe */}
                 <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">Overripe</legend>
+                  <legend className="fieldset-legend">{tH('formOverripe')}</legend>
                   <input
                     type="number"
                     className="input input-bordered w-full"
@@ -2490,7 +2492,7 @@ export default function HarvestPage() {
 
                 {/* Busuk */}
                 <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">Busuk</legend>
+                  <legend className="fieldset-legend">{tH('formBusuk')}</legend>
                   <input
                     type="number"
                     className="input input-bordered w-full"
@@ -2502,7 +2504,7 @@ export default function HarvestPage() {
 
                 {/* Busuk 2 */}
                 <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">Busuk 2</legend>
+                  <legend className="fieldset-legend">{tH('formBusuk2')}</legend>
                   <input
                     type="number"
                     className="input input-bordered w-full"
@@ -2514,7 +2516,7 @@ export default function HarvestPage() {
 
                 {/* Buah Kecil */}
                 <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">Buah Kecil</legend>
+                  <legend className="fieldset-legend">{tH('formBuahKecil')}</legend>
                   <input
                     type="number"
                     className="input input-bordered w-full"
@@ -2526,7 +2528,7 @@ export default function HarvestPage() {
 
                 {/* Brondol */}
                 <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">Brondol</legend>
+                  <legend className="fieldset-legend">{tH('formBrondol')}</legend>
                   <input
                     type="number"
                     className="input input-bordered w-full"
@@ -2599,7 +2601,7 @@ export default function HarvestPage() {
                 </fieldset>
 
                 <div className="col-span-12">
-                  <h4 className="text-sm font-semibold text-base-content/80">Informasi Tambahan</h4>
+                  <h4 className="text-sm font-semibold text-base-content/80">{tH('formAdditionalTitle')}</h4>
                   <div className="mt-1 border-t border-base-300" />
                 </div>
 
