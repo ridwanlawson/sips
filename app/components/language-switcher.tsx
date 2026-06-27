@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 
 export const LanguageSwitcher = () => {
   const t = useTranslations('Navbar');
-  const [locale, setLocale] = useState('en');
+  const [locale, setLocale] = useState('id');
 
   useEffect(() => {
     setLocale(cookieStore.getLocale());

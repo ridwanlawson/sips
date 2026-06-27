@@ -92,13 +92,13 @@ export const cookieStore = {
 
   getPhoto: () => getFromMap(getCookiesMap(), PHOTO_VARIANTS),
 
-  getLocale: () => getCookiesMap()['NEXT_LOCALE'] || 'en',
+  getLocale: () => getCookiesMap()['NEXT_LOCALE'] || 'id',
 
   /** Returns BCP 47 locale tag for use with toLocaleString / toLocaleDateString */
   getLocaleTag: (): string => {
-    const locale = getCookiesMap()['NEXT_LOCALE'] || 'en';
+    const locale = getCookiesMap()['NEXT_LOCALE'] || 'id';
     const map: Record<string, string> = { id: 'id-ID', en: 'en-US' };
-    return map[locale] ?? 'en-US';
+    return map[locale] ?? 'id-ID';
   },
 
   setCookie: (name: string, value: string, days = 365) => {

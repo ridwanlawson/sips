@@ -5,12 +5,12 @@ import { cookies } from 'next/headers';
 const locales = ['en', 'id'];
 
 export default getRequestConfig(async () => {
-  // Read the locale from the cookie or default to 'en'
+  // Read the locale from the cookie or default to 'id'
   const cookieStore = await cookies();
   const cookieLocale = cookieStore.get('NEXT_LOCALE')?.value;
 
-  // Use cookie locale if valid, otherwise default to 'en'
-  const locale = (locales.includes(cookieLocale as string) ? cookieLocale : 'en') as string;
+  // Use cookie locale if valid, otherwise default to 'id'
+  const locale = (locales.includes(cookieLocale as string) ? cookieLocale : 'id') as string;
 
   try {
     const messages = (await import(`../messages/${locale}.json`)).default;
@@ -23,7 +23,7 @@ export default getRequestConfig(async () => {
     // Fallback to English if the requested locale fails
     const fallbackMessages = (await import(`../messages/en.json`)).default;
     return {
-      locale: 'en',
+      locale: 'id',
       messages: fallbackMessages,
     };
   }

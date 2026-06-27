@@ -22,7 +22,7 @@ const setDefaultLocale = (response: NextResponse, request: NextRequest) => {
   if (!request.cookies.has(CookieName.NEXT_LOCALE)) {
     response.cookies.set({
       name: CookieName.NEXT_LOCALE,
-      value: 'en',
+      value: 'id',
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
