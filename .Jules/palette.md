@@ -32,3 +32,7 @@
 **Learning:** Inputs often require both a persistent hint (e.g., character requirements) and a dynamic error message. Accessibility is compromised if the error message replaces the hint in `aria-describedby`. Concatenating multiple IDs in the attribute ensures the screen reader provides full context to the user.
 
 **Action:** Dynamically compute the `aria-describedby` value by filtering and joining all applicable IDs (hints, errors, status messages). Ensure each piece of feedback has a unique, stable ID.
+
+## 2025-09-20 - [Enhanced LanguageSwitcher UX & Affordance]
+**Learning:** For global components like a language switcher, visual affordance (like a globe icon) is critical for immediate recognition across different locales. Furthermore, CSS-only dropdowns (like DaisyUI's) can feel "sticky" after a selection is made; programmatically blurring the active element provides immediate visual confirmation that the action was triggered.
+**Action:** Always pair language selection triggers with a globe icon for universal recognition. Use `document.activeElement.blur()` in selection handlers for CSS-only dropdowns to ensure they close immediately upon user interaction.
