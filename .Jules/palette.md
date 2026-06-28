@@ -36,3 +36,8 @@
 ## 2025-09-20 - [Enhanced LanguageSwitcher UX & Affordance]
 **Learning:** For global components like a language switcher, visual affordance (like a globe icon) is critical for immediate recognition across different locales. Furthermore, CSS-only dropdowns (like DaisyUI's) can feel "sticky" after a selection is made; programmatically blurring the active element provides immediate visual confirmation that the action was triggered.
 **Action:** Always pair language selection triggers with a globe icon for universal recognition. Use `document.activeElement.blur()` in selection handlers for CSS-only dropdowns to ensure they close immediately upon user interaction.
+
+## 2025-10-15 - [Enhanced ScrollToTop with Progress & Focus Management]
+**Learning:** A standard "scroll to top" button can be enhanced with a visual progress ring to provide feedback on reading progress. Crucially, for accessibility, triggering a scroll to top should also programmatically move focus back to the start of the main content (e.g., #main-content) to prevent keyboard users from being "stranded" at the bottom of the page.
+
+**Action:** Implement an SVG progress ring using stroke-dashoffset calculated from scroll percentage. Always include a delayed focus shift (e.g., 500ms) to the main content area in the scroll-to-top click handler.
