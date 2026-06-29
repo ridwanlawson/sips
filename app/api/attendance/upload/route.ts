@@ -3,8 +3,7 @@ import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
 import { applyUserDataScope } from '@/utils/requestScope';
 import { authHeaders, parseJsonSafe, extractMessage, unauthorizedResponse } from '@/lib/apiProxy';
 import { uploadSubmitSchema, validateInput } from '@/lib/inputSanitizer';
-import { cookies } from 'next/headers';
-import { validateCsrfToken } from '@/lib/csrf';
+import { validateSecurity } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -45,18 +44,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 }
 
 export async function PUT(req: NextRequest): Promise<NextResponse> {
+  const securityError = await validateSecurity(req);
+  if (securityError) return securityError;
+
   const token = await getTokenFromCookie();
   if (!token) return unauthorizedResponse();
-
-  // === CSRF VALIDATION ===
-  const cookieStore = await cookies();
-  const csrfToken = cookieStore.get('csrf_token')?.value;
-  if (!csrfToken || !validateCsrfToken(req, csrfToken)) {
-    return NextResponse.json(
-      { ok: false, error: 'Invalid CSRF token' },
-      { status: 403 }
-    );
-  }
 
   try {
     const body = await req.json();

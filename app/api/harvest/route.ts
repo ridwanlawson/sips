@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { z } from 'zod';
 import { buildFilteredUrl, getTokenFromCookie, safeJson, BACKEND_URL } from '@/utils/absensiProxy';
 import { applyUserDataScope } from '@/utils/requestScope';
 import { authHeaders, isRecord, parseJsonSafe } from '@/lib/apiProxy';
-import { validateCsrfToken } from '@/lib/csrf';
+import { validateSecurity } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -26,16 +25,12 @@ const querySchema = z
   .passthrough();
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  const securityError = await validateSecurity(req);
+  if (securityError) return securityError;
+
   const token = await getTokenFromCookie();
   if (!token) {
     return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
-  }
-
-  // === CSRF VALIDATION ===
-  const cookieStore = await cookies();
-  const csrfToken = cookieStore.get('csrf_token')?.value;
-  if (!csrfToken || !validateCsrfToken(req, csrfToken)) {
-    return NextResponse.json({ ok: false, error: 'Invalid CSRF token' }, { status: 403 });
   }
 
   const incoming = await req.formData();
