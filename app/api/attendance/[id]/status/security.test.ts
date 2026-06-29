@@ -33,7 +33,7 @@ describe('Attendance Status API Security', () => {
     vi.mocked(cookies).mockReturnValue({
       // @ts-expect-error - mock internal cookies behavior
       get: (name: string) => (name === 'csrf_token' ? { value: 'valid-token' } : undefined),
-    } as any);
+    } as unknown as ReturnType<typeof cookies>);
     vi.mocked(validateCsrfToken).mockReturnValue(true);
     vi.mocked(apiRateLimiter.consume).mockResolvedValue({});
   });
