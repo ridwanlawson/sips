@@ -59,6 +59,7 @@ type SipsUser = {
   idkaryawan?: string;
   photo?: string;
   status?: UserStatus;
+  _search?: string;
 };
 
 const LEVEL_OPTIONS: Option[] = [
@@ -205,16 +206,50 @@ export default function UsersClient() {
 
   const buLookups = useMemo(() => getBusinessUnitLookups(businessUnits), [businessUnits]);
 
+  /**
+   * ⚡ Bolt Optimization: Consolidated enrichment pass.
+   * Processes users once to:
+   * 1. Pre-calculate lowercase search content for O(N) filtering.
+   * 2. Extract unique values for Afdeling and Gangcode filters.
+   * 3. Provide fallback FCBA options if businessUnits are unavailable.
+   */
+  const { enrichedUsers, afdelingFilterOptions, gangcodeFilterOptions, fallbackFcbaOptions } =
+    useMemo(() => {
+      const afdSet = new Set<string>();
+      const gangSet = new Set<string>();
+      const fcbaSet = new Set<string>();
+
+      const enriched = users.map(u => {
+        if (u.afdeling) afdSet.add(u.afdeling);
+        if (u.gangcode) gangSet.add(u.gangcode);
+        if (u.fcba) fcbaSet.add(u.fcba);
+
+        return {
+          ...u,
+          _search:
+            `${u.username ?? ''} ${u.fullname ?? ''} ${u.email ?? ''} ${u.phone ?? ''} ${u.fcba ?? ''} ${u.afdeling ?? ''} ${u.gangcode ?? ''} ${u.level ?? ''} ${u.position ?? ''} ${u.idkaryawan ?? ''}`.toLowerCase(),
+        };
+      });
+
+      const toOption = (v: string) => ({ value: v, label: v });
+      const sorter = (a: Option, b: Option) => a.label.localeCompare(b.label);
+
+      return {
+        enrichedUsers: enriched,
+        afdelingFilterOptions: Array.from(afdSet).map(toOption).sort(sorter),
+        gangcodeFilterOptions: Array.from(gangSet).map(toOption).sort(sorter),
+        fallbackFcbaOptions: Array.from(fcbaSet).map(toOption).sort(sorter),
+      };
+    }, [users]);
+
   const fcbaOptions: Option[] = useMemo(() => {
     if (businessUnits.length) {
       return businessUnits
         .map(b => ({ value: b.fccode, label: b.fcname ? `${b.fccode} - ${b.fcname}` : b.fccode }))
         .sort((a, b) => a.label.localeCompare(b.label));
     }
-    return Array.from(new Set(users.map(u => u.fcba).filter(Boolean) as string[]))
-      .sort()
-      .map(v => ({ value: v, label: v }));
-  }, [businessUnits, users]);
+    return fallbackFcbaOptions;
+  }, [businessUnits, fallbackFcbaOptions]);
 
   const isFcbaRestricted = userLevel !== '' && userLevel !== 'ADM' && !!userFcba;
   const scopedFcbaOptions = useMemo<Option[]>(() => {
@@ -222,27 +257,12 @@ export default function UsersClient() {
     return fcbaOptions.filter(o => o.value === userFcba);
   }, [fcbaOptions, isFcbaRestricted, userFcba]);
 
-  const afdelingFilterOptions = useMemo(() => {
-    return Array.from(new Set(users.map(u => u.afdeling).filter(Boolean) as string[]))
-      .sort()
-      .map(v => ({ value: v, label: v }));
-  }, [users]);
-
-  const gangcodeFilterOptions = useMemo(() => {
-    return Array.from(new Set(users.map(u => u.gangcode).filter(Boolean) as string[]))
-      .sort()
-      .map(v => ({ value: v, label: v }));
-  }, [users]);
-
   const filteredUsers = useMemo(() => {
-    if (!q.trim()) return users;
+    if (!q.trim()) return enrichedUsers;
     const s = q.toLowerCase();
-    return users.filter(u =>
-      `${u.username ?? ''} ${u.fullname ?? ''} ${u.email ?? ''} ${u.phone ?? ''} ${u.fcba ?? ''} ${u.afdeling ?? ''} ${u.gangcode ?? ''} ${u.level ?? ''} ${u.position ?? ''} ${u.idkaryawan ?? ''}`
-        .toLowerCase()
-        .includes(s)
-    );
-  }, [users, q]);
+    // ⚡ Bolt Optimization: Use pre-calculated search content for O(N) string check.
+    return enrichedUsers.filter(u => u._search?.includes(s));
+  }, [enrichedUsers, q]);
 
   // Single add form cascading state
   const [selFcba, setSelFcba] = useState('');
