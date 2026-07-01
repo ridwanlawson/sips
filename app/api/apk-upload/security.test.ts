@@ -18,6 +18,10 @@ vi.mock('@/lib/csrf', () => ({
   validateCsrfToken: vi.fn(() => true),
 }));
 
+vi.mock('@/lib/security', () => ({
+  validateSecurity: vi.fn(async () => null),
+}));
+
 describe('APK Upload Security', () => {
   beforeEach(() => {
     vi.clearAllMocks();

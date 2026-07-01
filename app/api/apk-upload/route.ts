@@ -2,28 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
 import { UserLevel } from '@/lib/constants';
-import { validateCsrfToken } from '@/lib/csrf';
+import { validateSecurity } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
+    const securityError = await validateSecurity(req);
+    if (securityError) return securityError;
+
     const token = await getTokenFromCookie();
     if (!token) {
       return NextResponse.json({ success: false, message: 'No token' }, { status: 401 });
     }
 
-    // === CSRF VALIDATION ===
-    const cookieStore = await cookies();
-    const csrfToken = cookieStore.get('csrf_token')?.value;
-    if (!csrfToken || !validateCsrfToken(req, csrfToken)) {
-      return NextResponse.json({ success: false, message: 'Invalid CSRF token' }, { status: 403 });
-    }
-
     // SECURITY: Restricted to ADMIN/ADM only (CWE-285)
     // Only administrators are allowed to upload APKs.
     // Verification is done against the upstream backend profile.
+    const cookieStore = await cookies();
     const userId = cookieStore.get('log_id')?.value;
     if (!userId) {
       return NextResponse.json({ success: false, message: 'User ID missing' }, { status: 400 });
