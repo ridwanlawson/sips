@@ -41,3 +41,7 @@
 **Learning:** A standard "scroll to top" button can be enhanced with a visual progress ring to provide feedback on reading progress. Crucially, for accessibility, triggering a scroll to top should also programmatically move focus back to the start of the main content (e.g., #main-content) to prevent keyboard users from being "stranded" at the bottom of the page.
 
 **Action:** Implement an SVG progress ring using stroke-dashoffset calculated from scroll percentage. Always include a delayed focus shift (e.g., 500ms) to the main content area in the scroll-to-top click handler.
+
+## 2025-10-20 - [Accessible Drawer Focus Management]
+**Learning:** Drawers and modals must manage focus to be truly accessible. This includes moving focus into the component when it opens and returning it to the trigger when it closes. Crucially, focus-return logic must skip the initial mount to avoid stealing focus on page load.
+**Action:** Use a "isFirstRender" ref to gate focus-return logic in useEffects. Always pair drawers with appropriate ARIA roles (dialog, modal) and attributes (aria-expanded, aria-controls) to inform assistive technologies of state changes.
