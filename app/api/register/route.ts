@@ -1,33 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { BACKEND_URL, getTokenFromCookie, safeJson } from '@/utils/absensiProxy';
-import { apiRateLimiter } from '@/lib/rateLimiter';
-import { validateCsrfToken } from '@/lib/csrf';
+import { validateSecurity } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
-  // === RATE LIMITING ===
-  const ip =
-    req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
-    req.headers.get('x-real-ip') ||
-    'unknown';
-  try {
-    await apiRateLimiter.consume(ip);
-  } catch {
-    return NextResponse.json(
-      { ok: false, error: 'Too many requests. Try again later.' },
-      { status: 429 }
-    );
-  }
-
-  // === CSRF VALIDATION ===
-  const cookieStore = await cookies();
-  const csrfToken = cookieStore.get('csrf_token')?.value;
-  if (!csrfToken || !validateCsrfToken(req, csrfToken)) {
-    return NextResponse.json({ ok: false, error: 'Invalid CSRF token' }, { status: 403 });
-  }
+  const securityError = await validateSecurity(req);
+  if (securityError) return securityError;
 
   const token = await getTokenFromCookie();
   if (!token) {
