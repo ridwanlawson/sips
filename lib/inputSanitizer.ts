@@ -224,7 +224,7 @@ export const lhmSubmitSchema = z.object({
       ID: z.string(),
       ROWDATA: z.string(),
       HA: z.string().optional(),
-      BASIS_HA: z.string(),
+      BASIS_HA: z.string().optional(),
       FCBA: z.string().optional(),
       FDDATE: z.string().optional(),
     })
