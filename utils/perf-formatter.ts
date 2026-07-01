@@ -49,7 +49,17 @@ export function formatPerfDate(
   options?: Intl.DateTimeFormatOptions
 ): string {
   if (!date) return '';
-  const d = date instanceof Date ? date : new Date(date);
+  let d: Date;
+  if (date instanceof Date) {
+    d = date;
+  } else if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date.trim())) {
+    // ⚡ Bolt: Handle date-only strings by appending T00:00:00 to ensure local time interpretation,
+    // avoiding timezone-shift bugs (showing previous day) common with UTC parsing.
+    d = new Date(`${date.trim()}T00:00:00`);
+  } else {
+    d = new Date(date);
+  }
+
   if (isNaN(d.getTime())) return String(date);
   return getCachedDateTimeFormat(locale, options).format(d);
 }

@@ -75,8 +75,8 @@ describe('cookieStore', () => {
   });
 
   it('should return default locale if missing', () => {
-    expect(cookieStore.getLocale()).toBe('en');
-    expect(cookieStore.getLocaleTag()).toBe('en-US');
+    expect(cookieStore.getLocale()).toBe('id');
+    expect(cookieStore.getLocaleTag()).toBe('id-ID');
   });
 
   it('should get all user info at once', () => {
