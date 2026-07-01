@@ -10,13 +10,16 @@ const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL
     : null;
 
 const backendOrigin = backendUrl ? backendUrl.origin : '';
+const backendOriginHttps = backendOrigin ? backendOrigin.replace('http://', 'https://') : '';
 
 const cspDirectives = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: https://img.daisyui.com ${backendOrigin}`.trim(),
-  `connect-src 'self' https://skj.my.id ${backendOrigin}`.trim(),
+  // All HTTP images are proxied through /api/image-proxy ('self').
+  // HTTPS origins listed as fallback if proxy edge case fails.
+  `img-src 'self' data: blob: https://img.daisyui.com ${backendOriginHttps}`.trim(),
+  `connect-src 'self' https://skj.my.id ${backendOrigin} ${backendOriginHttps}`.trim(),
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self' https://www.google.com http://gis.skj.my.id:91 https://skj.my.id",

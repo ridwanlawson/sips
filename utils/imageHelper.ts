@@ -1,23 +1,26 @@
-import { BACKEND_URL } from '@/utils/backendConfig';
-
 /**
- * Convert backend image URL to use our proxy in production
- * This solves mixed content (HTTP/HTTPS) issues
+ * Convert HTTP image URLs to use our HTTPS proxy.
+ * This solves mixed content (HTTP on HTTPS) without needing to
+ * know every possible image server origin ahead of time.
+ *
+ * Security: The server-side proxy (/api/image-proxy) validates
+ * the origin against a trusted allowlist, so proxying all HTTP
+ * URLs client-side is safe.
  */
 export const getProxiedImageUrl = (originalUrl: string | null | undefined): string => {
   if (!originalUrl) return '';
 
-  // If it's already a data URL or relative URL, return as-is
-  if (originalUrl.startsWith('data:') || originalUrl.startsWith('/')) {
-    return originalUrl;
-  }
+  // data: and relative URLs need no proxy
+  if (originalUrl.startsWith('data:') || originalUrl.startsWith('/')) return originalUrl;
 
-  // If it's from our HTTP backend, proxy it through our API
-  if (originalUrl.startsWith(`${BACKEND_URL}/`)) {
+  // HTTPS URLs are safe from mixed content
+  if (originalUrl.startsWith('https://')) return originalUrl;
+
+  // Proxy all HTTP URLs through our API to avoid mixed content
+  if (originalUrl.startsWith('http://')) {
     return `/api/image-proxy?url=${encodeURIComponent(originalUrl)}`;
   }
 
-  // For other URLs (HTTPS, etc), return as-is
   return originalUrl;
 };
 

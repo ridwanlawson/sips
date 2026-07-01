@@ -3,6 +3,28 @@ import { ImageProxy } from '@/lib/constants';
 import { BACKEND_URL } from '@/utils/backendConfig';
 import { getTokenFromCookie } from '@/utils/absensiProxy';
 
+const getBackendHostname = (): string => {
+  try { return new URL(BACKEND_URL).hostname } catch { return '' }
+};
+
+/**
+ * Check if the image URL hostname is trusted.
+ * Allows the BACKEND_URL hostname AND any subdomain of its parent domain.
+ * E.g. if BACKEND_URL = http://app.skj.my.id:82, allows app.skj.my.id and *.skj.my.id
+ */
+const isTrustedHostname = (hostname: string): boolean => {
+  const backendHost = getBackendHostname();
+  if (!backendHost) return false;
+  if (hostname === backendHost) return true;
+  // Allow subdomains of the same parent domain (e.g. dev.skj.my.id if backend is app.skj.my.id)
+  const parts = backendHost.split('.');
+  if (parts.length >= 2) {
+    const parentDomain = parts.slice(-2).join('.');
+    if (hostname.endsWith(`.${parentDomain}`)) return true;
+  }
+  return false;
+};
+
 /**
  * Image proxy to serve images from HTTP backend through HTTPS
  * This solves mixed content issues in production (Vercel)
@@ -27,12 +49,10 @@ export async function GET(request: NextRequest) {
     }
 
     // SECURITY: Robust origin validation (CWE-441 / CWE-918)
-    // Ensure the URL is from our trusted backend by parsing it.
+    // Ensure the URL is from a trusted hostname.
     try {
       const parsedUrl = new URL(imageUrl);
-      const backendOrigin = new URL(BACKEND_URL).origin;
-
-      if (parsedUrl.origin !== backendOrigin) {
+      if (!isTrustedHostname(parsedUrl.hostname)) {
         return NextResponse.json({ ok: false, error: 'Invalid image origin' }, { status: 403 });
       }
     } catch {

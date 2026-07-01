@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useRef, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { cookieStore } from '@/utils/cookieStore';
 import { getMenuForUserLevel, MenuItem } from '@/lib/menuConfig';
@@ -11,7 +11,7 @@ export const Drawer = () => {
   const t = useTranslations('Navbar');
   const pathname = usePathname();
   const router = useRouter();
-  const drawerRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
   const [isNavigating, setIsNavigating] = useState<string | null>(null);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
 
@@ -40,8 +40,18 @@ export const Drawer = () => {
 
   // Close the drawer.
   const closeDrawer = () => {
-    if (drawerRef.current) drawerRef.current.checked = false;
+    setOpen(false);
   };
+
+  // ESC to close
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeDrawer();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [open]);
 
   // Navigate and mark the clicked item as loading.
   const handleNavigate = (href: string) => {
@@ -149,56 +159,63 @@ export const Drawer = () => {
           <div className="h-1 bg-primary animate-pulse"></div>
         </div>
       )}
-      <div className="drawer">
-        <input id="my-drawer" type="checkbox" className="drawer-toggle" ref={drawerRef} />
-        <div className="drawer-content">
-          {/* Open drawer button */}
-          <label
-            htmlFor="my-drawer"
-            role="button"
-            className="btn btn-ghost btn-circle drawer-button focus-visible:ring-2 focus-visible:ring-primary"
-            aria-label={t('openSidebar')}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M4 6h16M4 12h16M4 18h7"
-              />
-            </svg>
-          </label>
-        </div>
 
-        <div className="drawer-side z-[9999]">
-          <label htmlFor="my-drawer" aria-label={t('close')} className="drawer-overlay"></label>
+      {/* Burger button — always visible */}
+      <button
+        type="button"
+        className="btn btn-ghost btn-circle focus-visible:ring-2 focus-visible:ring-primary"
+        onClick={() => setOpen(true)}
+        aria-label={t('openSidebar')}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M4 6h16M4 12h16M4 18h7"
+          />
+        </svg>
+      </button>
 
-          <ul className="menu bg-base-200 text-base-content min-h-full w-80 p-4 gap-1">
-            {/* Header/brand */}
-            <li className="pointer-events-none mb-4">
-              <div className="flex flex-col items-center justify-center gap-3 py-4 bg-base-100 rounded-xl shadow-sm border border-base-300">
-                <div className="text-center">
-                  <span className="block font-bold text-lg leading-tight text-base-content">
-                    Sentosa Kalimantan Jaya
-                  </span>
-                  <span className="text-xs text-base-content/60 font-medium tracking-wide uppercase mt-1 block">
-                    SIPS Mobile Web
-                  </span>
+      {/* Overlay + sidebar */}
+      {open && (
+        <div className="fixed inset-0 z-[9999] flex">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/40"
+            onClick={closeDrawer}
+            aria-label={t('close')}
+          />
+
+          {/* Sidebar panel — positioned fixed, no GPU transform */}
+          <aside className="fixed left-0 top-0 h-full w-80 bg-base-200 text-base-content shadow-2xl overflow-y-auto">
+            <ul className="menu p-4 gap-1 min-h-full">
+              {/* Header/brand */}
+              <li className="pointer-events-none mb-4">
+                <div className="flex flex-col items-center justify-center gap-3 py-4 bg-base-100 rounded-xl shadow-sm border border-base-300">
+                  <div className="text-center">
+                    <span className="block font-bold text-lg leading-tight text-base-content">
+                      Sentosa Kalimantan Jaya
+                    </span>
+                    <span className="text-xs text-base-content/60 font-medium tracking-wide uppercase mt-1 block">
+                      SIPS Mobile Web
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </li>
+              </li>
 
-            {/* Render menu items from config */}
-            {menuItems.map(item => renderMenuItem(item))}
-          </ul>
+              {/* Render menu items from config */}
+              {menuItems.map(item => renderMenuItem(item))}
+            </ul>
+          </aside>
         </div>
-      </div>
+      )}
     </>
   );
 };

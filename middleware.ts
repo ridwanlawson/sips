@@ -97,7 +97,7 @@ export function middleware(request: NextRequest) {
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/assets') ||
-    pathname.match(/\.(png|jpg|svg|css|js|ico|txt)$/)
+    pathname.match(/\.(png|jpg|svg|css|js|ico|txt|json)$/)
   ) {
     return response;
   }
