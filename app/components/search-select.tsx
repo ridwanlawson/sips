@@ -42,6 +42,7 @@ const SearchSelectInner: React.FC<SearchSelectProps> = ({
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const boxRef = useRef<HTMLDivElement | null>(null);
+  const listRef = useRef<HTMLUListElement | null>(null);
 
   // ⚡ Bolt Optimization: Pre-calculate lookup map and search content
   const { optionsMap, enrichedOptions } = useMemo(() => {
@@ -72,6 +73,27 @@ const SearchSelectInner: React.FC<SearchSelectProps> = ({
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
   }, []);
+
+  const handleOptionKeyDown = (e: React.KeyboardEvent, index: number) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const nextBtn = listRef.current?.children[index + 1]?.querySelector('button');
+      if (nextBtn instanceof HTMLElement) nextBtn.focus();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prevBtn = listRef.current?.children[index - 1]?.querySelector('button');
+      if (prevBtn instanceof HTMLElement) {
+        prevBtn.focus();
+      } else {
+        // Return to search input
+        boxRef.current?.querySelector('input')?.focus();
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setOpen(false);
+      boxRef.current?.querySelector('button')?.focus();
+    }
+  };
 
   // ⚡ Bolt Optimization: O(1) lookup via Map
   const currentLabel = optionsMap.get(value) || value || '';
@@ -156,11 +178,22 @@ const SearchSelectInner: React.FC<SearchSelectProps> = ({
                 aria-label={t('typeToSearch')}
                 value={q}
                 onChange={e => setQ(e.target.value)}
-                onKeyDown={e => {
+                onKeyDown={(e) => {
                   if (e.key === 'Escape') {
                     setOpen(false);
                     // Return focus to the trigger button
                     boxRef.current?.querySelector('button')?.focus();
+                  } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    // Move focus to the first item in the list
+                    const firstBtn = listRef.current?.querySelector('button');
+                    if (firstBtn instanceof HTMLElement) firstBtn.focus();
+                  } else if (e.key === 'Enter' && filtered.length > 0) {
+                    e.preventDefault();
+                    // Quick select the first result
+                    onChange(filtered[0].value);
+                    setOpen(false);
+                    setQ('');
                   }
                 }}
               />
@@ -191,14 +224,22 @@ const SearchSelectInner: React.FC<SearchSelectProps> = ({
               )}
             </div>
           </div>
-          <ul className="max-h-64 overflow-auto py-1">
+          <ul
+            ref={listRef}
+            role="listbox"
+            className="max-h-64 overflow-auto py-1"
+          >
             {filtered.length === 0 && (
-              <li className="p-3 text-base-content/60 text-sm text-center">{t('noData')}</li>
+              <li role="none" className="p-3 text-base-content/60 text-sm text-center">
+                {t('noData')}
+              </li>
             )}
-            {filtered.map(opt => (
-              <li key={`ss-${opt.value}`}>
+            {filtered.map((opt, idx) => (
+              <li key={`ss-${opt.value}`} role="none">
                 <button
                   type="button"
+                  role="option"
+                  aria-selected={opt.value === value}
                   className={`w-full text-left px-3 py-2 hover:bg-base-200 transition-colors ${
                     opt.value === value ? 'bg-base-200 font-semibold text-primary' : ''
                   }`}
@@ -207,6 +248,7 @@ const SearchSelectInner: React.FC<SearchSelectProps> = ({
                     setOpen(false);
                     setQ('');
                   }}
+                  onKeyDown={(e) => handleOptionKeyDown(e, idx)}
                   title={opt.label}
                 >
                   <div className="font-medium truncate text-sm">{opt.label}</div>
