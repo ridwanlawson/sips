@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { cookieStore } from '@/utils/cookieStore';
 import { getMenuForUserLevel, MenuItem } from '@/lib/menuConfig';
@@ -13,6 +13,10 @@ export const Drawer = () => {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isNavigating, setIsNavigating] = useState<string | null>(null);
+
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const isFirstRender = useRef(true);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
 
   // Dynamic dropdown states based on menu config
@@ -42,6 +46,22 @@ export const Drawer = () => {
   const closeDrawer = () => {
     setOpen(false);
   };
+
+  // 🎨 Palette Improvement: Focus management for accessibility
+  useEffect(() => {
+    if (open) {
+      // Focus first interactive element when opened
+      const firstItem = sidebarRef.current?.querySelector('a, button, summary');
+      if (firstItem instanceof HTMLElement) {
+        // small delay to ensure it's rendered
+        setTimeout(() => firstItem.focus(), 50);
+      }
+      isFirstRender.current = false;
+    } else if (!isFirstRender.current) {
+      // Return focus to trigger when closed (skip on first mount)
+      triggerRef.current?.focus();
+    }
+  }, [open]);
 
   // ESC to close
   useEffect(() => {
@@ -162,10 +182,13 @@ export const Drawer = () => {
 
       {/* Burger button — always visible */}
       <button
+        ref={triggerRef}
         type="button"
         className="btn btn-ghost btn-circle focus-visible:ring-2 focus-visible:ring-primary"
         onClick={() => setOpen(true)}
         aria-label={t('openSidebar')}
+        aria-expanded={open}
+        aria-controls="drawer-sidebar"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -173,6 +196,7 @@ export const Drawer = () => {
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
+          aria-hidden="true"
         >
           <path
             strokeLinecap="round"
@@ -187,14 +211,22 @@ export const Drawer = () => {
       {open && (
         <div className="fixed inset-0 z-[9999] flex">
           {/* Backdrop */}
-          <div
-            className="fixed inset-0 bg-black/40"
+          <button
+            type="button"
+            className="fixed inset-0 bg-black/40 border-none w-full h-full cursor-default"
             onClick={closeDrawer}
             aria-label={t('close')}
           />
 
           {/* Sidebar panel — positioned fixed, no GPU transform */}
-          <aside className="fixed left-0 top-0 h-full w-80 bg-base-200 text-base-content shadow-2xl overflow-y-auto">
+          <aside
+            id="drawer-sidebar"
+            ref={sidebarRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('openSidebar')}
+            className="fixed left-0 top-0 h-full w-80 bg-base-200 text-base-content shadow-2xl overflow-y-auto"
+          >
             <ul className="menu p-4 gap-1 min-h-full">
               {/* Header/brand */}
               <li className="pointer-events-none mb-4">
