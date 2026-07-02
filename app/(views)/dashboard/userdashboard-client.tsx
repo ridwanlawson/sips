@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { SimpleBarChart, SimplePieChart, SimpleLineChart } from '@/app/components/dashboard-chart';
 import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/authHelper';
 import { SkeletonCard, SkeletonTable, SkeletonChart } from '@/app/components/skeletons';
-import { formatPerfNumber } from '@/utils/perf-formatter';
+import { formatPerfNumber, formatPerfDate } from '@/utils/perf-formatter';
 import { useLocale } from '@/hooks/useLocale';
 import { useTranslations } from 'next-intl';
 import { SearchSelect, type Option } from '@/app/components/search-select';
@@ -164,38 +164,17 @@ const parseDateOnly = (raw?: string | null): string | null => {
   return onlyDate;
 };
 
-// ⚡ Bolt Optimization: Reuse Intl.DateTimeFormat instances to avoid expensive re-creation
-// creating an Intl object on every call to toLocaleDateString() is a known bottleneck.
-const dayFormatter = new Intl.DateTimeFormat('id-ID', {
+/* ⚡ Bolt Optimization: Define formatting options for reuse via formatPerfDate */
+const DASHBOARD_DATE_OPTIONS: Intl.DateTimeFormatOptions = {
   weekday: 'short',
   day: '2-digit',
   month: 'short',
   year: 'numeric',
-});
-
-const monthFormatter = new Intl.DateTimeFormat('id-ID', {
-  month: 'long',
-  year: 'numeric',
-});
-
-const dateCache = new Map<string, string>();
-const formatDateID = (yyyyMmDd: string): string => {
-  // ⚡ Bolt Optimization: Memoize formatted date strings to avoid redundant
-  // new Date() and Intl format() calls in large loops.
-  const cached = dateCache.get(yyyyMmDd);
-  if (cached) return cached;
-
-  const d = new Date(yyyyMmDd + 'T00:00:00');
-  if (Number.isNaN(+d)) return yyyyMmDd;
-
-  const formatted = dayFormatter.format(d);
-  dateCache.set(yyyyMmDd, formatted);
-  return formatted;
 };
 
-const formatMonthID = (year: number, month: number): string => {
-  const date = new Date(year, month - 1, 1);
-  return monthFormatter.format(date);
+const DASHBOARD_MONTH_OPTIONS: Intl.DateTimeFormatOptions = {
+  month: 'long',
+  year: 'numeric',
 };
 
 const formatYearID = (year: number): string => {
@@ -723,51 +702,34 @@ export default function UserDashboard() {
 
   /* ===== Bootstrap user dari cookies ===== */
   useEffect(() => {
-    const cookieFullname =
-      cookieStore.getCookie('user_FullName') ||
-      cookieStore.getCookie('user_fullname') ||
-      cookieStore.getCookie('user_Name') ||
-      cookieStore.getCookie('user_name') ||
-      '';
-    const cookieLevelRaw =
-      cookieStore.getCookie('user_Level') || cookieStore.getCookie('user_LEVEL') || cookieStore.getCookie('user_level') || '';
-    const cookieFcba =
-      cookieStore.getCookie('user_Fcba') || cookieStore.getCookie('user_FCBA') || cookieStore.getCookie('user_fcba') || '';
-    const cookieSection =
-      cookieStore.getCookie('user_Section') ||
-      cookieStore.getCookie('user_SECTION') ||
-      cookieStore.getCookie('user_section') ||
-      cookieStore.getCookie('user_Afdeling') ||
-      cookieStore.getCookie('user_afdeling') ||
-      '';
-    const cookieGang =
-      cookieStore.getCookie('user_Gang') || cookieStore.getCookie('user_gang') || cookieStore.getCookie('user_GANG') || '';
+    // ⚡ Bolt Optimization: Use single-pass cookie retrieval to avoid O(N*K) lookups.
+    const userInfo = cookieStore.getAllUserInfo();
+    const { fullName, level, fcba, section, gang } = userInfo;
 
     let lvl: UserLevel = 'OTHER';
-    const upperLvl = cookieLevelRaw.toUpperCase();
-    if (upperLvl === 'ADM' || upperLvl === 'MGR' || upperLvl === 'AST') {
-      lvl = upperLvl;
+    if (level === 'ADM' || level === 'MGR' || level === 'AST') {
+      lvl = level;
     }
 
     setUserLevel(lvl);
     setUserProfile(prev => ({
       ...(prev || {}),
-      fullname: cookieFullname || prev?.fullname,
-      level: upperLvl || prev?.level,
-      fcba: cookieFcba || prev?.fcba,
-      afdeling: cookieSection || prev?.afdeling,
-      gang: cookieGang || prev?.gang,
+      fullname: fullName || prev?.fullname,
+      level: level || prev?.level,
+      fcba: fcba || prev?.fcba,
+      afdeling: section || prev?.afdeling,
+      gang: gang || prev?.gang,
     }));
 
     if (lvl === 'ADM') {
       setFilterFcba('ALL');
       setFilterAfdeling('');
     } else if (lvl === 'MGR') {
-      setFilterFcba(cookieFcba || '');
+      setFilterFcba(fcba || '');
       setFilterAfdeling('');
     } else if (lvl === 'AST') {
-      setFilterFcba(cookieFcba || '');
-      setFilterAfdeling(cookieSection || '');
+      setFilterFcba(fcba || '');
+      setFilterAfdeling(section || '');
     }
   }, []);
 
@@ -851,7 +813,7 @@ export default function UserDashboard() {
       const cls = classifyStatus(r);
 
       // ⚡ Bolt Optimization: pre-calculate values for rendering
-      r._displayDate = formatDateID(dateOnly);
+      r._displayDate = formatPerfDate(dateOnly, localeTag, DASHBOARD_DATE_OPTIONS);
       r._status = cls;
 
       filteredAttendance.push(r);
@@ -930,7 +892,7 @@ export default function UserDashboard() {
           mSummary = {
             year,
             month,
-            monthName: formatMonthID(year, month),
+            monthName: formatPerfDate(new Date(year, month - 1, 1), localeTag, DASHBOARD_MONTH_OPTIONS),
             hadir: 0,
             tepatWaktu: 0,
             telat: 0,
@@ -1006,7 +968,7 @@ export default function UserDashboard() {
       rowDetails: sortedRowDetails,
       filteredAttendance,
     };
-  }, [attendanceRaw, timeframe, userLevel]);
+  }, [attendanceRaw, timeframe, userLevel, localeTag]);
 
   /* ===== Data Chart ===== */
 
