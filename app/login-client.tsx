@@ -5,15 +5,10 @@ import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { useTranslations } from 'next-intl';
+import { LanguageSwitcher } from './components/language-switcher';
 
 import { isValidRedirect } from '@/utils/sanitization';
 
-const LOADING_TIPS = [
-  'Pastikan username dan password sudah benar.',
-  'Jaga kerahasiaan akun Anda, jangan dibagikan ke orang lain.',
-  'Hubungi Administrator jika lupa kata sandi.',
-  'Gunakan koneksi internet yang stabil untuk pengalaman terbaik.',
-];
 
 type Firefly = {
   top: number;
@@ -33,6 +28,7 @@ export default function Home() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [tipIndex, setTipIndex] = useState(0);
+  const LOADING_TIPS = [tAuth('tip0'), tAuth('tip1'), tAuth('tip2'), tAuth('tip3')];
   const searchParams = useSearchParams();
 
   const rawRedirect = searchParams.get('redirect');
@@ -81,7 +77,7 @@ export default function Home() {
     if (!isLoading) return;
     const interval = setInterval(() => setTipIndex(prev => (prev + 1) % LOADING_TIPS.length), 2200);
     return () => clearInterval(interval);
-  }, [isLoading]);
+  }, [isLoading, LOADING_TIPS.length]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     setIsCapsLock(e.getModifierState('CapsLock'));
@@ -110,17 +106,24 @@ export default function Home() {
       if (response.ok) {
         router.push(redirectTo);
       } else {
-        setError(data.message || 'Login gagal. Silakan periksa kembali kredensial Anda.');
+        setError(data.message || tAuth('loginError'));
         setIsLoading(false);
       }
     } catch {
-      setError('Terjadi kesalahan. Silakan coba lagi.');
+      setError(tAuth('unexpectedError'));
       setIsLoading(false);
     }
   };
 
   return (
     <div className="relative font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 bg-base-200 overflow-hidden">
+      {/* 🎨 Palette Improvement: Language Switcher for accessibility on login page */}
+      <div className="fixed top-4 right-4 z-50 animate-fadeIn">
+        <div className="bg-base-100/50 backdrop-blur-sm rounded-full p-0.5 shadow-sm border border-base-300/50 hover:bg-base-100 transition-all duration-300">
+          <LanguageSwitcher />
+        </div>
+      </div>
+
       {/* Decorative animated background blobs + fireflies */}
       <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
         <div className="absolute -left-32 top-10 h-64 w-64 bg-primary/20 blur-3xl animate-pulse" />
@@ -151,7 +154,7 @@ export default function Home() {
           <div className="flex flex-col items-center gap-4 px-6 py-4 rounded-2xl bg-base-100/90 shadow-lg">
             <span className="loading loading-spinner loading-lg text-primary" />
             <div className="text-center space-y-1">
-              <p className="text-sm font-semibold text-base-content">Memverifikasi kredensial...</p>
+              <p className="text-sm font-semibold text-base-content">{tAuth('verifying')}</p>
               <p className="text-xs text-base-content/70 animate-fadeIn">
                 {LOADING_TIPS[tipIndex]}
               </p>
@@ -172,16 +175,15 @@ export default function Home() {
             SIPS MOBILE WEB
           </p>
           <h1 className="text-2xl font-bold leading-snug">
-            Masuk untuk memantau
-            <span className="text-primary"> aktivitas lapangan</span> dengan lebih mudah.
+            {tAuth('tagline1')}
+            <span className="text-primary"> {tAuth('tagline2')}</span> {tAuth('tagline3')}
           </h1>
           <p className="text-sm text-base-content/70">
-            Sistem terintegrasi untuk absensi, aktivitas harian, dan kontrol operasional di Estate.
-            Login dengan akun yang diberikan oleh Administrator.
+            {tAuth('description')}
           </p>
           <div className="mt-2 flex items-center gap-2 text-xs text-base-content/60">
             <span className="status status-success inline-block animate-pulse [animation-duration:2s]" />
-            <span>Realtime • Terintegrasi • Multi-Device</span>
+            <span>{tAuth('features')}</span>
           </div>
 
           <a
@@ -205,7 +207,7 @@ export default function Home() {
             </div>
             <div className="text-[0.7rem] leading-snug">
               <p className="font-semibold text-base-content">
-                Download SIPS Mobile & Geo Lens Now!
+                {tAuth('downloadText')}
               </p>
             </div>
           </a>
@@ -225,7 +227,7 @@ export default function Home() {
                 />
                 <div className="flex flex-col">
                   <span className="text-xs font-semibold tracking-[0.22em] text-primary/80">
-                    LOGIN
+                    {tAuth('login').toUpperCase()}
                   </span>
                   <span className="text-sm font-medium">SIPS MOBILE WEB</span>
                 </div>
@@ -235,7 +237,7 @@ export default function Home() {
 
           <form onSubmit={handleLogin} className="card-body gap-4">
             <p className="text-xs opacity-60">
-              Ask your administrator for your account information.
+              {tAuth('adminHint')}
             </p>
 
             {/* Username */}
@@ -255,8 +257,8 @@ export default function Home() {
                 <input
                   type="text"
                   className="grow bg-transparent outline-none"
-                  placeholder="Username"
-                  aria-label="Username"
+                  placeholder={tAuth('username')}
+                  aria-label={tAuth('username')}
                   value={username}
                   onChange={e => setUsername(e.target.value)}
                   disabled={isLoading}
@@ -283,8 +285,8 @@ export default function Home() {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   className="grow bg-transparent outline-none"
-                  placeholder="Password"
-                  aria-label="Password"
+                  placeholder={tAuth('password')}
+                  aria-label={tAuth('password')}
                   aria-describedby="password-hint"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
@@ -298,8 +300,8 @@ export default function Home() {
                   type="button"
                   onClick={() => setShowPassword(prev => !prev)}
                   className="btn btn-ghost btn-square btn-xs opacity-70 hover:text-primary"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  title={showPassword ? 'Hide password' : 'Show password'}
+                  aria-label={showPassword ? tAuth('hidePassword') : tAuth('showPassword')}
+                  title={showPassword ? tAuth('hidePassword') : tAuth('showPassword')}
                 >
                   {showPassword ? (
                     <svg
@@ -359,7 +361,7 @@ export default function Home() {
                     className="status status-warning inline-block animate-pulse [animation-duration:2s]"
                     aria-hidden="true"
                   />
-                  Password must be 8+ characters
+                  {tAuth('passwordHint')}
                 </span>
               )}
               {/* SECURITY: Remember username disabled to prevent XSS via localStorage */}
@@ -371,15 +373,15 @@ export default function Home() {
                 type="submit"
                 className="btn btn-primary w-full transition-transform duration-200 hover:-translate-y-[1px] active:scale-95"
                 disabled={isLoading}
-                aria-label={isLoading ? 'Logging in...' : 'Login'}
+                aria-label={isLoading ? tAuth('loggingIn') : tAuth('login')}
               >
                 {isLoading ? (
                   <>
                     <span className="loading loading-spinner loading-sm" />
-                    Logging in...
+                    {tAuth('loggingIn')}
                   </>
                 ) : (
-                  'Login'
+                  tAuth('login')
                 )}
               </button>
             </div>
