@@ -2,19 +2,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { apiRateLimiter } from '@/lib/rateLimiter';
 import { validateCsrfToken } from '@/lib/csrf';
+import { RateLimiterMemory } from 'rate-limiter-flexible';
 
 /**
  * Validates CSRF token and applies rate limiting to a request.
  * Returns a NextResponse if validation fails, or null if it passes.
  */
-export async function validateSecurity(req: NextRequest): Promise<NextResponse | null> {
+export async function validateSecurity(
+  req: NextRequest,
+  rateLimiter: RateLimiterMemory = apiRateLimiter
+): Promise<NextResponse | null> {
   // === RATE LIMITING ===
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
-             req.headers.get('x-real-ip') ||
-             'unknown';
+  const ip =
+    req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+    req.headers.get('x-real-ip') ||
+    'unknown';
 
   try {
-    await apiRateLimiter.consume(ip);
+    await rateLimiter.consume(ip);
   } catch {
     return NextResponse.json(
       {

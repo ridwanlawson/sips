@@ -1,19 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
+import { CookieName, UserLevel } from '@/lib/constants';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const token = await getTokenFromCookie();
-  if (!token) {
+  const cookieStore = await cookies();
+  const loggedInUserId = cookieStore.get(CookieName.LOG_ID)?.value;
+  const userLevel =
+    cookieStore.get(CookieName.SECURE_USER_LEVEL)?.value ||
+    cookieStore.get(CookieName.USER_LEVEL)?.value;
+
+  if (!token || !loggedInUserId) {
     return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
   }
 
   const { id } = await params;
+
+  // SECURITY: Prevent IDOR (Insecure Direct Object Reference) - CWE-639
+  // Only allow users to access their own profile OR allow ADMIN level access.
+  if (id !== loggedInUserId && userLevel !== UserLevel.ADMIN) {
+    return NextResponse.json(
+      { ok: false, error: 'Unauthorized: You can only access your own profile' },
+      { status: 403 }
+    );
+  }
 
   const upstream = await fetch(`${BACKEND_URL}/api/user/${encodeURIComponent(id)}`, {
     headers: {
