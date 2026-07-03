@@ -8,11 +8,12 @@ import {
   AttendanceUploadParams,
   fetchAttendanceUpload,
   insertAttendanceData,
+  AttendanceUploadData as BaseAttendanceUploadData,
 } from '@/utils/attendanceUploadService';
 import { SkeletonTable } from '@/app/components/skeletons';
 import { AccessDenied } from '@/app/components/access-denied';
 import { useLocale } from '@/hooks/useLocale';
-import { formatPerfDate } from '@/utils/perf-formatter';
+import { formatPerfDate, formatPerfNumber } from '@/utils/perf-formatter';
 import { useUploadPage } from '@/hooks/useUploadPage';
 
 const EMPTY_PARAMS: AttendanceUploadParams = {
@@ -22,6 +23,33 @@ const EMPTY_PARAMS: AttendanceUploadParams = {
   afdeling: '',
   gangcode: '',
 };
+
+/**
+ * ⚡ Bolt Optimization: Safely convert mixed API values to numbers.
+ * Handles strings with commas and ensures a valid finite number is returned.
+ */
+const toNumber = (value: string | number | null | undefined): number => {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  if (!value) return 0;
+  const normalized = String(value).replace(',', '.').trim();
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+interface AttendanceUploadData extends BaseAttendanceUploadData {
+  _rowKey?: string;
+  _searchContent?: string;
+  _displayDate?: string;
+  _mandaysNum?: number;
+  _othrsNum?: number;
+  _rateNum?: number;
+  _unitNum?: number;
+  _outputNum?: number;
+  _overtimeHoursNum?: number;
+  _kgBrondolanNum?: number;
+  _kgJanjangNum?: number;
+  _bjrNum?: number;
+}
 
 export default function AttendanceUploadPage() {
   const localeTag = useLocale();
@@ -109,6 +137,19 @@ export default function AttendanceUploadPage() {
   // Add row keys for DataTable
   const dataWithKey = useMemo(() => {
     return data.map((item, idx) => {
+      // ⚡ Bolt Optimization: Pre-calculate display values and numbers once.
+      // This converts O(N*R) work during render into O(N) work here.
+      const _displayDate = formatPerfDate(item.fddate, localeTag) || '-';
+      const _mandaysNum = toNumber(item.mandays);
+      const _othrsNum = toNumber(item.othrs);
+      const _rateNum = toNumber(item.rate);
+      const _unitNum = toNumber(item.unit);
+      const _outputNum = toNumber(item.output);
+      const _overtimeHoursNum = toNumber(item.overtime_hours);
+      const _kgBrondolanNum = toNumber(item.kg_brondolan);
+      const _kgJanjangNum = toNumber(item.kg_janjang);
+      const _bjrNum = toNumber(item.bjr);
+
       // ⚡ Bolt Optimization: Pre-calculate search content to avoid O(N*M) string operations during search.
       const _searchContent = [
         item.employeecode,
@@ -123,6 +164,7 @@ export default function AttendanceUploadPage() {
         item.remarks,
         item.linenokey,
         item.id,
+        _displayDate,
       ]
         .filter(v => v !== null && v !== undefined)
         .join(' ')
@@ -132,9 +174,19 @@ export default function AttendanceUploadPage() {
         ...item,
         _rowKey: `${item.linenokey}-${item.id}-${idx}`,
         _searchContent,
+        _displayDate,
+        _mandaysNum,
+        _othrsNum,
+        _rateNum,
+        _unitNum,
+        _outputNum,
+        _overtimeHoursNum,
+        _kgBrondolanNum,
+        _kgJanjangNum,
+        _bjrNum,
       };
     });
-  }, [data]);
+  }, [data, localeTag]);
 
   const filteredDataWithKey = useMemo(() => {
     if (!searchTerm.trim()) {
@@ -186,7 +238,10 @@ export default function AttendanceUploadPage() {
       },
       {
         name: 'Date',
-        selector: row => formatPerfDate(row.fddate, localeTag) || '-',
+        // ⚡ Bolt: Use raw date in selector for correct chronological sorting.
+        selector: row => row.fddate || '',
+        // ⚡ Bolt: Use pre-calculated display date in cell for O(1) rendering.
+        cell: row => <span>{row._displayDate}</span>,
         sortable: true,
         width: '120px',
       },
@@ -216,37 +271,43 @@ export default function AttendanceUploadPage() {
       },
       {
         name: 'Mandays',
-        selector: row => row.mandays || '-',
+        selector: row => row._mandaysNum || 0,
+        cell: row => <span>{formatPerfNumber(row._mandaysNum || 0, localeTag)}</span>,
         sortable: true,
         width: '100px',
       },
       {
         name: 'Othrs',
-        selector: row => row.othrs || '-',
+        selector: row => row._othrsNum || 0,
+        cell: row => <span>{formatPerfNumber(row._othrsNum || 0, localeTag)}</span>,
         sortable: true,
         width: '100px',
       },
       {
         name: 'Rate',
-        selector: row => row.rate || '-',
+        selector: row => row._rateNum || 0,
+        cell: row => <span>{formatPerfNumber(row._rateNum || 0, localeTag)}</span>,
         sortable: true,
         width: '100px',
       },
       {
         name: 'Unit',
-        selector: row => row.unit || '-',
+        selector: row => row._unitNum || 0,
+        cell: row => <span>{formatPerfNumber(row._unitNum || 0, localeTag)}</span>,
         sortable: true,
         width: '100px',
       },
       {
         name: 'Output',
-        selector: row => row.output || '-',
+        selector: row => row._outputNum || 0,
+        cell: row => <span>{formatPerfNumber(row._outputNum || 0, localeTag)}</span>,
         sortable: true,
         width: '100px',
       },
       {
         name: 'OT Hours',
-        selector: row => row.overtime_hours || '-',
+        selector: row => row._overtimeHoursNum || 0,
+        cell: row => <span>{formatPerfNumber(row._overtimeHoursNum || 0, localeTag)}</span>,
         sortable: true,
         width: '110px',
       },
@@ -294,19 +355,22 @@ export default function AttendanceUploadPage() {
       },
       {
         name: 'KG Brondolan',
-        selector: row => row.kg_brondolan || '-',
+        selector: row => row._kgBrondolanNum || 0,
+        cell: row => <span>{formatPerfNumber(row._kgBrondolanNum || 0, localeTag)}</span>,
         sortable: true,
         width: '130px',
       },
       {
         name: 'KG Janjang',
-        selector: row => row.kg_janjang || '-',
+        selector: row => row._kgJanjangNum || 0,
+        cell: row => <span>{formatPerfNumber(row._kgJanjangNum || 0, localeTag)}</span>,
         sortable: true,
         width: '130px',
       },
       {
         name: 'BJR',
-        selector: row => row.bjr || '-',
+        selector: row => row._bjrNum || 0,
+        cell: row => <span>{formatPerfNumber(row._bjrNum || 0, localeTag)}</span>,
         sortable: true,
         width: '100px',
       },
