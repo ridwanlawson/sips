@@ -1,8 +1,19 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { BACKEND_URL } from '@/utils/absensiProxy';
+import { apiRateLimiter } from '@/lib/rateLimiter';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  // === RATE LIMITING ===
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+             req.headers.get('x-real-ip') ||
+             'unknown';
+  try {
+    await apiRateLimiter.consume(ip);
+  } catch {
+    return NextResponse.json({ ok: false, error: 'Too many requests' }, { status: 429 });
+  }
+
   const cookieStore = await cookies();
   const token = cookieStore.get('auth_token')?.value;
   const userId = cookieStore.get('log_id')?.value;

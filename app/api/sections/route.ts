@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
 import { authHeaders, extractDataArray } from '@/lib/apiProxy';
 import { applyUserDataScope } from '@/utils/requestScope';
+import { cookies } from 'next/headers';
+import { CookieName, UserLevel } from '@/lib/constants';
 
 const ALLOWED_PARAMS = ['fccode', 'fcba'];
 
@@ -11,16 +13,18 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
   }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // 🛡️  GUARD: Jangan hapus block ini. Parameter `fcba` sengaja dipertahankan
-  //     eksplisit untuk keperluan destination/assistensi, meskipun
-  //     applyUserDataScope akan meng-override-nya dengan FCBA user.
-  // ────────────────────────────────────────────────────────────────────────────
-  const hasExplicitFcba = req.nextUrl.searchParams.has('fcba');
-
   const params = applyUserDataScope(req, new URLSearchParams(req.nextUrl.searchParams.toString()));
 
-  if (hasExplicitFcba) {
+  // ────────────────────────────────────────────────────────────────────────────
+  // 🛡️  GUARD: Restricted Override. Parameter `fcba` can be explicitly
+  //     overridden ONLY by ADMINs for support/assistance purposes.
+  // ────────────────────────────────────────────────────────────────────────────
+  const cookieStore = await cookies();
+  const userLevel = cookieStore.get(CookieName.SECURE_USER_LEVEL)?.value ||
+                   cookieStore.get(CookieName.USER_LEVEL)?.value;
+  const isAdmin = userLevel === UserLevel.ADMIN || userLevel === 'ADMIN';
+
+  if (isAdmin && req.nextUrl.searchParams.has('fcba')) {
     params.set('fcba', req.nextUrl.searchParams.get('fcba')!);
   }
   // ────────────────────────────────────────────────────────────────────────────

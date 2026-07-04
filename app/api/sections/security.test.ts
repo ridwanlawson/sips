@@ -2,14 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GET } from './route';
 import { NextRequest } from 'next/server';
 import { getTokenFromCookie } from '@/utils/absensiProxy';
-import { UserLevel } from '@/lib/constants';
+import { UserLevel, CookieName } from '@/lib/constants';
+import { cookies } from 'next/headers';
 
 vi.stubGlobal('fetch', vi.fn());
 
 vi.mock('@/utils/absensiProxy', () => ({
   BACKEND_URL: 'http://trusted-backend.com',
   getTokenFromCookie: vi.fn(() => Promise.resolve('valid-token')),
-  authHeaders: vi.fn(token => ({ Authorization: `Bearer ${token}` })),
+}));
+
+vi.mock('next/headers', () => ({
+  cookies: vi.fn(),
 }));
 
 vi.mock('@/lib/apiProxy', () => ({
@@ -33,13 +37,26 @@ describe('Sections API Security', () => {
     expect(data.error).toBe('Unauthorized');
   });
 
-  it('should enforce role-based scoping (CWE-285)', async () => {
+  it('should enforce role-based scoping for non-admins (CWE-285)', async () => {
     vi.mocked(getTokenFromCookie).mockResolvedValue('valid-token');
 
     // Mock user as MANAGER who should only see their FCBA
     const req = new NextRequest('http://localhost/api/sections?fcba=OTHER_FCBA');
     req.cookies.set('user_Level', UserLevel.MANAGER);
     req.cookies.set('user_Fcba', 'MY_FCBA');
+
+    // Correctly mock cookies() for this test case
+    vi.mocked(cookies).mockResolvedValue({
+      get: (name: string) => {
+        if (name === CookieName.USER_LEVEL || name === CookieName.SECURE_USER_LEVEL) {
+          return { value: UserLevel.MANAGER };
+        }
+        if (name === CookieName.USER_FCBA || name === 'user_Fcba') {
+          return { value: 'MY_FCBA' };
+        }
+        return undefined;
+      }
+    } as unknown as ReturnType<typeof cookies>);
 
     vi.mocked(global.fetch).mockResolvedValue({
       ok: true,
@@ -52,5 +69,30 @@ describe('Sections API Security', () => {
     const lastFetchUrl = vi.mocked(global.fetch).mock.calls[0][0] as string;
     expect(lastFetchUrl).toContain('fcba=MY_FCBA');
     expect(lastFetchUrl).not.toContain('fcba=OTHER_FCBA');
+  });
+
+  it('should allow ADMIN to explicitly override FCBA', async () => {
+    vi.mocked(getTokenFromCookie).mockResolvedValue('valid-token');
+
+    const req = new NextRequest('http://localhost/api/sections?fcba=TARGET_FCBA');
+
+    vi.mocked(cookies).mockResolvedValue({
+      get: (name: string) => {
+        if (name === CookieName.USER_LEVEL || name === CookieName.SECURE_USER_LEVEL) {
+          return { value: UserLevel.ADMIN };
+        }
+        return undefined;
+      }
+    } as unknown as ReturnType<typeof cookies>);
+
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [] }),
+    } as Response);
+
+    await GET(req);
+
+    const lastFetchUrl = vi.mocked(global.fetch).mock.calls[0][0] as string;
+    expect(lastFetchUrl).toContain('fcba=TARGET_FCBA');
   });
 });
