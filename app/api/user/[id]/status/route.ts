@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
+import { validateSecurity } from '@/lib/security';
+import { UserLevel, CookieName } from '@/lib/constants';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -8,12 +11,25 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const securityError = await validateSecurity(req);
+  if (securityError) return securityError;
+
   const token = await getTokenFromCookie();
   if (!token) {
     return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
   }
 
   const { id } = await params;
+
+  // SECURITY: Restricted to ADMIN only (CWE-285)
+  // Only administrators are allowed to change user status.
+  const cookieStore = await cookies();
+  const userLevel = cookieStore.get(CookieName.SECURE_USER_LEVEL)?.value ||
+                    cookieStore.get(CookieName.USER_LEVEL)?.value;
+
+  if (userLevel !== UserLevel.ADMIN && userLevel !== 'ADMIN') {
+    return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
+  }
 
   let body: { status?: string };
   try {
