@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
-import { apiRateLimiter } from '@/lib/rateLimiter';
 import { UserLevel, CookieName } from '@/lib/constants';
+import { validateSecurity } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -11,16 +11,8 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  // === RATE LIMITING ===
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
-             req.headers.get('x-real-ip') ||
-             'unknown';
-
-  try {
-    await apiRateLimiter.consume(ip);
-  } catch {
-    return NextResponse.json({ ok: false, error: 'Too many requests' }, { status: 429 });
-  }
+  const securityError = await validateSecurity(req);
+  if (securityError) return securityError;
 
   const token = await getTokenFromCookie();
   if (!token) {

@@ -33,18 +33,23 @@ describe('User API Security', () => {
 
   describe('GET /api/user/[id]', () => {
     it('should return 429 if rate limit exceeded', async () => {
-      (apiRateLimiter.consume as Mock).mockRejectedValue(new Error('Rate limit exceeded'));
+      (validateSecurity as Mock).mockResolvedValue(
+        NextResponse.json(
+          { ok: false, success: false, error: 'Too many requests. Try again later.' },
+          { status: 429 }
+        )
+      );
 
       const req = new NextRequest('http://localhost/api/user/123');
       const res = await GET(req, { params: Promise.resolve({ id: '123' }) });
 
       expect(res.status).toBe(429);
       const data = await res.json();
-      expect(data.error).toBe('Too many requests');
+      expect(data.error).toContain('Too many requests');
     });
 
     it('should return 401 if unauthenticated', async () => {
-      (apiRateLimiter.consume as Mock).mockResolvedValue({});
+      (validateSecurity as Mock).mockResolvedValue(null);
       (getTokenFromCookie as Mock).mockResolvedValue(null);
 
       const req = new NextRequest('http://localhost/api/user/123');
@@ -54,7 +59,7 @@ describe('User API Security', () => {
     });
 
     it('should return 403 (IDOR) if non-admin tries to access other profile', async () => {
-      (apiRateLimiter.consume as Mock).mockResolvedValue({});
+      (validateSecurity as Mock).mockResolvedValue(null);
       (getTokenFromCookie as Mock).mockResolvedValue('valid-token');
 
       (cookies as Mock).mockResolvedValue({
@@ -74,7 +79,7 @@ describe('User API Security', () => {
     });
 
     it('should allow access if user accesses their own profile', async () => {
-      (apiRateLimiter.consume as Mock).mockResolvedValue({});
+      (validateSecurity as Mock).mockResolvedValue(null);
       (getTokenFromCookie as Mock).mockResolvedValue('valid-token');
 
       (cookies as Mock).mockResolvedValue({
@@ -98,7 +103,7 @@ describe('User API Security', () => {
     });
 
     it('should allow admin to access any profile', async () => {
-      (apiRateLimiter.consume as Mock).mockResolvedValue({});
+      (validateSecurity as Mock).mockResolvedValue(null);
       (getTokenFromCookie as Mock).mockResolvedValue('valid-token');
 
       (cookies as Mock).mockResolvedValue({

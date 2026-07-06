@@ -1,11 +1,15 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getTokenFromCookie, BACKEND_URL } from '@/utils/absensiProxy';
 import { UserLevel } from '@/lib/constants';
+import { validateSecurity } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const securityError = await validateSecurity(req);
+  if (securityError) return securityError;
+
   const token = await getTokenFromCookie();
 
   if (!token) {
