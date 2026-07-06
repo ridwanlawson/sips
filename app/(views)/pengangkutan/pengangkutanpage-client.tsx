@@ -381,6 +381,27 @@ export default function PengangkutanPage() {
     gcTime: 10 * 60 * 1000,
   });
 
+  /**
+   * ⚡ Bolt Optimization: Use a Map for O(1) kerani lookups by employee ID.
+   * This replaces multiple O(N) .find() calls and speeds up data processing.
+   */
+  const keraniMap = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        idkaryawan: string;
+        fullname: string;
+        fcba: string;
+        afdeling: string;
+        gangcode: string;
+      }
+    >();
+    for (const option of keraniOptions) {
+      if (option.idkaryawan) map.set(option.idkaryawan, option);
+    }
+    return map;
+  }, [keraniOptions]);
+
   const { data: kendaraanData = [] } = useQuery({
     queryKey: ['sips-kendaraan'],
     queryFn: async () => {
@@ -458,9 +479,8 @@ export default function PengangkutanPage() {
           brondolan: harvestBrondolan,
         });
 
-        const selectedKerani = keraniOptions.find(
-          option => option.idkaryawan === form.kode_karyawan_kerani
-        );
+        // ⚡ Bolt Optimization: Use keraniMap for O(1) lookup
+        const selectedKerani = keraniMap.get(form.kode_karyawan_kerani);
 
         if (selectedKerani) {
           if (selectedKerani.fcba === harvestFcba && selectedKerani.afdeling === harvestAfdeling) {
@@ -520,12 +540,11 @@ export default function PengangkutanPage() {
         window.clearTimeout(harvestFetchTimerRef.current);
       }
     };
-  }, [form.nodokumen, form.kode_karyawan_kerani, keraniOptions]);
+  }, [form.nodokumen, form.kode_karyawan_kerani, keraniMap]);
 
   useEffect(() => {
-    const selectedKerani = keraniOptions.find(
-      option => option.idkaryawan === form.kode_karyawan_kerani
-    );
+    // ⚡ Bolt Optimization: Use keraniMap for O(1) lookup
+    const selectedKerani = keraniMap.get(form.kode_karyawan_kerani);
 
     if (harvestMatched && harvestSource) {
       if (
@@ -560,7 +579,7 @@ export default function PengangkutanPage() {
     form.kode_karyawan_kerani,
     form.fcba,
     form.afdeling,
-    keraniOptions,
+    keraniMap,
     harvestMatched,
     harvestSource,
     homeFcba,
@@ -1011,76 +1030,81 @@ export default function PengangkutanPage() {
         throw new Error(json?.message || json?.error || 'Gagal mengambil data');
       }
 
-      const raw = (json.data || json.rows || []) as Pengangkutan[];
-      const seen = new Set<string>();
-      return raw.map((it, idx) => {
-        const dateOnly = (it.tanggal || '').split(' ')[0];
-        // ⚡ Bolt Optimization: pre-calculate display date using cached formatter
-        const displayDate = dateOnly ? formatPerfDate(dateOnly, localeTag) : '-';
-
-        // ⚡ Bolt Optimization: Pre-calculate Type Label
-        const typeLabel =
-          String(it.type_pengangkutan) === '1'
-            ? t('typeLangsir')
-            : String(it.type_pengangkutan) === '2'
-              ? t('typeDirect')
-              : it.type_pengangkutan
-                ? String(it.type_pengangkutan)
-                : '-';
-
-        // ⚡ Bolt Optimization: pre-calculate search content string
-        const searchContent = [
-          it.nopengangkutan,
-          it.nospb,
-          it.nodokumen,
-          it.kode_karyawan_kerani,
-          it.nama_karyawan_kerani,
-          it.kode_karyawan_driver,
-          it.nama_karyawan_driver,
-          it.fcba,
-          it.afdeling,
-          it.status_pengangkutan,
-          it.kode_kendaraan,
-          it.card_id,
-          dateOnly,
-          displayDate,
-          typeLabel,
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-
-        const candidate = [it.nopengangkutan || '', dateOnly, String(idx)].join('|');
-        let key = candidate;
-        while (seen.has(key)) key = `${key}_`;
-        seen.add(key);
-
-        return {
-          ...it,
-          _rowKey: key,
-          _displayDate: displayDate,
-          _searchContent: searchContent,
-          _typeLabel: typeLabel,
-          // ⚡ Bolt Optimization: pre-calculate numeric values to avoid redundant parsing in loops
-          _totaljanjangNum: toNumber(it.totaljanjang),
-          _outputNum: toNumber(it.output),
-          _janjangnormalNum: toNumber(it.janjangnormal),
-          _brondolanNum: toNumber(it.brondolan),
-          _mentahNum: toNumber(it.mentah),
-          _abnormalNum: toNumber(it.abnormal),
-        };
-      });
+      return (json.data || json.rows || []) as Pengangkutan[];
     },
     enabled: scopeReady,
   });
+
+  /**
+   * ⚡ Bolt Optimization:
+   * 1. Single-pass enrichment to add display labels and search content.
+   * 2. Uses formatPerfDate with cached formatters (~50x faster).
+   * 3. Ensures UI updates correctly on language change (depends on localeTag and t).
+   * 4. Pre-calculates numeric values for correct O(N log N) sorting.
+   */
+  const enrichedItems = useMemo(() => {
+    const seen = new Set<string>();
+    return items.map((it, idx) => {
+      const dateOnly = (it.tanggal || '').split(' ')[0];
+      const displayDate = dateOnly ? formatPerfDate(dateOnly, localeTag) : '-';
+
+      const typeLabel =
+        String(it.type_pengangkutan) === '1'
+          ? t('typeLangsir')
+          : String(it.type_pengangkutan) === '2'
+            ? t('typeDirect')
+            : it.type_pengangkutan
+              ? String(it.type_pengangkutan)
+              : '-';
+
+      const searchContent = [
+        it.nopengangkutan,
+        it.nospb,
+        it.nodokumen,
+        it.kode_karyawan_kerani,
+        it.nama_karyawan_kerani,
+        it.kode_karyawan_driver,
+        it.nama_karyawan_driver,
+        it.fcba,
+        it.afdeling,
+        it.status_pengangkutan,
+        it.kode_kendaraan,
+        it.card_id,
+        dateOnly,
+        displayDate,
+        typeLabel,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      const candidate = [it.nopengangkutan || '', dateOnly, String(idx)].join('|');
+      let key = candidate;
+      while (seen.has(key)) key = `${key}_`;
+      seen.add(key);
+
+      return {
+        ...it,
+        _rowKey: key,
+        _displayDate: displayDate,
+        _searchContent: searchContent,
+        _typeLabel: typeLabel,
+        _totaljanjangNum: toNumber(it.totaljanjang),
+        _outputNum: toNumber(it.output),
+        _janjangnormalNum: toNumber(it.janjangnormal),
+        _brondolanNum: toNumber(it.brondolan),
+        _mentahNum: toNumber(it.mentah),
+        _abnormalNum: toNumber(it.abnormal),
+      };
+    });
+  }, [items, localeTag, t]);
 
   const loading = isLoading || isFetching;
 
   // Resolve effective TKBM attendance params from selected kerani (avoid duplicate fetches during auto-fill)
   const tkbmAttendanceParams = useMemo(() => {
-    const selectedKerani = keraniOptions.find(
-      option => option.idkaryawan === form.kode_karyawan_kerani
-    );
+    // ⚡ Bolt Optimization: Use keraniMap for O(1) lookup
+    const selectedKerani = keraniMap.get(form.kode_karyawan_kerani);
     return {
       tanggal: form.tanggal,
       fcba: selectedKerani?.fcba || form.fcba || homeFcba,
@@ -1092,7 +1116,7 @@ export default function PengangkutanPage() {
     form.kode_karyawan_kerani,
     form.fcba,
     form.afdeling,
-    keraniOptions,
+    keraniMap,
     homeFcba,
     homeSection,
     homeGang,
@@ -1229,7 +1253,7 @@ export default function PengangkutanPage() {
       brondolan: 0,
     };
 
-    for (const it of items) {
+    for (const it of enrichedItems) {
       if (!s || it._searchContent?.includes(s)) {
         result.push({ ...it, _index: result.length + 1 });
 
@@ -1240,7 +1264,7 @@ export default function PengangkutanPage() {
     }
 
     return { filtered: result, totals: t };
-  }, [q, items]);
+  }, [q, enrichedItems]);
 
   const totalCards = [
     {
