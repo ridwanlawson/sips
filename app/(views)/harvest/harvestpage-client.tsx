@@ -1004,10 +1004,16 @@ export default function HarvestPage() {
         body.append('_csrf_token', csrfToken);
       }
 
+      const headers: Record<string, string> = {};
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+
       const res = await fetch(url, {
         method,
         body,
         credentials: 'include',
+        headers,
       });
       if (res.status === 401) {
         await logoutAndRedirect();
@@ -2718,6 +2724,7 @@ export default function HarvestPage() {
                           fill
                           className="object-contain bg-base-200"
                           sizes="100vw"
+                          unoptimized
                         />
                       </div>
                     )}

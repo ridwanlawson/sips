@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ABSENSI_BASE, buildFilteredUrl, getTokenFromCookie, safeJson } from '@/utils/absensiProxy';
+import { ABSENSI_BASE, buildFilteredUrl, getTokenFromCookie } from '@/utils/absensiProxy';
+import { parseJsonSafe } from '@/lib/apiProxy';
 import { validateSecurity } from '@/lib/security';
 import { attendanceFilterSchema, attendanceApiResponseSchema } from '@/lib/validations/attendance';
 import { applyUserDataScope } from '@/utils/requestScope';
@@ -139,7 +140,10 @@ export async function POST(req: NextRequest) {
     body: form,
   });
 
-  const data = await safeJson(upstream);
+  const { data, parseError } = await parseJsonSafe(upstream);
+  if (parseError) {
+    return NextResponse.json({ ok: false, error: 'Invalid response format' }, { status: 502 });
+  }
   if (!upstream.ok) {
     // SECURITY: Log original error details server-side but return generic message
     // to client to prevent information leakage (CWE-209).

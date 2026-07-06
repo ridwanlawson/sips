@@ -495,10 +495,16 @@ export default function Attendance() {
         body.append('_csrf_token', csrfToken);
       }
 
+      const headers: Record<string, string> = {};
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+
       const res = await fetch(url, {
         method,
         body,
         credentials: 'include',
+        headers,
       });
       if (res.status === 401) {
         await logoutAndRedirect();
@@ -550,10 +556,16 @@ export default function Attendance() {
         body.append('_csrf_token', csrfToken);
       }
 
+      const headers: Record<string, string> = {};
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+
       const res = await fetch(`/api/attendance/${id}`, {
         method: 'POST',
         body,
         credentials: 'include',
+        headers,
       });
       if (res.status === 401) {
         await logoutAndRedirect();
@@ -1525,7 +1537,7 @@ export default function Attendance() {
 
         setDestFcba(d.fcba_destination || '');
         setDestSection(d.section_destination || '');
-        setPreview(d.images || '');
+        setPreview(d.images ? getProxiedImageUrl(d.images) : '');
       } catch (e) {
         const msg = e instanceof Error ? e.message : t('toastFetchDetailError');
         toast.error(msg);
@@ -2843,24 +2855,15 @@ export default function Attendance() {
                     />
                   </fieldset>
                   {preview && (
-                    <div className="mt-2 relative h-48 w-full">
-                      {preview.startsWith('blob:') ? (
-                        <Image
-                          src={preview}
-                          alt="preview"
-                          fill
-                          className="object-contain rounded-xl ring-1 ring-inset ring-black/10"
-                        />
-                      ) : (
-                        <a href={preview} target="_blank" rel="noopener noreferrer">
-                          <Image
-                            src={preview}
-                            alt="preview"
-                            fill
-                            className="object-contain rounded-xl ring-1 ring-inset ring-black/10"
-                          />
-                        </a>
-                      )}
+                    <div className="mt-3 relative w-full h-80 rounded-xl overflow-hidden border">
+                      <Image
+                        src={preview}
+                        alt="preview"
+                        fill
+                        className="object-contain bg-base-200"
+                        sizes="100vw"
+                        unoptimized
+                      />
                     </div>
                   )}
                 </div>

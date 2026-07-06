@@ -106,7 +106,7 @@ export default function Home() {
       if (response.ok) {
         router.push(redirectTo);
       } else {
-        setError(data.message || tAuth('loginError'));
+        setError(data.message || data.error || tAuth('loginError'));
         setIsLoading(false);
       }
     } catch {

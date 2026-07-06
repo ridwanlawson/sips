@@ -93,9 +93,13 @@ async function submitBatch<T>(
   endpoint: string
 ): Promise<{ ok: boolean; data?: string[]; message?: string }> {
   try {
+    const csrfToken = typeof document !== 'undefined' ? document.cookie.match(/csrf_token=([^;]+)/)?.[1] : null;
+    const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' };
+    if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+
     const response = await fetch(endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      headers,
       credentials: 'include',
       body: JSON.stringify({ data: batch.map(createPayloadItem) }),
     });

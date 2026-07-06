@@ -1,10 +1,8 @@
 'use client';
 
 import React, { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Image from 'next/image';
 import DataTable from '@/app/components/dynamic-data-table';
 import type { TableColumn } from 'react-data-table-component';
-import { getProxiedImageUrl, PLACEHOLDER_IMAGE } from '@/utils/imageHelper';
 import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/authHelper';
 import { cookieStore } from '@/utils/cookieStore';
 import { getFilterCriteria, getLockedFields } from '@/utils/filterHelper';
@@ -79,6 +77,8 @@ type Pengangkutan = {
   flag?: string | null;
   exception_case?: string | null;
   images?: string | null;
+  no_ba_exca?: string | null;
+  registrationno?: string | null;
 };
 
 type Filters = Partial<{
@@ -197,7 +197,11 @@ const initialForm: FormState = {
   exception_case: '',
 };
 
-const formatDateTimeForApi = (value: string) => (value ? value.replace('T', ' ') : '');
+const formatDateTimeForApi = (value: string) => {
+  if (!value) return '';
+  const s = value.replace('T', ' ');
+  return s.includes(':') && s.split(':').length === 3 ? s : `${s}:00`;
+};
 
 /* =========================
    U T I L S
@@ -410,7 +414,7 @@ export default function PengangkutanPage() {
       const res = await fetch(url.toString(), { credentials: 'include' });
       if (!res.ok) return [];
       const json = await res.json();
-      return extractArrayData<{ fccode?: string; fcname?: string }>(json);
+      return extractArrayData<{ fccode?: string; fcname?: string; registrationno?: string }>(json);
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
@@ -486,8 +490,8 @@ export default function PengangkutanPage() {
           if (selectedKerani.fcba === harvestFcba && selectedKerani.afdeling === harvestAfdeling) {
             setForm(current => ({
               ...current,
-              fcba: harvestFcba,
-              afdeling: harvestAfdeling,
+              fcba: selectedKerani.fcba || harvestFcba,
+              afdeling: selectedKerani.afdeling || harvestAfdeling,
               fcba_destination: '',
               afdeling_destination: '',
               fieldcode: harvestFieldcode,
@@ -554,8 +558,8 @@ export default function PengangkutanPage() {
       ) {
         setForm(current => ({
           ...current,
-          fcba: harvestSource.fcba,
-          afdeling: harvestSource.afdeling,
+          fcba: selectedKerani.fcba || harvestSource.fcba,
+          afdeling: selectedKerani.afdeling || harvestSource.afdeling,
           fcba_destination: '',
           afdeling_destination: '',
         }));
@@ -606,7 +610,9 @@ export default function PengangkutanPage() {
     const generate = async () => {
       const p = new URLSearchParams();
       const firstDay = `${now.getFullYear()}-${month}-01`;
-      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+        .toISOString()
+        .split('T')[0];
       p.set('tanggal', firstDay);
       p.set('tanggal_end', lastDay);
       const res = await fetch(`/api/pengangkutans?${p.toString()}`, {
@@ -622,9 +628,9 @@ export default function PengangkutanPage() {
       let maxNoPeng = 0;
       let maxNoSpb = 0;
       for (const row of rows) {
-        const rp = parseInt((row.nopengangkutan || '').slice(-4), 10);
+        const rp = parseInt((row.nopengangkutan || '').slice(-5), 10);
         if (!Number.isNaN(rp) && rp > maxNoPeng) maxNoPeng = rp;
-        const rs = parseInt((row.nospb || '').slice(-4), 10);
+        const rs = parseInt((row.nospb || '').slice(-5), 10);
         if (!Number.isNaN(rs) && rs > maxNoSpb) maxNoSpb = rs;
       }
 
@@ -633,16 +639,22 @@ export default function PengangkutanPage() {
 
       setForm(current => ({
         ...current,
-        nopengangkutan: `${noPengPrefix}${String(nextNoPeng).padStart(4, '0')}`,
+        nopengangkutan: `${noPengPrefix}${String(nextNoPeng).padStart(5, '0')}`,
         nospb:
-          typeDigit === '2'
-            ? `${noSpbPrefix}${String(nextNoSpb).padStart(4, '0')}`
-            : current.nospb,
+          typeDigit === '2' ? `${noSpbPrefix}${String(nextNoSpb).padStart(5, '0')}` : current.nospb,
       }));
     };
 
     generate();
-  }, [isEditing, harvestMatched, form.type_pengangkutan, form.tanggal, form.fcba, form.afdeling, harvestSource]);
+  }, [
+    isEditing,
+    harvestMatched,
+    form.type_pengangkutan,
+    form.tanggal,
+    form.fcba,
+    form.afdeling,
+    harvestSource,
+  ]);
 
   // Initialize user defaults
   useEffect(() => {
@@ -828,10 +840,17 @@ export default function PengangkutanPage() {
         ? `/api/pengangkutans/${encodeURIComponent(form.id)}`
         : '/api/pengangkutans';
       const method = isEditing ? 'PUT' : 'POST';
+
+      const headers: Record<string, string> = {};
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+
       const res = await fetch(url, {
         method,
         body: formData,
         credentials: 'include',
+        headers,
       });
       const json = await res.json();
       if (isUnauthenticatedJson(json)) {
@@ -881,10 +900,16 @@ export default function PengangkutanPage() {
         body.append('_csrf_token', csrfToken);
       }
 
+      const headers: Record<string, string> = {};
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+
       const res = await fetch(`/api/pengangkutans/${encodeURIComponent(id)}`, {
         method: 'DELETE',
         body,
         credentials: 'include',
+        headers,
       });
       const json = await res.json();
       if (isUnauthenticatedJson(json)) {
@@ -952,21 +977,27 @@ export default function PengangkutanPage() {
       'Kerani Nama': r.nama_karyawan_kerani || '-',
       'Driver Kode': r.kode_karyawan_driver || '-',
       'Driver Nama': r.nama_karyawan_driver || '-',
-      TKBM1: r.tkbm1 || '-',
-      TKBM2: r.tkbm2 || '-',
-      TKBM3: r.tkbm3 || '-',
-      TKBM4: r.tkbm4 || '-',
-      TKBM5: r.tkbm5 || '-',
+      'TKBM1 Kode': r.tkbm1 || '-',
+      'TKBM1 Nama': r.nama_tkbm1 || '-',
+      'TKBM2 Kode': r.tkbm2 || '-',
+      'TKBM2 Nama': r.nama_tkbm2 || '-',
+      'TKBM3 Kode': r.tkbm3 || '-',
+      'TKBM3 Nama': r.nama_tkbm3 || '-',
+      'TKBM4 Kode': r.tkbm4 || '-',
+      'TKBM4 Nama': r.nama_tkbm4 || '-',
+      'TKBM5 Kode': r.tkbm5 || '-',
+      'TKBM5 Nama': r.nama_tkbm5 || '-',
       'Tipe Pengangkutan': r.type_pengangkutan ? String(r.type_pengangkutan) : '-',
-      Kendaraan: r.nama_kendaraan || r.kode_kendaraan || '-',
+      'Kendaraan Kode': r.kode_kendaraan || '-',
+      'Kendaraan Nama': r.nama_kendaraan || '-',
+      'Kendaraan Plat': r.registrationno || '-',
       FCBA: r.fcba || '-',
       Pabrik: r.pabrik_tujuan || '-',
       Afdeling: r.afdeling || '-',
-      TPH: r.tph || '-',
-      Field: r.fieldcode || '-',
       'FCBA Tujuan': r.fcba_destination || '-',
       'Afdeling Tujuan': r.afdeling_destination || '-',
       ETD: r.etd || '-',
+      ETA: r.eta || '-',
       'Total Janjang': r.totaljanjang || '0',
       Output: r.output || '0',
       'Janjang Normal': r.janjangnormal || '0',
@@ -977,6 +1008,7 @@ export default function PengangkutanPage() {
       'Card ID': r.card_id || '-',
       Flag: r.flag || '-',
       'Exception Case': r.exception_case || '-',
+      'No BA ExcA': r.no_ba_exca || '-',
     }));
 
     exportJsonToCsv(dataToExport, `Pengangkutan_${getTodayISO()}.csv`);
@@ -1065,11 +1097,29 @@ export default function PengangkutanPage() {
         it.nama_karyawan_kerani,
         it.kode_karyawan_driver,
         it.nama_karyawan_driver,
+        it.tkbm1,
+        it.nama_tkbm1,
+        it.tkbm2,
+        it.nama_tkbm2,
+        it.tkbm3,
+        it.nama_tkbm3,
+        it.tkbm4,
+        it.nama_tkbm4,
+        it.tkbm5,
+        it.nama_tkbm5,
         it.fcba,
         it.afdeling,
+        it.fcba_destination,
+        it.afdeling_destination,
+        it.etd,
+        it.eta,
         it.status_pengangkutan,
         it.kode_kendaraan,
+        it.nama_kendaraan,
+        it.registrationno,
         it.card_id,
+        it.exception_case,
+        it.no_ba_exca,
         dateOnly,
         displayDate,
         typeLabel,
@@ -1385,6 +1435,66 @@ export default function PengangkutanPage() {
         ),
       },
       {
+        name: <span title={t('colTkbm1Tooltip')}>{t('colTkbm1')}</span>,
+        selector: r => r.nama_tkbm1 || r.tkbm1 || '-',
+        sortable: true,
+        width: '180px',
+        cell: r => (
+          <div>
+            <div className="font-bold">{r.nama_tkbm1 || '-'}</div>
+            <div className="text-xs text-gray-500">{r.tkbm1 || ''}</div>
+          </div>
+        ),
+      },
+      {
+        name: <span title={t('colTkbm2Tooltip')}>{t('colTkbm2')}</span>,
+        selector: r => r.nama_tkbm2 || r.tkbm2 || '-',
+        sortable: true,
+        width: '180px',
+        cell: r => (
+          <div>
+            <div className="font-bold">{r.nama_tkbm2 || '-'}</div>
+            <div className="text-xs text-gray-500">{r.tkbm2 || ''}</div>
+          </div>
+        ),
+      },
+      {
+        name: <span title={t('colTkbm3Tooltip')}>{t('colTkbm3')}</span>,
+        selector: r => r.nama_tkbm3 || r.tkbm3 || '-',
+        sortable: true,
+        width: '180px',
+        cell: r => (
+          <div>
+            <div className="font-bold">{r.nama_tkbm3 || '-'}</div>
+            <div className="text-xs text-gray-500">{r.tkbm3 || ''}</div>
+          </div>
+        ),
+      },
+      {
+        name: <span title={t('colTkbm4Tooltip')}>{t('colTkbm4')}</span>,
+        selector: r => r.nama_tkbm4 || r.tkbm4 || '-',
+        sortable: true,
+        width: '180px',
+        cell: r => (
+          <div>
+            <div className="font-bold">{r.nama_tkbm4 || '-'}</div>
+            <div className="text-xs text-gray-500">{r.tkbm4 || ''}</div>
+          </div>
+        ),
+      },
+      {
+        name: <span title={t('colTkbm5Tooltip')}>{t('colTkbm5')}</span>,
+        selector: r => r.nama_tkbm5 || r.tkbm5 || '-',
+        sortable: true,
+        width: '180px',
+        cell: r => (
+          <div>
+            <div className="font-bold">{r.nama_tkbm5 || '-'}</div>
+            <div className="text-xs text-gray-500">{r.tkbm5 || ''}</div>
+          </div>
+        ),
+      },
+      {
         name: <span title={t('colTypeTooltip')}>{t('colType')}</span>,
         selector: r => r._typeLabel || '-',
         sortable: true,
@@ -1392,9 +1502,14 @@ export default function PengangkutanPage() {
       },
       {
         name: <span title={t('colKendaraanTooltip')}>{t('colKendaraan')}</span>,
-        selector: r => r.nama_kendaraan || r.kode_kendaraan || '-',
         sortable: true,
-        width: '160px',
+        width: '200px',
+        cell: r => (
+          <div>
+            <div className="font-bold">{r.nama_kendaraan || r.kode_kendaraan || '-'}</div>
+            {r.registrationno && <div className="text-xs text-gray-500">{r.registrationno}</div>}
+          </div>
+        ),
       },
       {
         name: <span title={t('colFcbaTooltip')}>{t('colFcba')}</span>,
@@ -1415,16 +1530,16 @@ export default function PengangkutanPage() {
         width: '100px',
       },
       {
-        name: <span title={t('colTphTooltip')}>{t('colTph')}</span>,
-        selector: r => r.tph || '-',
-        sortable: true,
-        width: '80px',
-      },
-      {
         name: <span title={t('colFieldTooltip')}>{t('colField')}</span>,
         selector: r => r.fieldcode || '-',
         sortable: true,
         width: '110px',
+      },
+      {
+        name: <span title={t('colTphTooltip')}>{t('colTph')}</span>,
+        selector: r => r.tph || '-',
+        sortable: true,
+        width: '80px',
       },
       {
         name: t('colTotalJanjang'),
@@ -1499,35 +1614,67 @@ export default function PengangkutanPage() {
         ),
       },
       {
-        name: t('colCardId'),
-        selector: r => r.card_id || '-',
+        name: <span title={t('colFcbaDestTooltip')}>{t('colFcbaDest')}</span>,
+        selector: r => r.fcba_destination || '-',
         sortable: true,
-        width: '150px',
+        width: '100px',
       },
       {
-        name: <span title={t('colFotoTooltip')}>{t('colFoto')}</span>,
-        width: '90px',
+        name: <span title={t('colAfdelingDestTooltip')}>{t('colAfdelingDest')}</span>,
+        selector: r => r.afdeling_destination || '-',
+        sortable: true,
+        width: '100px',
+      },
+      {
+        name: <span title={t('colExceptionCaseTooltip')}>{t('colExceptionCase')}</span>,
+        selector: r => r.exception_case || '-',
+        sortable: true,
+        width: '200px',
+      },
+      {
+        name: <span title={t('colNoBaExcaTooltip')}>{t('colNoBaExca')}</span>,
+        selector: r => r.no_ba_exca || '-',
+        sortable: true,
+        width: '100px',
+        style: { justifyContent: 'center' },
         cell: r =>
-          r.images ? (
+          r.no_ba_exca ? (
             <a
-              href={getProxiedImageUrl(r.images)}
+              href={r.no_ba_exca}
               target="_blank"
               rel="noopener noreferrer"
-              title={t('openPhoto')}
+              title={`Lampiran Exception Case | No Dokumen : ${r.nodokumen || '-'} | No Pengangkutan : ${r.nopengangkutan || '-'}`}
             >
-              <Image
-                src={getProxiedImageUrl(r.images) || PLACEHOLDER_IMAGE}
-                alt="foto"
-                width={40}
-                height={40}
-                className="rounded-lg ring-1 ring-base-300 object-cover w-10 h-10 bg-base-200"
-                unoptimized
-              />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 text-primary hover:text-primary-focus transition-colors"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+                />
+              </svg>
             </a>
           ) : (
             '-'
           ),
-        ignoreRowClick: true,
+      },
+      {
+        name: <span title={t('colEtdTooltip')}>{t('colEtd')}</span>,
+        selector: r => r.etd || '-',
+        sortable: true,
+        width: '160px',
+      },
+      {
+        name: <span title={t('colEtaTooltip')}>{t('colEta')}</span>,
+        selector: r => r.eta || '-',
+        sortable: true,
+        width: '160px',
       },
     ],
     [localeTag, canModify, handleDeleteRecord, openEditRecord, t]
@@ -1549,7 +1696,20 @@ export default function PengangkutanPage() {
               onClick={() => setShowFilters(s => !s)}
               title={t('filterToggleTooltip')}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+                />
+              </svg>
               {showFilters ? t('hideFilters') : t('showFilters')}
             </button>
             <button
@@ -1558,7 +1718,20 @@ export default function PengangkutanPage() {
               title={t('refreshTooltip')}
               disabled={loading}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
               {loading ? (
                 <>
                   <span className="loading loading-spinner loading-xs" />
@@ -1574,7 +1747,20 @@ export default function PengangkutanPage() {
               title={t('exportTooltip')}
               disabled={items.length === 0}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
               {t('export')}
             </button>
             {canModify && (
@@ -1942,7 +2128,7 @@ export default function PengangkutanPage() {
                       options={keraniOptionsAsOptions}
                       value={form.kode_karyawan_kerani}
                       onChange={v => setForm(s => ({ ...s, kode_karyawan_kerani: v }))}
-                       placeholder={keraniOptions.length === 0 ? 'Tidak ada Kerani' : 'Pilih Kerani'}
+                      placeholder={keraniOptions.length === 0 ? 'Tidak ada Kerani' : 'Pilih Kerani'}
                       required
                       translationNamespace="Transport"
                     />
@@ -2345,7 +2531,11 @@ export default function PengangkutanPage() {
                     className="btn btn-primary"
                     disabled={submitLoading || formBelowNodokumenDisabled}
                   >
-                    {submitLoading ? t('modalSaving') : isEditing ? t('modalUpdate') : t('modalSave')}
+                    {submitLoading
+                      ? t('modalSaving')
+                      : isEditing
+                        ? t('modalUpdate')
+                        : t('modalSave')}
                   </button>
                 </div>
               </div>

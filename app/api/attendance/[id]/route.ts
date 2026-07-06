@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ABSENSI_BASE, getTokenFromCookie, safeJson } from '@/utils/absensiProxy';
+import { ABSENSI_BASE, getTokenFromCookie } from '@/utils/absensiProxy';
+import { parseJsonSafe } from '@/lib/apiProxy';
 import { validateSecurity } from '@/lib/security';
 import { apiRateLimiter } from '@/lib/rateLimiter';
 
@@ -25,7 +26,10 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     cache: 'no-store',
   });
 
-  const data = await safeJson(upstream);
+  const { data, parseError } = await parseJsonSafe(upstream);
+  if (parseError) {
+    return NextResponse.json({ ok: false, error: 'Invalid response format' }, { status: 502 });
+  }
   if (!upstream.ok) {
     // SECURITY: Log original error details server-side but return generic message
     // to client to prevent information leakage (CWE-209).
@@ -75,7 +79,10 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
     body: form,
   });
 
-  const data = await safeJson(upstream);
+  const { data, parseError } = await parseJsonSafe(upstream);
+  if (parseError) {
+    return NextResponse.json({ ok: false, error: 'Invalid response format' }, { status: 502 });
+  }
   if (!upstream.ok) {
     // SECURITY: Log original error details server-side but return generic message
     // to client to prevent information leakage (CWE-209).
@@ -112,7 +119,10 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
     body: form,
   });
 
-  const data = await safeJson(upstream);
+  const { data, parseError } = await parseJsonSafe(upstream);
+  if (parseError) {
+    return NextResponse.json({ ok: false, error: 'Invalid response format' }, { status: 502 });
+  }
   if (!upstream.ok) {
     // SECURITY: Log original error details server-side but return generic message
     // to client to prevent information leakage (CWE-209).
@@ -160,7 +170,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       body: form,
     });
 
-    const data = await safeJson(upstream);
+    const { data, parseError } = await parseJsonSafe(upstream);
+    if (parseError) {
+      return NextResponse.json({ ok: false, error: 'Invalid response format' }, { status: 502 });
+    }
     if (!upstream.ok) {
       console.error('[API_ATTENDANCE_ID_POST_DELETE_ERROR]', { status: upstream.status, data });
       return NextResponse.json(

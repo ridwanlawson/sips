@@ -46,7 +46,18 @@ export async function POST(request: Request) {
       body: JSON.stringify({ username, password }),
     });
 
-    const data = await upstream.json();
+    const rawText = await upstream.text();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let data: any = {};
+    try {
+      data = rawText ? JSON.parse(rawText) : {};
+    } catch {
+      console.error('[AUTH_LOGIN_PARSE_ERROR]', { status: upstream.status, rawText: rawText?.substring(0, 200) });
+      return NextResponse.json(
+        { ok: false, error: 'Invalid response from authentication server' },
+        { status: 502 }
+      );
+    }
 
     if (!upstream.ok) {
       // SECURITY: Log original error details server-side but return generic message
@@ -124,7 +135,8 @@ export async function POST(request: Request) {
     if (userGang) res.cookies.set(CookieName.SECURE_USER_GANG, String(userGang), base);
 
     return res;
-  } catch {
+  } catch (error) {
+    console.error('[AUTH_LOGIN_INTERNAL_ERROR]', error);
     return NextResponse.json({ ok: false, error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -81,9 +81,13 @@ export const fetchHarvestingUpload = async (
 export const insertHarvestingData = async (payload: {
   data: Record<string, unknown>[];
 }): Promise<ApiResponse<string[]>> => {
+  const csrfToken = typeof document !== 'undefined' ? document.cookie.match(/csrf_token=([^;]+)/)?.[1] : null;
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' };
+  if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+
   const response = await fetch('/api/harvest/submit', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    headers,
     credentials: 'include',
     body: JSON.stringify(payload),
   });

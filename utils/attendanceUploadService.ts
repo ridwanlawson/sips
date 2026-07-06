@@ -205,10 +205,12 @@ export async function insertAttendanceData(payload: {
 }): Promise<InsertAttendanceResponse> {
   const url = `/api/attendance/submit`;
 
+  const csrfToken = typeof document !== 'undefined' ? document.cookie.match(/csrf_token=([^;]+)/)?.[1] : null;
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
   };
+  if (csrfToken) (headers as Record<string, string>)['X-CSRF-Token'] = csrfToken;
 
   const response = await fetch(url, {
     method: 'POST',

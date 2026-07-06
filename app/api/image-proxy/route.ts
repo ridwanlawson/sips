@@ -3,6 +3,22 @@ import { ImageProxy } from '@/lib/constants';
 import { BACKEND_URL } from '@/utils/backendConfig';
 import { getTokenFromCookie } from '@/utils/absensiProxy';
 
+const PLACEHOLDER_SVG = Buffer.from(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"><rect width="400" height="300" fill="#f3f4f6"/><text x="200" y="150" font-family="sans-serif" font-size="14" fill="#9ca3af" text-anchor="middle" dominant-baseline="middle">Image unavailable</text></svg>'
+);
+
+function placeholderResponse() {
+  return new NextResponse(PLACEHOLDER_SVG, {
+    status: 200,
+    headers: {
+      'Content-Type': 'image/svg+xml',
+      'X-Content-Type-Options': 'nosniff',
+      'Cache-Control': 'no-store',
+      'Content-Security-Policy': "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'",
+    },
+  });
+}
+
 const getBackendHostname = (): string => {
   try { return new URL(BACKEND_URL).hostname } catch { return '' }
 };
@@ -35,66 +51,63 @@ export async function GET(request: NextRequest) {
     // Proxy should only be accessible to authenticated users.
     const token = await getTokenFromCookie();
     if (!token) {
-      return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
+      return placeholderResponse();
     }
 
     const searchParams = request.nextUrl.searchParams;
-    const imageUrl = searchParams.get('url');
+    const rawUrl = searchParams.get('url');
 
-    if (!imageUrl) {
-      return NextResponse.json(
-        { ok: false, error: 'Missing image URL parameter' },
-        { status: 400 }
-      );
+    if (!rawUrl) {
+      return placeholderResponse();
     }
+
+    // Decode the URL parameter to handle double-encoding from next/image optimizer
+    const imageUrl = (() => {
+      try {
+        const decoded = decodeURIComponent(rawUrl);
+        return decoded;
+      } catch {
+        return rawUrl;
+      }
+    })();
 
     // SECURITY: Robust origin validation (CWE-441 / CWE-918)
     // Ensure the URL is from a trusted hostname.
     try {
       const parsedUrl = new URL(imageUrl);
       if (!isTrustedHostname(parsedUrl.hostname)) {
-        return NextResponse.json({ ok: false, error: 'Invalid image origin' }, { status: 403 });
+        return placeholderResponse();
       }
     } catch {
-      return NextResponse.json({ ok: false, error: 'Malformed image URL' }, { status: 400 });
+      return placeholderResponse();
     }
 
-    // Fetch the image from the backend
+    // Fetch the image from the backend with auth token
     const response = await fetch(imageUrl, {
       headers: {
-        Accept: 'image/*',
+        Authorization: `Bearer ${token}`,
+        Accept: 'image/*, */*',
       },
     });
 
     if (!response.ok) {
-      return NextResponse.json(
-        { ok: false, error: 'Failed to fetch image' },
-        { status: response.status }
-      );
+      return placeholderResponse();
     }
 
-    // Enforce size limit
-    const contentLength = response.headers.get('content-length');
-    if (contentLength && parseInt(contentLength, 10) > ImageProxy.MAX_SIZE_BYTES) {
-      return NextResponse.json({ ok: false, error: 'Image too large' }, { status: 413 });
+    // Validate content type before reading body
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.startsWith('image/')) {
+      return placeholderResponse();
     }
 
     const imageBuffer = await response.arrayBuffer();
 
-    // Double-check after read (in case content-length was missing)
-    if (imageBuffer.byteLength > ImageProxy.MAX_SIZE_BYTES) {
-      return NextResponse.json({ ok: false, error: 'Image too large' }, { status: 413 });
+    if (!imageBuffer || imageBuffer.byteLength === 0) {
+      return placeholderResponse();
     }
 
-    const contentType = response.headers.get('content-type') || 'image/jpeg';
-
-    // SECURITY: Strict Content-Type validation (CWE-434 / CWE-79)
-    // Prevent attackers from returning HTML/JS through the proxy.
-    if (!contentType.startsWith('image/')) {
-      return NextResponse.json(
-        { ok: false, error: 'Invalid content type from upstream' },
-        { status: 415 }
-      );
+    if (imageBuffer.byteLength > ImageProxy.MAX_SIZE_BYTES) {
+      return placeholderResponse();
     }
 
     // Return the image with proper security headers
@@ -112,6 +125,6 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch {
-    return NextResponse.json({ ok: false, error: 'Internal server error' }, { status: 500 });
+    return placeholderResponse();
   }
 }

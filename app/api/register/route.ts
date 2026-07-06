@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { BACKEND_URL, getTokenFromCookie, safeJson } from '@/utils/absensiProxy';
+import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
+import { parseJsonSafe } from '@/lib/apiProxy';
 import { validateSecurity } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
@@ -25,7 +26,11 @@ export async function POST(req: NextRequest) {
     body: form,
   });
 
-  const data = await safeJson(upstream);
+  const { data, parseError } = await parseJsonSafe(upstream);
+
+  if (parseError) {
+    return NextResponse.json({ ok: false, error: 'Invalid response format' }, { status: 502 });
+  }
 
   if (!upstream.ok) {
     // SECURITY: Log original error details server-side but return generic message

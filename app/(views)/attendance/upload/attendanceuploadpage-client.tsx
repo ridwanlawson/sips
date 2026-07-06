@@ -4,7 +4,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import DataTable from '@/app/components/dynamic-data-table';
 import type { TableColumn } from 'react-data-table-component';
 import {
-  AttendanceUploadData,
   AttendanceUploadParams,
   fetchAttendanceUpload,
   insertAttendanceData,
