@@ -50,3 +50,8 @@
 **Learning:** For apps with multi-lingual users, providing a language switcher on the login page is a critical accessibility requirement. Users should be able to understand the interface and any error messages before they have an account or session. Centralizing all landing page strings (including loading tips and metadata) into the i18n system ensures a cohesive and professional first impression.
 
 **Action:** Always include the `LanguageSwitcher` on the root Login page. Ensure that even non-form elements like marketing copy, loading tips, and specific error messages (e.g., "invalid credentials") are fully localized using the app's standard i18n framework.
+
+## 2025-12-05 - [Visual-First Localized Access States]
+**Learning:** Standardizing unauthorized access states with a localized, visual-first component improves both accessibility for multi-lingual users and the overall professional feel of the application. Pairing technical messages with recognizable visual icons (like a pulsing lock) aids immediate recognition even before the text is read.
+
+**Action:** Use the `Common` translation namespace for global application states. Always pair high-impact feedback (like Access Denied) with thematic icons and entry animations to provide clear, delightful interactive feedback.

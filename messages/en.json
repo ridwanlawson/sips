@@ -864,5 +864,10 @@
     "success": "Password changed successfully.",
     "unexpectedError": "An unexpected error occurred.",
     "failedLoadProfile": "Failed to load profile data."
+  },
+  "Common": {
+    "accessDenied": "Access Denied",
+    "accessDeniedDesc": "This page can only be accessed by users with MGR or ADM levels.",
+    "backToDashboard": "Back to Dashboard"
   }
 }

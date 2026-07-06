@@ -864,5 +864,10 @@
     "success": "Password berhasil diubah.",
     "unexpectedError": "Terjadi kesalahan tidak terduga.",
     "failedLoadProfile": "Gagal memuat data profil."
+  },
+  "Common": {
+    "accessDenied": "Akses Ditolak",
+    "accessDeniedDesc": "Halaman ini hanya dapat diakses oleh user dengan level MGR atau ADM.",
+    "backToDashboard": "Kembali ke Dashboard"
   }
 }
