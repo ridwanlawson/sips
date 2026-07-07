@@ -4,7 +4,6 @@ import { PATCH } from './status/route';
 import { NextRequest, NextResponse } from 'next/server';
 import { getTokenFromCookie } from '@/utils/absensiProxy';
 import { cookies } from 'next/headers';
-import { apiRateLimiter } from '@/lib/rateLimiter';
 import { validateSecurity } from '@/lib/security';
 
 vi.mock('next/headers', () => ({
@@ -14,12 +13,6 @@ vi.mock('next/headers', () => ({
 vi.mock('@/utils/absensiProxy', () => ({
   getTokenFromCookie: vi.fn(),
   BACKEND_URL: 'http://trusted-backend.com',
-}));
-
-vi.mock('@/lib/rateLimiter', () => ({
-  apiRateLimiter: {
-    consume: vi.fn(),
-  },
 }));
 
 vi.mock('@/lib/security', () => ({
@@ -33,7 +26,9 @@ describe('User API Security', () => {
 
   describe('GET /api/user/[id]', () => {
     it('should return 429 if rate limit exceeded', async () => {
-      (apiRateLimiter.consume as Mock).mockRejectedValue(new Error('Rate limit exceeded'));
+      (validateSecurity as Mock).mockResolvedValue(
+        NextResponse.json({ ok: false, error: 'Too many requests' }, { status: 429 })
+      );
 
       const req = new NextRequest('http://localhost/api/user/123');
       const res = await GET(req, { params: Promise.resolve({ id: '123' }) });
@@ -44,7 +39,7 @@ describe('User API Security', () => {
     });
 
     it('should return 401 if unauthenticated', async () => {
-      (apiRateLimiter.consume as Mock).mockResolvedValue({});
+      (validateSecurity as Mock).mockResolvedValue(null);
       (getTokenFromCookie as Mock).mockResolvedValue(null);
 
       const req = new NextRequest('http://localhost/api/user/123');
@@ -54,7 +49,7 @@ describe('User API Security', () => {
     });
 
     it('should return 403 (IDOR) if non-admin tries to access other profile', async () => {
-      (apiRateLimiter.consume as Mock).mockResolvedValue({});
+      (validateSecurity as Mock).mockResolvedValue(null);
       (getTokenFromCookie as Mock).mockResolvedValue('valid-token');
 
       (cookies as Mock).mockResolvedValue({
@@ -74,7 +69,7 @@ describe('User API Security', () => {
     });
 
     it('should allow access if user accesses their own profile', async () => {
-      (apiRateLimiter.consume as Mock).mockResolvedValue({});
+      (validateSecurity as Mock).mockResolvedValue(null);
       (getTokenFromCookie as Mock).mockResolvedValue('valid-token');
 
       (cookies as Mock).mockResolvedValue({
@@ -98,7 +93,7 @@ describe('User API Security', () => {
     });
 
     it('should allow admin to access any profile', async () => {
-      (apiRateLimiter.consume as Mock).mockResolvedValue({});
+      (validateSecurity as Mock).mockResolvedValue(null);
       (getTokenFromCookie as Mock).mockResolvedValue('valid-token');
 
       (cookies as Mock).mockResolvedValue({

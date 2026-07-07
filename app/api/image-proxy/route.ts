@@ -7,6 +7,10 @@ const PLACEHOLDER_SVG = Buffer.from(
   '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"><rect width="400" height="300" fill="#f3f4f6"/><text x="200" y="150" font-family="sans-serif" font-size="14" fill="#9ca3af" text-anchor="middle" dominant-baseline="middle">Image unavailable</text></svg>'
 );
 
+/**
+ * Returns a generic placeholder image for security or fetch failures.
+ * This prevents broken images in the UI and hides specific failure reasons from clients (CWE-209).
+ */
 function placeholderResponse() {
   return new NextResponse(PLACEHOLDER_SVG, {
     status: 200,
@@ -20,24 +24,31 @@ function placeholderResponse() {
 }
 
 const getBackendHostname = (): string => {
-  try { return new URL(BACKEND_URL).hostname } catch { return '' }
+  try {
+    return new URL(BACKEND_URL).hostname;
+  } catch {
+    return '';
+  }
 };
 
 /**
  * Check if the image URL hostname is trusted.
- * Allows the BACKEND_URL hostname AND any subdomain of its parent domain.
- * E.g. if BACKEND_URL = http://app.skj.my.id:82, allows app.skj.my.id and *.skj.my.id
+ * Allows the BACKEND_URL hostname OR subdomains of the specifically trusted 'skj.my.id' domain.
+ * This prevents SSRF bypasses via public suffixes (CWE-441).
  */
 const isTrustedHostname = (hostname: string): boolean => {
   const backendHost = getBackendHostname();
   if (!backendHost) return false;
+
+  // 1. Exact match for backend host (handles IP addresses and explicit domains)
   if (hostname === backendHost) return true;
-  // Allow subdomains of the same parent domain (e.g. dev.skj.my.id if backend is app.skj.my.id)
-  const parts = backendHost.split('.');
-  if (parts.length >= 2) {
-    const parentDomain = parts.slice(-2).join('.');
-    if (hostname.endsWith(`.${parentDomain}`)) return true;
+
+  // 2. Allow subdomains of the specific trusted parent domain
+  const TRUSTED_PARENT = 'skj.my.id';
+  if (hostname === TRUSTED_PARENT || hostname.endsWith(`.${TRUSTED_PARENT}`)) {
+    return true;
   }
+
   return false;
 };
 
@@ -64,8 +75,7 @@ export async function GET(request: NextRequest) {
     // Decode the URL parameter to handle double-encoding from next/image optimizer
     const imageUrl = (() => {
       try {
-        const decoded = decodeURIComponent(rawUrl);
-        return decoded;
+        return decodeURIComponent(rawUrl);
       } catch {
         return rawUrl;
       }

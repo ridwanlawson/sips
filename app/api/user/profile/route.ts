@@ -1,8 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { BACKEND_URL } from '@/utils/absensiProxy';
+import { validateSecurity } from '@/lib/security';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const securityError = await validateSecurity(req);
+  if (securityError) return securityError;
+
   const cookieStore = await cookies();
   const token = cookieStore.get('auth_token')?.value;
   const userId = cookieStore.get('log_id')?.value;
