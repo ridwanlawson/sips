@@ -21,6 +21,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { SkeletonTable } from '@/app/components/skeletons';
 import AppTour from '@/app/components/app-tour';
 import type { TourStep } from '@/app/components/app-tour';
+import { Icon } from '@/app/components/icons';
 
 /* =========================
    T Y P E S
@@ -1688,20 +1689,7 @@ export default function PengangkutanPage() {
               rel="noopener noreferrer"
               title={`Lampiran Exception Case | No Dokumen : ${r.nodokumen || '-'} | No Pengangkutan : ${r.nopengangkutan || '-'}`}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-                className="h-6 w-6 text-primary hover:text-primary-focus transition-colors"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m5.231 13.481L15 17.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v16.5c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Zm3.75 11.625a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"
-                />
-              </svg>
+              <Icon name="document-attach" className="h-6 w-6 text-primary hover:text-primary-focus transition-colors" />
             </a>
           ) : (
             '-'
@@ -1741,20 +1729,7 @@ export default function PengangkutanPage() {
               title={t('filterToggleTooltip')}
               data-tour="filter-button"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-                />
-              </svg>
+              <Icon name="filter" className="h-4 w-4" />
               {showFilters ? t('hideFilters') : t('showFilters')}
             </button>
             <button
@@ -1763,20 +1738,7 @@ export default function PengangkutanPage() {
               title={t('refreshTooltip')}
               disabled={loading}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
+              <Icon name="refresh" className="h-4 w-4" />
               {loading ? (
                 <>
                   <span className="loading loading-spinner loading-xs" />
@@ -1792,20 +1754,7 @@ export default function PengangkutanPage() {
               title={t('exportTooltip')}
               disabled={items.length === 0}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
+              <Icon name="export" className="h-4 w-4" />
               {t('export')}
             </button>
             {canModify && (
@@ -1840,21 +1789,7 @@ export default function PengangkutanPage() {
           {/* SEARCH (dorong ke kanan) */}
           <div className="ml-auto w-full md:w-96 group relative" data-tour="quick-search">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
+              <Icon name="search" className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all" />
             </div>
             <input
               ref={searchInputRef}
@@ -1880,21 +1815,7 @@ export default function PengangkutanPage() {
                 aria-label={t('clearSearch')}
                 title={t('clearSearch')}
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
+                <Icon name="close" className="h-5 w-5" />
               </button>
             )}
           </div>

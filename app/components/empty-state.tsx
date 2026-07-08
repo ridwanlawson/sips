@@ -1,5 +1,6 @@
 'use client';
 
+import { Icon } from '@/app/components/icons';
 import React from 'react';
 import { useTranslations } from 'next-intl';
 
@@ -20,21 +21,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ namespace, onClearSearch
   return (
     <div className="flex flex-col items-center justify-center py-20 px-4 text-center w-full min-h-[400px] animate-fadeIn">
       <div className="bg-base-200 p-8 rounded-full mb-6 ring-8 ring-base-100 shadow-inner">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          strokeWidth={1.5}
-          stroke="currentColor"
-          className="w-12 h-12 opacity-30 text-primary"
-          aria-hidden="true"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
-          />
-        </svg>
+        <Icon name="empty-search" className="w-12 h-12 opacity-30 text-primary" />
       </div>
       <h3 className="text-2xl font-bold text-base-content/80 mb-2">
         {t('noData')}

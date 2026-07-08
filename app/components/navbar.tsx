@@ -11,6 +11,7 @@ import { toTitleCase } from '@/utils/textManipulation';
 import { getProxiedImageUrl } from '@/utils/imageHelper';
 import { useTranslations } from 'next-intl';
 import { cookieStore } from '@/utils/cookieStore';
+import { Icon } from '@/app/components/icons';
 
 const FALLBACK_AVATAR =
   'https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp';
@@ -133,21 +134,7 @@ export default memo(function Navbar() {
               >
                 <span className="flex items-center gap-1">
                   SIPS Apps
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                    className="h-3 w-3 opacity-60"
-                    aria-hidden="true"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
-                    />
-                  </svg>
+                  <Icon name="external-link" className="h-4 w-4" />
                 </span>
                 <span className="badge">{t('download')}</span>
               </a>
@@ -161,21 +148,7 @@ export default memo(function Navbar() {
               >
                 <span className="flex items-center gap-1">
                   SIPS
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                    className="h-3 w-3 opacity-60"
-                    aria-hidden="true"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
-                    />
-                  </svg>
+                  <Icon name="external-link" className="h-4 w-4" />
                 </span>
                 <span className="badge">{t('visit')}</span>
               </a>

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
+import { Icon } from '@/app/components/icons';
 
 export type Option = { value: string; label: string };
 
@@ -126,17 +127,7 @@ const SearchSelectInner: React.FC<SearchSelectProps> = ({
         <span className={`truncate ${!value ? 'text-base-content/50' : ''}`}>
           {currentLabel || placeholder || t('select')}
         </span>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="ml-2 h-4 w-4 opacity-60 transition-transform duration-200"
-          style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          aria-hidden="true"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-        </svg>
+        <Icon name="chevron-down" className="ml-2 h-4 w-4 opacity-60 transition-transform duration-200" style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }} />
       </button>
 
       {required && !value && (
@@ -155,21 +146,7 @@ const SearchSelectInner: React.FC<SearchSelectProps> = ({
           <div className="p-2 border-b border-base-200">
             <div className="relative group">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 opacity-60 group-focus-within:text-primary group-focus-within:opacity-100 transition-all"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
+                <Icon name="search" className="h-4 w-4 opacity-60 group-focus-within:text-primary group-focus-within:opacity-100 transition-all" />
               </div>
               <input
                 autoFocus
@@ -205,21 +182,7 @@ const SearchSelectInner: React.FC<SearchSelectProps> = ({
                   aria-label={t('clearSearch')}
                   title={t('clearSearch')}
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
+                  <Icon name="close" className="h-4 w-4" />
                 </button>
               )}
             </div>

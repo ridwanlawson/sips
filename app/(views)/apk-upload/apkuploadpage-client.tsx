@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { backendApiUrl } from '@/utils/backendConfig';
+import { Icon } from '@/app/components/icons';
 
 interface UploadFormData {
   platform: string;
@@ -474,19 +475,7 @@ export default function ApkUploadPage() {
                 {selectedFile ? (
                   <div className="flex flex-col items-center gap-1">
                     {/* File Icon */}
-                    <svg
-                      className="h-10 w-10 text-success"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
+                    <Icon name="document" className="w-5 h-5 text-primary" />
                     <p className="font-semibold text-success text-sm mt-1">{selectedFile.name}</p>
                     <p className="text-xs text-base-content/50">{formatBytes(selectedFile.size)}</p>
                     {!uploading && (
@@ -508,19 +497,7 @@ export default function ApkUploadPage() {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center gap-2">
-                    <svg
-                      className="h-10 w-10 text-base-content/30"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                      />
-                    </svg>
+                    <Icon name="cloud-upload" className="w-8 h-8 text-primary opacity-60" strokeWidth={1.5} />
                     <p className="text-sm text-base-content/60">
                       Drag &amp; drop file di sini, atau{' '}
                       <span className="text-primary font-medium">pilih file</span>
@@ -604,14 +581,7 @@ export default function ApkUploadPage() {
                   </>
                 ) : (
                   <>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-                      />
-                    </svg>
+                    <Icon name="upload" className="w-4 h-4" />
                     Upload Aplikasi
                   </>
                 )}

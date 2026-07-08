@@ -1,7 +1,8 @@
 ﻿'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import DataTable from '@/app/components/dynamic-data-table';
+import { useSearchShortcut } from '@/hooks/useSearchShortcut';
 import type { TableColumn } from 'react-data-table-component';
 import toast from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
@@ -15,6 +16,7 @@ import { useLocale } from '@/hooks/useLocale';
 import { EmptyState } from '@/app/components/empty-state';
 import AppTour from '@/app/components/app-tour';
 import type { TourStep } from '@/app/components/app-tour';
+import { Icon } from '@/app/components/icons';
 
 /* =========================
    T Y P E S
@@ -187,24 +189,11 @@ export default function Approval() {
   const [q, setQ] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useSearchShortcut();
   const handleTourStepChange = useCallback((stepIndex: number) => {
     if (stepIndex === 4) {
       setShowFilters(true);
     }
-  }, []);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
-      if (e.key === '/') {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const [selectedRows, setSelectedRows] = useState<LhmData[]>([]);
@@ -791,20 +780,7 @@ export default function Approval() {
                   className="tooltip tooltip-right"
                   data-tip={` Print LHM Kemandoran ${r.kemandoran} `}
                 >
-                  <svg
-                    viewBox="0 0 24 24"
-                    width="20"
-                    height="20"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    fill="none"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="css-i6dzq1"
-                  >
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
-                  </svg>
+                  <Icon name="eye-view" className="h-4 w-4" />
                 </a>
               )}
             </div>
@@ -1133,7 +1109,7 @@ export default function Approval() {
                 </>
               ) : (
                 <>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                  <Icon name="refresh" className="h-4 w-4" />
                   {tL('refresh')}
                 </>
               )}
@@ -1143,7 +1119,7 @@ export default function Approval() {
               onClick={handleExport}
               title={tL('exportTooltip')}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              <Icon name="export" className="h-4 w-4" />
               {tL('export')}
             </button>
             <button
@@ -1203,20 +1179,7 @@ export default function Approval() {
           </div>
           <div className="relative w-full sm:w-72 md:w-80 group shrink-0" data-tour="quick-search">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
+              <Icon name="search" className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all" />
             </div>
             <input
               ref={searchInputRef}
@@ -1241,20 +1204,7 @@ export default function Approval() {
                 aria-label={tL('clearSearch')}
                 title={tL('clearSearch')}
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
+                <Icon name="close" className="h-5 w-5" />
               </button>
             )}
           </div>

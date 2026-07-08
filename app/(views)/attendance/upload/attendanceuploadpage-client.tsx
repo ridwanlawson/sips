@@ -14,6 +14,7 @@ import { AccessDenied } from '@/app/components/access-denied';
 import { useLocale } from '@/hooks/useLocale';
 import { formatPerfDate, formatPerfNumber } from '@/utils/perf-formatter';
 import { useUploadPage } from '@/hooks/useUploadPage';
+import { Icon } from '@/app/components/icons';
 
 const EMPTY_PARAMS: AttendanceUploadParams = {
   tanggal: '',
@@ -728,19 +729,7 @@ export default function AttendanceUploadPage() {
         {/* Empty State - Data tidak ditemukan (tanpa error) */}
         {!loading && data.length === 0 && !error && (
           <div className="alert mb-4 shadow-sm bg-base-200 border border-base-300">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              className="stroke-base-content shrink-0 w-6 h-6"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              ></path>
-            </svg>
+            <Icon name="info" className="h-5 w-5" />
             <div>
               <p className="font-medium">Data tidak ditemukan</p>
               <p className="text-sm opacity-75">
@@ -778,19 +767,7 @@ export default function AttendanceUploadPage() {
           <div className="mb-4">
             <div className="relative max-w-md">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg
-                  className="h-5 w-5 text-base-content/40"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
+                <Icon name="search" className="h-5 w-5 text-base-content/40" />
               </div>
               <input
                 type="text"
@@ -805,19 +782,7 @@ export default function AttendanceUploadPage() {
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   title="Clear search"
                 >
-                  <svg
-                    className="h-4 w-4 text-base-content/40 hover:text-base-content"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
+                  <Icon name="close" className="h-4 w-4" />
                 </button>
               )}
             </div>
@@ -832,19 +797,7 @@ export default function AttendanceUploadPage() {
         {/* Empty search result */}
         {data.length > 0 && searchTerm && filteredDataWithKey.length === 0 && (
           <div className="alert mb-4 shadow-sm bg-base-200 border border-base-300">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              className="stroke-base-content shrink-0 w-6 h-6"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              ></path>
-            </svg>
+            <Icon name="empty-search" className="w-12 h-12 opacity-30 text-primary" />
             <div>
               <p className="font-medium">Tidak ada hasil untuk &quot;{searchTerm}&quot;</p>
               <p className="text-sm opacity-75">

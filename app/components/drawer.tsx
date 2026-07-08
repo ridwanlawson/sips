@@ -6,6 +6,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { cookieStore } from '@/utils/cookieStore';
 import { getMenuForUserLevel, MenuItem } from '@/lib/menuConfig';
+import { Icon } from '@/app/components/icons';
 
 export const Drawer = () => {
   const t = useTranslations('Navbar');
@@ -132,21 +133,7 @@ export const Drawer = () => {
                 {renderIcon(item.icon)}
                 <span>{t(item.label)}</span>
               </div>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className={`h-4 w-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
+              <Icon name="chevron-down" className={`ml-2 h-4 w-4 opacity-60 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
             </summary>
             <ul className="menu menu-sm">
               {item.children.map(child => renderMenuItem(child, true))}
@@ -190,21 +177,7 @@ export const Drawer = () => {
         aria-expanded={open}
         aria-controls="drawer-sidebar"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-5 w-5"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          aria-hidden="true"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M4 6h16M4 12h16M4 18h7"
-          />
-        </svg>
+        <Icon name="menu" className="h-5 w-5" />
       </button>
 
       {/* Overlay + sidebar */}

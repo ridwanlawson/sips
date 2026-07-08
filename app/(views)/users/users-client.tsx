@@ -19,6 +19,7 @@ import { fetchGangs, fetchSections } from '@/utils/masterDataService';
 import type { BusinessUnit } from '@/utils/businessUnitService';
 import { cookieStore } from '@/utils/cookieStore';
 import { exportJsonToCsv } from '@/utils/exportCsv';
+import { Icon } from '@/app/components/icons';
 import AppTour from '@/app/components/app-tour';
 import type { TourStep } from '@/app/components/app-tour';
 
@@ -658,26 +659,7 @@ export default function UsersClient() {
               onClick={() => handleDetail(row.id)}
               title={t('viewDetail')}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                />
-              </svg>
+              <Icon name="eye-view" className="h-4 w-4" />
             </button>
           </div>
         ),
@@ -789,20 +771,7 @@ export default function UsersClient() {
           <div className="flex justify-start sm:justify-end gap-2 flex-wrap w-full" data-tour="action-buttons">
             <AppTour steps={tourSteps} storageKey="tour-users" onStepChange={stepIndex => { if (stepIndex === 3) { setShowFilters(true); } }} />
             <button className="btn btn-outline btn-sm" data-tour="filter-button" onClick={() => setShowFilters(s => !s)}>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-                />
-              </svg>
+              <Icon name="filter" className="h-4 w-4" />
               {showFilters ? t('hideFilters') : t('showFilters')}
             </button>
             <button
@@ -814,38 +783,12 @@ export default function UsersClient() {
               {loading ? (
                 <span className="loading loading-spinner loading-xs" />
               ) : (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  />
-                </svg>
+                <Icon name="refresh" className="h-4 w-4" />
               )}
               {loading ? t('loading') : t('refresh')}
             </button>
             <button className="btn btn-outline btn-sm" onClick={handleExport} title={t('export')}>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
+              <Icon name="export" className="h-4 w-4" />
               {t('export')}
             </button>
             <button
@@ -860,20 +803,7 @@ export default function UsersClient() {
                 setAddOpen(true);
               }}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
+              <Icon name="plus" className="h-4 w-4" />
               {t('addUser')}
             </button>
             <button
@@ -887,20 +817,7 @@ export default function UsersClient() {
                 setBulkOpen(true);
               }}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                />
-              </svg>
+              <Icon name="people" className="h-4 w-4" />
               {t('bulkAdd')}
             </button>
           </div>
@@ -910,20 +827,7 @@ export default function UsersClient() {
         <div className="mb-3 flex justify-end">
           <div className="relative w-full md:w-96 group" data-tour="quick-search">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
+              <Icon name="search" className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all" />
             </div>
             <input
               ref={searchInputRef}
@@ -949,20 +853,7 @@ export default function UsersClient() {
                 aria-label={t('clearSearch')}
                 title={t('clearSearch')}
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
+                <Icon name="close" className="h-5 w-5" />
               </button>
             )}
           </div>
@@ -1252,14 +1143,7 @@ export default function UsersClient() {
             <div className="bg-secondary/5 px-6 py-4 border-b border-base-200">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-secondary/10 rounded-lg text-secondary" aria-hidden="true">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                    className="w-5 h-5"
-                  >
-                    <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
+                  <Icon name="people" className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="font-bold text-lg">{t('bulkAdd')}</h3>
@@ -1340,20 +1224,7 @@ export default function UsersClient() {
                   onClick={applyBulkDefaults}
                   disabled={!bulkFcba && !bulkAfdeling && !bulkGang}
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                    />
-                  </svg>
+                  <Icon name="refresh" className="h-4 w-4" />
                   {t('applyDefaults')}
                 </button>
               </div>
@@ -1501,20 +1372,7 @@ export default function UsersClient() {
                           onClick={() => removeBulkRow(idx)}
                           disabled={bulkRows.length <= 1}
                         >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-4 w-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M6 18L18 6M6 6l12 12"
-                            />
-                          </svg>
+                          <Icon name="close" className="h-5 w-5" />
                         </button>
                       </td>
                     </tr>
@@ -1522,20 +1380,7 @@ export default function UsersClient() {
                 </tbody>
               </table>
               <button className="btn btn-ghost btn-sm mt-2" onClick={addBulkRow}>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
+                <Icon name="plus" className="h-4 w-4" />
                 {t('addRow')}
               </button>
             </div>
