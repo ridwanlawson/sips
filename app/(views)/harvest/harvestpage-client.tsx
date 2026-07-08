@@ -981,9 +981,7 @@ export default function HarvestPage() {
       err => {
         console.error('Geolocation error:', err);
         toast.error(
-          err.code === err.PERMISSION_DENIED
-            ? tH('toastGeolocDenied')
-            : tH('toastGeolocError')
+          err.code === err.PERMISSION_DENIED ? tH('toastGeolocDenied') : tH('toastGeolocError')
         );
         setLocLoading(false);
       },
@@ -1441,8 +1439,8 @@ export default function HarvestPage() {
         formData.append(key, value);
       } else if (key === 'no_ba_exca' && value instanceof File) {
         formData.append(key, value);
-      } else if (key === 'no_ba_exca' && isEditing && typeof value === 'string') {
-        formData.append(key, value);
+      } else if (key === 'no_ba_exca') {
+        // skip — jangan kirim string nama file lama
       } else if (value !== null && value !== undefined) {
         formData.append(key, String(value));
       }
@@ -1864,7 +1862,20 @@ export default function HarvestPage() {
               className="link link-primary"
               title={tH('openAttachment')}
             >
-              PDF
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="h-6 w-6 text-primary hover:text-primary-focus transition-colors"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m5.231 13.481L15 17.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v16.5c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Zm3.75 11.625a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"
+                />
+              </svg>
             </a>
           ) : (
             '-'
@@ -1921,7 +1932,20 @@ export default function HarvestPage() {
           </h1>
           <div className="flex justify-start sm:justify-end gap-2 flex-wrap w-full">
             <button className="btn btn-outline btn-sm" onClick={() => setShowFilters(s => !s)}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+                />
+              </svg>
               {showFilters ? tH('hideFilters') : tH('showFilters')}
             </button>
             <button
@@ -1935,7 +1959,23 @@ export default function HarvestPage() {
                   {tH('loading')}
                 </>
               ) : (
-                <><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>{tH('refresh')}</>
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>
+                  {tH('refresh')}
+                </>
               )}
             </button>
             <button
@@ -1943,7 +1983,20 @@ export default function HarvestPage() {
               onClick={handleExport}
               title={tH('exportTooltip')}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
               {tH('export')}
             </button>
             {canModify && (
@@ -2244,9 +2297,15 @@ export default function HarvestPage() {
                 <p className="mt-2">{tH('modalLoadingDetail')}</p>
               </div>
             ) : (
-              <form id="harvest-form" onSubmit={handleSubmit} className="grid grid-cols-12 gap-2 max-h-[80vh] overflow-y-auto">
+              <form
+                id="harvest-form"
+                onSubmit={handleSubmit}
+                className="grid grid-cols-12 gap-2 max-h-[80vh] overflow-y-auto"
+              >
                 <div className="col-span-12">
-                  <h4 className="text-sm font-semibold text-base-content/80">{tH('formInfoTitle')}</h4>
+                  <h4 className="text-sm font-semibold text-base-content/80">
+                    {tH('formInfoTitle')}
+                  </h4>
                   <div className="mt-1 border-t border-base-300" />
                 </div>
 
@@ -2453,7 +2512,9 @@ export default function HarvestPage() {
                 </fieldset>
 
                 <div className="col-span-12">
-                  <h4 className="text-sm font-semibold text-base-content/80">{tH('formResultsTitle')}</h4>
+                  <h4 className="text-sm font-semibold text-base-content/80">
+                    {tH('formResultsTitle')}
+                  </h4>
                   <div className="mt-1 border-t border-base-300" />
                 </div>
 
@@ -2607,7 +2668,9 @@ export default function HarvestPage() {
                 </fieldset>
 
                 <div className="col-span-12">
-                  <h4 className="text-sm font-semibold text-base-content/80">{tH('formAdditionalTitle')}</h4>
+                  <h4 className="text-sm font-semibold text-base-content/80">
+                    {tH('formAdditionalTitle')}
+                  </h4>
                   <div className="mt-1 border-t border-base-300" />
                 </div>
 
@@ -2730,7 +2793,6 @@ export default function HarvestPage() {
                     )}
                   </fieldset>
                 </div>
-
               </form>
             )}
             {/* Sticky Footer */}

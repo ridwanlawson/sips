@@ -225,7 +225,7 @@ export const Drawer = () => {
             role="dialog"
             aria-modal="true"
             aria-label={t('openSidebar')}
-            className="fixed left-0 top-0 h-full w-80 bg-base-200 text-base-content shadow-2xl overflow-y-auto"
+            className="fixed left-0 top-0 h-full bg-base-200 text-base-content shadow-2xl overflow-y-auto"
           >
             <ul className="menu p-4 gap-1 min-h-full">
               {/* Header/brand */}

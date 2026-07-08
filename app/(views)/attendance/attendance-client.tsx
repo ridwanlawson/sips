@@ -1140,7 +1140,6 @@ export default function Attendance() {
     return map;
   }, [employees]);
 
-
   const selectedMandorGang = useMemo(() => {
     const mandor = employeeMap.get(form.kode_karyawan_mandor);
     return mandor?.gangcode || form.kemandoran || '';
@@ -1407,8 +1406,6 @@ export default function Attendance() {
       if (form.images instanceof File) fd.append('images', form.images);
       if (form.no_ba_exca_file instanceof File) {
         fd.append('no_ba_exca', form.no_ba_exca_file);
-      } else if (isEditing && form.no_ba_exca) {
-        fd.append('no_ba_exca', form.no_ba_exca);
       }
 
       if (form.kode_karyawan_mandor) fd.append('kode_karyawan_mandor', form.kode_karyawan_mandor);
@@ -1420,9 +1417,7 @@ export default function Attendance() {
         { url, method, body: fd },
         {
           onSuccess: () => {
-            toast.success(
-              isEditing ? t('toastSaveSuccess') : t('toastAddSuccess')
-            );
+            toast.success(isEditing ? t('toastSaveSuccess') : t('toastAddSuccess'));
           },
         }
       );
@@ -1809,7 +1804,20 @@ export default function Attendance() {
               className="link link-primary"
               title={t('openPdfBaExca')}
             >
-              PDF
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="h-6 w-6 text-primary hover:text-primary-focus transition-colors"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m5.231 13.481L15 17.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v16.5c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Zm3.75 11.625a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"
+                />
+              </svg>
             </a>
           ) : (
             '-'
@@ -1892,7 +1900,9 @@ export default function Attendance() {
       [t('exportColType')]: r.attendance_type || '-',
       [t('exportColAttendance')]: r.attendance || '-',
       [t('exportColMasuk')]: r.time_in ? r.time_in.split(' ')[1]?.slice(0, 5) || r.time_in : '-',
-      [t('exportColPulang')]: r.time_out ? r.time_out.split(' ')[1]?.slice(0, 5) || r.time_out : '-',
+      [t('exportColPulang')]: r.time_out
+        ? r.time_out.split(' ')[1]?.slice(0, 5) || r.time_out
+        : '-',
       [t('exportColLate')]: r.total_late_time || '-',
       [t('exportColHomeEarly')]: r.go_home_early || '-',
       [t('exportColHk')]: r.mandays != null ? String(r.mandays) : '-',
@@ -1992,7 +2002,20 @@ export default function Attendance() {
               onClick={() => setShowFilters(s => !s)}
               title={t('filterToggleTooltip')}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+                />
+              </svg>
               {showFilters ? t('hideFilters') : t('showFilters')}
             </button>
             <button
@@ -2007,7 +2030,23 @@ export default function Attendance() {
                   {t('loading')}
                 </>
               ) : (
-                <><svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg> {t('refresh')}</>
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                    />
+                  </svg>{' '}
+                  {t('refresh')}
+                </>
               )}
             </button>
             <button
@@ -2015,7 +2054,20 @@ export default function Attendance() {
               onClick={handleExport}
               title={t('exportTooltip')}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
               {t('export')}
             </button>
             {canAddOrEdit && (
@@ -2350,7 +2402,9 @@ export default function Attendance() {
                 className="grid grid-cols-12 gap-2 max-h-[80vh] overflow-y-auto"
               >
                 <div className="col-span-12">
-                  <h4 className="text-sm font-semibold text-base-content/80">{t('formInfoTitle')}</h4>
+                  <h4 className="text-sm font-semibold text-base-content/80">
+                    {t('formInfoTitle')}
+                  </h4>
                   <div className="mt-1 border-t border-base-300" />
                 </div>
 
@@ -2459,7 +2513,9 @@ export default function Attendance() {
                 )}
 
                 <div className="col-span-12 mt-1">
-                  <h4 className="text-sm font-semibold text-base-content/80">{t('formOriginTitle')}</h4>
+                  <h4 className="text-sm font-semibold text-base-content/80">
+                    {t('formOriginTitle')}
+                  </h4>
                   <div className="mt-1 border-t border-base-300" />
                 </div>
 
@@ -2542,7 +2598,9 @@ export default function Attendance() {
                 </fieldset>
 
                 <div className="col-span-12 mt-1">
-                  <h4 className="text-sm font-semibold text-base-content/80">{t('formPersonnelTitle')}</h4>
+                  <h4 className="text-sm font-semibold text-base-content/80">
+                    {t('formPersonnelTitle')}
+                  </h4>
                   <div className="mt-1 border-t border-base-300" />
                 </div>
 
@@ -2607,7 +2665,9 @@ export default function Attendance() {
                 </fieldset>
 
                 <div className="col-span-12 mt-1">
-                  <h4 className="text-sm font-semibold text-base-content/80">{t('formTimeLocationTitle')}</h4>
+                  <h4 className="text-sm font-semibold text-base-content/80">
+                    {t('formTimeLocationTitle')}
+                  </h4>
                   <div className="mt-1 border-t border-base-300" />
                 </div>
 
@@ -2622,9 +2682,7 @@ export default function Attendance() {
                     required
                     disabled={disableUnlessAllowed(false)}
                   />
-                  <p className="text-xs mt-1 opacity-70">
-                    {t('hintTimeIn')}
-                  </p>
+                  <p className="text-xs mt-1 opacity-70">{t('hintTimeIn')}</p>
                 </fieldset>
 
                 <fieldset className="fieldset col-span-12 md:col-span-3">
@@ -2634,11 +2692,9 @@ export default function Attendance() {
                     className="input input-bordered w-full"
                     value={form.time_out ?? ''}
                     onChange={e => setForm(s => ({ ...s, time_out: e.target.value }))}
-                    disabled={disableUnlessAllowed(false)}
+                    disabled={disableUnlessAllowed(true)}
                   />
-                  <p className="text-xs mt-1 opacity-70">
-                    {t('hintTimeOut')}
-                  </p>
+                  <p className="text-xs mt-1 opacity-70">{t('hintTimeOut')}</p>
                 </fieldset>
 
                 <fieldset className="fieldset col-span-12 md:col-span-3">
@@ -2832,9 +2888,6 @@ export default function Attendance() {
                       </a>
                     </div>
                   )}
-                  <p className="text-xs mt-1 opacity-70">
-                    {t('hintFoto')}
-                  </p>
                 </fieldset>
 
                 {/* Upload Foto & Preview */}
@@ -2898,9 +2951,7 @@ export default function Attendance() {
           <div className="modal modal-open">
             <div className="modal-box max-w-lg">
               <h3 className="font-bold text-lg">{t('modalDeleteTitle')}</h3>
-              <p className="mt-2 text-sm text-base-content/70">
-                {t('modalDeleteDesc')}
-              </p>
+              <p className="mt-2 text-sm text-base-content/70">{t('modalDeleteDesc')}</p>
 
               <fieldset className="fieldset mt-3">
                 <legend className="fieldset-legend">{t('modalDeleteLabel')}</legend>
