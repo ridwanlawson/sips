@@ -17,6 +17,7 @@ import { useTranslations } from 'next-intl';
 import { Icon } from '@/app/components/icons';
 import { SearchSelect, type Option } from '@/app/components/search-select';
 import { EmptyState } from '@/app/components/empty-state';
+import { DeleteModal } from '@/app/components/delete-modal';
 import { useSearchShortcut } from '@/hooks/useSearchShortcut';
 import { useLocale } from '@/hooks/useLocale';
 import { formatPerfDate } from '@/utils/perf-formatter';
@@ -634,6 +635,8 @@ export default function Attendance() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
       toast.success(t('toastDeleteSuccess'));
+      setDeleteOpen(false);
+      setDeleteTargetId('');
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -646,7 +649,6 @@ export default function Attendance() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState('');
-  const [deleteFile, setDeleteFile] = useState<File | undefined>(undefined);
 
   // Close the modal with Escape
   useEffect(() => {
@@ -666,7 +668,6 @@ export default function Attendance() {
   const [preview, setPreview] = useState<string>('');
   const imgRef = useRef<HTMLInputElement | null>(null);
   const pdfRef = useRef<HTMLInputElement | null>(null);
-  const deletePdfRef = useRef<HTMLInputElement | null>(null);
 
   // loading ambil lokasi (in/out)
   const [locLoading, setLocLoading] = useState<'in' | 'out' | null>(null);
@@ -1475,8 +1476,6 @@ export default function Attendance() {
   // wrap in useCallback so memoized columns don't re-create on every render
   const handleDelete = useCallback((id: string) => {
     setDeleteTargetId(id);
-    setDeleteFile(undefined);
-    if (deletePdfRef.current) deletePdfRef.current.value = '';
     setDeleteOpen(true);
   }, []);
 
@@ -1484,36 +1483,6 @@ export default function Attendance() {
     if (deleteMutation.isPending) return;
     setDeleteOpen(false);
     setDeleteTargetId('');
-    setDeleteFile(undefined);
-    if (deletePdfRef.current) deletePdfRef.current.value = '';
-  };
-
-  const handleConfirmDelete = () => {
-    if (!deleteTargetId) return;
-    if (!deleteFile) {
-      toast.error(t('toastPdfRequired'));
-      return;
-    }
-    if (deleteFile.type !== 'application/pdf') {
-      toast.error(t('toastPdfFormat'));
-      return;
-    }
-    if (deleteFile.size > 2 * 1024 * 1024) {
-      toast.error(t('toastPdfSize'));
-      return;
-    }
-
-    deleteMutation.mutate(
-      { id: deleteTargetId, file: deleteFile },
-      {
-        onSuccess: () => {
-          setDeleteOpen(false);
-          setDeleteTargetId('');
-          setDeleteFile(undefined);
-          if (deletePdfRef.current) deletePdfRef.current.value = '';
-        },
-      }
-    );
   };
 
   /* ===== DETAIL ===== */
@@ -2921,45 +2890,30 @@ export default function Attendance() {
           </div>
         )}
 
-        {deleteOpen && (
-          <div className="modal modal-open">
-            <div className="modal-box max-w-lg">
-              <h3 className="font-bold text-lg">{t('modalDeleteTitle')}</h3>
-              <p className="mt-2 text-sm text-base-content/70">{t('modalDeleteDesc')}</p>
-
-              <fieldset className="fieldset mt-3">
-                <legend className="fieldset-legend">{t('modalDeleteLabel')}</legend>
-                <input
-                  ref={deletePdfRef}
-                  type="file"
-                  accept="application/pdf"
-                  className="file-input file-input-bordered w-full"
-                  onChange={e => setDeleteFile(e.target.files?.[0])}
-                  required
-                />
-                <p className="text-xs opacity-70">{t('modalDeleteHint')}</p>
-              </fieldset>
-
-              <div className="modal-action">
-                <button type="button" className="btn" onClick={closeDeleteModal}>
-                  {t('modalCancel')}
-                </button>
-                <button
-                  type="button"
-                  className={`btn btn-error ${deleteMutation.isPending ? 'btn-disabled' : ''}`}
-                  onClick={handleConfirmDelete}
-                  disabled={deleteMutation.isPending || !deleteFile}
-                >
-                  {deleteMutation.isPending ? (
-                    <span className="loading loading-spinner loading-sm" />
-                  ) : (
-                    t('modalDelete')
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <DeleteModal
+          open={deleteOpen}
+          title={t('modalDeleteTitle')}
+          description={t('modalDeleteDesc')}
+          label={t('modalDeleteLabel')}
+          hint={t('modalDeleteHint')}
+          cancelText={t('modalCancel')}
+          confirmText={t('modalDelete')}
+          isLoading={deleteMutation.isPending}
+          onClose={closeDeleteModal}
+          onConfirm={file => {
+            if (file.type !== 'application/pdf') {
+              toast.error(t('toastPdfFormat'));
+              return;
+            }
+            if (file.size > 2 * 1024 * 1024) {
+              toast.error(t('toastPdfSize'));
+              return;
+            }
+            if (deleteTargetId) {
+              deleteMutation.mutate({ id: deleteTargetId, file });
+            }
+          }}
+        />
       </div>
     </div>
   );
