@@ -28,6 +28,11 @@ export async function validateSecurity(req: NextRequest): Promise<NextResponse |
   }
 
   // === CSRF VALIDATION ===
+  // Skip CSRF validation for safe HTTP methods (GET, HEAD, OPTIONS)
+  // to allow universal rate limiting via this utility.
+  const isSafeMethod = ['GET', 'HEAD', 'OPTIONS'].includes(req.method);
+  if (isSafeMethod) return null;
+
   const cookieStore = await cookies();
   const csrfToken = cookieStore.get('csrf_token')?.value;
   if (!csrfToken || !validateCsrfToken(req, csrfToken)) {

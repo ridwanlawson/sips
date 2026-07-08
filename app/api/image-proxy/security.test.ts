@@ -18,7 +18,7 @@ describe('Image Proxy Security', () => {
     vi.clearAllMocks();
   });
 
-  it('should return 401 if user is not authenticated', async () => {
+  it('should return 200 (placeholder) if user is not authenticated', async () => {
     (getTokenFromCookie as Mock).mockResolvedValue(null);
 
     const req = new NextRequest(
@@ -26,13 +26,12 @@ describe('Image Proxy Security', () => {
     );
     const res = await GET(req);
 
-    expect(res.status).toBe(401);
-    const data = await res.json();
-    expect(data.ok).toBe(false);
-    expect(data.error).toBe('Unauthenticated');
+    expect(res.status).toBe(200);
+    const contentType = res.headers.get('content-type');
+    expect(contentType).toBe('image/svg+xml');
   });
 
-  it('should return 403 if image origin is not trusted', async () => {
+  it('should return 200 (placeholder) if image origin is not trusted', async () => {
     (getTokenFromCookie as Mock).mockResolvedValue('valid-token');
 
     const req = new NextRequest(
@@ -40,19 +39,70 @@ describe('Image Proxy Security', () => {
     );
     const res = await GET(req);
 
-    expect(res.status).toBe(403);
-    const data = await res.json();
-    expect(data.error).toBe('Invalid image origin');
+    expect(res.status).toBe(200);
+    const contentType = res.headers.get('content-type');
+    expect(contentType).toBe('image/svg+xml');
   });
 
-  it('should return 400 if image URL is malformed', async () => {
+  it('should allow exact match for backend origin', async () => {
+    (getTokenFromCookie as Mock).mockResolvedValue('valid-token');
+
+    // Mock fetch to succeed
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: new Headers({ 'content-type': 'image/jpeg' }),
+      arrayBuffer: async () => new ArrayBuffer(10),
+    });
+
+    const req = new NextRequest(
+      'http://localhost/api/image-proxy?url=http://trusted-backend.com/img.jpg'
+    );
+    const res = await GET(req);
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toBe('image/jpeg');
+  });
+
+  it('should allow subdomains of trusted parent domain (skj.my.id)', async () => {
+    (getTokenFromCookie as Mock).mockResolvedValue('valid-token');
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: new Headers({ 'content-type': 'image/png' }),
+      arrayBuffer: async () => new ArrayBuffer(10),
+    });
+
+    const req = new NextRequest(
+      'http://localhost/api/image-proxy?url=https://any.skj.my.id/photo.png'
+    );
+    const res = await GET(req);
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toBe('image/png');
+  });
+
+  it('should block SSRF bypass attempts via other public suffix subdomains', async () => {
+    (getTokenFromCookie as Mock).mockResolvedValue('valid-token');
+
+    // Attempting to bypass by using another subdomain on the same public suffix (my.id)
+    const req = new NextRequest(
+      'http://localhost/api/image-proxy?url=http://other-user.my.id/img.jpg'
+    );
+    const res = await GET(req);
+
+    expect(res.status).toBe(200);
+    const contentType = res.headers.get('content-type');
+    expect(contentType).toBe('image/svg+xml');
+  });
+
+  it('should return 200 (placeholder) if image URL is malformed', async () => {
     (getTokenFromCookie as Mock).mockResolvedValue('valid-token');
 
     const req = new NextRequest('http://localhost/api/image-proxy?url=not-a-url');
     const res = await GET(req);
 
-    expect(res.status).toBe(400);
-    const data = await res.json();
-    expect(data.error).toBe('Malformed image URL');
+    expect(res.status).toBe(200);
+    const contentType = res.headers.get('content-type');
+    expect(contentType).toBe('image/svg+xml');
   });
 });
