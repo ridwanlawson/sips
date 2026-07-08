@@ -1,5 +1,7 @@
 'use client';
 
+import { memo } from 'react';
+
 type IconName =
   | 'search'
   | 'close'
@@ -180,7 +182,12 @@ interface IconProps {
   [key: string]: unknown;
 }
 
-export function Icon({ name, className = 'h-4 w-4', ...props }: IconProps) {
+/**
+ * ⚡ Bolt Optimization: Icon component.
+ * Wrapped in React.memo to prevent redundant SVG path evaluations and icon object lookups
+ * when parents (like large DataTables) re-render.
+ */
+export const Icon = memo(function Icon({ name, className = 'h-4 w-4', ...props }: IconProps) {
   const def = ICONS[name];
   if (!def) return null;
 
@@ -203,4 +210,6 @@ export function Icon({ name, className = 'h-4 w-4', ...props }: IconProps) {
       ))}
     </svg>
   );
-}
+});
+
+Icon.displayName = 'Icon';
