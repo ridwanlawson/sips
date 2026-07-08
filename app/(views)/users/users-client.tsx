@@ -768,31 +768,36 @@ export default function UsersClient() {
         {/* ── Header ── */}
         <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start">
           <h1 className="text-2xl sm:text-3xl font-bold min-w-0 truncate">{t('userManagement')}</h1>
-          <div className="flex justify-start sm:justify-end gap-2 flex-wrap w-full" data-tour="action-buttons">
-            <AppTour steps={tourSteps} storageKey="tour-users" onStepChange={stepIndex => { if (stepIndex === 3) { setShowFilters(true); } }} />
-            <button className="btn btn-outline btn-sm" data-tour="filter-button" onClick={() => setShowFilters(s => !s)}>
+          <div className="flex justify-start sm:justify-end flex-wrap w-full join" data-tour="action-buttons">
+            <AppTour steps={tourSteps} storageKey="tour-users" onStepChange={stepIndex => { if (stepIndex === 3) { setShowFilters(true); } }} btnClassName="join-item" />
+            <button className="btn btn-outline btn-sm join-item" data-tour="filter-button" onClick={() => setShowFilters(s => !s)}>
               <Icon name="filter" className="h-4 w-4" />
-              {showFilters ? t('hideFilters') : t('showFilters')}
+              <span className="hidden sm:inline">{showFilters ? t('hideFilters') : t('showFilters')}</span>
             </button>
             <button
-              className={`btn btn-sm ${loading ? 'btn-disabled' : ''}`}
+              className={`btn btn-outline btn-sm join-item ${loading ? 'btn-disabled' : ''}`}
               onClick={() => queryClient.invalidateQueries({ queryKey: ['sips-users'] })}
               disabled={loading}
               title={t('refresh')}
             >
               {loading ? (
-                <span className="loading loading-spinner loading-xs" />
+                <>
+                  <span className="loading loading-spinner loading-xs" />
+                  <span className="hidden sm:inline">{t('loading')}</span>
+                </>
               ) : (
-                <Icon name="refresh" className="h-4 w-4" />
+                <>
+                  <Icon name="refresh" className="h-4 w-4" />
+                  <span className="hidden sm:inline">{t('refresh')}</span>
+                </>
               )}
-              {loading ? t('loading') : t('refresh')}
             </button>
-            <button className="btn btn-outline btn-sm" onClick={handleExport} title={t('export')}>
+            <button className="btn btn-outline btn-sm join-item" onClick={handleExport} title={t('export')}>
               <Icon name="export" className="h-4 w-4" />
-              {t('export')}
+              <span className="hidden sm:inline">{t('export')}</span>
             </button>
             <button
-              className="btn btn-primary btn-sm"
+              className="btn btn-primary btn-sm join-item"
               data-tour="add-button"
               onClick={() => {
                 const defaultFcba = isFcbaRestricted ? userFcba : '';
@@ -804,10 +809,10 @@ export default function UsersClient() {
               }}
             >
               <Icon name="plus" className="h-4 w-4" />
-              {t('addUser')}
+              <span className="hidden sm:inline">{t('addUser')}</span>
             </button>
             <button
-              className="btn btn-secondary btn-sm"
+              className="btn btn-secondary btn-sm join-item"
               onClick={() => {
                 const defaultFcba = isFcbaRestricted ? userFcba : '';
                 setBulkRows([{ ...initialBulkRow, fcba: defaultFcba }]);
@@ -818,7 +823,7 @@ export default function UsersClient() {
               }}
             >
               <Icon name="people" className="h-4 w-4" />
-              {t('bulkAdd')}
+              <span className="hidden sm:inline">{t('bulkAdd')}</span>
             </button>
           </div>
         </div>

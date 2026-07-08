@@ -6,31 +6,7 @@
  * Principles applied: DRY, SoC, SSOT, Fail Fast, KISS
  */
 import { NextResponse } from 'next/server';
-
-// Sanitize object keys and string values to prevent injection
-function sanitizeObject(obj: unknown): unknown {
-  if (obj === null || obj === undefined) return obj;
-  if (typeof obj === 'string') {
-    // Basic XSS prevention - remove script tags and event handlers
-    return obj
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-      .replace(/on\w+=/gi, '')
-      .replace(/javascript:/gi, '')
-      .replace(/<[^>]*>/g, '');
-  }
-  if (Array.isArray(obj)) {
-    return obj.map(sanitizeObject);
-  }
-  if (typeof obj === 'object') {
-    const sanitized: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(obj)) {
-      const sanitizedKey = String(key).replace(/[^a-zA-Z0-9_\-]/g, '');
-      sanitized[sanitizedKey] = sanitizeObject(value);
-    }
-    return sanitized;
-  }
-  return obj;
-}
+import { sanitizeObject } from '@/lib/inputSanitizer';
 
 // ─── Type guards ──────────────────────────────────────────────────────────────
 
@@ -200,4 +176,119 @@ export async function proxyPost(
   }
 
   return NextResponse.json(data);
+}
+
+// ─── FormData proxy helpers ──────────────────────────────────────────────────
+
+/**
+ * Rebuild a FormData ensuring File objects retain their filenames.
+ * Some runtimes drop filename info when copying FormData entries;
+ * this helper preserves them.
+ */
+export function rebuildFormData(incoming: FormData): FormData {
+  const form = new FormData();
+  for (const [key, value] of incoming.entries()) {
+    if (typeof value === 'string') {
+      form.append(key, value);
+    } else {
+      form.append(key, value, value.name);
+    }
+  }
+  return form;
+}
+
+async function handleFormDataResponse(
+  upstream: Response,
+  logTag: string,
+  upstreamUrl: string
+): Promise<NextResponse> {
+  const { data, parseError } = await parseJsonSafe(upstream);
+
+  if (parseError) {
+    console.error(`[${logTag}_PARSE_ERROR]`, { status: upstream.status, url: upstreamUrl, data });
+    return NextResponse.json(
+      { ok: false, error: 'Invalid response format from upstream' },
+      { status: 502 }
+    );
+  }
+
+  if (!upstream.ok) {
+    console.error(`[${logTag}_ERROR]`, { status: upstream.status, url: upstreamUrl, data });
+    return NextResponse.json(
+      { ok: false, error: 'Upstream request failed' },
+      { status: upstream.status }
+    );
+  }
+
+  return NextResponse.json({ ok: true, data });
+}
+
+/**
+ * Proxy a FormData PUT (with _method override) to an upstream URL.
+ */
+export async function proxyFormDataPut(
+  upstreamUrl: string,
+  token: string,
+  incoming: FormData,
+  logTag: string
+): Promise<NextResponse> {
+  const form = rebuildFormData(incoming);
+  form.append('_method', 'PUT');
+
+  const upstream = await fetch(upstreamUrl, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    body: form,
+  });
+
+  return handleFormDataResponse(upstream, `${logTag}_PUT`, upstreamUrl);
+}
+
+/**
+ * Proxy a FormData DELETE (with ba_deleted validation) to an upstream URL.
+ */
+export async function proxyFormDataDelete(
+  upstreamUrl: string,
+  token: string,
+  incoming: FormData,
+  logTag: string
+): Promise<NextResponse> {
+  const baDeleted = incoming.get('ba_deleted');
+  if (!(baDeleted instanceof File)) {
+    return NextResponse.json(
+      { ok: false, error: 'BA delete file is required' },
+      { status: 400 }
+    );
+  }
+
+  const form = new FormData();
+  form.append('ba_deleted', baDeleted, baDeleted.name);
+
+  const upstream = await fetch(upstreamUrl, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    body: form,
+  });
+
+  return handleFormDataResponse(upstream, `${logTag}_DELETE`, upstreamUrl);
+}
+
+/**
+ * Proxy a FormData POST (for method-override scenarios) to an upstream URL.
+ */
+export async function proxyFormDataPost(
+  upstreamUrl: string,
+  token: string,
+  incoming: FormData,
+  logTag: string
+): Promise<NextResponse> {
+  const form = rebuildFormData(incoming);
+
+  const upstream = await fetch(upstreamUrl, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    body: form,
+  });
+
+  return handleFormDataResponse(upstream, `${logTag}_POST`, upstreamUrl);
 }

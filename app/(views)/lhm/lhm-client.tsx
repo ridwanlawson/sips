@@ -17,6 +17,7 @@ import { EmptyState } from '@/app/components/empty-state';
 import AppTour from '@/app/components/app-tour';
 import type { TourStep } from '@/app/components/app-tour';
 import { Icon } from '@/app/components/icons';
+import { toNumber } from '@/lib/helpers';
 
 /* =========================
    T Y P E S
@@ -140,17 +141,6 @@ type Filters = Partial<{
   blok: string;
   attendance: string;
 }>;
-
-/* =========================
-   U T I L S
-   ========================= */
-const toNumber = (value: string | number | null | undefined): number => {
-  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
-  if (!value) return 0;
-  const normalized = String(value).replace(',', '.').trim();
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
 
 import { cookieStore } from '@/utils/cookieStore';
 import { getFilterCriteria, getLockedFields, type UserLevel } from '@/utils/filterHelper';
@@ -951,24 +941,26 @@ export default function Lhm() {
             {tL('pageTitle')}
           </h1>
           <div
-            className="flex justify-start sm:justify-end gap-2 flex-wrap w-full"
+            className="flex justify-start sm:justify-end flex-wrap w-full join"
             data-tour="action-buttons"
           >
             <AppTour
               steps={tourSteps}
               storageKey="tour-lhm"
               onStepChange={handleTourStepChange}
+              btnClassName="join-item"
             />
             <button
-              className="btn btn-outline btn-sm"
+              className="btn btn-outline btn-sm join-item"
               onClick={() => setShowFilters(s => !s)}
               title={tL('filterToggleTooltip')}
               data-tour="filter-button"
             >
-              {showFilters ? tL('hideFilters') : tL('showFilters')}
+              <Icon name="filter" className="h-4 w-4" />
+              <span className="hidden sm:inline">{showFilters ? tL('hideFilters') : tL('showFilters')}</span>
             </button>
             <button
-              className={`btn btn-sm ${loading ? 'btn-disabled' : ''}`}
+              className={`btn btn-outline btn-sm join-item ${loading ? 'btn-disabled' : ''}`}
               onClick={() => fetchData(appliedFilters ?? getScopedFilters(filters))}
               disabled={loading}
               title={tL('refreshTooltip')}
@@ -976,22 +968,22 @@ export default function Lhm() {
               {loading ? (
                 <>
                   <span className="loading loading-spinner loading-xs" />
-                  {tL('loading')}
+                  <span className="hidden sm:inline">{tL('loading')}</span>
                 </>
               ) : (
                 <>
                   <Icon name="refresh" className="h-4 w-4" />
-                  {tL('refresh')}
+                  <span className="hidden sm:inline">{tL('refresh')}</span>
                 </>
               )}
             </button>
             <button
-              className="btn btn-outline btn-sm"
+              className="btn btn-outline btn-sm join-item"
               onClick={handleExport}
               title={tL('exportTooltip')}
             >
               <Icon name="export" className="h-4 w-4" />
-              {tL('export')}
+              <span className="hidden sm:inline">{tL('export')}</span>
             </button>
           </div>
         </div>

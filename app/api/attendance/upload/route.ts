@@ -52,6 +52,8 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
 
   try {
     const body = await req.json();
+    // TODO: recordId is expected from query param `id` based on client usage (attendanceUploadService.ts:126).
+    // Current pathname parsing is fragile; should use `req.nextUrl.searchParams.get('id')` instead.
     const recordId = new URL(req.url).pathname.split('/').pop();
     
     // Validate dan sanitize input
@@ -69,16 +71,25 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
       body: JSON.stringify(validation.data),
     });
 
-    const { data } = await parseJsonSafe(response);
+    const { data, parseError } = await parseJsonSafe(response);
+
+    if (parseError) {
+      console.error('[ATTENDANCE_UPLOAD_PUT_PARSE_ERROR]', { status: response.status, data });
+      return NextResponse.json(
+        { ok: false, error: 'Failed to parse upstream response' },
+        { status: 502 }
+      );
+    }
 
     if (!response.ok) {
+      console.error('[ATTENDANCE_UPLOAD_PUT_ERROR]', { status: response.status, data });
       return NextResponse.json(
         { ok: false, error: `External API error: ${response.status}` },
         { status: response.status }
       );
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json({ ok: true, data });
   } catch {
     return NextResponse.json(
       { ok: false, error: 'Invalid request format' },

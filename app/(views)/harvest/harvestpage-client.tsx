@@ -1956,40 +1956,40 @@ export default function HarvestPage() {
           >
             {tH('pageTitle')}
           </h1>
-          <div className="flex justify-start sm:justify-end gap-2 flex-wrap w-full" data-tour="action-buttons">
-            <AppTour steps={tourSteps} />
-            <button className="btn btn-outline btn-sm" onClick={() => setShowFilters(s => !s)} data-tour="filter-button">
+          <div className="flex justify-start sm:justify-end flex-wrap w-full join" data-tour="action-buttons">
+            <AppTour steps={tourSteps} btnClassName="join-item" />
+            <button className="btn btn-outline btn-sm join-item" onClick={() => setShowFilters(s => !s)} data-tour="filter-button">
               <Icon name="filter" className="h-4 w-4" />
-              {showFilters ? tH('hideFilters') : tH('showFilters')}
+              <span className="hidden sm:inline">{showFilters ? tH('hideFilters') : tH('showFilters')}</span>
             </button>
             <button
-              className={`btn btn-sm ${loading ? 'btn-disabled' : ''}`}
+              className={`btn btn-outline btn-sm join-item ${loading ? 'btn-disabled' : ''}`}
               onClick={() => queryClient.invalidateQueries({ queryKey: ['harvest'] })}
               disabled={loading}
             >
               {loading ? (
                 <>
                   <span className="loading loading-spinner loading-xs" />
-                  {tH('loading')}
+                  <span className="hidden sm:inline">{tH('loading')}</span>
                 </>
               ) : (
                 <>
                   <Icon name="refresh" className="h-4 w-4" />
-                  {tH('refresh')}
+                  <span className="hidden sm:inline">{tH('refresh')}</span>
                 </>
               )}
             </button>
             <button
-              className="btn btn-outline btn-sm"
+              className="btn btn-outline btn-sm join-item"
               onClick={handleExport}
               title={tH('exportTooltip')}
             >
               <Icon name="export" className="h-4 w-4" />
-              {tH('export')}
+              <span className="hidden sm:inline">{tH('export')}</span>
             </button>
             {canModify && (
               <button
-                className="btn btn-primary btn-sm"
+                className="btn btn-primary btn-sm join-item"
                 data-tour="add-button"
                 onClick={() => {
                   setIsEditing(false);
@@ -2018,7 +2018,8 @@ export default function HarvestPage() {
                   }, 0);
                 }}
               >
-                {tH('addHarvest')}
+                <Icon name="plus" className="h-4 w-4" />
+                <span className="hidden sm:inline">{tH('addHarvest')}</span>
               </button>
             )}
           </div>

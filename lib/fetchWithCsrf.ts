@@ -44,127 +44,103 @@ export async function fetchWithCsrf(
     headers.set('X-CSRF-Token', csrfToken);
   }
 
-  // Set credentials jika diperlukan
-  if (init?.includeCredentials || headers.has('Authorization')) {
-    headers.set('Credentials', 'include');
-  }
-
   return fetch(input, {
     ...init,
     headers,
-    credentials: init?.includeCredentials ? 'include' : 'same-origin',
+    credentials: 'include',
   });
 }
 
 /**
- * POST fetch dengan CSRF token
+ * Generic HTTP request with automatic CSRF token injection.
+ * Replaces the duplicated postWithCsrf / putWithCsrf / deleteWithCsrf wrappers.
  */
-export async function postWithCsrf(
+export async function requestWithCsrf(
+  method: string,
+  url: string,
+  body?: unknown,
+  additionalHeaders: Record<string, string> = {}
+): Promise<Response> {
+  const csrfToken = getCsrfToken();
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    ...additionalHeaders,
+  };
+
+  if (body !== undefined) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  if (csrfToken) {
+    headers['X-CSRF-Token'] = csrfToken;
+  }
+
+  return fetch(url, {
+    method,
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+    credentials: 'include',
+  });
+}
+
+/** @deprecated Use `requestWithCsrf('POST', ...)` instead. */
+export function postWithCsrf(
   url: string,
   body: unknown,
   additionalHeaders: Record<string, string> = {}
 ): Promise<Response> {
-  const csrfToken = getCsrfToken();
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
-    ...additionalHeaders,
-  };
-
-  if (csrfToken) {
-    headers['X-CSRF-Token'] = csrfToken;
-  }
-
-  return fetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-    credentials: 'include',
-  });
+  return requestWithCsrf('POST', url, body, additionalHeaders);
 }
 
-/**
- * PUT fetch dengan CSRF token
- */
-export async function putWithCsrf(
+/** @deprecated Use `requestWithCsrf('PUT', ...)` instead. */
+export function putWithCsrf(
   url: string,
   body: unknown,
   additionalHeaders: Record<string, string> = {}
 ): Promise<Response> {
-  const csrfToken = getCsrfToken();
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
-    ...additionalHeaders,
-  };
-
-  if (csrfToken) {
-    headers['X-CSRF-Token'] = csrfToken;
-  }
-
-  return fetch(url, {
-    method: 'PUT',
-    headers,
-    body: JSON.stringify(body),
-    credentials: 'include',
-  });
+  return requestWithCsrf('PUT', url, body, additionalHeaders);
 }
 
-/**
- * DELETE fetch dengan CSRF token
- */
-export async function deleteWithCsrf(
+/** @deprecated Use `requestWithCsrf('DELETE', ...)` instead. */
+export function deleteWithCsrf(
   url: string,
   additionalHeaders: Record<string, string> = {}
 ): Promise<Response> {
-  const csrfToken = getCsrfToken();
-  const headers: Record<string, string> = {
-    Accept: 'application/json',
-    ...additionalHeaders,
-  };
-
-  if (csrfToken) {
-    headers['X-CSRF-Token'] = csrfToken;
-  }
-
-  return fetch(url, {
-    method: 'DELETE',
-    headers,
-    credentials: 'include',
-  });
+  return requestWithCsrf('DELETE', url, undefined, additionalHeaders);
 }
 
 /**
- * Hook untuk menambahkan CSRF token ke semua fetch requests
- * Digunakan di useEffect untuk setup global fetch interception
+ * @deprecated Global fetch monkey-patching is dangerous:
+ * - Mutates global `window.fetch` with no cleanup
+ * - Breaks testability (patched fetch leaks across test cases)
+ * - Not a real React hook (violates Rules of Hooks)
+ *
+ * Use the explicit wrappers (`postWithCsrf`, `putWithCsrf`, etc.) instead.
+ * Scheduled for removal.
  */
 export function useCsrfFetchInterception(): void {
-  // Note: Ini hanya pekerjaan di client-side
-  if (typeof window !== 'undefined') {
-    // Simpan fetch asli
-    const originalFetch = window.fetch;
+  if (typeof window === 'undefined') return;
+  const originalFetch = window.fetch;
 
-    window.fetch = async function (
-      input: RequestInfo | URL,
-      init?: RequestInit
-    ): Promise<Response> {
-      // Hanya tambah CSRF untuk POST, PUT, DELETE
-      if (init?.method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(init.method.toUpperCase())) {
-        const headers = new Headers(init.headers);
-        const csrfToken = getCsrfToken();
+  window.fetch = async function (
+    input: RequestInfo | URL,
+    init?: RequestInit
+  ): Promise<Response> {
+    if (init?.method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(init.method.toUpperCase())) {
+      const headers = new Headers(init.headers);
+      const csrfToken = getCsrfToken();
 
-        if (csrfToken && !headers.has('X-CSRF-Token')) {
-          headers.set('X-CSRF-Token', csrfToken);
-        }
-
-        return originalFetch.call(window, input, {
-          ...init,
-          headers,
-          credentials: init.credentials || 'include',
-        });
+      if (csrfToken && !headers.has('X-CSRF-Token')) {
+        headers.set('X-CSRF-Token', csrfToken);
       }
 
-      return originalFetch.call(window, input, init);
-    };
-  }
+      return originalFetch.call(window, input, {
+        ...init,
+        headers,
+        credentials: init.credentials || 'include',
+      });
+    }
+
+    return originalFetch.call(window, input, init);
+  };
 }

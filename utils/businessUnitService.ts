@@ -1,3 +1,5 @@
+import { extractArray } from '@/lib/helpers';
+
 export interface BusinessUnit {
   fccode: string;
   fcname: string;
@@ -6,26 +8,6 @@ export interface BusinessUnit {
   central: string;
   // additional fields may exist; use unknown to avoid lint complaints
   [key: string]: unknown;
-}
-
-type ApiWrapper = {
-  ok?: boolean;
-  success?: boolean;
-  data?: unknown;
-};
-
-function extractArray<T>(payload: unknown): T[] {
-  if (Array.isArray(payload)) return payload as T[];
-  if (!payload || typeof payload !== 'object') return [];
-
-  const wrapped = payload as ApiWrapper;
-  if (Array.isArray(wrapped.data)) return wrapped.data as T[];
-  if (wrapped.data && typeof wrapped.data === 'object') {
-    const inner = wrapped.data as ApiWrapper;
-    if (Array.isArray(inner.data)) return inner.data as T[];
-  }
-
-  return [];
 }
 
 export interface FetchBusinessUnitParams {

@@ -20,6 +20,8 @@ interface AppTourProps {
   storageKey?: string;
   /** Called every time the active step changes (before highlight is applied) */
   onStepChange?: (stepIndex: number) => void;
+  /** Additional class for the trigger button */
+  btnClassName?: string;
 }
 
 const POSITION_CLASSES: Record<string, string> = {
@@ -29,7 +31,7 @@ const POSITION_CLASSES: Record<string, string> = {
   bottom: 'items-end justify-center pb-4 sm:pb-8',
 };
 
-export default function AppTour({ steps, storageKey, onStepChange }: AppTourProps) {
+export default function AppTour({ steps, storageKey, onStepChange, btnClassName = '' }: AppTourProps) {
   const t = useTranslations('Tour');
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
@@ -155,13 +157,13 @@ export default function AppTour({ steps, storageKey, onStepChange }: AppTourProp
     <>
       {/* Help Button — dibuat mencolok dengan warna warning + animasi */}
       <button
-        className="btn btn-warning btn-sm gap-1.5 shadow-sm hover:shadow-md transition-all duration-200"
+        className={`btn btn-warning btn-sm gap-1.5 shadow-sm hover:shadow-md transition-all duration-200 ${btnClassName}`}
         onClick={handleOpen}
         title={t('helpHint')}
         aria-label={t('help')}
       >
         <Icon name="help" className="h-4 w-4" />
-        <span>{t('help')}</span>
+        <span className="hidden sm:inline">{t('help')}</span>
       </button>
 
       {/* Tour Overlay — no backdrop dimming so highlighted elements stay fully visible */}

@@ -1,8 +1,4 @@
-type ApiWrapper = {
-  ok?: boolean;
-  success?: boolean;
-  data?: unknown;
-};
+import { extractArray } from '@/lib/helpers';
 
 export type SectionMaster = {
   fccode: string;
@@ -29,20 +25,6 @@ export type FetchGangsParams = {
   afdeling?: string;
   fcba?: string;
 };
-
-function extractArray<T>(payload: unknown): T[] {
-  if (Array.isArray(payload)) return payload as T[];
-  if (!payload || typeof payload !== 'object') return [];
-
-  const wrapped = payload as ApiWrapper;
-  if (Array.isArray(wrapped.data)) return wrapped.data as T[];
-  if (wrapped.data && typeof wrapped.data === 'object') {
-    const inner = wrapped.data as ApiWrapper;
-    if (Array.isArray(inner.data)) return inner.data as T[];
-  }
-
-  return [];
-}
 
 async function fetchMasterData<T>(path: string, params: Record<string, string | undefined>) {
   const url = new URL(path, window.location.origin);

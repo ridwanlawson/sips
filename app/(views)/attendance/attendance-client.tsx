@@ -2027,22 +2027,23 @@ export default function Attendance() {
           >
             {t('pageTitle')}
           </h1>
-          <div className="flex justify-start sm:justify-end gap-2 flex-wrap w-full" data-tour="action-buttons">
+          <div className="flex justify-start sm:justify-end flex-wrap w-full join" data-tour="action-buttons">
             <AppTour
               steps={tourSteps}
               storageKey="tour-attendance"
+              btnClassName="join-item"
             />
             <button
-              className="btn btn-outline btn-sm"
+              className="btn btn-outline btn-sm join-item"
               onClick={() => setShowFilters(s => !s)}
               title={t('filterToggleTooltip')}
               data-tour="filter-button"
             >
               <Icon name="filter" className="h-4 w-4" />
-              {showFilters ? t('hideFilters') : t('showFilters')}
+              <span className="hidden sm:inline">{showFilters ? t('hideFilters') : t('showFilters')}</span>
             </button>
             <button
-              className={`btn btn-sm ${loading ? 'btn-disabled' : ''}`}
+              className={`btn btn-outline btn-sm join-item ${loading ? 'btn-disabled' : ''}`}
               onClick={() => queryClient.invalidateQueries({ queryKey: ['attendance'] })}
               disabled={loading}
               title={t('refreshTooltip')}
@@ -2050,31 +2051,32 @@ export default function Attendance() {
               {loading ? (
                 <>
                   <span className="loading loading-spinner loading-xs" />
-                  {t('loading')}
+                  <span className="hidden sm:inline">{t('loading')}</span>
                 </>
               ) : (
                 <>
-                  <Icon name="refresh" className="h-4 w-4" />{' '}
-                  {t('refresh')}
+                  <Icon name="refresh" className="h-4 w-4" />
+                  <span className="hidden sm:inline">{t('refresh')}</span>
                 </>
               )}
             </button>
             <button
-              className="btn btn-outline btn-sm"
+              className="btn btn-outline btn-sm join-item"
               onClick={handleExport}
               title={t('exportTooltip')}
             >
               <Icon name="export" className="h-4 w-4" />
-              {t('export')}
+              <span className="hidden sm:inline">{t('export')}</span>
             </button>
             {canAddOrEdit && (
               <button
-                className="btn btn-primary btn-sm"
+                className="btn btn-primary btn-sm join-item"
                 onClick={onAddClick}
                 title={t('addAttendanceTooltip')}
                 data-tour="add-button"
               >
-                {t('addAttendance')}
+                <Icon name="plus" className="h-4 w-4" />
+                <span className="hidden sm:inline">{t('addAttendance')}</span>
               </button>
             )}
           </div>

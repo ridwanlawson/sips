@@ -1080,24 +1080,26 @@ export default function Approval() {
             {tL('pageTitleApproval')}
           </h1>
           <div
-            className="flex justify-start sm:justify-end gap-2 flex-wrap w-full"
+            className="flex justify-start sm:justify-end flex-wrap w-full join"
             data-tour="action-buttons"
           >
             <AppTour
               steps={tourSteps}
               storageKey="tour-approval-lhm"
               onStepChange={handleTourStepChange}
+              btnClassName="join-item"
             />
             <button
-              className="btn btn-outline btn-sm"
+              className="btn btn-outline btn-sm join-item"
               onClick={() => setShowFilters(s => !s)}
               title={tL('filterToggleTooltip')}
               data-tour="filter-button"
             >
-              {showFilters ? tL('hideFilters') : tL('showFilters')}
+              <Icon name="filter" className="h-4 w-4" />
+              <span className="hidden sm:inline">{showFilters ? tL('hideFilters') : tL('showFilters')}</span>
             </button>
             <button
-              className={`btn btn-sm ${loading ? 'btn-disabled' : ''}`}
+              className={`btn btn-outline btn-sm join-item ${loading ? 'btn-disabled' : ''}`}
               onClick={() => fetchData(appliedFilters ?? getScopedFilters(filters))}
               disabled={loading}
               title={tL('refreshTooltip')}
@@ -1105,25 +1107,25 @@ export default function Approval() {
               {loading ? (
                 <>
                   <span className="loading loading-spinner loading-xs" />
-                  {tL('loading')}
+                  <span className="hidden sm:inline">{tL('loading')}</span>
                 </>
               ) : (
                 <>
                   <Icon name="refresh" className="h-4 w-4" />
-                  {tL('refresh')}
+                  <span className="hidden sm:inline">{tL('refresh')}</span>
                 </>
               )}
             </button>
             <button
-              className="btn btn-outline btn-sm"
+              className="btn btn-outline btn-sm join-item"
               onClick={handleExport}
               title={tL('exportTooltip')}
             >
               <Icon name="export" className="h-4 w-4" />
-              {tL('export')}
+              <span className="hidden sm:inline">{tL('export')}</span>
             </button>
             <button
-              className={`btn btn-primary btn-sm ${submitting ? 'btn-disabled' : ''}`}
+              className={`btn btn-primary btn-sm join-item ${submitting ? 'btn-disabled' : ''}`}
               onClick={handleApprove}
               disabled={selectedRows.length === 0 || submitting}
               title="Approve data LHM yang dipilih"
@@ -1132,10 +1134,13 @@ export default function Approval() {
               {submitting ? (
                 <>
                   <span className="loading loading-spinner loading-xs" />
-                  Approving...
+                  <span className="hidden sm:inline">Approving...</span>
                 </>
               ) : (
-                `✅ Approve (${selectedRows.length})`
+                <>
+                  <Icon name="check" className="h-4 w-4" />
+                  <span className="hidden sm:inline">{`Approve (${selectedRows.length})`}</span>
+                </>
               )}
             </button>
           </div>

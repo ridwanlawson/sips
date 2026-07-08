@@ -992,24 +992,26 @@ export default function Open() {
             {t('pageTitleOpen')}
           </h1>
           <div
-            className="flex justify-start sm:justify-end gap-2 flex-wrap w-full"
+            className="flex justify-start sm:justify-end flex-wrap w-full join"
             data-tour="action-buttons"
           >
             <AppTour
               steps={tourSteps}
               storageKey="tour-open-lhm"
               onStepChange={handleTourStepChange}
+              btnClassName="join-item"
             />
             <button
-              className="btn btn-outline btn-sm"
+              className="btn btn-outline btn-sm join-item"
               onClick={() => setShowFilters(s => !s)}
               title={t('filterToggleTooltip')}
               data-tour="filter-button"
             >
-              {showFilters ? t('hideFilters') : t('showFilters')}
+              <Icon name="filter" className="h-4 w-4" />
+              <span className="hidden sm:inline">{showFilters ? t('hideFilters') : t('showFilters')}</span>
             </button>
             <button
-              className={`btn btn-sm ${loading ? 'btn-disabled' : ''}`}
+              className={`btn btn-outline btn-sm join-item ${loading ? 'btn-disabled' : ''}`}
               onClick={() => fetchData(appliedFilters ?? getScopedFilters(filters))}
               disabled={loading}
               title={t('refreshTooltip')}
@@ -1017,25 +1019,25 @@ export default function Open() {
               {loading ? (
                 <>
                   <span className="loading loading-spinner loading-xs" />
-                  {t('loading')}
+                  <span className="hidden sm:inline">{t('loading')}</span>
                 </>
               ) : (
                 <>
                   <Icon name="refresh" className="h-4 w-4" />
-                  {t('refresh')}
+                  <span className="hidden sm:inline">{t('refresh')}</span>
                 </>
               )}
             </button>
             <button
-              className="btn btn-outline btn-sm"
+              className="btn btn-outline btn-sm join-item"
               onClick={handleExport}
               title={t('exportTooltip')}
             >
               <Icon name="export" className="h-4 w-4" />
-              {t('export')}
+              <span className="hidden sm:inline">{t('export')}</span>
             </button>
             <button
-              className={`btn btn-primary btn-sm ${submitting ? 'btn-disabled' : ''}`}
+              className={`btn btn-primary btn-sm join-item ${submitting ? 'btn-disabled' : ''}`}
               onClick={handleOpen}
               disabled={selectedRows.length === 0 || submitting}
               title="Open data LHM yang dipilih"
@@ -1044,10 +1046,13 @@ export default function Open() {
               {submitting ? (
                 <>
                   <span className="loading loading-spinner loading-xs" />
-                  Opening...
+                  <span className="hidden sm:inline">Opening...</span>
                 </>
               ) : (
-                `🔓 Open (${selectedRows.length})`
+                <>
+                  <Icon name="eye-view" className="h-4 w-4" />
+                  <span className="hidden sm:inline">{`Open (${selectedRows.length})`}</span>
+                </>
               )}
             </button>
           </div>

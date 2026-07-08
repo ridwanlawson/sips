@@ -1721,50 +1721,53 @@ export default function PengangkutanPage() {
           >
             {t('pageTitle')}
           </h1>
-          <div className="flex justify-start sm:justify-end gap-2 flex-wrap w-full" data-tour="action-buttons">
-            <AppTour steps={tourSteps} />
+          <div className="flex justify-start sm:justify-end flex-wrap w-full join" data-tour="action-buttons">
+            <AppTour steps={tourSteps} btnClassName="join-item" />
             <button
-              className="btn btn-outline btn-sm"
+              className="btn btn-outline btn-sm join-item"
               onClick={() => setShowFilters(s => !s)}
               title={t('filterToggleTooltip')}
               data-tour="filter-button"
             >
               <Icon name="filter" className="h-4 w-4" />
-              {showFilters ? t('hideFilters') : t('showFilters')}
+              <span className="hidden sm:inline">{showFilters ? t('hideFilters') : t('showFilters')}</span>
             </button>
             <button
-              className={`btn btn-sm ${loading ? 'btn-disabled' : ''}`}
+              className={`btn btn-outline btn-sm join-item ${loading ? 'btn-disabled' : ''}`}
               onClick={() => queryClient.invalidateQueries({ queryKey: ['pengangkutan'] })}
               title={t('refreshTooltip')}
               disabled={loading}
             >
-              <Icon name="refresh" className="h-4 w-4" />
               {loading ? (
                 <>
                   <span className="loading loading-spinner loading-xs" />
-                  {t('loading')}
+                  <span className="hidden sm:inline">{t('loading')}</span>
                 </>
               ) : (
-                t('refresh')
+                <>
+                  <Icon name="refresh" className="h-4 w-4" />
+                  <span className="hidden sm:inline">{t('refresh')}</span>
+                </>
               )}
             </button>
             <button
-              className="btn btn-sm btn-outline"
+              className="btn btn-sm btn-outline join-item"
               onClick={handleExport}
               title={t('exportTooltip')}
               disabled={items.length === 0}
             >
               <Icon name="export" className="h-4 w-4" />
-              {t('export')}
+              <span className="hidden sm:inline">{t('export')}</span>
             </button>
             {canModify && (
               <button
-                className="btn btn-primary btn-sm"
+                className="btn btn-primary btn-sm join-item"
                 onClick={openNewRecord}
                 title={t('addTransportTooltip')}
                 data-tour="add-button"
               >
-                {t('addTransport')}
+                <Icon name="plus" className="h-4 w-4" />
+                <span className="hidden sm:inline">{t('addTransport')}</span>
               </button>
             )}
           </div>
