@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import DataTable from '@/app/components/dynamic-data-table';
 import type { TableColumn } from 'react-data-table-component';
+import { useQuery } from '@tanstack/react-query';
 import { logoutAndRedirect } from '@/utils/authHelper';
 import { getProxiedImageUrl, PLACEHOLDER_IMAGE } from '@/utils/imageHelper';
 import { extractArrayData } from '@/utils/apiHelpers';
@@ -103,9 +104,6 @@ export default function AttendanceApproval() {
   const [homeSection, setHomeSection] = useState<string>('');
   const [scopeReady, setScopeReady] = useState(false);
 
-  // map kode mandor -> "kode - nama"
-  const [mandorLabelMap, setMandorLabelMap] = useState<Record<string, string>>({});
-
   /* ===== Bootstrap dari cookies (FCBA, Section, Level user) ===== */
   useEffect(() => {
     setHomeFcba(cookieStore.getFcba());
@@ -119,28 +117,37 @@ export default function AttendanceApproval() {
     setScopeReady(true);
   }, []);
 
-  /* ===== Fetch employee data for Mandor mapping ===== */
-  useEffect(() => {
-    (async () => {
-      try {
-        const r = await fetch('/api/karyawans', { credentials: 'include' });
-        const j: unknown = await r.json();
-        const rows = extractArrayData<EmployeesApiRow>(j);
+  /**
+   * ⚡ Bolt Optimization: Use React Query for employee data to benefit from
+   * cross-page caching and background updates.
+   */
+  const { data: employeeRows = [] } = useQuery({
+    queryKey: ['employees'],
+    queryFn: async () => {
+      const r = await fetch('/api/karyawans', { credentials: 'include' });
+      if (!r.ok) return [];
+      const j: unknown = await r.json();
+      return extractArrayData<EmployeesApiRow>(j);
+    },
+    staleTime: 15 * 60 * 1000, // 15 minutes
+    gcTime: 30 * 60 * 1000,
+  });
 
-        const map: Record<string, string> = {};
-        for (const it of rows) {
-          const code = String(it.fccode ?? '').trim();
-          if (!code) continue;
-          const name = typeof it.fcname === 'string' ? it.fcname.trim() : '';
-          const label = name ? `${code} - ${name}` : code;
-          if (!map[code]) map[code] = label;
-        }
-        setMandorLabelMap(map);
-      } catch (e) {
-        console.warn('Gagal fetch /api/karyawans untuk Mandor:', e);
-      }
-    })();
-  }, []);
+  /**
+   * ⚡ Bolt Optimization: Derive mandorLabelMap using useMemo from cached query results.
+   * This ensures O(N) conversion only happens when data actually changes.
+   */
+  const mandorLabelMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const it of employeeRows) {
+      const code = String(it.fccode ?? '').trim();
+      if (!code) continue;
+      const name = typeof it.fcname === 'string' ? it.fcname.trim() : '';
+      const label = name ? `${code} - ${name}` : code;
+      if (!map[code]) map[code] = label;
+    }
+    return map;
+  }, [employeeRows]);
 
   /* ===== Load list pending approval ===== */
   const fetchList = useCallback(async () => {
