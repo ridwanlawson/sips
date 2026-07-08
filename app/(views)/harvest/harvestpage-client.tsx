@@ -1413,11 +1413,6 @@ export default function HarvestPage() {
 
     // Validasi file upload
     if (!isEditing) {
-      // Add: file wajib diisi
-      if (!(form.images instanceof File)) {
-        toast.error(tH('toastPhotoRequired'));
-        return;
-      }
       if (!(form.no_ba_exca instanceof File)) {
         toast.error(tH('toastPdfUploadRequired'));
         return;
