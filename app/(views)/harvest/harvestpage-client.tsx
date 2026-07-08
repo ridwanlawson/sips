@@ -18,6 +18,8 @@ import { formatPerfNumber } from '@/utils/perf-formatter';
 import { useLocale } from '@/hooks/useLocale';
 import { SearchSelect, type Option } from '@/app/components/search-select';
 import { EmptyState } from '@/app/components/empty-state';
+import AppTour from '@/app/components/app-tour';
+import type { TourStep } from '@/app/components/app-tour';
 
 /* =========================
    T Y P E S
@@ -334,6 +336,47 @@ export default function HarvestPage() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchInputRef = useSearchShortcut();
   const [showFilters, setShowFilters] = useState(false);
+
+  const tourSteps: TourStep[] = useMemo(() => [
+    {
+      icon: '👋',
+      title: tH('tourWelcomeTitle'),
+      content: tH('tourWelcomeDesc'),
+    },
+    {
+      icon: '🔍',
+      title: tH('tourActionsTitle'),
+      content: tH('tourActionsDesc'),
+      targetSelector: '[data-tour="action-buttons"]',
+    },
+    {
+      icon: '🔎',
+      title: tH('tourSearchTitle'),
+      content: tH('tourSearchDesc'),
+      targetSelector: '[data-tour="quick-search"]',
+    },
+    {
+      icon: '📋',
+      title: tH('tourFilterTitle'),
+      content: tH('tourFilterDesc'),
+      targetSelector: '[data-tour="filter-button"]',
+      modalPosition: 'bottom',
+    },
+    {
+      icon: '📄',
+      title: tH('tourTableTitle'),
+      content: tH('tourTableDesc'),
+      targetSelector: '[data-tour="data-table"]',
+      modalPosition: 'top',
+    },
+    {
+      icon: '➕',
+      title: tH('tourFormTitle'),
+      content: tH('tourFormDesc'),
+      targetSelector: '[data-tour="add-button"]',
+      modalPosition: 'top-left',
+    },
+  ], [tH]);
 
   const [filters, setFilters] = useState<Filters>(() => {
     const yesterday = getYesterdayISO();
@@ -1925,8 +1968,9 @@ export default function HarvestPage() {
           >
             {tH('pageTitle')}
           </h1>
-          <div className="flex justify-start sm:justify-end gap-2 flex-wrap w-full">
-            <button className="btn btn-outline btn-sm" onClick={() => setShowFilters(s => !s)}>
+          <div className="flex justify-start sm:justify-end gap-2 flex-wrap w-full" data-tour="action-buttons">
+            <AppTour steps={tourSteps} />
+            <button className="btn btn-outline btn-sm" onClick={() => setShowFilters(s => !s)} data-tour="filter-button">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-4 w-4"
@@ -1997,6 +2041,7 @@ export default function HarvestPage() {
             {canModify && (
               <button
                 className="btn btn-primary btn-sm"
+                data-tour="add-button"
                 onClick={() => {
                   setIsEditing(false);
                   // Initialize form with today's date and user cookies
@@ -2047,7 +2092,7 @@ export default function HarvestPage() {
           </div>
 
           {/* SEARCH (dorong ke kanan) */}
-          <div className="ml-auto w-full md:w-96 group relative">
+          <div className="ml-auto w-full md:w-96 group relative" data-tour="quick-search">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -2217,7 +2262,7 @@ export default function HarvestPage() {
         )}
 
         {/* Table */}
-        <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100 animate-slideUp [animation-delay:200ms]">
+        <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100 animate-slideUp [animation-delay:200ms]" data-tour="data-table">
           <div className="min-w-[900px] md:min-w-0">
             {loading ? (
               <div className="p-8">

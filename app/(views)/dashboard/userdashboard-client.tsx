@@ -269,6 +269,7 @@ export default function UserDashboard() {
   const localeTag = useLocale();
   const t = useTranslations('Dashboard');
   const queryClient = useQueryClient();
+
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userLevel, setUserLevel] = useState<UserLevel>('OTHER');
 
@@ -1183,7 +1184,7 @@ export default function UserDashboard() {
         )}
 
         {/* FILTER BAR */}
-        <div className="card bg-base-100 shadow-sm border border-base-300 animate-slideUp">
+        <div data-tour="filter-section" className="card bg-base-100 shadow-sm border border-base-300 animate-slideUp">
           <div className="card-body py-3">
             <div className="flex items-center justify-between gap-2">
               <h2 className="card-title text-sm md:text-base">

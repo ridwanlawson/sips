@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DataTable from '@/app/components/dynamic-data-table';
 import type { TableColumn } from 'react-data-table-component';
 import toast from 'react-hot-toast';
@@ -13,6 +13,8 @@ import { exportJsonToCsv } from '@/utils/exportCsv';
 import { formatPerfNumber, formatPerfDate } from '@/utils/perf-formatter';
 import { useLocale } from '@/hooks/useLocale';
 import { EmptyState } from '@/app/components/empty-state';
+import AppTour from '@/app/components/app-tour';
+import type { TourStep } from '@/app/components/app-tour';
 
 /* =========================
    T Y P E h
@@ -159,6 +161,26 @@ export default function Lhm() {
   const tL = useTranslations('Lhm');
   const [q, setQ] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const handleTourStepChange = useCallback((stepIndex: number) => {
+    if (stepIndex === 4) {
+      setShowFilters(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+      if (e.key === '/') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const [filters, setFilters] = useState<Filters>(() => {
     const yesterday = getYesterdayISO();
@@ -895,6 +917,52 @@ export default function Lhm() {
     [numCell, formatNumber, tL]
   );
 
+  const tourSteps: TourStep[] = useMemo(
+    () => [
+      {
+        icon: '👋',
+        title: tL('tourWelcomeTitle'),
+        content: tL('tourWelcomeDesc'),
+      },
+      {
+        icon: '🔍',
+        title: tL('tourActionsTitle'),
+        content: tL('tourActionsDesc'),
+        targetSelector: '[data-tour="action-buttons"]',
+        modalPosition: 'top',
+      },
+      {
+        icon: '🔎',
+        title: tL('tourSearchTitle'),
+        content: tL('tourSearchDesc'),
+        targetSelector: '[data-tour="quick-search"]',
+        modalPosition: 'top-left',
+      },
+      {
+        icon: '📊',
+        title: tL('tourTotalsTitle'),
+        content: tL('tourTotalsDesc'),
+        targetSelector: '[data-tour="total-cards"]',
+        modalPosition: 'top-left',
+      },
+      {
+        icon: '📋',
+        title: tL('tourFilterTitle'),
+        content: tL('tourFilterDesc'),
+        targetSelector: '[data-tour="filter-button"]',
+        modalPosition: 'bottom',
+      },
+      {
+        icon: '📄',
+        title: tL('tourTableTitle'),
+        content: tL('tourTableDesc'),
+        targetSelector: '[data-tour="data-table"]',
+        modalPosition: 'top',
+      },
+    ],
+    [tL]
+  );
+
   return (
     <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
       <div className="p-4 sm:p-6 max-w-screen-2xl mx-auto w-full overflow-x-hidden">
@@ -906,11 +974,20 @@ export default function Lhm() {
           >
             {tL('pageTitle')}
           </h1>
-          <div className="flex justify-start sm:justify-end gap-2 flex-wrap w-full">
+          <div
+            className="flex justify-start sm:justify-end gap-2 flex-wrap w-full"
+            data-tour="action-buttons"
+          >
+            <AppTour
+              steps={tourSteps}
+              storageKey="tour-lhm"
+              onStepChange={handleTourStepChange}
+            />
             <button
               className="btn btn-outline btn-sm"
               onClick={() => setShowFilters(s => !s)}
               title={tL('filterToggleTooltip')}
+              data-tour="filter-button"
             >
               {showFilters ? tL('hideFilters') : tL('showFilters')}
             </button>
@@ -946,7 +1023,7 @@ export default function Lhm() {
         {/* Quick Search + Total Cards */}
         <div className="mb-3 flex flex-col sm:flex-row items-start sm:items-center gap-2 animate-slideUp [animation-delay:100ms]">
           {/* Total Cards */}
-          <div className="flex gap-2 overflow-x-auto flex-1 min-w-0">
+          <div className="flex gap-2 overflow-x-auto flex-1 min-w-0" data-tour="total-cards">
             {totalCards.map(card => (
               <div
                 key={card.label}
@@ -959,7 +1036,7 @@ export default function Lhm() {
               </div>
             ))}
           </div>
-          <div className="relative w-full sm:w-72 md:w-80 group shrink-0">
+          <div className="relative w-full sm:w-72 md:w-80 group shrink-0" data-tour="quick-search">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -977,13 +1054,21 @@ export default function Lhm() {
               </svg>
             </div>
             <input
+              ref={searchInputRef}
               className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
               placeholder={tL('searchPlaceholder')}
               value={q}
               onChange={e => setQ(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
               aria-label={tL('quickSearch')}
               title={tL('quickSearch')}
             />
+            {!isSearchFocused && !q && (
+              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                <kbd className="kbd kbd-sm bg-base-200/50 opacity-50">/</kbd>
+              </div>
+            )}
             {q && (
               <button
                 onClick={() => setQ('')}
@@ -1012,23 +1097,27 @@ export default function Lhm() {
 
         {/* Filter Bar */}
         {showFilters && (
-          <div className="bg-base-100 p-4 rounded-xl shadow-sm mb-4 border border-base-200">
+          <div
+            className="bg-base-100 p-4 rounded-xl shadow-sm mb-4 border border-base-200"
+          >
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
               <input
                 type="date"
                 className="input input-bordered w-full"
-                placeholder="Tanggal Awal"
+                placeholder={tL('filterDateStart')}
                 value={filters.fddate ?? ''}
                 onChange={e => setFilters(s => ({ ...s, fddate: e.target.value }))}
-                title="Filter tanggal awal panen"
+                title={tL('filterDateStartTooltip')}
+                required
               />
               <input
                 type="date"
                 className="input input-bordered w-full"
-                placeholder="Tanggal Akhir"
+                placeholder={tL('filterDateEnd')}
                 value={filters.fddate_end ?? ''}
                 onChange={e => setFilters(s => ({ ...s, fddate_end: e.target.value }))}
-                title="Filter tanggal akhir panen"
+                title={tL('filterDateEndTooltip')}
+                required
               />
               <input
                 className="input input-bordered w-full"
@@ -1093,7 +1182,13 @@ export default function Lhm() {
             <div className="flex justify-start gap-2 pt-3 border-t border-base-200">
               <button
                 className={`btn btn-outline ${loading ? 'btn-disabled' : ''}`}
-                onClick={() => setAppliedFilters(getScopedFilters(filters))}
+                onClick={() => {
+                  if (!filters.fddate && !filters.fddate_end) {
+                    toast.error(tL('toastFilterDateRequired'));
+                    return;
+                  }
+                  setAppliedFilters(getScopedFilters(filters));
+                }}
                 disabled={loading}
                 title={tL('filterApplyTooltip')}
               >
@@ -1146,7 +1241,7 @@ export default function Lhm() {
         {/* Error visual dihilangkan, cukup toast saja yang muncul */}
 
         {/* DataTable */}
-        <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100 animate-slideUp [animation-delay:200ms]">
+        <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100 animate-slideUp [animation-delay:200ms]" data-tour="data-table">
           <div className="min-w-[900px] md:min-w-0">
             {loading ? (
               <div className="p-8">

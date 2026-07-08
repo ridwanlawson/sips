@@ -19,6 +19,8 @@ import { EmptyState } from '@/app/components/empty-state';
 import toast from 'react-hot-toast';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { SkeletonTable } from '@/app/components/skeletons';
+import AppTour from '@/app/components/app-tour';
+import type { TourStep } from '@/app/components/app-tour';
 
 /* =========================
    T Y P E S
@@ -248,6 +250,47 @@ const applyClientUserScope = (params: URLSearchParams) => {
 export default function PengangkutanPage() {
   const localeTag = useLocale();
   const t = useTranslations('Transport');
+
+  const tourSteps: TourStep[] = useMemo(() => [
+    {
+      icon: '👋',
+      title: t('tourWelcomeTitle'),
+      content: t('tourWelcomeDesc'),
+    },
+    {
+      icon: '🔍',
+      title: t('tourActionsTitle'),
+      content: t('tourActionsDesc'),
+      targetSelector: '[data-tour="action-buttons"]',
+    },
+    {
+      icon: '🔎',
+      title: t('tourSearchTitle'),
+      content: t('tourSearchDesc'),
+      targetSelector: '[data-tour="quick-search"]',
+    },
+    {
+      icon: '📋',
+      title: t('tourFilterTitle'),
+      content: t('tourFilterDesc'),
+      targetSelector: '[data-tour="filter-button"]',
+      modalPosition: 'bottom',
+    },
+    {
+      icon: '📄',
+      title: t('tourTableTitle'),
+      content: t('tourTableDesc'),
+      targetSelector: '[data-tour="data-table"]',
+      modalPosition: 'top',
+    },
+    {
+      icon: '➕',
+      title: t('tourFormTitle'),
+      content: t('tourFormDesc'),
+      targetSelector: '[data-tour="add-button"]',
+      modalPosition: 'top-left',
+    },
+  ], [t]);
 
   const [filters, setFilters] = useState<Filters>(() => {
     const yesterday = getYesterdayISO();
@@ -1690,11 +1733,13 @@ export default function PengangkutanPage() {
           >
             {t('pageTitle')}
           </h1>
-          <div className="flex justify-start sm:justify-end gap-2 flex-wrap w-full">
+          <div className="flex justify-start sm:justify-end gap-2 flex-wrap w-full" data-tour="action-buttons">
+            <AppTour steps={tourSteps} />
             <button
               className="btn btn-outline btn-sm"
               onClick={() => setShowFilters(s => !s)}
               title={t('filterToggleTooltip')}
+              data-tour="filter-button"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -1768,6 +1813,7 @@ export default function PengangkutanPage() {
                 className="btn btn-primary btn-sm"
                 onClick={openNewRecord}
                 title={t('addTransportTooltip')}
+                data-tour="add-button"
               >
                 {t('addTransport')}
               </button>
@@ -1792,7 +1838,7 @@ export default function PengangkutanPage() {
           </div>
 
           {/* SEARCH (dorong ke kanan) */}
-          <div className="ml-auto w-full md:w-96 group relative">
+          <div className="ml-auto w-full md:w-96 group relative" data-tour="quick-search">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -2020,7 +2066,7 @@ export default function PengangkutanPage() {
           </div>
         )}
 
-        <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100 animate-slideUp [animation-delay:200ms]">
+        <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100 animate-slideUp [animation-delay:200ms]" data-tour="data-table">
           <div className="min-w-[900px] md:min-w-0">
             {loading ? (
               <div className="p-8">

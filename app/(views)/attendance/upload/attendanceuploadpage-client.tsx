@@ -590,7 +590,7 @@ export default function AttendanceUploadPage() {
                   name="tanggal"
                   value={formParams.tanggal}
                   onChange={handleParamChange}
-                  className="input input-bordered w-full input-sm"
+                  className="input input-bordered w-full"
                 />
               </div>
 
@@ -603,7 +603,7 @@ export default function AttendanceUploadPage() {
                   name="tanggal_end"
                   value={formParams.tanggal_end}
                   onChange={handleParamChange}
-                  className="input input-bordered w-full input-sm"
+                  className="input input-bordered w-full"
                 />
               </div>
 
@@ -620,7 +620,7 @@ export default function AttendanceUploadPage() {
                   placeholder="e.g., MTE"
                   value={formParams.fcba}
                   onChange={handleParamChange}
-                  className="input input-bordered w-full input-sm"
+                  className="input input-bordered w-full"
                 />
               </div>
 
@@ -637,7 +637,7 @@ export default function AttendanceUploadPage() {
                   placeholder="e.g., AFD-01"
                   value={formParams.afdeling}
                   onChange={handleParamChange}
-                  className="input input-bordered w-full input-sm"
+                  className="input input-bordered w-full"
                 />
               </div>
 
@@ -651,7 +651,7 @@ export default function AttendanceUploadPage() {
                   placeholder="e.g., PN013"
                   value={formParams.gangcode}
                   onChange={handleParamChange}
-                  className="input input-bordered w-full input-sm"
+                  className="input input-bordered w-full"
                 />
               </div>
 

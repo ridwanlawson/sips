@@ -19,6 +19,8 @@ import { EmptyState } from '@/app/components/empty-state';
 import { useSearchShortcut } from '@/hooks/useSearchShortcut';
 import { useLocale } from '@/hooks/useLocale';
 import { formatPerfDate } from '@/utils/perf-formatter';
+import AppTour from '@/app/components/app-tour';
+import type { TourStep } from '@/app/components/app-tour';
 
 /* =========================
    T Y P E S
@@ -301,6 +303,47 @@ export default function Attendance() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchInputRef = useSearchShortcut();
   const [showFilters, setShowFilters] = useState(false);
+
+  const tourSteps: TourStep[] = useMemo(() => [
+    {
+      icon: '👋',
+      title: t('tourWelcomeTitle'),
+      content: t('tourWelcomeDesc'),
+    },
+    {
+      icon: '🔍',
+      title: t('tourActionsTitle'),
+      content: t('tourActionsDesc'),
+      targetSelector: '[data-tour="action-buttons"]',
+    },
+    {
+      icon: '🔎',
+      title: t('tourSearchTitle'),
+      content: t('tourSearchDesc'),
+      targetSelector: '[data-tour="quick-search"]',
+    },
+    {
+      icon: '📋',
+      title: t('tourFilterTitle'),
+      content: t('tourFilterDesc'),
+      targetSelector: '[data-tour="filter-button"]',
+      modalPosition: 'bottom',
+    },
+    {
+      icon: '📄',
+      title: t('tourTableTitle'),
+      content: t('tourTableDesc'),
+      targetSelector: '[data-tour="data-table"]',
+      modalPosition: 'top',
+    },
+    {
+      icon: '➕',
+      title: t('tourFormTitle'),
+      content: t('tourFormDesc'),
+      targetSelector: '[data-tour="add-button"]',
+      modalPosition: 'top-left',
+    },
+  ], [t]);
 
   const [filters, setFilters] = useState<Filters>(() => {
     const yesterday = getYesterdayISO();
@@ -1996,11 +2039,16 @@ export default function Attendance() {
           >
             {t('pageTitle')}
           </h1>
-          <div className="flex justify-start sm:justify-end gap-2 flex-wrap w-full">
+          <div className="flex justify-start sm:justify-end gap-2 flex-wrap w-full" data-tour="action-buttons">
+            <AppTour
+              steps={tourSteps}
+              storageKey="tour-attendance"
+            />
             <button
               className="btn btn-outline btn-sm"
               onClick={() => setShowFilters(s => !s)}
               title={t('filterToggleTooltip')}
+              data-tour="filter-button"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -2075,6 +2123,7 @@ export default function Attendance() {
                 className="btn btn-primary btn-sm"
                 onClick={onAddClick}
                 title={t('addAttendanceTooltip')}
+                data-tour="add-button"
               >
                 {t('addAttendance')}
               </button>
@@ -2084,7 +2133,7 @@ export default function Attendance() {
 
         {/* Quick Search */}
         <div className="mb-3 flex justify-end animate-slideUp [animation-delay:100ms]">
-          <div className="relative w-full md:w-96 group">
+          <div className="relative w-full md:w-96 group" data-tour="quick-search">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -2333,7 +2382,7 @@ export default function Attendance() {
         )}
 
         {/* DataTable */}
-        <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100 animate-slideUp [animation-delay:200ms]">
+        <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100 animate-slideUp [animation-delay:200ms]" data-tour="data-table">
           <div className="min-w-[900px] md:min-w-0">
             {loading ? (
               <div className="p-8">

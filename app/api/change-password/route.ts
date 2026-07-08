@@ -10,10 +10,7 @@ const changePasswordSchema = z.object({
   new_password: z
     .string()
     .min(8, 'Password minimal 8 karakter')
-    .max(200, 'Password maksimal 200 karakter')
-    .regex(/[A-Z]/, 'Password harus mengandung huruf besar')
-    .regex(/[0-9]/, 'Password harus mengandung angka')
-    .regex(/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/, 'Password harus mengandung simbol'),
+    .max(200, 'Password maksimal 200 karakter'),
 });
 
 export async function POST(request: Request) {

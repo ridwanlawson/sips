@@ -19,6 +19,8 @@ import { fetchGangs, fetchSections } from '@/utils/masterDataService';
 import type { BusinessUnit } from '@/utils/businessUnitService';
 import { cookieStore } from '@/utils/cookieStore';
 import { exportJsonToCsv } from '@/utils/exportCsv';
+import AppTour from '@/app/components/app-tour';
+import type { TourStep } from '@/app/components/app-tour';
 
 const getBusinessUnitLookups = (businessUnits: BusinessUnit[] | undefined) => {
   const codeMap = new Map<string, BusinessUnit>();
@@ -130,6 +132,46 @@ type Filters = Partial<{
 
 export default function UsersClient() {
   const t = useTranslations('Users');
+  const tourSteps: TourStep[] = useMemo(() => [
+    {
+      icon: '👋',
+      title: t('tourWelcomeTitle'),
+      content: t('tourWelcomeDesc'),
+    },
+    {
+      icon: '🔍',
+      title: t('tourActionsTitle'),
+      content: t('tourActionsDesc'),
+      targetSelector: '[data-tour="action-buttons"]',
+    },
+    {
+      icon: '🔎',
+      title: t('tourSearchTitle'),
+      content: t('tourSearchDesc'),
+      targetSelector: '[data-tour="quick-search"]',
+    },
+    {
+      icon: '📋',
+      title: t('tourFilterTitle'),
+      content: t('tourFilterDesc'),
+      targetSelector: '[data-tour="filter-button"]',
+      modalPosition: 'bottom',
+    },
+    {
+      icon: '📄',
+      title: t('tourTableTitle'),
+      content: t('tourTableDesc'),
+      targetSelector: '[data-tour="data-table"]',
+      modalPosition: 'top',
+    },
+    {
+      icon: '➕',
+      title: t('tourFormTitle'),
+      content: t('tourFormDesc'),
+      targetSelector: '[data-tour="add-button"]',
+      modalPosition: 'top-left',
+    },
+  ], [t]);
   const queryClient = useQueryClient();
   const searchInputRef = useSearchShortcut();
   const [q, setQ] = useState('');
@@ -744,8 +786,9 @@ export default function UsersClient() {
         {/* ── Header ── */}
         <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start">
           <h1 className="text-2xl sm:text-3xl font-bold min-w-0 truncate">{t('userManagement')}</h1>
-          <div className="flex justify-start sm:justify-end gap-2 flex-wrap w-full">
-            <button className="btn btn-outline btn-sm" onClick={() => setShowFilters(s => !s)}>
+          <div className="flex justify-start sm:justify-end gap-2 flex-wrap w-full" data-tour="action-buttons">
+            <AppTour steps={tourSteps} storageKey="tour-users" onStepChange={stepIndex => { if (stepIndex === 3) { setShowFilters(true); } }} />
+            <button className="btn btn-outline btn-sm" data-tour="filter-button" onClick={() => setShowFilters(s => !s)}>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-4 w-4"
@@ -807,8 +850,10 @@ export default function UsersClient() {
             </button>
             <button
               className="btn btn-primary btn-sm"
+              data-tour="add-button"
               onClick={() => {
                 const defaultFcba = isFcbaRestricted ? userFcba : '';
+                setForm({ ...initialForm, fcba: defaultFcba });
                 setForm({ ...initialForm, fcba: defaultFcba });
                 setSelFcba(defaultFcba);
                 setSelAfdeling('');
@@ -863,7 +908,7 @@ export default function UsersClient() {
 
         {/* ── Search ── */}
         <div className="mb-3 flex justify-end">
-          <div className="relative w-full md:w-96 group">
+          <div className="relative w-full md:w-96 group" data-tour="quick-search">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -934,7 +979,6 @@ export default function UsersClient() {
                   onChange={v => setFilters(prev => ({ ...prev, fcba: v || undefined }))}
                   placeholder="FCBA"
                   translationNamespace="Users"
-                  small
                   disabled={isFcbaRestricted}
                 />
               </div>
@@ -945,7 +989,6 @@ export default function UsersClient() {
                   onChange={v => setFilters(prev => ({ ...prev, afdeling: v || undefined }))}
                   placeholder={t('afdeling')}
                   translationNamespace="Users"
-                  small
                 />
               </div>
               <div>
@@ -955,7 +998,6 @@ export default function UsersClient() {
                   onChange={v => setFilters(prev => ({ ...prev, gangcode: v || undefined }))}
                   placeholder={t('gangcode')}
                   translationNamespace="Users"
-                  small
                 />
               </div>
               <div>
@@ -965,7 +1007,6 @@ export default function UsersClient() {
                   onChange={v => setFilters(prev => ({ ...prev, level: v || undefined }))}
                   placeholder={t('level')}
                   translationNamespace="Users"
-                  small
                 />
               </div>
               <div>
@@ -975,7 +1016,6 @@ export default function UsersClient() {
                   onChange={v => setFilters(prev => ({ ...prev, position: v || undefined }))}
                   placeholder={t('position')}
                   translationNamespace="Users"
-                  small
                 />
               </div>
             </div>
@@ -988,7 +1028,7 @@ export default function UsersClient() {
         )}
 
         {/* ── Table ── */}
-        <div className="rounded-lg border border-base-200 shadow-sm bg-base-100 p-4">
+        <div className="rounded-lg border border-base-200 shadow-sm bg-base-100 p-4" data-tour="data-table">
           {isLoading ? (
             <SkeletonTable rows={10} />
           ) : filteredUsers.length === 0 ? (
@@ -1207,7 +1247,7 @@ export default function UsersClient() {
       {/* ═══════════════════════ BULK ADD MODAL ═══════════════════════ */}
       {bulkOpen && (
         <div className="modal modal-open" role="dialog" aria-modal="true">
-          <div className="modal-box max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+          <div className="modal-box max-w-7xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
             {/* Header */}
             <div className="bg-secondary/5 px-6 py-4 border-b border-base-200">
               <div className="flex items-center gap-3">

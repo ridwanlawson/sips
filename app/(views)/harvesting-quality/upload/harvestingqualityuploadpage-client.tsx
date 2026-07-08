@@ -473,7 +473,7 @@ export default function HarvestingQualityUploadPage() {
                     placeholder={placeholder}
                     value={formParams[name as keyof HarvestingQualityUploadParams] ?? ''}
                     onChange={handleParamChange}
-                    className="input input-bordered w-full input-sm"
+                    className="input input-bordered w-full"
                   />
                 </div>
               ))}
@@ -488,7 +488,7 @@ export default function HarvestingQualityUploadPage() {
                   placeholder="MTE, PTE, dll"
                   value={formParams.fcba ?? ''}
                   onChange={handleParamChange}
-                  className="input input-bordered w-full input-sm"
+                  className="input input-bordered w-full"
                 />
               </div>
               <div className="col-span-1 md:col-span-2 lg:col-span-3 flex items-end gap-2">

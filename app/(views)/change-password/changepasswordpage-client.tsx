@@ -23,12 +23,14 @@
  *   - Validator sebagai pure function terpisah
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { toTitleCase } from '@/utils/textManipulation';
 import { getProxiedImageUrl } from '@/utils/imageHelper';
 import type { UserProfile } from '@/app/types';
+import AppTour from '@/app/components/app-tour';
+import type { TourStep } from '@/app/components/app-tour';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -386,6 +388,18 @@ function UserProfileCard({ profile }: { profile: UserProfile | null }) {
 /** Form ganti password. */
 function ChangePasswordForm() {
   const t = useTranslations('Profile');
+  const tourSteps: TourStep[] = useMemo(() => [
+    {
+      icon: '👋',
+      title: t('tourWelcomeTitle'),
+      content: t('tourWelcomeDesc'),
+    },
+    {
+      icon: '🔒',
+      title: t('tourFormTitle'),
+      content: t('tourFormDesc'),
+    },
+  ], [t]);
   const {
     form,
     loading,
@@ -419,6 +433,10 @@ function ChangePasswordForm() {
           </div>
         </div>
 
+        <AppTour
+          steps={tourSteps}
+          storageKey="tour-change-password"
+        />
         <form onSubmit={submitChangePassword} className="flex flex-col gap-5" noValidate>
           <PasswordField
             label={t('currentPassword')}

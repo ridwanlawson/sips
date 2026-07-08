@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DataTable from '@/app/components/dynamic-data-table';
 import type { TableColumn } from 'react-data-table-component';
 import toast from 'react-hot-toast';
@@ -185,6 +185,27 @@ export default function Open() {
   const localeTag = useLocale();
   const [q, setQ] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const handleTourStepChange = useCallback((stepIndex: number) => {
+    if (stepIndex === 4) {
+      setShowFilters(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+      if (e.key === '/') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const [selectedRows, setSelectedRows] = useState<LhmData[]>([]);
   const [toggledClearRows, setToggledClearRows] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -619,57 +640,53 @@ export default function Open() {
     () => [
       {
         icon: '👋',
-        title: 'Selamat Datang',
-        content:
-          'Halaman ini digunakan untuk membuka / mengedit Laporan Harian Mandor (LHM) yang sudah diapprove. Anda akan dipandu melalui setiap fitur yang tersedia.',
+        title: t('tourWelcomeTitle'),
+        content: t('tourOpenWelcomeDesc'),
       },
       {
         icon: '🔍',
-        title: 'Filter & Aksi',
-        content:
-          'Gunakan tombol "Tampilkan Filter" untuk membuka panel filter lanjutan. Tombol "Refresh" untuk memuat ulang data, "Export" untuk mengekspor data ke CSV, dan "Open" untuk membuka / mengedit data yang telah dipilih.',
+        title: t('tourActionsTitle'),
+        content: t('tourActionsDesc'),
         targetSelector: '[data-tour="action-buttons"]',
+        modalPosition: 'top',
       },
       {
         icon: '🔎',
-        title: 'Pencarian Cepat',
-        content:
-          'Ketik kata kunci di kolom pencarian untuk menyaring data secara instan berdasarkan attendance, nama, atau kode karyawan tanpa perlu membuka filter lanjutan.',
+        title: t('tourSearchTitle'),
+        content: t('tourSearchDesc'),
         targetSelector: '[data-tour="quick-search"]',
+        modalPosition: 'top-left',
       },
       {
         icon: '📊',
-        title: 'Ringkasan Total',
-        content:
-          'Tiga kartu ringkasan menampilkan total Janjang (JJG), total Brondolan (BRD), dan total Gaji dari data yang sedang ditampilkan.',
+        title: t('tourTotalsTitle'),
+        content: t('tourTotalsDesc'),
         targetSelector: '[data-tour="total-cards"]',
+        modalPosition: 'top-left',
       },
       {
         icon: '📋',
-        title: 'Filter Lanjutan',
-        content:
-          'Panel filter lanjutan memungkinkan Anda menyaring data berdasarkan rentang tanggal, kemandoran, kode karyawan, FCBA, afdeling, tahun tanam, blok, dan attendance.',
-        targetSelector: '[data-tour="filter-panel"]',
+        title: t('tourFilterTitle'),
+        content: t('tourFilterDesc'),
+        targetSelector: '[data-tour="filter-button"]',
         modalPosition: 'bottom',
       },
       {
         icon: '📄',
-        title: 'Tabel Data LHM',
-        content:
-          'Tabel menampilkan seluruh data LHM yang dapat diurutkan (sort) dengan mengklik header kolom. Gunakan checkbox di setiap baris untuk memilih data yang akan di-open.',
+        title: t('tourTableTitle'),
+        content: t('tourOpenTableDesc'),
         targetSelector: '[data-tour="data-table"]',
         modalPosition: 'top',
       },
       {
         icon: '🔓',
-        title: 'Proses Open',
-        content:
-          'Centang checkbox pada baris data yang ingin di-open (bisa pilih banyak sekaligus). Setelah itu klik tombol "Open" di pojok kanan atas untuk membuka / mengedit data tersebut.',
+        title: t('tourOpenTitle'),
+        content: t('tourOpenDesc'),
         targetSelector: '[data-tour="open-button"]',
         modalPosition: 'top-left',
       },
     ],
-    []
+    [t]
   );
 
   const columns: TableColumn<LhmData>[] = useMemo(
@@ -994,9 +1011,9 @@ export default function Open() {
         <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start animate-slideUp">
           <h1
             className="text-2xl sm:text-3xl font-bold min-w-0 truncate"
-            title={t('pageTitleTooltip')}
+            title={t('pageTitleOpenTooltip')}
           >
-            {t('pageTitle')}
+            {t('pageTitleOpen')}
           </h1>
           <div
             className="flex justify-start sm:justify-end gap-2 flex-wrap w-full"
@@ -1005,16 +1022,13 @@ export default function Open() {
             <AppTour
               steps={tourSteps}
               storageKey="tour-open-lhm"
-              onStepChange={stepIndex => {
-                if (stepIndex === 4) {
-                  setShowFilters(true);
-                }
-              }}
+              onStepChange={handleTourStepChange}
             />
             <button
               className="btn btn-outline btn-sm"
               onClick={() => setShowFilters(s => !s)}
               title={t('filterToggleTooltip')}
+              data-tour="filter-button"
             >
               {showFilters ? t('hideFilters') : t('showFilters')}
             </button>
@@ -1118,13 +1132,21 @@ export default function Open() {
               </svg>
             </div>
             <input
+              ref={searchInputRef}
               className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
               placeholder={t('searchPlaceholder')}
               value={q}
               onChange={e => setQ(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
               aria-label={t('quickSearch')}
               title={t('quickSearch')}
             />
+            {!isSearchFocused && !q && (
+              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                <kbd className="kbd kbd-sm bg-base-200/50 opacity-50">/</kbd>
+              </div>
+            )}
             {q && (
               <button
                 type="button"
@@ -1157,24 +1179,25 @@ export default function Open() {
         {showFilters && (
           <div
             className="bg-base-100 p-4 rounded-xl shadow-sm mb-4 border border-base-200"
-            data-tour="filter-panel"
           >
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
               <input
                 type="date"
                 className="input input-bordered w-full"
-                placeholder="Tanggal Awal"
+                placeholder={t('filterDateStart')}
                 value={filters.fddate ?? ''}
                 onChange={e => setFilters(s => ({ ...s, fddate: e.target.value }))}
-                title="Filter tanggal awal panen"
+                title={t('filterDateStartTooltip')}
+                required
               />
               <input
                 type="date"
                 className="input input-bordered w-full"
-                placeholder="Tanggal Akhir"
+                placeholder={t('filterDateEnd')}
                 value={filters.fddate_end ?? ''}
                 onChange={e => setFilters(s => ({ ...s, fddate_end: e.target.value }))}
-                title="Filter tanggal akhir panen"
+                title={t('filterDateEndTooltip')}
+                required
               />
               <input
                 className="input input-bordered w-full"
@@ -1239,7 +1262,13 @@ export default function Open() {
             <div className="flex justify-start gap-2 pt-3 border-t border-base-200">
               <button
                 className={`btn btn-outline ${loading ? 'btn-disabled' : ''}`}
-                onClick={() => setAppliedFilters(getScopedFilters(filters))}
+                onClick={() => {
+                  if (!filters.fddate && !filters.fddate_end) {
+                    toast.error(t('toastFilterDateRequired'));
+                    return;
+                  }
+                  setAppliedFilters(getScopedFilters(filters));
+                }}
                 disabled={loading}
                 title={t('filterApplyTooltip')}
               >
