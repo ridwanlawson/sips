@@ -890,5 +890,14 @@
     "accessDenied": "Access Denied",
     "accessDeniedDesc": "This page can only be accessed by users with MGR or ADM levels.",
     "backToDashboard": "Back to Dashboard"
+  },
+  "Errors": {
+    "notFoundTitle": "404 - Page Not Found",
+    "notFoundDesc": "The page you are looking for does not exist or has been moved.",
+    "somethingWentWrong": "Something went wrong!",
+    "unexpectedErrorDesc": "An unexpected error occurred. We have been notified and are working to fix it.",
+    "tryAgain": "Try again",
+    "goHome": "Go to Homepage",
+    "loadingApp": "Loading application..."
   }
 }

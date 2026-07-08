@@ -890,5 +890,14 @@
     "accessDenied": "Akses Ditolak",
     "accessDeniedDesc": "Halaman ini hanya dapat diakses oleh user dengan level MGR atau ADM.",
     "backToDashboard": "Kembali ke Dashboard"
+  },
+  "Errors": {
+    "notFoundTitle": "404 - Halaman Tidak Ditemukan",
+    "notFoundDesc": "Halaman yang Anda cari tidak ada atau telah dipindahkan.",
+    "somethingWentWrong": "Terjadi kesalahan!",
+    "unexpectedErrorDesc": "Terjadi kesalahan yang tidak terduga. Kami telah diberitahu dan sedang memperbaikinya.",
+    "tryAgain": "Coba lagi",
+    "goHome": "Kembali ke Beranda",
+    "loadingApp": "Memuat aplikasi..."
   }
 }
