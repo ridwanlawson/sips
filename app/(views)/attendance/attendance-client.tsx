@@ -17,6 +17,7 @@ import { useTranslations } from 'next-intl';
 import { Icon } from '@/app/components/icons';
 import { SearchSelect, type Option } from '@/app/components/search-select';
 import { EmptyState } from '@/app/components/empty-state';
+import { AttendanceGalleryView, type AttendanceGalleryViewHandle } from '@/app/components/attendance-gallery-view';
 import { useSearchShortcut } from '@/hooks/useSearchShortcut';
 import { useLocale } from '@/hooks/useLocale';
 import { formatPerfDate } from '@/utils/perf-formatter';
@@ -304,6 +305,9 @@ export default function Attendance() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchInputRef = useSearchShortcut();
   const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState<'table' | 'gallery'>('table');
+  const [allExpanded, setAllExpanded] = useState(false);
+  const galleryRef = useRef<AttendanceGalleryViewHandle>(null);
 
   const tourSteps: TourStep[] = useMemo(() => [
     {
@@ -365,6 +369,20 @@ export default function Attendance() {
       section_destination: '',
     };
   });
+
+  // Read tanggal/tanggal_end from URL params (from dashboard navigation)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tanggal = params.get('tanggal');
+    const tanggal_end = params.get('tanggal_end');
+    if (tanggal || tanggal_end) {
+      setFilters(prev => ({
+        ...prev,
+        ...(tanggal ? { tanggal } : {}),
+        ...(tanggal_end ? { tanggal_end } : {}),
+      }));
+    }
+  }, []);
 
   // Master data / cascading
   const [triplets, setTriplets] = useState<Triplet[]>([]);
@@ -2082,8 +2100,8 @@ export default function Attendance() {
           </div>
         </div>
 
-        {/* Quick Search */}
-        <div className="mb-3 flex justify-end animate-slideUp [animation-delay:100ms]">
+        {/* Quick Search & View Toggle */}
+        <div className="mb-3 flex items-center gap-2 justify-end animate-slideUp [animation-delay:100ms]">
           <div className="relative w-full md:w-96 group" data-tour="quick-search">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Icon name="search" className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all" />
@@ -2112,6 +2130,33 @@ export default function Attendance() {
                 title={t('clearSearch')}
               >
                 <Icon name="close" className="h-5 w-5" />
+              </button>
+            )}
+          </div>
+          <div className="join">
+            <button
+              className="btn btn-outline join-item"
+              onClick={() => setViewMode(v => v === 'table' ? 'gallery' : 'table')}
+              title={viewMode === 'table' ? 'Gallery View' : 'Table View'}
+            >
+              <Icon name={viewMode === 'table' ? 'layout-grid' : 'list'} className="h-4 w-4" />
+              <span className="hidden sm:inline">{viewMode === 'table' ? 'Gallery' : 'Table'}</span>
+            </button>
+            {viewMode === 'gallery' && (
+              <button
+                className="btn btn-outline join-item"
+                onClick={() => {
+                  if (allExpanded) {
+                    galleryRef.current?.collapseAll();
+                  } else {
+                    galleryRef.current?.expandAll();
+                  }
+                  setAllExpanded(!allExpanded);
+                }}
+                title={allExpanded ? 'Close All' : 'Open All'}
+              >
+                <Icon name="chevron-down" className={`h-4 w-4 ${allExpanded ? 'rotate-180' : ''}`} />
+                <span className="hidden sm:inline">{allExpanded ? 'Close' : 'Open'}</span>
               </button>
             )}
           </div>
@@ -2306,40 +2351,56 @@ export default function Attendance() {
           </div>
         )}
 
-        {/* DataTable */}
-        <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100 animate-slideUp [animation-delay:200ms]" data-tour="data-table">
-          <div className="min-w-[900px] md:min-w-0">
+        {/* Data Table / Gallery View */}
+        {viewMode === 'table' ? (
+          <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100 animate-slideUp [animation-delay:200ms]" data-tour="data-table">
+            <div className="min-w-[900px] md:min-w-0">
+              {loading ? (
+                <div className="p-8">
+                  <SkeletonTable rows={10} />
+                </div>
+              ) : (
+                <DataTable
+                  keyField="_rowKey"
+                  columns={columns}
+                  data={filtered}
+                  pagination
+                  customStyles={centerHeaderStyle}
+                  paginationPerPage={100}
+                  paginationRowsPerPageOptions={[100, 500, 1000, 5000]}
+                  dense
+                  highlightOnHover
+                  pointerOnHover
+                  fixedHeader
+                  fixedHeaderScrollHeight="520px"
+                  persistTableHead
+                  responsive
+                  noDataComponent={
+                    <EmptyState
+                      namespace="Attendance"
+                      onClearSearch={q ? () => setQ('') : undefined}
+                    />
+                  }
+                  progressPending={loading}
+                />
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="animate-slideUp [animation-delay:200ms]">
             {loading ? (
               <div className="p-8">
                 <SkeletonTable rows={10} />
               </div>
             ) : (
-              <DataTable
-                keyField="_rowKey"
-                columns={columns}
-                data={filtered}
-                pagination
-                customStyles={centerHeaderStyle}
-                paginationPerPage={100}
-                paginationRowsPerPageOptions={[100, 500, 1000, 5000]}
-                dense
-                highlightOnHover
-                pointerOnHover
-                fixedHeader
-                fixedHeaderScrollHeight="520px"
-                persistTableHead
-                responsive
-                noDataComponent={
-                  <EmptyState
-                    namespace="Attendance"
-                    onClearSearch={q ? () => setQ('') : undefined}
-                  />
-                }
-                progressPending={loading}
+              <AttendanceGalleryView
+                ref={galleryRef}
+                items={filtered}
+                onClearSearch={q ? () => setQ('') : undefined}
               />
             )}
           </div>
-        </div>
+        )}
 
         {/* MODAL ADD/EDIT */}
         {open && (
@@ -2397,6 +2458,33 @@ export default function Attendance() {
                   />
                 </fieldset>
 
+                {/* Time In */}
+                <fieldset className="fieldset col-span-12 md:col-span-2">
+                  <legend className="fieldset-legend">{t('formTimeIn')}</legend>
+                  <input
+                    type="time"
+                    className="input input-bordered w-full"
+                    value={form.time_in ?? ''}
+                    onChange={e => setForm(s => ({ ...s, time_in: e.target.value }))}
+                    required
+                    disabled={disableUnlessAllowed(false)}
+                    title={t('hintTimeIn')}
+                  />
+                </fieldset>
+
+                {/* Time Out */}
+                <fieldset className="fieldset col-span-12 md:col-span-2">
+                  <legend className="fieldset-legend">{t('formTimeOut')}</legend>
+                  <input
+                    type="time"
+                    className="input input-bordered w-full"
+                    value={form.time_out ?? ''}
+                    onChange={e => setForm(s => ({ ...s, time_out: e.target.value }))}
+                    disabled={disableUnlessAllowed(true)}
+                    title={t('hintTimeOut')}
+                  />
+                </fieldset>
+
                 {/* Type */}
                 <fieldset className="fieldset col-span-12 md:col-span-3">
                   <legend className="fieldset-legend">{t('formAttendanceType')}</legend>
@@ -2417,7 +2505,7 @@ export default function Attendance() {
                 </fieldset>
 
                 {/* Attendance */}
-                <fieldset className="fieldset col-span-12 md:col-span-3">
+                <fieldset className="fieldset col-span-12 md:col-span-2">
                   <legend className="fieldset-legend">{t('formAttendance')}</legend>
                   <SearchSelect
                     options={['KJ', 'MK', 'WH', 'WS', 'ML', 'P1', 'KB', 'OT'].map(v => ({
@@ -2623,192 +2711,135 @@ export default function Attendance() {
                 {/* Pengancakan */}
                 <fieldset className="fieldset col-span-12 md:col-span-2">
                   <legend className="fieldset-legend">{t('formPengancakan')}</legend>
-                  <SearchSelect
-                    options={pengancakanOptions}
+                  <input
+                    type="text"
+                    className="input input-bordered w-full"
                     value={form.pengancakan ?? ''}
-                    onChange={v => setForm(s => ({ ...s, pengancakan: v }))}
+                    onChange={e => setForm(s => ({ ...s, pengancakan: e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() }))}
                     placeholder={
-                      isLoadingSmp
-                        ? 'Memuat...'
-                        : selGang
-                          ? 'Pilih Pengancakan'
-                          : 'Pilih Gang/Karyawan dulu'
+                      selGang
+                        ? 'Masukkan No Ancak'
+                        : 'Pilih Gang/Karyawan dulu'
                     }
                     disabled={!selGang || disableUnlessAllowed(false) || isLoadingSmp}
                   />
                 </fieldset>
 
-                <div className="col-span-12 mt-1">
-                  <h4 className="text-sm font-semibold text-base-content/80">
-                    {t('formTimeLocationTitle')}
-                  </h4>
-                  <div className="mt-1 border-t border-base-300" />
-                </div>
-
-                {/* Time & Location */}
-                <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">{t('formTimeIn')}</legend>
-                  <input
-                    type="time"
-                    className="input input-bordered w-full"
-                    value={form.time_in ?? ''}
-                    onChange={e => setForm(s => ({ ...s, time_in: e.target.value }))}
-                    required
-                    disabled={disableUnlessAllowed(false)}
-                  />
-                  <p className="text-xs mt-1 opacity-70">{t('hintTimeIn')}</p>
-                </fieldset>
-
-                <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">{t('formTimeOut')}</legend>
-                  <input
-                    type="time"
-                    className="input input-bordered w-full"
-                    value={form.time_out ?? ''}
-                    onChange={e => setForm(s => ({ ...s, time_out: e.target.value }))}
-                    disabled={disableUnlessAllowed(true)}
-                  />
-                  <p className="text-xs mt-1 opacity-70">{t('hintTimeOut')}</p>
-                </fieldset>
-
-                <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">{t('formLocIn')}</legend>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      className="input input-bordered w-full"
-                      value={form.location_in ?? ''}
-                      onChange={e => setForm(s => ({ ...s, location_in: e.target.value }))}
-                      required
-                      disabled={disableUnlessAllowed(false)}
-                    />
-                    <button
-                      type="button"
-                      className={`btn btn-square ${locLoading === 'in' ? 'btn-disabled' : ''}`}
-                      onClick={() => handleGetLocation('in')}
-                      disabled={disableUnlessAllowed(false) || locLoading !== null}
-                      title={t('gpsGetLocation')}
-                    >
-                      {locLoading === 'in' ? (
-                        <span className="loading loading-spinner loading-xs" />
-                      ) : (
-                        '📍'
-                      )}
-                    </button>
-                  </div>
-                  {form.location_in && (
-                    <div className="mt-1">
-                      <a
-                        className="link link-primary text-sm"
-                        href={buildMapUrl(form.location_in)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {t('gpsOpenMaps')}
-                      </a>
-                    </div>
-                  )}
-                </fieldset>
-
-                <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">{t('formLocOut')}</legend>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      className="input input-bordered w-full"
-                      value={form.location_out ?? ''}
-                      onChange={e => setForm(s => ({ ...s, location_out: e.target.value }))}
-                      disabled={disableUnlessAllowed(false)}
-                    />
-                    <button
-                      type="button"
-                      className={`btn btn-square ${locLoading === 'out' ? 'btn-disabled' : ''}`}
-                      onClick={() => handleGetLocation('out')}
-                      disabled={disableUnlessAllowed(false) || locLoading !== null}
-                      title={t('gpsGetLocation')}
-                    >
-                      {locLoading === 'out' ? (
-                        <span className="loading loading-spinner loading-xs" />
-                      ) : (
-                        '📍'
-                      )}
-                    </button>
-                  </div>
-                  {form.location_out && (
-                    <div className="mt-1">
-                      <a
-                        className="link link-primary text-sm"
-                        href={buildMapUrl(form.location_out)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {t('gpsOpenMaps')}
-                      </a>
-                    </div>
-                  )}
-                </fieldset>
-
-                <div className="col-span-12 mt-1">
-                  <h4 className="text-sm font-semibold text-base-content/80">
+                {/* Perhitungan & Perangkat */}
+                <details className="col-span-12" open={false}>
+                  <summary className="text-sm font-semibold text-base-content/80 cursor-pointer select-none">
                     {t('formCalcDeviceTitle')}
-                  </h4>
-                  <div className="mt-1 border-t border-base-300" />
-                </div>
+                  </summary>
+                  <div className="mt-2 border-t border-base-300" />
+                  <div className="grid grid-cols-12 gap-2 mt-2">
 
-                {/* Lain-lain */}
-                <fieldset className="fieldset col-span-6 md:col-span-2">
-                  <legend className="fieldset-legend">{t('formTotalLate')}</legend>
-                  <input
-                    type="text"
-                    className="input input-bordered input-sm w-full text-center pointer-events-none select-none"
-                    value={form.total_late_time ?? ''}
-                    readOnly
-                    tabIndex={-1}
-                  />
-                </fieldset>
+                    {/* Lain-lain */}
+                    <fieldset className="fieldset col-span-6 md:col-span-2">
+                      <legend className="fieldset-legend">{t('formTotalLate')}</legend>
+                      <input
+                        type="text"
+                        className="input input-bordered w-full text-center pointer-events-none select-none"
+                        value={form.total_late_time ?? ''}
+                        readOnly
+                        tabIndex={-1}
+                      />
+                    </fieldset>
 
-                <fieldset className="fieldset col-span-6 md:col-span-2">
-                  <legend className="fieldset-legend">{t('formHomeEarly')}</legend>
-                  <input
-                    type="text"
-                    className="input input-bordered input-sm w-full text-center pointer-events-none select-none"
-                    value={form.go_home_early ?? ''}
-                    readOnly
-                    tabIndex={-1}
-                  />
-                </fieldset>
+                    <fieldset className="fieldset col-span-6 md:col-span-2">
+                      <legend className="fieldset-legend">{t('formHomeEarly')}</legend>
+                      <input
+                        type="text"
+                        className="input input-bordered w-full text-center pointer-events-none select-none"
+                        value={form.go_home_early ?? ''}
+                        readOnly
+                        tabIndex={-1}
+                      />
+                    </fieldset>
 
-                {/* Mandays/HK */}
-                <fieldset className="fieldset col-span-12 md:col-span-2">
-                  <legend className="fieldset-legend">{t('formHk')}</legend>
-                  <input
-                    type="text"
-                    className="input input-bordered input-sm w-full text-center"
-                    value={form.mandays}
-                    readOnly
-                  />
-                </fieldset>
+                    {/* Mandays/HK */}
+                    <fieldset className="fieldset col-span-12 md:col-span-2">
+                      <legend className="fieldset-legend">{t('formHk')}</legend>
+                      <input
+                        type="text"
+                        className="input input-bordered w-full text-center"
+                        value={form.mandays}
+                        readOnly
+                      />
+                    </fieldset>
 
-                <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">{t('formMac')}</legend>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full"
-                    value={form.mac_address ?? ''}
-                    readOnly
-                  />
-                </fieldset>
+                    {/* Location In */}
+                    <fieldset className="fieldset col-span-12 md:col-span-3">
+                      <legend className="fieldset-legend">{t('formLocIn')}</legend>
+                      <div className="join w-full">
+                        <input
+                          type="text"
+                          className="join-item input input-bordered flex-1 pointer-events-none select-none"
+                          value={form.location_in ?? ''}
+                          readOnly
+                          tabIndex={-1}
+                        />
+                        {form.location_in && (
+                          <a
+                            className="join-item btn btn-square btn-outline"
+                            href={buildMapUrl(form.location_in)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={t('gpsOpenMaps')}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                          </a>
+                        )}
+                      </div>
+                    </fieldset>
 
-                {/* Device */}
-                <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">{t('formDeviceId')}</legend>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full"
-                    value={form.id_device ?? ''}
-                    readOnly
-                  />
-                </fieldset>
+                    {/* Location Out */}
+                    <fieldset className="fieldset col-span-12 md:col-span-3">
+                      <legend className="fieldset-legend">{t('formLocOut')}</legend>
+                      <div className="join w-full">
+                        <input
+                          type="text"
+                          className="join-item input input-bordered flex-1 pointer-events-none select-none"
+                          value={form.location_out ?? ''}
+                          readOnly
+                          tabIndex={-1}
+                        />
+                        {form.location_out && (
+                          <a
+                            className="join-item btn btn-square btn-outline"
+                            href={buildMapUrl(form.location_out)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={t('gpsOpenMaps')}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                          </a>
+                        )}
+                      </div>
+                    </fieldset>
+
+                    <fieldset className="fieldset col-span-12 md:col-span-3">
+                      <legend className="fieldset-legend">{t('formMac')}</legend>
+                      <input
+                        type="text"
+                        className="input input-bordered w-full"
+                        value={form.mac_address ?? ''}
+                        readOnly
+                      />
+                    </fieldset>
+
+                    {/* Device */}
+                    <fieldset className="fieldset col-span-12 md:col-span-3">
+                      <legend className="fieldset-legend">{t('formDeviceId')}</legend>
+                      <input
+                        type="text"
+                        className="input input-bordered w-full"
+                        value={form.id_device ?? ''}
+                        readOnly
+                      />
+                    </fieldset>
+
+                  </div>
+                </details>
 
                 <div className="col-span-12 mt-1">
                   <h4 className="text-sm font-semibold text-base-content/80">

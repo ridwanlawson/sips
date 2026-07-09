@@ -15,7 +15,7 @@ vi.mock('@/utils/absensiProxy', () => ({
   getTokenFromCookie: vi.fn(() => Promise.resolve('valid-token')),
 }));
 
-describe('Pengangkutans API Security Hardening', () => {
+describe('Transport API Security Hardening', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -27,7 +27,7 @@ describe('Pengangkutans API Security Hardening', () => {
       }) as unknown as NextResponse;
       vi.mocked(validateSecurity).mockResolvedValue(errorResponse);
 
-      const req = new NextRequest('http://localhost/api/pengangkutans', { method: 'POST' });
+      const req = new NextRequest('http://localhost/api/transport', { method: 'POST' });
       const res = await POST_LIST(req);
 
       expect(res.status).toBe(429);
@@ -47,7 +47,7 @@ describe('Pengangkutans API Security Hardening', () => {
       const formData = new FormData();
       formData.append('test', 'value');
 
-      const req = new NextRequest('http://localhost/api/pengangkutans', {
+      const req = new NextRequest('http://localhost/api/transport', {
         method: 'POST',
         body: formData,
       });
@@ -65,7 +65,7 @@ describe('Pengangkutans API Security Hardening', () => {
       }) as unknown as NextResponse;
       vi.mocked(validateSecurity).mockResolvedValue(errorResponse);
 
-      const req = new NextRequest('http://localhost/api/pengangkutans/1', { method: 'PUT' });
+      const req = new NextRequest('http://localhost/api/transport/1', { method: 'PUT' });
       const res = await PUT(req, { params: Promise.resolve({ id: '1' }) });
 
       expect(res.status).toBe(403);
@@ -80,7 +80,7 @@ describe('Pengangkutans API Security Hardening', () => {
       }) as unknown as NextResponse;
       vi.mocked(validateSecurity).mockResolvedValue(errorResponse);
 
-      const req = new NextRequest('http://localhost/api/pengangkutans/1', { method: 'DELETE' });
+      const req = new NextRequest('http://localhost/api/transport/1', { method: 'DELETE' });
       const res = await DELETE(req, { params: Promise.resolve({ id: '1' }) });
 
       expect(res.status).toBe(403);
@@ -95,7 +95,7 @@ describe('Pengangkutans API Security Hardening', () => {
       }) as unknown as NextResponse;
       vi.mocked(validateSecurity).mockResolvedValue(errorResponse);
 
-      const req = new NextRequest('http://localhost/api/pengangkutans/1', { method: 'POST' });
+      const req = new NextRequest('http://localhost/api/transport/1', { method: 'POST' });
       const res = await POST_ID(req, { params: Promise.resolve({ id: '1' }) });
 
       expect(res.status).toBe(403);

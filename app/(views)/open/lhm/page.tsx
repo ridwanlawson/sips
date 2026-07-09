@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import OpenWrapper from './openLhm-wrapper';
+import OpenWrapper from './open-wrapper';
 
 export const metadata: Metadata = { title: 'Buka' };
 

@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import { SkeletonTable } from '@/app/components/skeletons';
 
-const Open = dynamic(() => import('./openLhm-client'), {
+const Open = dynamic(() => import('./open-client'), {
   
   loading: () => (
     <div className="p-6">

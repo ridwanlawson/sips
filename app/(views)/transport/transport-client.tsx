@@ -317,6 +317,20 @@ export default function PengangkutanPage() {
     };
   });
 
+  // Read tanggal/tanggal_end from URL params (from dashboard navigation)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tanggal = params.get('tanggal');
+    const tanggal_end = params.get('tanggal_end');
+    if (tanggal || tanggal_end) {
+      setFilters(prev => ({
+        ...prev,
+        ...(tanggal ? { tanggal } : {}),
+        ...(tanggal_end ? { tanggal_end } : {}),
+      }));
+    }
+  }, []);
+
   const [q, setQ] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchInputRef = useSearchShortcut();
@@ -353,6 +367,7 @@ export default function PengangkutanPage() {
     totaljanjang: string;
     output: string;
     brondolan: string;
+    mentah: string;
   } | null>(null);
   const [harvestStatus, setHarvestStatus] = useState('');
 
@@ -517,6 +532,7 @@ export default function PengangkutanPage() {
         const harvestTotaljanjang = String(first.totaljanjang || first.output || '0');
         const harvestOutput = String(first.output || '0');
         const harvestBrondolan = String(first.brondolan || '0');
+        const harvestMentah = String(first.mentah || '0');
         setHarvestSource({
           fcba: harvestFcba,
           afdeling: harvestAfdeling,
@@ -525,6 +541,7 @@ export default function PengangkutanPage() {
           totaljanjang: harvestTotaljanjang,
           output: harvestOutput,
           brondolan: harvestBrondolan,
+          mentah: harvestMentah,
         });
 
         // ⚡ Bolt Optimization: Use keraniMap for O(1) lookup
@@ -543,6 +560,7 @@ export default function PengangkutanPage() {
               totaljanjang: harvestTotaljanjang,
               output: harvestOutput,
               brondolan: harvestBrondolan,
+              mentah: harvestMentah,
             }));
           } else {
             setForm(current => ({
@@ -556,6 +574,7 @@ export default function PengangkutanPage() {
               totaljanjang: harvestTotaljanjang,
               output: harvestOutput,
               brondolan: harvestBrondolan,
+              mentah: harvestMentah,
             }));
           }
         } else {
@@ -570,6 +589,7 @@ export default function PengangkutanPage() {
             totaljanjang: harvestTotaljanjang,
             output: harvestOutput,
             brondolan: harvestBrondolan,
+            mentah: harvestMentah,
           }));
         }
 
@@ -591,7 +611,6 @@ export default function PengangkutanPage() {
   }, [form.nodokumen, form.kode_karyawan_kerani, keraniMap]);
 
   useEffect(() => {
-    // ⚡ Bolt Optimization: Use keraniMap for O(1) lookup
     const selectedKerani = keraniMap.get(form.kode_karyawan_kerani);
 
     if (harvestMatched && harvestSource) {
@@ -610,8 +629,8 @@ export default function PengangkutanPage() {
       } else if (selectedKerani) {
         setForm(current => ({
           ...current,
-          fcba: selectedKerani.fcba || current.fcba || '',
-          afdeling: selectedKerani.afdeling || current.afdeling || '',
+          fcba: selectedKerani.fcba || harvestSource.fcba,
+          afdeling: selectedKerani.afdeling || harvestSource.afdeling,
           fcba_destination: harvestSource.fcba,
           afdeling_destination: harvestSource.afdeling,
         }));
@@ -619,20 +638,11 @@ export default function PengangkutanPage() {
     } else if (selectedKerani) {
       setForm(current => ({
         ...current,
-        fcba: current.fcba || selectedKerani.fcba || '',
-        afdeling: current.afdeling || selectedKerani.afdeling || '',
+        fcba: selectedKerani.fcba || current.fcba || '',
+        afdeling: selectedKerani.afdeling || current.afdeling || '',
       }));
     }
-  }, [
-    form.kode_karyawan_kerani,
-    form.fcba,
-    form.afdeling,
-    keraniMap,
-    harvestMatched,
-    harvestSource,
-    homeFcba,
-    homeSection,
-  ]);
+  }, [form.kode_karyawan_kerani, keraniMap, harvestMatched, harvestSource, homeFcba, homeSection]);
 
   useEffect(() => {
     if (isEditing || !harvestMatched || !form.type_pengangkutan || !form.tanggal) return;
@@ -659,7 +669,7 @@ export default function PengangkutanPage() {
         .split('T')[0];
       p.set('tanggal', firstDay);
       p.set('tanggal_end', lastDay);
-      const res = await fetch(`/api/pengangkutans?${p.toString()}`, {
+      const res = await fetch(`/api/transport?${p.toString()}`, {
         credentials: 'include',
       });
       if (!res.ok) return;
@@ -862,6 +872,22 @@ export default function PengangkutanPage() {
       toast.error(t('toastTypeRequired'));
       return;
     }
+    if (!form.kode_karyawan_kerani) {
+      toast.error(t('toastKeraniRequired'));
+      return;
+    }
+    if (!form.kode_kendaraan) {
+      toast.error(t('toastKendaraanRequired'));
+      return;
+    }
+    if (!form.kode_karyawan_driver) {
+      toast.error(t('toastDriverRequired'));
+      return;
+    }
+    if (!form.tkbm1) {
+      toast.error(t('toastTkbm1Required'));
+      return;
+    }
     if (form.nodokumen.trim() && !harvestMatched) {
       toast.error(t('toastNoDokumenInvalid'));
       return;
@@ -881,8 +907,8 @@ export default function PengangkutanPage() {
       }
 
       const url = isEditing
-        ? `/api/pengangkutans/${encodeURIComponent(form.id)}`
-        : '/api/pengangkutans';
+        ? `/api/transport/${encodeURIComponent(form.id)}`
+        : '/api/transport';
       const method = isEditing ? 'PUT' : 'POST';
 
       const headers: Record<string, string> = {};
@@ -936,9 +962,11 @@ export default function PengangkutanPage() {
   const deleteMutation = useMutation({
     mutationFn: async ({ id, file }: { id: string; file: File }) => {
       const body = new FormData();
-      body.append('ba_deleted', file, file.name);
+      // Laravel expects file uploads to come via multipart POST; use _method override
+      body.append('ba_deleted', file);
+      body.append('_method', 'DELETE');
 
-      // Add CSRF token for DELETE
+      // Add CSRF token for file upload
       const csrfToken = document.cookie.match(/csrf_token=([^;]+)/)?.[1];
       if (csrfToken) {
         body.append('_csrf_token', csrfToken);
@@ -949,8 +977,8 @@ export default function PengangkutanPage() {
         headers['X-CSRF-Token'] = csrfToken;
       }
 
-      const res = await fetch(`/api/pengangkutans/${encodeURIComponent(id)}`, {
-        method: 'DELETE',
+      const res = await fetch(`/api/transport/${encodeURIComponent(id)}`, {
+        method: 'POST',
         body,
         credentials: 'include',
         headers,
@@ -1086,7 +1114,7 @@ export default function PengangkutanPage() {
       if (filters.flag) p.set('flag', filters.flag);
       applyClientUserScope(p);
 
-      const res = await fetch(`/api/pengangkutans?${p.toString()}`, {
+      const res = await fetch(`/api/transport?${p.toString()}`, {
         credentials: 'include',
       });
 
@@ -2111,7 +2139,7 @@ export default function PengangkutanPage() {
                     className="input input-bordered w-full"
                     value={form.nodokumen}
                     onChange={e => setForm(s => ({ ...s, nodokumen: e.target.value }))}
-                    disabled={formDisabled}
+                    disabled={!form.type_pengangkutan}
                     required
                   />
                 </fieldset>
@@ -2121,8 +2149,8 @@ export default function PengangkutanPage() {
                     type="text"
                     className="input input-bordered w-full"
                     value={form.nopengangkutan}
-                    onChange={e => setForm(s => ({ ...s, nopengangkutan: e.target.value }))}
-                    disabled={formBelowNodokumenDisabled}
+                    readOnly
+                    tabIndex={-1}
                     required
                   />
                 </fieldset>
@@ -2132,8 +2160,8 @@ export default function PengangkutanPage() {
                     type="text"
                     className="input input-bordered w-full"
                     value={form.nospb}
-                    onChange={e => setForm(s => ({ ...s, nospb: e.target.value }))}
-                    disabled={formBelowNodokumenDisabled}
+                    readOnly
+                    tabIndex={-1}
                   />
                 </fieldset>
                 {form.nodokumen.trim() ? (
@@ -2303,60 +2331,68 @@ export default function PengangkutanPage() {
                     />
                   </fieldset>
                 </div>
-                <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">FCBA</legend>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full"
-                    value={form.fcba}
-                    readOnly
-                  />
-                </fieldset>
-                <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">Afdeling</legend>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full"
-                    value={form.afdeling}
-                    readOnly
-                  />
-                </fieldset>
-                <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">Field Code</legend>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full"
-                    value={form.fieldcode}
-                    readOnly
-                  />
-                </fieldset>
-                <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">TPH</legend>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full"
-                    value={form.tph}
-                    readOnly
-                  />
-                </fieldset>
-                <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">FCBA Tujuan</legend>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full"
-                    value={form.fcba_destination}
-                    readOnly
-                  />
-                </fieldset>
-                <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">Afdeling Tujuan</legend>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full"
-                    value={form.afdeling_destination}
-                    readOnly
-                  />
-                </fieldset>
+                <details className="col-span-12" open={false}>
+                  <summary className="text-sm font-semibold text-base-content/80 cursor-pointer select-none">
+                    Lokasi Asal & Tujuan
+                  </summary>
+                  <div className="mt-2 border-t border-base-300" />
+                  <div className="grid grid-cols-12 gap-3 mt-2">
+                    <fieldset className="fieldset col-span-12 md:col-span-3">
+                      <legend className="fieldset-legend">FCBA</legend>
+                      <input
+                        type="text"
+                        className="input input-bordered w-full"
+                        value={form.fcba}
+                        readOnly
+                      />
+                    </fieldset>
+                    <fieldset className="fieldset col-span-12 md:col-span-3">
+                      <legend className="fieldset-legend">Afdeling</legend>
+                      <input
+                        type="text"
+                        className="input input-bordered w-full"
+                        value={form.afdeling}
+                        readOnly
+                      />
+                    </fieldset>
+                    <fieldset className="fieldset col-span-12 md:col-span-3">
+                      <legend className="fieldset-legend">Field Code</legend>
+                      <input
+                        type="text"
+                        className="input input-bordered w-full"
+                        value={form.fieldcode}
+                        readOnly
+                      />
+                    </fieldset>
+                    <fieldset className="fieldset col-span-12 md:col-span-3">
+                      <legend className="fieldset-legend">TPH</legend>
+                      <input
+                        type="text"
+                        className="input input-bordered w-full"
+                        value={form.tph}
+                        readOnly
+                      />
+                    </fieldset>
+                    <fieldset className="fieldset col-span-12 md:col-span-3">
+                      <legend className="fieldset-legend">FCBA Tujuan</legend>
+                      <input
+                        type="text"
+                        className="input input-bordered w-full"
+                        value={form.fcba_destination}
+                        readOnly
+                      />
+                    </fieldset>
+                    <fieldset className="fieldset col-span-12 md:col-span-3">
+                      <legend className="fieldset-legend">Afdeling Tujuan</legend>
+                      <input
+                        type="text"
+                        className="input input-bordered w-full"
+                        value={form.afdeling_destination}
+                        readOnly
+                      />
+                    </fieldset>
+                  </div>
+                </details>
 
                 <div className="col-span-12 grid grid-cols-12 gap-3">
                   <fieldset className="fieldset col-span-12 md:col-span-2">
@@ -2413,13 +2449,10 @@ export default function PengangkutanPage() {
                       type="number"
                       min="0"
                       step="any"
-                      className="input input-bordered w-full"
+                      className="input input-bordered w-full pointer-events-none select-none"
                       value={form.brondolan}
-                      onChange={e =>
-                        setForm(s => ({ ...s, brondolan: normalizeNonNegative(e.target.value) }))
-                      }
-                      disabled={formBelowNodokumenDisabled}
-                      required
+                      readOnly
+                      tabIndex={-1}
                     />
                   </fieldset>
                   <fieldset className="fieldset col-span-12 md:col-span-2">
@@ -2428,13 +2461,10 @@ export default function PengangkutanPage() {
                       type="number"
                       min="0"
                       step="any"
-                      className="input input-bordered w-full"
+                      className="input input-bordered w-full pointer-events-none select-none"
                       value={form.mentah}
-                      onChange={e =>
-                        setForm(s => ({ ...s, mentah: normalizeNonNegative(e.target.value) }))
-                      }
-                      disabled={formBelowNodokumenDisabled}
-                      required
+                      readOnly
+                      tabIndex={-1}
                     />
                   </fieldset>
                   <fieldset className="fieldset col-span-12 md:col-span-2">
@@ -2461,9 +2491,8 @@ export default function PengangkutanPage() {
                       type="datetime-local"
                       className="input input-bordered w-full"
                       value={form.etd}
-                      onChange={e => setForm(s => ({ ...s, etd: e.target.value }))}
-                      disabled={formBelowNodokumenDisabled}
-                      required
+                      readOnly
+                      tabIndex={-1}
                     />
                   </fieldset>
                   <fieldset className="fieldset col-span-12 md:col-span-4">

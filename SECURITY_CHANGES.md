@@ -106,7 +106,7 @@ headers: { 'X-CSRF-Token': csrfToken }
 
 ---
 
-### 4. `app/(views)/change-password/changepasswordpage-client.tsx`
+### 4. `app/(views)/change-password/change-password-client.tsx`
 **Changes:**
 - ✅ Tambah **CSRF Token** di header request
 

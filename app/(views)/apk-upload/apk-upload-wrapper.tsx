@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 
-const ApkUploadPage = dynamic(() => import('./apkuploadpage-client'), {
+const ApkUploadPage = dynamic(() => import('./apk-upload-client'), {
   
   loading: () => (
     <div className="min-h-screen bg-base-100 p-6 flex items-center justify-center">

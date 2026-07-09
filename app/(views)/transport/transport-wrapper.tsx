@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import { SkeletonTable } from '@/app/components/skeletons';
 
-const PengangkutanPage = dynamic(() => import('./pengangkutanpage-client'), {
+const PengangkutanPage = dynamic(() => import('./transport-client'), {
   
   loading: () => (
     <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">

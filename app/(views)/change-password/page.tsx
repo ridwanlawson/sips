@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { BACKEND_URL } from '@/utils/backendConfig';
-import ChangePasswordPage from './changepasswordpage-client';
+import ChangePasswordPage from './change-password-client';
 import type { UserProfile } from '@/app/types';
 
 export const metadata: Metadata = {

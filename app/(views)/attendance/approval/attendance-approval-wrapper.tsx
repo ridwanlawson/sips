@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import { SkeletonTable } from '@/app/components/skeletons';
 
-const AttendanceApproval = dynamic(() => import('./attendanceapproval-client'), {
+const AttendanceApproval = dynamic(() => import('./attendance-approval-client'), {
   loading: () => (
     <div className="p-6">
       <SkeletonTable rows={10} />

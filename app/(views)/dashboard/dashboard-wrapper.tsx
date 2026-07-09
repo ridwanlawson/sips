@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import { SkeletonCard, SkeletonChart } from '@/app/components/skeletons';
 
 // Lazy load the large dashboard component to keep it out of the initial bundle.
-const UserDashboard = dynamic(() => import('./userdashboard-client'), {
+const UserDashboard = dynamic(() => import('./dashboard-client'), {
   
   loading: () => (
     <div className="p-6 space-y-6">

@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import { SkeletonTable } from '@/app/components/skeletons';
 
-const HarvestPage = dynamic(() => import('./harvestpage-client'), {
+const HarvestPage = dynamic(() => import('./harvest-client'), {
   
   loading: () => (
     <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">

@@ -19,7 +19,7 @@ import { EmptyState } from '@/app/components/empty-state';
    T Y P E S
 ========================= */
 
-type UserLevel = 'ADM' | 'MGR' | 'AST' | 'OTHER';
+type UserLevel = 'ADM' | 'MGR' | 'KSI' | 'AST' | 'KRA' | 'MD1' | 'KRT' | 'KRP' | 'MDP' | 'OTHER';
 
 interface UserProfile {
   id?: string | number;
@@ -135,7 +135,16 @@ type DetailMode = 'perHari' | 'perBaris';
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
 
 // Range tanggal utk filter FRONTEND
-const getDateRange = (frame: Timeframe): { from: string; to: string } => {
+const getDateRange = (frame: Timeframe, month?: string, year?: string): { from: string; to: string } => {
+  if (month && month !== 'ALL' && year) {
+    const m = parseInt(month, 10) - 1;
+    const y = parseInt(year, 10);
+    const dateFrom = new Date(y, m, 1);
+    const dateTo = new Date(y, m + 1, 0);
+    const toISO = (d: Date) => d.toISOString().split('T')[0];
+    return { from: toISO(dateFrom), to: toISO(dateTo) };
+  }
+
   const today = new Date();
   const dateTo = new Date(today);
   const dateFrom = new Date(today);
@@ -279,6 +288,9 @@ export default function UserDashboard() {
   const [filterFcba, setFilterFcba] = useState<string>('ALL');
   const [filterAfdeling, setFilterAfdeling] = useState<string>('');
 
+  const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
+  const [selectedYear, setSelectedYear] = useState<string>(String(new Date().getFullYear()));
+
   const [showFilters, setShowFilters] = useState(false);
 
   // Mode tampilan riwayat: per hari (rekap) / per baris (detail)
@@ -287,6 +299,8 @@ export default function UserDashboard() {
   const handleClearFilters = useCallback(() => {
     setFilterFcba('ALL');
     setFilterAfdeling('');
+    setSelectedMonth('ALL');
+    setSelectedYear(String(new Date().getFullYear()));
     setTimeframe('monthly');
   }, []);
 
@@ -421,14 +435,19 @@ export default function UserDashboard() {
   useEffect(() => {
     if (profileData) {
       setUserProfile(prev => ({ ...(prev || {}), ...profileData }));
-      const lvl2 = (profileData.level || '').toUpperCase();
-      if (lvl2 === 'ADM' || lvl2 === 'MGR' || lvl2 === 'AST') {
-        setUserLevel(lvl2 as UserLevel);
-        if (lvl2 === 'ADM') {
+      const lvl2 = (profileData.level || '').toUpperCase() as UserLevel;
+      const validLevels: UserLevel[] = ['ADM', 'MGR', 'KSI', 'AST', 'KRA', 'MD1', 'KRT', 'KRP', 'MDP'];
+      const finalLevel = validLevels.includes(lvl2) ? lvl2 : 'OTHER';
+      if (finalLevel !== 'OTHER') {
+        setUserLevel(finalLevel);
+        if (finalLevel === 'ADM') {
           setFilterFcba('ALL');
-        } else if (lvl2 === 'MGR') {
+        } else if (['MGR', 'KSI'].includes(finalLevel)) {
           setFilterFcba(profileData.fcba || '');
-        } else if (lvl2 === 'AST') {
+        } else if (['AST', 'KRA', 'MD1', 'KRT'].includes(finalLevel)) {
+          setFilterFcba(profileData.fcba || '');
+          setFilterAfdeling(profileData.afdeling || profileData.section || '');
+        } else if (['KRP', 'MDP'].includes(finalLevel)) {
           setFilterFcba(profileData.fcba || '');
           setFilterAfdeling(profileData.afdeling || profileData.section || '');
         }
@@ -442,12 +461,9 @@ export default function UserDashboard() {
     isLoading: loading,
     error: attendanceError,
   } = useQuery({
-    queryKey: ['attendance', timeframe, filterFcba, filterAfdeling, userLevel, userProfileKey],
+    queryKey: ['attendance', timeframe, selectedMonth, selectedYear, filterFcba, filterAfdeling, userLevel, userProfileKey],
     queryFn: async () => {
-      // ⚡ Bolt Optimization: Use server-side filtering for attendance data.
-      // By passing 'tanggal' and 'tanggal_end', we reduce network payload
-      // and client-side processing by ~75% (depending on timeframe).
-      const { from, to } = getDateRange(timeframe);
+      const { from, to } = getDateRange(timeframe, selectedMonth, selectedYear);
       const params = new URLSearchParams();
       params.set('tanggal', from);
       params.set('tanggal_end', to);
@@ -455,16 +471,21 @@ export default function UserDashboard() {
       const homeFcba = userProfile?.fcba || cookieStore.getCookie('user_Fcba') || '';
       const homeAfdeling =
         userProfile?.afdeling || userProfile?.section || cookieStore.getCookie('user_Section') || '';
+      const homeGang = userProfile?.gang || cookieStore.getCookie('user_Gang') || '';
 
       if (userLevel === 'ADM') {
         if (filterFcba && filterFcba !== 'ALL') params.set('fcba', filterFcba.trim());
         if (filterAfdeling.trim()) params.set('afdeling', filterAfdeling.trim());
-      } else if (userLevel === 'MGR') {
+      } else if (['MGR', 'KSI'].includes(userLevel)) {
         if (homeFcba) params.set('fcba', homeFcba.trim());
         if (filterAfdeling.trim()) params.set('afdeling', filterAfdeling.trim());
-      } else if (userLevel === 'AST') {
+      } else if (['AST', 'KRA', 'MD1'].includes(userLevel)) {
         if (homeFcba) params.set('fcba', homeFcba.trim());
         if (homeAfdeling) params.set('afdeling', homeAfdeling.trim());
+      } else if (['MDP', 'KRT', 'KRP'].includes(userLevel)) {
+        if (homeFcba) params.set('fcba', homeFcba.trim());
+        if (homeAfdeling) params.set('afdeling', homeAfdeling.trim());
+        if (homeGang) params.set('kemandoran', homeGang.trim());
       }
 
       const res = await fetch(`/api/attendance?${params.toString()}`, {
@@ -510,9 +531,9 @@ export default function UserDashboard() {
     },
     isLoading: loadingHarvesting,
   } = useQuery({
-    queryKey: ['harvesting', timeframe, filterFcba, filterAfdeling, userLevel, userProfileKey],
+    queryKey: ['harvesting', timeframe, selectedMonth, selectedYear, filterFcba, filterAfdeling, userLevel, userProfileKey],
     queryFn: async () => {
-      const { from, to } = getDateRange(timeframe);
+      const { from, to } = getDateRange(timeframe, selectedMonth, selectedYear);
       const p = new URLSearchParams();
       p.set('tanggal', from);
       p.set('tanggal_end', to);
@@ -520,16 +541,21 @@ export default function UserDashboard() {
       const homeFcba = userProfile?.fcba || cookieStore.getCookie('user_Fcba') || '';
       const homeAfdeling =
         userProfile?.afdeling || userProfile?.section || cookieStore.getCookie('user_Section') || '';
+      const homeGang = userProfile?.gang || cookieStore.getCookie('user_Gang') || '';
 
       if (userLevel === 'ADM') {
         if (filterFcba && filterFcba !== 'ALL') p.set('fcba', filterFcba.trim());
         if (filterAfdeling.trim()) p.set('afdeling', filterAfdeling.trim());
-      } else if (userLevel === 'MGR') {
+      } else if (['MGR', 'KSI'].includes(userLevel)) {
         if (homeFcba) p.set('fcba', homeFcba.trim());
         if (filterAfdeling.trim()) p.set('afdeling', filterAfdeling.trim());
-      } else if (userLevel === 'AST') {
+      } else if (['AST', 'KRA', 'KRT', 'MD1'].includes(userLevel)) {
         if (homeFcba) p.set('fcba', homeFcba.trim());
         if (homeAfdeling) p.set('afdeling', homeAfdeling.trim());
+      } else if (['MDP', 'KRP'].includes(userLevel)) {
+        if (homeFcba) p.set('fcba', homeFcba.trim());
+        if (homeAfdeling) p.set('afdeling', homeAfdeling.trim());
+        if (homeGang) p.set('kemandoran', homeGang.trim());
       }
 
       const res = await fetch(`/api/harvest?${p.toString()}`, {
@@ -594,9 +620,9 @@ export default function UserDashboard() {
     },
     isLoading: loadingPengangkutan,
   } = useQuery({
-    queryKey: ['pengangkutans', timeframe, filterFcba, filterAfdeling, userLevel, userProfileKey],
+    queryKey: ['pengangkutans', timeframe, selectedMonth, selectedYear, filterFcba, filterAfdeling, userLevel, userProfileKey],
     queryFn: async () => {
-      const { from, to } = getDateRange(timeframe);
+      const { from, to } = getDateRange(timeframe, selectedMonth, selectedYear);
       const p = new URLSearchParams();
       p.set('tanggal', from);
       p.set('tanggal_end', to);
@@ -604,19 +630,24 @@ export default function UserDashboard() {
       const homeFcba = userProfile?.fcba || cookieStore.getCookie('user_Fcba') || '';
       const homeAfdeling =
         userProfile?.afdeling || userProfile?.section || cookieStore.getCookie('user_Section') || '';
+      const homeGang = userProfile?.gang || cookieStore.getCookie('user_Gang') || '';
 
       if (userLevel === 'ADM') {
         if (filterFcba && filterFcba !== 'ALL') p.set('fcba', filterFcba.trim());
         if (filterAfdeling.trim()) p.set('afdeling', filterAfdeling.trim());
-      } else if (userLevel === 'MGR') {
+      } else if (['MGR', 'KSI'].includes(userLevel)) {
         if (homeFcba) p.set('fcba', homeFcba.trim());
         if (filterAfdeling.trim()) p.set('afdeling', filterAfdeling.trim());
-      } else if (userLevel === 'AST') {
+      } else if (['AST', 'KRA', 'KRT', 'MD1'].includes(userLevel)) {
         if (homeFcba) p.set('fcba', homeFcba.trim());
         if (homeAfdeling) p.set('afdeling', homeAfdeling.trim());
+      } else if (['MDP', 'KRP'].includes(userLevel)) {
+        if (homeFcba) p.set('fcba', homeFcba.trim());
+        if (homeAfdeling) p.set('afdeling', homeAfdeling.trim());
+        if (homeGang) p.set('kemandoran', homeGang.trim());
       }
 
-      const res = await fetch(`/api/pengangkutans?${p.toString()}`, {
+      const res = await fetch(`/api/transport?${p.toString()}`, {
         credentials: 'include',
       });
       if (res.status === 401) {
@@ -707,13 +738,11 @@ export default function UserDashboard() {
     // ⚡ Bolt Optimization: Use single-pass cookie retrieval to avoid O(N*K) lookups.
     const userInfo = cookieStore.getAllUserInfo();
     const { fullName, level, fcba, section, gang } = userInfo;
+    const lvl = (level || '').toUpperCase() as UserLevel;
+    const validLevels: UserLevel[] = ['ADM', 'MGR', 'KSI', 'AST', 'KRA', 'MD1', 'KRT', 'KRP', 'MDP'];
+    const finalLevel = validLevels.includes(lvl) ? lvl : 'OTHER';
 
-    let lvl: UserLevel = 'OTHER';
-    if (level === 'ADM' || level === 'MGR' || level === 'AST') {
-      lvl = level;
-    }
-
-    setUserLevel(lvl);
+    setUserLevel(finalLevel);
     setUserProfile(prev => ({
       ...(prev || {}),
       fullname: fullName || prev?.fullname,
@@ -723,13 +752,16 @@ export default function UserDashboard() {
       gang: gang || prev?.gang,
     }));
 
-    if (lvl === 'ADM') {
+    if (finalLevel === 'ADM') {
       setFilterFcba('ALL');
       setFilterAfdeling('');
-    } else if (lvl === 'MGR') {
+    } else if (['MGR', 'KSI'].includes(finalLevel)) {
       setFilterFcba(fcba || '');
       setFilterAfdeling('');
-    } else if (lvl === 'AST') {
+    } else if (['AST', 'KRA', 'MD1', 'KRT'].includes(finalLevel)) {
+      setFilterFcba(fcba || '');
+      setFilterAfdeling(section || '');
+    } else if (['KRP', 'MDP'].includes(finalLevel)) {
       setFilterFcba(fcba || '');
       setFilterAfdeling(section || '');
     }
@@ -768,9 +800,36 @@ export default function UserDashboard() {
       .sort()
       .map(v => ({ value: v, label: v }));
 
-    // Always include an option to select all afdeling (empty value means no afdeling filter)
     return [{ value: '', label: 'Semua Afdeling' }, ...options];
   }, [triplets, filterFcba]);
+
+  const monthOptions: Option[] = useMemo(() => {
+    const months = [
+      { value: 'ALL', label: 'Semua Bulan' },
+      { value: '01', label: 'Januari' },
+      { value: '02', label: 'Februari' },
+      { value: '03', label: 'Maret' },
+      { value: '04', label: 'April' },
+      { value: '05', label: 'Mei' },
+      { value: '06', label: 'Juni' },
+      { value: '07', label: 'Juli' },
+      { value: '08', label: 'Agustus' },
+      { value: '09', label: 'September' },
+      { value: '10', label: 'Oktober' },
+      { value: '11', label: 'November' },
+      { value: '12', label: 'Desember' },
+    ];
+    return months;
+  }, []);
+
+  const yearOptions: Option[] = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const years: Option[] = [];
+    for (let y = 2026; y <= currentYear; y++) {
+      years.push({ value: String(y), label: String(y) });
+    }
+    return years.reverse();
+  }, []);
 
   /* ===== Consolidated Attendance Data Processing (O(n) single-pass) ===== */
   const {
@@ -1067,6 +1126,18 @@ export default function UserDashboard() {
   const displayAfdeling = userProfile?.afdeling || userProfile?.section || '-';
   const displayGang = userProfile?.gang || '-';
 
+  const dashboardDateRange = useMemo(() => {
+    return getDateRange(timeframe, selectedMonth, selectedYear);
+  }, [timeframe, selectedMonth, selectedYear]);
+
+  const linkParams = useMemo(() => {
+    const { from, to } = dashboardDateRange;
+    const p = new URLSearchParams();
+    p.set('tanggal', from);
+    p.set('tanggal_end', to);
+    return p.toString();
+  }, [dashboardDateRange]);
+
   const timeframeLabel = (tf: Timeframe): string => {
     switch (tf) {
       case 'daily':
@@ -1162,18 +1233,23 @@ export default function UserDashboard() {
             <span className="text-xs uppercase tracking-wide text-base-content/60">
               Periode Data:
             </span>
-            {(['daily', 'weekly', 'monthly', 'yearly'] as Timeframe[]).map(tf => (
-              <button
-                key={tf}
-                type="button"
-                className={`btn btn-xs md:btn-sm ${
-                  timeframe === tf ? 'btn-primary' : 'btn-ghost border border-base-300'
-                }`}
-                onClick={() => setTimeframe(tf)}
-              >
-                {timeframeLabel(tf)}
-              </button>
-            ))}
+            <div className="join">
+              {(['daily', 'weekly', 'monthly', 'yearly'] as Timeframe[]).map(tf => (
+                <button
+                  key={tf}
+                  type="button"
+                  className={`join-item btn btn-xs md:btn-sm ${
+                    timeframe === tf ? 'btn-primary' : 'btn-ghost border border-base-300'
+                  }`}
+                  onClick={() => {
+                    setTimeframe(tf);
+                    if (tf !== 'monthly') setSelectedMonth('ALL');
+                  }}
+                >
+                  {timeframeLabel(tf)}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -1207,50 +1283,141 @@ export default function UserDashboard() {
             </div>
 
             {showFilters && (
-              <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
-                {userLevel === 'ADM' && (
+              <>
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                  {/* Bulan */}
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold">FCBA</label>
-                    <SearchSelect
-                      options={fcbaOptions}
-                      value={filterFcba}
-                      onChange={v => {
-                        setFilterFcba(v);
-                        setFilterAfdeling('');
-                      }}
-                      placeholder={t('filterFcbaPlaceholder')}
+                    <label className="text-xs font-semibold">Bulan</label>
+                  <SearchSelect
+                    options={monthOptions}
+                    value={selectedMonth}
+                    onChange={v => {
+                      setSelectedMonth(v);
+                      if (v !== 'ALL') setTimeframe('monthly');
+                    }}
+                      placeholder="Pilih Bulan"
                       small
                       useFixedPositioning
                     />
                   </div>
-                )}
 
-                {(userLevel === 'ADM' || userLevel === 'MGR') && (
+                  {/* Tahun */}
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold">Afdeling</label>
+                    <label className="text-xs font-semibold">Tahun</label>
                     <SearchSelect
-                      options={afdelingOptions}
-                      value={filterAfdeling}
-                      onChange={v => setFilterAfdeling(v)}
-                      placeholder={t('filterAfdelingPlaceholder')}
+                      options={yearOptions}
+                      value={selectedYear}
+                      onChange={v => setSelectedYear(v)}
+                      placeholder="Pilih Tahun"
                       small
-                      disabled={afdelingOptions.length === 0}
                       useFixedPositioning
                     />
                   </div>
-                )}
 
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold">Keterangan</label>
-                  <p className="text-xs text-base-content/60">
-                    • <b>HADIR</b> = Semua kode kecuali MK dan P1 <br />• <b>TEPAT WAKTU</b> = Hadir
-                    tanpa telat & tanpa pulang awal <br />• <b>TELAT</b> ={' '}
-                    <code>total_late_time</code> lebih dari 0 <br />• <b>PULANG AWAL</b> ={' '}
-                    <code>go_home_early</code> lebih dari 0 <br />• <b>ALPHA</b> = P1 (izin) atau MK
-                    (mangkir)
-                  </p>
+                  {/* FCBA */}
+                  {userLevel === 'ADM' && (
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-semibold">FCBA</label>
+                      <SearchSelect
+                        options={fcbaOptions}
+                        value={filterFcba}
+                        onChange={v => {
+                          setFilterFcba(v);
+                          setFilterAfdeling('');
+                        }}
+                        placeholder={t('filterFcbaPlaceholder')}
+                        small
+                        useFixedPositioning
+                      />
+                    </div>
+                  )}
+                  {['MGR', 'KSI'].includes(userLevel) && (
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-semibold">FCBA</label>
+                      <div className="px-2 py-1.5 text-sm font-medium bg-base-200 rounded-lg border border-base-300">
+                        {displayFcba}
+                      </div>
+                    </div>
+                  )}
+                  {['AST', 'KRA', 'MD1', 'KRT', 'KRP', 'MDP'].includes(userLevel) && (
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-semibold">FCBA</label>
+                      <div className="px-2 py-1.5 text-sm font-medium bg-base-200 rounded-lg border border-base-300">
+                        {displayFcba}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Afdeling */}
+                  {(userLevel === 'ADM' || ['MGR', 'KSI'].includes(userLevel)) && (
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-semibold">Afdeling</label>
+                      <SearchSelect
+                        options={afdelingOptions}
+                        value={filterAfdeling}
+                        onChange={v => setFilterAfdeling(v)}
+                        placeholder={t('filterAfdelingPlaceholder')}
+                        small
+                        disabled={afdelingOptions.length === 0}
+                        useFixedPositioning
+                      />
+                    </div>
+                  )}
+                  {['AST', 'KRA', 'MD1', 'KRT'].includes(userLevel) && (
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-semibold">Afdeling</label>
+                      <div className="px-2 py-1.5 text-sm font-medium bg-base-200 rounded-lg border border-base-300">
+                        {displayAfdeling}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Kemandoran (only for KRP/MDP) */}
+                  {['KRP', 'MDP'].includes(userLevel) && (
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-semibold">Kemandoran</label>
+                      <div className="px-2 py-1.5 text-sm font-medium bg-base-200 rounded-lg border border-base-300">
+                        {displayGang}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
+
+                {/* Keterangan */}
+                <div className="mt-3 border border-base-200 rounded-lg p-3 bg-base-100">
+                  <details className="group">
+                    <summary className="text-xs font-semibold cursor-pointer text-base-content/60 hover:text-base-content transition-colors select-none">
+                      <span className="inline-flex items-center gap-1">
+                        <Icon name="info" className="h-3.5 w-3.5" />
+                        Keterangan Status
+                        <Icon name="chevron-down" className="h-3 w-3 transition-transform group-open:rotate-180" />
+                      </span>
+                    </summary>
+                    <div className="mt-2 text-xs text-base-content/60 space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="badge badge-xs badge-ghost">HADIR</span>
+                        <span>Semua kode kecuali MK dan P1</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="badge badge-xs badge-success">TEPAT WAKTU</span>
+                        <span>Hadir tanpa telat & tanpa pulang awal</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="badge badge-xs badge-warning">TELAT</span>
+                        <span><code>total_late_time</code> lebih dari 0</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="badge badge-xs badge-error">PULANG AWAL</span>
+                        <span><code>go_home_early</code> lebih dari 0</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="badge badge-xs badge-neutral">ALPHA</span>
+                        <span>P1 (izin) atau MK (mangkir)</span>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              </>
             )}
           </div>
         </div>
@@ -1296,7 +1463,7 @@ export default function UserDashboard() {
                 </div>
               )}
               <div className="card-actions justify-end mt-2">
-                <Link href="/harvest" className="btn btn-sm btn-outline">
+                <Link href={`/harvest?${linkParams}`} className="btn btn-sm btn-outline">
                   Lihat Detail
                 </Link>
               </div>
@@ -1344,7 +1511,7 @@ export default function UserDashboard() {
                 </div>
               )}
               <div className="card-actions justify-end mt-2">
-                <Link href="/pengangkutan" className="btn btn-sm btn-outline">
+                <Link href={`/transport?${linkParams}`} className="btn btn-sm btn-outline">
                   Lihat Detail
                 </Link>
               </div>
@@ -1389,7 +1556,7 @@ export default function UserDashboard() {
                 </div>
               )}
               <div className="card-actions justify-end mt-2">
-                <Link href="/attendance" className="btn btn-sm btn-outline">
+                <Link href={`/attendance?${linkParams}`} className="btn btn-sm btn-outline">
                   Lihat Detail
                 </Link>
               </div>

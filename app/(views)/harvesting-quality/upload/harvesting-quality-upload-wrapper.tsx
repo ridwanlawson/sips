@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import { SkeletonTable } from '@/app/components/skeletons';
 
-const HarvestingQualityUploadPage = dynamic(() => import('./harvestingqualityuploadpage-client'), {
+const HarvestingQualityUploadPage = dynamic(() => import('./harvesting-quality-upload-client'), {
   
   loading: () => (
     <div className="p-6">

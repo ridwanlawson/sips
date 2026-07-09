@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import { SkeletonTable } from '@/app/components/skeletons';
 
-const AttendanceUploadPage = dynamic(() => import('./attendanceuploadpage-client'), {
+const AttendanceUploadPage = dynamic(() => import('./attendance-upload-client'), {
   loading: () => (
     <div className="p-6">
       <SkeletonTable rows={10} />

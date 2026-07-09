@@ -6,7 +6,7 @@ import { validateSecurity } from '@/lib/security';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const PENGANGKUTAN_BASE = `${BACKEND_URL}/api/apps/pengangkutans`;
+const TRANSPORT_BASE = `${BACKEND_URL}/api/apps/pengangkutans`;
 
 export async function GET(
   _req: NextRequest,
@@ -18,7 +18,7 @@ export async function GET(
     return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
   }
 
-  const upstream = await fetch(`${PENGANGKUTAN_BASE}/${encodeURIComponent(String(id))}`, {
+  const upstream = await fetch(`${TRANSPORT_BASE}/${encodeURIComponent(String(id))}`, {
     headers: authHeaders(token),
     cache: 'no-store',
   });
@@ -27,7 +27,7 @@ export async function GET(
     return NextResponse.json({ ok: false, error: 'Invalid response format' }, { status: 502 });
   }
   if (!upstream.ok) {
-    console.error('[API_PENGANGKUTANS_ID_GET_ERROR]', {
+    console.error('[API_TRANSPORTS_ID_GET_ERROR]', {
       status: upstream.status,
       id,
       data,
@@ -53,10 +53,10 @@ export async function PUT(
 
   const incoming = await req.formData();
   return proxyFormDataPut(
-    `${PENGANGKUTAN_BASE}/${encodeURIComponent(String(id))}`,
+    `${TRANSPORT_BASE}/${encodeURIComponent(String(id))}`,
     token,
     incoming,
-    'API_PENGANGKUTANS_ID'
+    'API_TRANSPORTS_ID'
   );
 }
 
@@ -73,10 +73,10 @@ export async function DELETE(
 
   const incoming = await req.formData();
   return proxyFormDataDelete(
-    `${PENGANGKUTAN_BASE}/${encodeURIComponent(String(id))}`,
+    `${TRANSPORT_BASE}/${encodeURIComponent(String(id))}`,
     token,
     incoming,
-    'API_PENGANGKUTANS_ID'
+    'API_TRANSPORTS_ID'
   );
 }
 
@@ -98,9 +98,9 @@ export async function POST(
   }
 
   return proxyFormDataPost(
-    `${PENGANGKUTAN_BASE}/${encodeURIComponent(String(id))}`,
+    `${TRANSPORT_BASE}/${encodeURIComponent(String(id))}`,
     token,
     incoming,
-    'API_PENGANGKUTANS_ID'
+    'API_TRANSPORTS_ID'
   );
 }

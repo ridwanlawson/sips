@@ -18,6 +18,7 @@ import { formatPerfNumber } from '@/utils/perf-formatter';
 import { useLocale } from '@/hooks/useLocale';
 import { SearchSelect, type Option } from '@/app/components/search-select';
 import { EmptyState } from '@/app/components/empty-state';
+import { HarvestGalleryView, type HarvestGalleryHandle } from '@/app/components/harvest-gallery-view';
 import AppTour from '@/app/components/app-tour';
 import type { TourStep } from '@/app/components/app-tour';
 import { Icon } from '@/app/components/icons';
@@ -337,6 +338,9 @@ export default function HarvestPage() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchInputRef = useSearchShortcut();
   const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState<'table' | 'gallery'>('table');
+  const [allExpanded, setAllExpanded] = useState(false);
+  const galleryRef = useRef<HarvestGalleryHandle>(null);
 
   const tourSteps: TourStep[] = useMemo(() => [
     {
@@ -393,6 +397,20 @@ export default function HarvestPage() {
       kemandoran: '',
     };
   });
+
+  // Read tanggal/tanggal_end from URL params (from dashboard navigation)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tanggal = params.get('tanggal');
+    const tanggal_end = params.get('tanggal_end');
+    if (tanggal || tanggal_end) {
+      setFilters(prev => ({
+        ...prev,
+        ...(tanggal ? { tanggal } : {}),
+        ...(tanggal_end ? { tanggal_end } : {}),
+      }));
+    }
+  }, []);
 
   const [userLevel, setUserLevel] = useState<UserLevel>('OTHER');
   const [homeFcba, setHomeFcba] = useState<string>('');
@@ -2041,37 +2059,66 @@ export default function HarvestPage() {
             ))}
           </div>
 
-          {/* SEARCH (dorong ke kanan) */}
-          <div className="ml-auto w-full md:w-96 group relative" data-tour="quick-search">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Icon name="search" className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all" />
-            </div>
-            <input
-              ref={searchInputRef}
-              className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
-              placeholder={tH('searchPlaceholder')}
-              value={q}
-              onChange={e => setQ(e.target.value)}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setIsSearchFocused(false)}
-              aria-label={tH('quickSearch')}
-              title={tH('quickSearch')}
-            />
-            {!isSearchFocused && !q && (
-              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none animate-fadeIn">
-                <kbd className="kbd kbd-sm bg-base-200/50 opacity-50">/</kbd>
+          {/* SEARCH & VIEW TOGGLE (dorong ke kanan) */}
+          <div className="ml-auto flex items-center gap-2">
+            <div className="w-full md:w-72 group relative" data-tour="quick-search">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Icon name="search" className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all" />
               </div>
-            )}
-            {q && (
+              <input
+                ref={searchInputRef}
+                className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
+                placeholder={tH('searchPlaceholder')}
+                value={q}
+                onChange={e => setQ(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+                aria-label={tH('quickSearch')}
+                title={tH('quickSearch')}
+              />
+              {!isSearchFocused && !q && (
+                <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none animate-fadeIn">
+                  <kbd className="kbd kbd-sm bg-base-200/50 opacity-50">/</kbd>
+                </div>
+              )}
+              {q && (
+                <button
+                  onClick={() => setQ('')}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-base-content/50 hover:text-error transition-colors"
+                  aria-label={tH('clearSearch')}
+                  title={tH('clearSearch')}
+                >
+                  <Icon name="close" className="h-5 w-5" />
+                </button>
+              )}
+            </div>
+            <div className="join">
               <button
-                onClick={() => setQ('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-base-content/50 hover:text-error transition-colors"
-                aria-label={tH('clearSearch')}
-                title={tH('clearSearch')}
+                className="btn btn-outline join-item"
+                onClick={() => setViewMode(v => v === 'table' ? 'gallery' : 'table')}
+                title={viewMode === 'table' ? 'Gallery View' : 'Table View'}
               >
-                <Icon name="close" className="h-5 w-5" />
+                <Icon name={viewMode === 'table' ? 'layout-grid' : 'list'} className="h-4 w-4" />
+                <span className="hidden sm:inline">{viewMode === 'table' ? 'Gallery' : 'Table'}</span>
               </button>
-            )}
+              {viewMode === 'gallery' && (
+                <button
+                  className="btn btn-outline join-item"
+                  onClick={() => {
+                    if (allExpanded) {
+                      galleryRef.current?.collapseAll();
+                    } else {
+                      galleryRef.current?.expandAll();
+                    }
+                    setAllExpanded(!allExpanded);
+                  }}
+                  title={allExpanded ? 'Close All' : 'Open All'}
+                >
+                  <Icon name="chevron-down" className={`h-4 w-4 ${allExpanded ? 'rotate-180' : ''}`} />
+                  <span className="hidden sm:inline">{allExpanded ? 'Close' : 'Open'}</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -2185,37 +2232,53 @@ export default function HarvestPage() {
           </div>
         )}
 
-        {/* Table */}
-        <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100 animate-slideUp [animation-delay:200ms]" data-tour="data-table">
-          <div className="min-w-[900px] md:min-w-0">
+        {/* Table / Gallery View */}
+        {viewMode === 'table' ? (
+          <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100 animate-slideUp [animation-delay:200ms]" data-tour="data-table">
+            <div className="min-w-[900px] md:min-w-0">
+              {loading ? (
+                <div className="p-8">
+                  <SkeletonTable rows={10} />
+                </div>
+              ) : (
+                <DataTable
+                  keyField="_rowKey"
+                  columns={columns}
+                  data={filtered}
+                  pagination
+                  customStyles={centerHeaderStyle}
+                  paginationPerPage={100}
+                  paginationRowsPerPageOptions={[100, 500, 1000, 5000]}
+                  dense
+                  highlightOnHover
+                  pointerOnHover
+                  fixedHeader
+                  fixedHeaderScrollHeight="520px"
+                  persistTableHead
+                  responsive
+                  noDataComponent={
+                    <EmptyState namespace="Harvest" onClearSearch={q ? () => setQ('') : undefined} />
+                  }
+                  progressPending={loading}
+                />
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="animate-slideUp [animation-delay:200ms]">
             {loading ? (
               <div className="p-8">
                 <SkeletonTable rows={10} />
               </div>
             ) : (
-              <DataTable
-                keyField="_rowKey"
-                columns={columns}
-                data={filtered}
-                pagination
-                customStyles={centerHeaderStyle}
-                paginationPerPage={100}
-                paginationRowsPerPageOptions={[100, 500, 1000, 5000]}
-                dense
-                highlightOnHover
-                pointerOnHover
-                fixedHeader
-                fixedHeaderScrollHeight="520px"
-                persistTableHead
-                responsive
-                noDataComponent={
-                  <EmptyState namespace="Harvest" onClearSearch={q ? () => setQ('') : undefined} />
-                }
-                progressPending={loading}
+              <HarvestGalleryView
+                ref={galleryRef}
+                items={filtered}
+                onClearSearch={q ? () => setQ('') : undefined}
               />
             )}
           </div>
-        </div>
+        )}
       </div>
 
       {/* Modal Form */}
