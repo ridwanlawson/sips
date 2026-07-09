@@ -45,3 +45,7 @@
 ## 2026-06-25 - [Eliminating Redundant Network Fetches on Locale Change]
 **Learning:** Including `localeTag` in a data-fetching dependency array (like `useQuery` or `fetchData`) causes entire datasets to be re-fetched from the network whenever the user toggles the UI language, even if the underlying data is identical.
 **Action:** Remove `localeTag` from network dependencies. Instead, move localization-dependent display formatting (e.g., `formatPerfDate`) into an `enrichedItems` `useMemo` hook that depends on both the data and the `localeTag`. This ensures the UI updates instantly without network overhead.
+
+## 2025-06-30 - [O(N) Render-path Lookup in Harvest]
+**Learning:** Performing repeated O(N) array scans (like `.find()`) inside event handlers or render loops for large datasets (like employees or TPH) causes noticeable input lag.
+**Action:** Pre-calculate a `Map` using `useMemo` for O(1) constant-time lookups. This ensures immediate UI responsiveness even as the dataset grows.
