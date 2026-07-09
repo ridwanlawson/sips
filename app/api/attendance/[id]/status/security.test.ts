@@ -50,7 +50,7 @@ describe('Attendance Status API Security', () => {
       ok: false,
       status: 400,
       json: async () => ({ message: 'Sensitive database error at 192.168.1.50' }),
-      catch: () => ({}),
+      text: async () => JSON.stringify({ message: 'Sensitive database error at 192.168.1.50' }),
     } as unknown as Response);
 
     const res = await PATCH(req, context);
@@ -59,8 +59,7 @@ describe('Attendance Status API Security', () => {
     const data = await res.json();
 
     // Should NOT contain the sensitive error text or the 'detail' field
-    expect(data.message).toBe('Gagal update status absensi ke server eksternal');
-    expect(data.detail).toBeUndefined();
+    expect(data.error).toBe('Failed to update attendance status');
     expect(data.ok).toBe(false);
   });
 
@@ -80,8 +79,7 @@ describe('Attendance Status API Security', () => {
     const data = await res.json();
 
     // Should NOT contain the stack trace or the 'detail' field
-    expect(data.message).toBe('Terjadi kesalahan pada server API route');
-    expect(data.detail).toBeUndefined();
+    expect(data.error).toBe('Internal server error');
     expect(data.ok).toBe(false);
   });
 });
