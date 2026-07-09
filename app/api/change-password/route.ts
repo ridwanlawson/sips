@@ -1,9 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { z } from 'zod';
 import { BACKEND_URL } from '@/utils/absensiProxy';
-import { changePasswordRateLimiter } from '@/lib/rateLimiter';
-import { validateCsrfToken } from '@/lib/csrf';
+import { validateSecurity } from '@/lib/security';
 
 const changePasswordSchema = z.object({
   current_password: z.string().min(1).max(200),
@@ -13,26 +12,10 @@ const changePasswordSchema = z.object({
     .max(200, 'Password maksimal 200 karakter'),
 });
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    // === RATE LIMITING ===
-    const ip =
-      request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
-    try {
-      await changePasswordRateLimiter.consume(ip);
-    } catch {
-      return NextResponse.json(
-        { ok: false, error: 'Too many attempts. Try again in 1 minute.' },
-        { status: 429 }
-      );
-    }
-
-    // === CSRF VALIDATION ===
-    const cookieStore = await cookies();
-    const csrfToken = cookieStore.get('csrf_token')?.value;
-    if (!csrfToken || !validateCsrfToken(request, csrfToken)) {
-      return NextResponse.json({ ok: false, error: 'Invalid CSRF token' }, { status: 403 });
-    }
+    const securityError = await validateSecurity(request);
+    if (securityError) return securityError;
 
     const body = await request.json();
     const parsed = changePasswordSchema.safeParse(body);
@@ -43,11 +26,8 @@ export async function POST(request: Request) {
       );
     }
     const { current_password, new_password } = parsed.data;
+    const cookieStore = await cookies();
     const token = cookieStore.get('auth_token')?.value;
-
-    if (!token) {
-      return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
-    }
 
     if (!token) {
       return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });

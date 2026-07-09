@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { CookieName } from '@/lib/constants';
+import { validateSecurity } from '@/lib/security';
 
 /**
  * Force logout endpoint that clears all cookies regardless of token validity.
@@ -40,8 +41,11 @@ const COOKIES_TO_DELETE = [
   CookieName.CSRF_TOKEN,
 ];
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
+    const securityError = await validateSecurity(req);
+    if (securityError) return securityError;
+
     const cookieStore = await cookies();
 
     for (const name of COOKIES_TO_DELETE) {

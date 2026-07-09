@@ -72,6 +72,7 @@ describe('Register API Security', () => {
       ok: false,
       status: 500,
       json: async () => ({ message: 'Detailed SQL error: table users not found' }),
+      text: async () => JSON.stringify({ message: 'Detailed SQL error: table users not found' }),
     } as Response);
 
     const req = new NextRequest('http://localhost/api/register', {

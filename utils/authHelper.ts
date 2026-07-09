@@ -3,6 +3,7 @@
  * This function will ALWAYS logout the user, even if the token is invalid/expired.
  * Uses a special force-logout endpoint that can delete httpOnly cookies.
  */
+import { getCsrfToken } from '@/lib/fetchWithCsrf';
 
 const COOKIE_EXCLUDE = new Set(['NEXT_LOCALE']);
 
@@ -48,10 +49,17 @@ export const logoutAndRedirect = async () => {
   clearLoginCookies();
 
   try {
+    const csrfToken = getCsrfToken();
+    const headers: Record<string, string> = {};
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+
     // Use force-logout endpoint which can delete httpOnly cookies
     // This works even when the token is invalid
     await fetch('/api/auth/force-logout', {
       method: 'POST',
+      headers,
       credentials: 'include',
     });
   } catch (e) {
