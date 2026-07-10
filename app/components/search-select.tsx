@@ -203,22 +203,29 @@ const SearchSelectInner: React.FC<SearchSelectProps> = ({
                   type="button"
                   role="option"
                   aria-selected={opt.value === value}
-                  className={`w-full text-left px-3 py-2 hover:bg-base-200 transition-colors ${
+                  className={`w-full text-left px-3 py-2 hover:bg-base-200 transition-colors flex items-center justify-between gap-2 ${
                     opt.value === value ? 'bg-base-200 font-semibold text-primary' : ''
                   }`}
                   onClick={() => {
                     onChange(opt.value);
                     setOpen(false);
                     setQ('');
+                    // 🎨 Palette Improvement: Return focus to trigger button
+                    boxRef.current?.querySelector('button')?.focus();
                   }}
                   onKeyDown={(e) => handleOptionKeyDown(e, idx)}
                   title={opt.label}
                 >
-                  <div className="font-medium truncate text-sm">{opt.label}</div>
-                  {opt.label !== opt.value && (
-                    <div className="text-[10px] opacity-70 truncate uppercase tracking-wider">
-                      {opt.value}
-                    </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium truncate text-sm">{opt.label}</div>
+                    {opt.label !== opt.value && (
+                      <div className="text-[10px] opacity-70 truncate uppercase tracking-wider">
+                        {opt.value}
+                      </div>
+                    )}
+                  </div>
+                  {opt.value === value && (
+                    <Icon name="check" className="h-4 w-4 shrink-0 text-primary" />
                   )}
                 </button>
               </li>
