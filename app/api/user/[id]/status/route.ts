@@ -24,12 +24,13 @@ export async function PATCH(
   // SECURITY: Restricted to ADMIN only (CWE-285)
   // Only administrators are allowed to change user status.
   const cookieStore = await cookies();
-  const userLevel = cookieStore.get(CookieName.SECURE_USER_LEVEL)?.value ||
-                    cookieStore.get(CookieName.USER_LEVEL)?.value;
+  const userLevel =
+    cookieStore.get(CookieName.SECURE_USER_LEVEL)?.value ||
+    cookieStore.get(CookieName.USER_LEVEL)?.value;
 
-  // if (userLevel !== UserLevel.ADMIN && userLevel !== 'ADMIN') {
-  //   return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
-  // }
+  if (userLevel !== UserLevel.ADMIN && userLevel !== 'ADMIN') {
+    return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
+  }
 
   let body: { status?: string };
   try {
