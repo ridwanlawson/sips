@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { CookieName } from '@/lib/constants';
-import { validateSecurity } from '@/lib/security';
+import { apiRateLimiter } from '@/lib/rateLimiter';
 
 /**
  * Force logout endpoint that clears all cookies regardless of token validity.
@@ -43,8 +43,22 @@ const COOKIES_TO_DELETE = [
 
 export async function POST(req: NextRequest) {
   try {
-    const securityError = await validateSecurity(req);
-    if (securityError) return securityError;
+    // Rate limiting only — CSRF is intentionally skipped for this last-resort
+    // endpoint. When called after session expiry, the CSRF cookie may already
+    // be inaccessible, making CSRF validation impossible and creating a
+    // deadlock where the user can never log out.
+    const ip =
+      req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+      req.headers.get('x-real-ip') ||
+      'unknown';
+    try {
+      await apiRateLimiter.consume(ip);
+    } catch {
+      return NextResponse.json(
+        { ok: false, error: 'Too many requests. Try again later.' },
+        { status: 429 }
+      );
+    }
 
     const cookieStore = await cookies();
 

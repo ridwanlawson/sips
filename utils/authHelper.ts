@@ -46,8 +46,6 @@ export const isAuthErrorResponse = async (response: Response): Promise<boolean> 
 };
 
 export const logoutAndRedirect = async () => {
-  clearLoginCookies();
-
   try {
     const csrfToken = getCsrfToken();
     const headers: Record<string, string> = {};
@@ -55,8 +53,9 @@ export const logoutAndRedirect = async () => {
       headers['X-CSRF-Token'] = csrfToken;
     }
 
-    // Use force-logout endpoint which can delete httpOnly cookies
-    // This works even when the token is invalid
+    // Use force-logout endpoint which can delete httpOnly cookies.
+    // Call this BEFORE clearLoginCookies() so the CSRF token is still available
+    // in document.cookie for the X-CSRF-Token header.
     await fetch('/api/auth/force-logout', {
       method: 'POST',
       headers,
@@ -65,6 +64,8 @@ export const logoutAndRedirect = async () => {
   } catch (e) {
     console.warn('Force logout API call failed:', e);
   }
+
+  clearLoginCookies();
 
   // Force reload to login page and clear any client state
   window.location.href = '/';

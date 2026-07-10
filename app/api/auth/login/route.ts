@@ -86,11 +86,11 @@ export async function POST(request: Request) {
 
     const res = NextResponse.json({ ok: true });
 
-    // Base cookie utk auth (server-only) - ALWAYS secure
+    // Base cookie utk auth (server-only)
     const cookieExpiry = new Date(Date.now() + 8 * 60 * 60 * 1000); // 8 hours
     const base = {
       httpOnly: true,
-      secure: true, // ALWAYS secure, even in development
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict' as const,
       path: '/',
       expires: cookieExpiry,
@@ -112,7 +112,7 @@ export async function POST(request: Request) {
     // Set CSRF token cookie (generated server-side)
     res.cookies.set('csrf_token', CryptoJS.lib.WordArray.random(16).toString(CryptoJS.enc.Hex), {
       httpOnly: false, // Must be accessible to JavaScript for X-CSRF-Token header
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict' as const,
       path: '/',
       expires: cookieExpiry,

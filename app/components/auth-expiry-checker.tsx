@@ -3,51 +3,61 @@
 import { useEffect } from 'react';
 import { logoutAndRedirect } from '@/utils/authHelper';
 
-/** Decode the JWT payload without a library and read only the exp claim. */
-function getTokenExpiry(token: string): number | null {
+/**
+ * Reads token expiry from the server via a lightweight endpoint.
+ * The auth_token cookie is httpOnly so it cannot be read by client-side JS.
+ */
+interface CheckExpiryResponse {
+  tokenPresent: boolean;
+  expired: boolean;
+  exp: number | null;
+}
+
+async function fetchTokenExpiry(): Promise<CheckExpiryResponse> {
   try {
-    const payload = token.split('.')[1];
-    if (!payload) return null;
-    const padded = payload.replace(/-/g, '+').replace(/_/g, '/') + '===';
-    const decoded = JSON.parse(atob(padded)) as Record<string, unknown>;
-    return typeof decoded.exp === 'number' ? decoded.exp : null;
+    const res = await fetch('/api/auth/check-expiry', { credentials: 'include' });
+    if (!res.ok) return { tokenPresent: false, expired: false, exp: null };
+    return await res.json() as CheckExpiryResponse;
   } catch {
-    return null;
+    return { tokenPresent: false, expired: false, exp: null };
   }
 }
 
-function getAuthTokenFromCookie(): string {
-  if (typeof document === 'undefined') return '';
-  const match = document.cookie.match('(^|;)\\s*auth_token\\s*=\\s*([^;]+)');
-  return match ? decodeURIComponent(match[2] ?? '') : '';
-}
+const PUBLIC_PATHS = new Set(['/', '/login', '/register', '/forgot-password']);
 
 export default function AuthExpiryChecker() {
   useEffect(() => {
-    const token = getAuthTokenFromCookie();
-    if (!token) return;
+    // Don't act on public pages — the middleware already handles routing there.
+    if (PUBLIC_PATHS.has(window.location.pathname)) return;
 
-    const exp = getTokenExpiry(token);
-    if (exp === null) return;
+    let cancelled = false;
 
-    const nowSec = Math.floor(Date.now() / 1000);
+    const check = async () => {
+      const { tokenPresent, expired, exp } = await fetchTokenExpiry();
+      if (cancelled) return;
 
-    // Logout immediately when the token is already expired.
-    if (nowSec >= exp) {
-      logoutAndRedirect();
-      return;
-    }
+      // No session at all — nothing to check.
+      if (!tokenPresent) return;
 
-    // Schedule logout when the token expires.
-    const msUntilExpiry = (exp - nowSec) * 1000;
-    // Limit to 24 hours to avoid setTimeout overflow.
-    const delay = Math.min(msUntilExpiry, 24 * 60 * 60 * 1000);
+      if (expired) {
+        logoutAndRedirect();
+        return;
+      }
 
-    const timer = setTimeout(() => {
-      logoutAndRedirect();
-    }, delay);
+      if (exp !== null) {
+        const nowSec = Math.floor(Date.now() / 1000);
+        const msUntilExpiry = (exp - nowSec) * 1000;
+        // Limit to 24 hours to avoid setTimeout overflow.
+        const delay = Math.min(msUntilExpiry, 24 * 60 * 60 * 1000);
+        if (delay > 0) {
+          setTimeout(check, delay);
+        }
+      }
+    };
 
-    return () => clearTimeout(timer);
+    check();
+
+    return () => { cancelled = true; };
   }, []);
 
   return null;
