@@ -13,19 +13,6 @@ function generateRandomHex(length: number): string {
     .substring(0, length * 2);
 }
 
-/** Parse the exp claim from a JWT without verification. */
-function getJwtExpiry(token: string): number | null {
-  try {
-    const payload = token.split('.')[1];
-    if (!payload) return null;
-    const padded = payload.replace(/-/g, '+').replace(/_/g, '/') + '===';
-    const decoded = JSON.parse(atob(padded)) as Record<string, unknown>;
-    return typeof decoded.exp === 'number' ? decoded.exp : null;
-  } catch {
-    return null;
-  }
-}
-
 const normalizeLevel = (level: string) => {
   const upperLevel = level.toUpperCase();
   return upperLevel === 'ADMIN' ? UserLevel.ADMIN : upperLevel;
@@ -51,7 +38,7 @@ function setCsrfCookie(response: NextResponse, request: NextRequest) {
   const hasCsrf = request.cookies.get(CSRF_COOKIE_NAME);
   if (!hasCsrf) {
     const token = generateRandomHex(CSRF_TOKEN_LENGTH / 2);
-    const cookieExpiry = new Date(Date.now() + 3600 * 1000); // 1 hour
+    const cookieExpiry = new Date(Date.now() + 8 * 60 * 60 * 1000); // 8 hours (match login route)
     response.cookies.set({
       name: CSRF_COOKIE_NAME,
       value: token,
@@ -121,23 +108,6 @@ export function middleware(request: NextRequest) {
   }
 
   const token = request.cookies.get(CookieName.AUTH_TOKEN)?.value;
-
-  // Check token expiry to prevent infinite redirect loops with stale tokens.
-  if (token) {
-    const exp = getJwtExpiry(token);
-    if (exp !== null && Math.floor(Date.now() / 1000) >= exp) {
-      const url = new URL('/', origin);
-      if (!isPublic) url.searchParams.set('redirect', pathname);
-      const redirectRes = NextResponse.redirect(url);
-      redirectRes.cookies.set(CookieName.AUTH_TOKEN, '', {
-        path: '/',
-        maxAge: 0,
-        secure: process.env.NODE_ENV === 'production',
-      });
-      setDefaultLocale(redirectRes, request);
-      return redirectRes;
-    }
-  }
 
   // Redirect unauthenticated private routes to login.
   if (!isPublic && !token) {

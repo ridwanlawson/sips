@@ -3,7 +3,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useRef, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
-import AuthExpiryChecker from './auth-expiry-checker';
 import { isAuthErrorResponse, logoutAndRedirect } from '@/utils/authHelper';
 import { getCsrfToken } from '@/lib/fetchWithCsrf';
 
@@ -71,8 +70,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
       const response = await originalFetch(input, requestInit);
 
-      // Clone before checking so downstream callers can still read the body.
-      if (await isAuthErrorResponse(response.clone())) {
+      // Auto-redirect only on GET 401 to prevent data loss on form submissions
+      // (POST/PUT/DELETE/PATCH should be handled by individual pages).
+      if (method === 'GET' && await isAuthErrorResponse(response.clone())) {
         logoutAndRedirect();
       }
       return response;
@@ -83,7 +83,6 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClientRef.current}>
-      <AuthExpiryChecker />
       {children}
       <Toaster
         position="top-right"

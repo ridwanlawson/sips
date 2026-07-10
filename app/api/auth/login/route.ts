@@ -16,7 +16,9 @@ export async function POST(request: Request) {
   try {
     // === RATE LIMITING ===
     const ip =
-      request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+      request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+      request.headers.get('x-real-ip') ||
+      'unknown';
     try {
       await loginRateLimiter.consume(ip);
     } catch {

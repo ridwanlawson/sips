@@ -19,9 +19,7 @@ export async function validateSecurity(req: NextRequest): Promise<NextResponse |
     return NextResponse.json(
       {
         ok: false,
-        success: false,
         error: 'Too many requests. Try again later.',
-        message: 'Too many requests. Try again later.',
       },
       { status: 429 }
     );
@@ -39,9 +37,7 @@ export async function validateSecurity(req: NextRequest): Promise<NextResponse |
     return NextResponse.json(
       {
         ok: false,
-        success: false,
         error: 'Invalid CSRF token',
-        message: 'Invalid CSRF token',
       },
       { status: 403 }
     );
