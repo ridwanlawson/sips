@@ -1360,6 +1360,18 @@ export default function HarvestPage() {
     gcTime: 5 * 60 * 1000,
   });
 
+  /**
+   * ⚡ Bolt Optimization: Use a Map for O(1) employee lookups from the gang list.
+   * This replaces O(N) searches during employee selection and auto-fills.
+   */
+  const employeeByGangMap = useMemo(() => {
+    const map = new Map<string, Employee>();
+    for (const e of employeesByGang) {
+      if (e.fccode) map.set(e.fccode, e);
+    }
+    return map;
+  }, [employeesByGang]);
+
   // Employee options from employeesByGang query
   const employeeOptions: Option[] = useMemo(() => {
     if (!employeesByGang.length) return [];
@@ -1370,6 +1382,18 @@ export default function HarvestPage() {
       }))
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [employeesByGang]);
+
+  /**
+   * ⚡ Bolt Optimization: Use a Map for O(1) TPH detail lookups.
+   * This ensures immediate UI responsiveness when selecting a TPH from the list.
+   */
+  const tphDetailMap = useMemo(() => {
+    const map = new Map<string, (typeof tphDetailData)[0]>();
+    for (const t of tphDetailData) {
+      if (t.notph) map.set(t.notph, t);
+    }
+    return map;
+  }, [tphDetailData]);
 
   /* ===== Cascading change handlers ===== */
   const onChangeFcba = (v: string) => {
@@ -1416,7 +1440,8 @@ export default function HarvestPage() {
   };
 
   const onChangeEmployee = (fccode: string) => {
-    const emp = employeesByGang.find(e => e.fccode === fccode);
+    // ⚡ Bolt Optimization: O(1) lookup via Map instead of O(N) .find()
+    const emp = employeeByGangMap.get(fccode);
     if (!emp) return;
 
     // Update state FCBA & Afdeling untuk trigger cascading query Field Code & TPH
@@ -2473,7 +2498,8 @@ export default function HarvestPage() {
                       options={tphOptions}
                       value={form.tph ?? ''}
                       onChange={v => {
-                        const tphItem = tphDetailData.find(t => t.notph === v);
+                        // ⚡ Bolt Optimization: O(1) lookup via Map instead of O(N) .find()
+                        const tphItem = tphDetailMap.get(v);
                         setForm(s => ({ ...s, tph: v, noancak: tphItem?.ancakno || '' }));
                       }}
                       placeholder={
