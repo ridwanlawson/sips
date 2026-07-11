@@ -19,7 +19,7 @@ import { SearchSelect, type Option } from '@/app/components/search-select';
 import { EmptyState } from '@/app/components/empty-state';
 import { AttendanceGalleryView, type AttendanceGalleryViewHandle } from '@/app/components/attendance-gallery-view';
 import { DeleteModal } from '@/app/components/delete-modal';
-import { useSearchShortcut } from '@/hooks/useSearchShortcut';
+import { QuickSearch } from '@/app/components/quick-search';
 import { useLocale } from '@/hooks/useLocale';
 import { formatPerfDate } from '@/utils/perf-formatter';
 import AppTour from '@/app/components/app-tour';
@@ -309,8 +309,6 @@ export default function Attendance() {
   const queryClient = useQueryClient();
   const t = useTranslations('Attendance');
   const [q, setQ] = useState('');
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const searchInputRef = useSearchShortcut();
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'gallery'>('table');
   const [allExpanded, setAllExpanded] = useState(false);
@@ -2029,37 +2027,15 @@ export default function Attendance() {
 
         {/* Quick Search & View Toggle */}
         <div className="mb-3 flex items-center gap-2 justify-end animate-slideUp [animation-delay:100ms]">
-          <div className="relative w-full md:w-96 group" data-tour="quick-search">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Icon name="search" className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all" />
-            </div>
-            <input
-              ref={searchInputRef}
-              className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
-              placeholder={t('searchPlaceholder')}
-              value={q}
-              onChange={e => setQ(e.target.value)}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setIsSearchFocused(false)}
-              aria-label={t('quickSearch')}
-              title={t('quickSearch')}
-            />
-            {!isSearchFocused && !q && (
-              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none animate-fadeIn">
-                <kbd className="kbd kbd-sm bg-base-200/50 opacity-50">/</kbd>
-              </div>
-            )}
-            {q && (
-              <button
-                onClick={() => setQ('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-base-content/50 hover:text-error transition-colors"
-                aria-label={t('clearSearch')}
-                title={t('clearSearch')}
-              >
-                <Icon name="close" className="h-5 w-5" />
-              </button>
-            )}
-          </div>
+          <QuickSearch
+            value={q}
+            onChange={setQ}
+            placeholder={t('searchPlaceholder')}
+            totalCount={items.length}
+            filteredCount={filtered.length}
+            data-tour="quick-search"
+            className="w-full md:w-96"
+          />
           <div className="join">
             <button
               className="btn btn-outline join-item"

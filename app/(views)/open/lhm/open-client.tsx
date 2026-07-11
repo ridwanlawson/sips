@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import DataTable from '@/app/components/dynamic-data-table';
-import { useSearchShortcut } from '@/hooks/useSearchShortcut';
+import { QuickSearch } from '@/app/components/quick-search';
 import type { TableColumn } from 'react-data-table-component';
 import toast from 'react-hot-toast';
 import { SkeletonTable } from '@/app/components/skeletons';
@@ -187,8 +187,6 @@ export default function Open() {
   const localeTag = useLocale();
   const [q, setQ] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const searchInputRef = useSearchShortcut();
   const handleTourStepChange = useCallback((stepIndex: number) => {
     if (stepIndex === 4) {
       setShowFilters(true);
@@ -1094,38 +1092,14 @@ export default function Open() {
               </div>
             ))}
           </div>
-          <div className="relative w-full sm:w-72 md:w-80 group shrink-0" data-tour="quick-search">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Icon name="search" className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all" />
-            </div>
-            <input
-              ref={searchInputRef}
-              className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
-              placeholder={t('searchPlaceholder')}
-              value={q}
-              onChange={e => setQ(e.target.value)}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setIsSearchFocused(false)}
-              aria-label={t('quickSearch')}
-              title={t('quickSearch')}
-            />
-            {!isSearchFocused && !q && (
-              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                <kbd className="kbd kbd-sm bg-base-200/50 opacity-50">/</kbd>
-              </div>
-            )}
-            {q && (
-              <button
-                type="button"
-                onClick={() => setQ('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-base-content/50 hover:text-error transition-colors"
-                aria-label={t('clearSearch')}
-                title={t('clearSearch')}
-              >
-                <Icon name="close" className="h-5 w-5" />
-              </button>
-            )}
-          </div>
+          <QuickSearch
+            value={q}
+            onChange={setQ}
+            placeholder={t('searchPlaceholder')}
+            totalCount={items.length}
+            filteredCount={filtered.length}
+            data-tour="quick-search"
+          />
         </div>
 
         {/* Filter Bar */}
