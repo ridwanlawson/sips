@@ -1,15 +1,18 @@
 'use client';
 
-import { useState, forwardRef, useImperativeHandle, useCallback } from 'react';
+import { useState, forwardRef, useImperativeHandle, useCallback, memo } from 'react';
 import { PhotoCell } from '@/app/components/photo-cell';
 import { EmptyState } from '@/app/components/empty-state';
 import { getProxiedImageUrl } from '@/utils/imageHelper';
 import { buildMapUrl } from '@/utils/mapHelper';
-import { Icon } from '@/app/components/icons';
+import { Icon, type IconName } from '@/app/components/icons';
 import { useTranslations } from 'next-intl';
 
 type HarvestItem = {
   _rowKey?: string;
+  _displayDate?: string;
+  _outputNum?: number;
+  _brondolNum?: number;
   id: string;
   nodokumen: string;
   tanggal: string;
@@ -58,17 +61,58 @@ export type HarvestGalleryHandle = {
   collapseAll: () => void;
 };
 
-function ItemRow({ label, value }: { label: string; value: React.ReactNode }) {
+/**
+ * ⚡ Bolt Optimization: Memoized sub-component for item rows.
+ * Optimized to accept primitive value and optional link to ensure memoization effectiveness.
+ */
+const ItemRow = memo(function ItemRow({
+  label,
+  value,
+  href,
+  icon,
+}: {
+  label: string;
+  value: string | number | null | undefined;
+  href?: string | null;
+  icon?: IconName;
+}) {
   if (!value || value === '-' || value === '') return null;
   return (
     <div className="flex justify-between gap-2 text-sm py-1 border-b border-base-200 last:border-0">
       <span className="text-base-content/60 shrink-0">{label}</span>
-      <span className="text-right font-medium break-all">{value}</span>
+      <span className="text-right font-medium break-all">
+        {href ? (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="link link-primary text-xs inline-flex items-center gap-1"
+          >
+            {icon && <Icon name={icon} className="h-3.5 w-3.5" />}
+            {value}
+          </a>
+        ) : (
+          value
+        )}
+      </span>
     </div>
   );
-}
+});
 
-function HarvestCard({ item, index, isExpanded, onToggle }: { item: HarvestItem; index: number; isExpanded: boolean; onToggle: () => void }) {
+/**
+ * ⚡ Bolt Optimization: Memoized HarvestCard.
+ */
+const HarvestCard = memo(function HarvestCard({
+  item,
+  index,
+  isExpanded,
+  onToggle,
+}: {
+  item: HarvestItem;
+  index: number;
+  isExpanded: boolean;
+  onToggle: (id: string) => void;
+}) {
   const t = useTranslations('Harvest');
 
   const statusColor =
@@ -81,6 +125,7 @@ function HarvestCard({ item, index, isExpanded, onToggle }: { item: HarvestItem;
           : 'badge-ghost';
 
   const dateOnly = (item.tanggal || '').split(' ')[0];
+  const displayDate = item._displayDate || dateOnly || '-';
 
   return (
     <div
@@ -90,7 +135,7 @@ function HarvestCard({ item, index, isExpanded, onToggle }: { item: HarvestItem;
     >
       <button
         type="button"
-        onClick={onToggle}
+        onClick={() => onToggle(item.id)}
         className="w-full text-left focus:outline-none"
       >
         <div className="p-3 flex gap-3 items-start">
@@ -110,7 +155,7 @@ function HarvestCard({ item, index, isExpanded, onToggle }: { item: HarvestItem;
               {item.nama_karyawan}
             </div>
             <div className="text-xs text-base-content/60 truncate">{item.kode_karyawan}</div>
-            <div className="text-xs text-base-content/70 mt-0.5">{dateOnly}</div>
+            <div className="text-xs text-base-content/70 mt-0.5">{displayDate}</div>
             <div className="text-xs text-base-content/70 mt-0.5">
               Kemandoran: <strong>{item.kemandoran || '-'}</strong>
             </div>
@@ -123,8 +168,8 @@ function HarvestCard({ item, index, isExpanded, onToggle }: { item: HarvestItem;
               </span>
             </div>
             <div className="flex items-center gap-2 mt-1 text-xs text-base-content/70">
-              <span>Output: <strong>{item.output || '-'}</strong></span>
-              <span>Brondol: <strong>{item.brondol || '-'}</strong></span>
+              <span>Output: <strong>{item._outputNum ?? item.output ?? '-'}</strong></span>
+              <span>Brondol: <strong>{item._brondolNum ?? item.brondol ?? '-'}</strong></span>
             </div>
           </div>
 
@@ -143,10 +188,10 @@ function HarvestCard({ item, index, isExpanded, onToggle }: { item: HarvestItem;
         <div className="px-3 pb-3 border-t border-base-200 animate-fadeIn">
           <div className="grid grid-cols-2 gap-x-3 pt-2">
             <ItemRow label={t('colKemandoran')} value={item.kemandoran} />
-            <div className="flex justify-between gap-2 text-sm py-1 border-b border-base-200">
-              <span className="text-base-content/60 shrink-0">Kerani</span>
-              <span className="text-right font-medium break-all">{item.nama_karyawan_kerani || item.kode_karyawan_kerani || '-'}</span>
-            </div>
+            <ItemRow
+              label="Kerani"
+              value={item.nama_karyawan_kerani || item.kode_karyawan_kerani || '-'}
+            />
             <ItemRow label={t('colFcba')} value={item.fcba} />
             <ItemRow label={t('colAfd')} value={item.afdeling} />
             <ItemRow label={t('colTph')} value={item.tph} />
@@ -165,20 +210,8 @@ function HarvestCard({ item, index, isExpanded, onToggle }: { item: HarvestItem;
             <ItemRow label={t('colTPanjang')} value={item.tangkaipanjang} />
             <ItemRow
               label={t('colLokasi')}
-              value={
-                item.location ? (
-                  <a
-                    href={buildMapUrl(item.location)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="link link-primary text-xs"
-                  >
-                    📍 {t('gpsDefaultLabel')}
-                  </a>
-                ) : (
-                  '-'
-                )
-              }
+              value={item.location ? `📍 ${t('gpsDefaultLabel')}` : null}
+              href={item.location ? buildMapUrl(item.location) : null}
             />
           </div>
 
@@ -188,20 +221,9 @@ function HarvestCard({ item, index, isExpanded, onToggle }: { item: HarvestItem;
             <ItemRow label={t('colExceptionCase')} value={item.exception_case} />
             <ItemRow
               label={t('colLampiran')}
-              value={
-                item.no_ba_exca ? (
-                  <a
-                    href={item.no_ba_exca}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="link link-primary text-xs"
-                  >
-                    <Icon name="document-attach" className="h-4 w-4 inline" />
-                  </a>
-                ) : (
-                  '-'
-                )
-              }
+              value={item.no_ba_exca ? 'PDF' : null}
+              href={item.no_ba_exca}
+              icon="document-attach"
             />
             <ItemRow label="Device" value={item.id_device} />
           </div>
@@ -209,7 +231,7 @@ function HarvestCard({ item, index, isExpanded, onToggle }: { item: HarvestItem;
       )}
     </div>
   );
-}
+});
 
 export const HarvestGalleryView = forwardRef<HarvestGalleryHandle, HarvestGalleryViewProps>(
   function HarvestGalleryView({ items, onClearSearch }, ref) {
@@ -247,7 +269,7 @@ export const HarvestGalleryView = forwardRef<HarvestGalleryHandle, HarvestGaller
               item={item}
               index={index}
               isExpanded={expandedIds.has(item.id)}
-              onToggle={() => toggleExpand(item.id)}
+              onToggle={toggleExpand}
             />
           ))}
         </div>

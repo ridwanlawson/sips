@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, forwardRef, useImperativeHandle, useCallback } from 'react';
+import { useState, forwardRef, useImperativeHandle, useCallback, memo } from 'react';
 import { PhotoCell } from '@/app/components/photo-cell';
 import { EmptyState } from '@/app/components/empty-state';
 import { getProxiedImageUrl } from '@/utils/imageHelper';
 import { buildMapUrl } from '@/utils/mapHelper';
-import { Icon } from '@/app/components/icons';
+import { Icon, type IconName } from '@/app/components/icons';
 import { useTranslations } from 'next-intl';
 
 type GalleryItem = {
@@ -13,6 +13,10 @@ type GalleryItem = {
   _displayDate?: string;
   _mandorLabel?: string;
   _karyawanLabel?: string;
+  _karyawanName?: string;
+  _karyawanCode?: string;
+  _timeInDisplay?: string;
+  _timeOutDisplay?: string;
   id: string;
   tanggal: string;
   kemandoran?: string | null;
@@ -52,23 +56,64 @@ export type AttendanceGalleryViewHandle = {
   collapseAll: () => void;
 };
 
-function ItemRow({ label, value }: { label: string; value: React.ReactNode }) {
+/**
+ * ⚡ Bolt Optimization: Memoized sub-component for item rows.
+ * Optimized to accept primitive value and optional link to ensure memoization effectiveness.
+ */
+const ItemRow = memo(function ItemRow({
+  label,
+  value,
+  href,
+  icon,
+}: {
+  label: string;
+  value: string | number | null | undefined;
+  href?: string | null;
+  icon?: IconName;
+}) {
   if (!value || value === '-' || value === '') return null;
   return (
     <div className="flex justify-between gap-2 text-sm py-1 border-b border-base-200 last:border-0">
       <span className="text-base-content/60 shrink-0">{label}</span>
-      <span className="text-right font-medium break-all">{value}</span>
+      <span className="text-right font-medium break-all">
+        {href ? (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="link link-primary text-xs inline-flex items-center gap-1"
+          >
+            {icon && <Icon name={icon} className="h-3.5 w-3.5" />}
+            {value}
+          </a>
+        ) : (
+          value
+        )}
+      </span>
     </div>
   );
-}
+});
 
-function GalleryCard({ item, index, isExpanded, onToggle }: { item: GalleryItem; index: number; isExpanded: boolean; onToggle: () => void }) {
+/**
+ * ⚡ Bolt Optimization: Memoized GalleryCard.
+ * - Uses pre-calculated enriched values with functional fallbacks to ensure UI correctness.
+ */
+const GalleryCard = memo(function GalleryCard({
+  item,
+  index,
+  isExpanded,
+  onToggle,
+}: {
+  item: GalleryItem;
+  index: number;
+  isExpanded: boolean;
+  onToggle: (id: string) => void;
+}) {
   const t = useTranslations('Attendance');
 
-  const nameLabel = item._karyawanLabel || item.namakaryawan || item.kode_karyawan || '-';
-  const nameParts = nameLabel.includes(' - ') ? nameLabel.split(' - ', 2) : [nameLabel, ''];
-  const displayName = nameParts[1] || nameParts[0];
-  const displayCode = nameParts[1] ? nameParts[0] : '';
+  // ⚡ Bolt Optimization: Prefer pre-calculated values from enrichedItems
+  const displayName = item._karyawanName || item.namakaryawan || item.kode_karyawan || '-';
+  const displayCode = item._karyawanCode || (displayName !== item.kode_karyawan ? item.kode_karyawan : '');
 
   const statusColor =
     (item.status_attendance || '').toLowerCase() === 'planned'
@@ -79,12 +124,14 @@ function GalleryCard({ item, index, isExpanded, onToggle }: { item: GalleryItem;
           ? 'badge-error'
           : 'badge-ghost';
 
-  const timeIn = item.time_in
+  // ⚡ Bolt: Robust fallbacks for time formatting if enriched values are missing
+  const timeIn = item._timeInDisplay || (item.time_in
     ? (item.time_in.includes(' ') ? item.time_in.split(' ')[1]?.slice(0, 5) : item.time_in.slice(0, 5))
-    : '-';
-  const timeOut = item.time_out
+    : '-');
+  const timeOut = item._timeOutDisplay || (item.time_out
     ? (item.time_out.includes(' ') ? item.time_out.split(' ')[1]?.slice(0, 5) : item.time_out.slice(0, 5))
-    : '-';
+    : '-');
+  const displayDate = item._displayDate || (item.tanggal || '').split(' ')[0] || '-';
 
   return (
     <div
@@ -94,7 +141,7 @@ function GalleryCard({ item, index, isExpanded, onToggle }: { item: GalleryItem;
     >
       <button
         type="button"
-        onClick={onToggle}
+        onClick={() => onToggle(item.id)}
         className="w-full text-left focus:outline-none"
       >
         <div className="p-3 flex gap-3 items-start">
@@ -116,7 +163,7 @@ function GalleryCard({ item, index, isExpanded, onToggle }: { item: GalleryItem;
             {displayCode && (
               <div className="text-xs text-base-content/60 truncate">{displayCode}</div>
             )}
-            <div className="text-xs text-base-content/70 mt-0.5">{item._displayDate || '-'}</div>
+            <div className="text-xs text-base-content/70 mt-0.5">{displayDate}</div>
             <div className="text-xs font-mono mt-1">
               {timeIn} - {timeOut}
             </div>
@@ -158,55 +205,20 @@ function GalleryCard({ item, index, isExpanded, onToggle }: { item: GalleryItem;
           <div className="mt-2 pt-2 border-t border-base-200 grid grid-cols-2 gap-x-3">
             <ItemRow
               label={t('colLocIn')}
-              value={
-                item.location_in ? (
-                  <a
-                    href={buildMapUrl(item.location_in)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="link link-primary text-xs"
-                  >
-                    📍 {t('gpsDefaultLabel')}
-                  </a>
-                ) : (
-                  '-'
-                )
-              }
+              value={item.location_in ? `📍 ${t('gpsDefaultLabel')}` : null}
+              href={item.location_in ? buildMapUrl(item.location_in) : null}
             />
             <ItemRow
               label={t('colLocOut')}
-              value={
-                item.location_out ? (
-                  <a
-                    href={buildMapUrl(item.location_out)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="link link-primary text-xs"
-                  >
-                    📍 {t('gpsDefaultLabel')}
-                  </a>
-                ) : (
-                  '-'
-                )
-              }
+              value={item.location_out ? `📍 ${t('gpsDefaultLabel')}` : null}
+              href={item.location_out ? buildMapUrl(item.location_out) : null}
             />
             <ItemRow label={t('colExc')} value={item.exception_case} />
             <ItemRow
               label={t('colBaExca')}
-              value={
-                item.no_ba_exca ? (
-                  <a
-                    href={item.no_ba_exca}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="link link-primary text-xs"
-                  >
-                    <Icon name="document-attach" className="h-4 w-4 inline" />
-                  </a>
-                ) : (
-                  '-'
-                )
-              }
+              value={item.no_ba_exca ? 'PDF' : null}
+              href={item.no_ba_exca}
+              icon="document-attach"
             />
             <ItemRow label={t('colDevice')} value={item.id_device} />
             <ItemRow label={t('colMac')} value={item.mac_address} />
@@ -222,7 +234,7 @@ function GalleryCard({ item, index, isExpanded, onToggle }: { item: GalleryItem;
       )}
     </div>
   );
-}
+});
 
 export const AttendanceGalleryView = forwardRef<AttendanceGalleryViewHandle, GalleryViewProps>(
   function AttendanceGalleryView({ items, onClearSearch }, ref) {
@@ -260,7 +272,7 @@ export const AttendanceGalleryView = forwardRef<AttendanceGalleryViewHandle, Gal
               item={item}
               index={index}
               isExpanded={expandedIds.has(item.id)}
-              onToggle={() => toggleExpand(item.id)}
+              onToggle={toggleExpand}
             />
           ))}
         </div>

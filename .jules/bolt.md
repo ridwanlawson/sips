@@ -49,3 +49,7 @@
 ## 2025-06-30 - [O(N) Render-path Lookup in Harvest]
 **Learning:** Performing repeated O(N) array scans (like `.find()`) inside event handlers or render loops for large datasets (like employees or TPH) causes noticeable input lag.
 **Action:** Pre-calculate a `Map` using `useMemo` for O(1) constant-time lookups. This ensures immediate UI responsiveness even as the dataset grows.
+
+## 2025-07-05 - [Ensuring Effective Component Memoization]
+**Learning:** `React.memo` is defeated if props include complex objects like JSX/ReactNode, as they are often re-created on every parent render. This is particularly problematic for shared sub-components like `ItemRow` used in long lists.
+**Action:** Design shared sub-components to accept primitive values and configuration props (e.g., `href` string, `icon` name) instead of pre-rendered JSX. This ensures memoization remains effective and reduces re-render overhead in dense UI views.
