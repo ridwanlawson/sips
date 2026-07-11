@@ -35,7 +35,13 @@ type Absensi = {
   _dateOnly?: string;
   _searchContent?: string;
   _mandorLabel?: string;
+  _mandorCode?: string;
+  _mandorName?: string;
   _karyawanLabel?: string;
+  _karyawanCode?: string;
+  _karyawanName?: string;
+  _timeInDisplay?: string;
+  _timeOutDisplay?: string;
   id: string;
   tanggal: string;
   kemandoran: string;
@@ -687,16 +693,11 @@ export default function Attendance() {
   const imgRef = useRef<HTMLInputElement | null>(null);
   const pdfRef = useRef<HTMLInputElement | null>(null);
 
-  // loading ambil lokasi (in/out)
-  const [locLoading, setLocLoading] = useState<'in' | 'out' | null>(null);
-
   const handleGetLocation = (target: 'in' | 'out') => {
     if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
       toast.error(t('toastGeolocUnsupported'));
       return;
     }
-
-    setLocLoading(target);
 
     navigator.geolocation.getCurrentPosition(
       pos => {
@@ -706,8 +707,6 @@ export default function Attendance() {
         setForm(s =>
           target === 'in' ? { ...s, location_in: value } : { ...s, location_out: value }
         );
-
-        setLocLoading(null);
       },
       err => {
         console.error('Geolocation error:', err);
@@ -723,7 +722,6 @@ export default function Attendance() {
           message = t('toastGeolocTimeout');
         }
         toast.error(message);
-        setLocLoading(null);
       },
       {
         enableHighAccuracy: true,
@@ -1057,27 +1055,6 @@ export default function Attendance() {
     };
   }, [currentFcbaForForm, form.fcba, selFcba, buLookups]);
 
-  const pengancakanOptions: Option[] = useMemo(() => {
-    if (!selFcba || !selSection || !selGang || !currentFcbaPreresolved) return [];
-
-    const pool = employees.filter(
-      e =>
-        matchesEmployeeFcba(e.fcba, currentFcbaPreresolved.value, buLookups, {
-          code: currentFcbaPreresolved.code,
-          name: currentFcbaPreresolved.name,
-        }) &&
-        (e.sectionname || '') === selSection &&
-        (e.gangcode || '') === selGang
-    );
-    const set = new Set<string>();
-    for (const e of pool) {
-      const raw = (e.noancak || '').trim();
-      if (raw) set.add(raw);
-    }
-    return Array.from(set)
-      .sort()
-      .map(v => ({ value: v, label: v }));
-  }, [employees, selFcba, selSection, selGang, currentFcbaPreresolved, buLookups]);
 
   const employeeOptions: Option[] = useMemo(() => {
     if (!selFcba || !selSection || !selGang || !currentFcbaPreresolved) return [];
@@ -1679,20 +1656,16 @@ export default function Attendance() {
         width: '240px',
         sortable: true,
         sortFunction: (a, b) => sortByLabel(a, b, r => r._karyawanLabel || ''),
-        cell: r => {
-          const label = r._karyawanLabel || '';
-          const [fccode, fullname] = label.includes(' - ') ? label.split(' - ', 2) : [label, ''];
-          return (
-            <div className="min-w-0">
-              <div className="font-semibold truncate" title={fullname || '-'}>
-                {fullname || '-'}
-              </div>
-              <div className="text-xs opacity-70 truncate" title={fccode}>
-                {fccode}
-              </div>
+        cell: r => (
+          <div className="min-w-0">
+            <div className="font-semibold truncate" title={r._karyawanName || '-'}>
+              {r._karyawanName || '-'}
             </div>
-          );
-        },
+            <div className="text-xs opacity-70 truncate" title={r._karyawanCode || ''}>
+              {r._karyawanCode || ''}
+            </div>
+          </div>
+        ),
       },
       {
         name: <span title={t('colMandorTooltip')}>{t('colMandor')}</span>,
@@ -1701,16 +1674,14 @@ export default function Attendance() {
         sortable: true,
         sortFunction: (a, b) => sortByLabel(a, b, r => r._mandorLabel || ''),
         cell: r => {
-          const label = r._mandorLabel || '';
-          if (!label) return <>-</>;
-          const [fccode, fullname] = label.includes(' - ') ? label.split(' - ', 2) : [label, ''];
+          if (!r._mandorCode) return <>-</>;
           return (
             <div className="min-w-0">
-              <div className="font-medium truncate" title={fullname || '-'}>
-                {fullname || '-'}
+              <div className="font-medium truncate" title={r._mandorName || '-'}>
+                {r._mandorName || '-'}
               </div>
-              <div className="text-xs opacity-70 truncate" title={fccode}>
-                {fccode}
+              <div className="text-xs opacity-70 truncate" title={r._mandorCode}>
+                {r._mandorCode}
               </div>
             </div>
           );
@@ -1749,13 +1720,13 @@ export default function Attendance() {
       },
       {
         name: <span title={t('colMasukTooltip')}>{t('colMasuk')}</span>,
-        selector: r => (r.time_in ? r.time_in.split(' ')[1]?.slice(0, 5) || r.time_in : '-'),
+        selector: r => r._timeInDisplay || '-',
         sortable: true,
         width: '110px',
       },
       {
         name: <span title={t('colPulangTooltip')}>{t('colPulang')}</span>,
-        selector: r => (r.time_out ? r.time_out.split(' ')[1]?.slice(0, 5) || r.time_out : '-'),
+        selector: r => r._timeOutDisplay || '-',
         sortable: true,
         width: '110px',
       },
@@ -1907,20 +1878,18 @@ export default function Attendance() {
 
     const dataToExport = filtered.map((r, idx) => ({
       [t('exportColNo')]: idx + 1,
-      [t('exportColTanggal')]: (r.tanggal || '').split(' ')[0],
+      [t('exportColTanggal')]: r._dateOnly || '-',
       [t('exportColKemandoran')]: r.kemandoran || '-',
-      [t('exportColKode')]: r.kode_karyawan || '-',
-      [t('exportColNama')]: r.namakaryawan || '-',
-      [t('exportColMandor')]: r.kode_karyawan_mandor || '-',
+      [t('exportColKode')]: r._karyawanCode || '-',
+      [t('exportColNama')]: r._karyawanName || '-',
+      [t('exportColMandor')]: r._mandorCode || '-',
       [t('exportColFcba')]: r.fcba || '-',
       [t('exportColSection')]: r.section || '-',
       [t('exportColGang')]: r.gang || '-',
       [t('exportColType')]: r.attendance_type || '-',
       [t('exportColAttendance')]: r.attendance || '-',
-      [t('exportColMasuk')]: r.time_in ? r.time_in.split(' ')[1]?.slice(0, 5) || r.time_in : '-',
-      [t('exportColPulang')]: r.time_out
-        ? r.time_out.split(' ')[1]?.slice(0, 5) || r.time_out
-        : '-',
+      [t('exportColMasuk')]: r._timeInDisplay || '-',
+      [t('exportColPulang')]: r._timeOutDisplay || '-',
       [t('exportColLate')]: r.total_late_time || '-',
       [t('exportColHomeEarly')]: r.go_home_early || '-',
       [t('exportColHk')]: r.mandays != null ? String(r.mandays) : '-',
@@ -1934,48 +1903,31 @@ export default function Attendance() {
    * ⚡ Bolt Optimization:
    * 1. Single-pass enrichment to add display labels and search content.
    * 2. Uses formatPerfDate with cached formatters (~50x faster).
-   * 3. Moves expensive Map lookups out of the render path.
+   * 3. Moves expensive Map lookups and string processing out of the render path.
    */
   const enrichedItems = useMemo(() => {
     const seen = new Set<string>();
     return items.map((it, idx) => {
       const displayDate = it._dateOnly ? formatPerfDate(it._dateOnly, localeTag) : '-';
 
-      const mandorCode = (it.kode_karyawan_mandor || '').trim();
-      const mandor = mandorCode ? employeeMap.get(mandorCode) : null;
-      const mandorLabel = mandor?.fullname ? `${mandorCode} - ${mandor.fullname}` : mandorCode;
+      const mCode = (it.kode_karyawan_mandor || '').trim();
+      const mandor = mCode ? employeeMap.get(mCode) : null;
+      const mName = mandor?.fullname || '';
+      const mandorLabel = mName ? `${mCode} - ${mName}` : mCode;
 
-      const karyawanCode = (it.kode_karyawan || '').trim();
-      const karyawanLabel = it.namakaryawan ? `${karyawanCode} - ${it.namakaryawan}` : karyawanCode;
+      const kCode = (it.kode_karyawan || '').trim();
+      const kName = it.namakaryawan || '';
+      const karyawanLabel = kName ? `${kCode} - ${kName}` : kCode;
 
-      const searchContent = [
-        it.kemandoran,
-        it.namakaryawan,
-        karyawanCode,
-        mandorCode,
-        mandorLabel,
-        it.fcba,
-        it.fcba_destination,
-        it.section_destination,
-        it.section,
-        it.gang,
-        it.attendance_type,
-        it.attendance,
-        it.no_ba_exca,
-        it.id_device,
-        it.mac_address,
-        it.location_in,
-        it.location_out,
-        it.pengancakan,
-        it.mandays,
-        it._dateOnly,
-        displayDate,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
+      const tIn = it.time_in ? it.time_in.split(' ')[1]?.slice(0, 5) || it.time_in : '-';
+      const tOut = it.time_out ? it.time_out.split(' ')[1]?.slice(0, 5) || it.time_out : '-';
 
-      const candidate = [it.id || '', karyawanCode, it._dateOnly || '', String(idx)].join('|');
+      const searchContent = `${it.kemandoran || ''} ${kName} ${kCode} ${mCode} ${mandorLabel} ${it.fcba || ''} ${it.fcba_destination || ''} ${it.section_destination || ''} ${it.section || ''} ${it.gang || ''} ${it.attendance_type || ''} ${it.attendance || ''} ${it.no_ba_exca || ''} ${it.id_device || ''} ${it.mac_address || ''} ${it.location_in || ''} ${it.location_out || ''} ${it.pengancakan || ''} ${it.mandays || ''} ${it._dateOnly || ''} ${displayDate}`
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      const candidate = `${it.id || ''}|${kCode}|${it._dateOnly || ''}|${idx}`;
       let key = candidate;
       while (seen.has(key)) key = `${key}_`;
       seen.add(key);
@@ -1985,7 +1937,13 @@ export default function Attendance() {
         _rowKey: key,
         _displayDate: displayDate,
         _mandorLabel: mandorLabel,
+        _mandorCode: mCode,
+        _mandorName: mName,
         _karyawanLabel: karyawanLabel,
+        _karyawanCode: kCode,
+        _karyawanName: kName,
+        _timeInDisplay: tIn,
+        _timeOutDisplay: tOut,
         _searchContent: searchContent,
       };
     });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useSearchShortcut } from '@/hooks/useSearchShortcut';
 import { Icon } from '@/app/components/icons';
 
