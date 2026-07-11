@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ImageProxy } from '@/lib/constants';
 import { BACKEND_URL } from '@/utils/backendConfig';
 import { getTokenFromCookie } from '@/utils/absensiProxy';
+import { apiRateLimiter } from '@/lib/rateLimiter';
 
 const PLACEHOLDER_SVG = Buffer.from(
   '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"><rect width="400" height="300" fill="#f3f4f6"/><text x="200" y="150" font-family="sans-serif" font-size="14" fill="#9ca3af" text-anchor="middle" dominant-baseline="middle">Image unavailable</text></svg>'
@@ -57,6 +58,18 @@ const isTrustedHostname = (hostname: string): boolean => {
  * This solves mixed content issues in production (Vercel)
  */
 export async function GET(request: NextRequest) {
+  // === RATE LIMITING ===
+  const ip =
+    request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+    request.headers.get('x-real-ip') ||
+    'unknown';
+
+  try {
+    await apiRateLimiter.consume(ip);
+  } catch {
+    return placeholderResponse();
+  }
+
   try {
     // SECURITY: Authentication check (CWE-306)
     // Proxy should only be accessible to authenticated users.

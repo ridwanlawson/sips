@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BACKEND_URL } from '@/utils/absensiProxy';
 import { authHeaders } from '@/lib/apiProxy';
+import { validateSecurity } from '@/lib/security';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  const securityError = await validateSecurity(request);
+  if (securityError) return securityError;
+
   const token = request.cookies.get('auth_token')?.value;
   if (!token) {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });

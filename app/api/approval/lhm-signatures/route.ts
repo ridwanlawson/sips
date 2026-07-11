@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
 import { applyUserDataScope } from '@/utils/requestScope';
+import { validateSecurity } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -8,6 +9,9 @@ export const runtime = 'nodejs';
 const EXTERNAL_API_BASE = BACKEND_URL;
 
 export async function GET(req: NextRequest) {
+  const securityError = await validateSecurity(req);
+  if (securityError) return securityError;
+
   try {
     const token = await getTokenFromCookie();
 

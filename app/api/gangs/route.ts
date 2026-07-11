@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
 import { authHeaders, extractDataArray } from '@/lib/apiProxy';
 import { applyUserDataScope } from '@/utils/requestScope';
+import { validateSecurity } from '@/lib/security';
 
 const ALLOWED_PARAMS = ['fccode', 'afdeling', 'fcba'];
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
+  const securityError = await validateSecurity(req);
+  if (securityError) return securityError;
+
   const token = await getTokenFromCookie();
   if (!token) {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { BACKEND_URL } from '@/utils/absensiProxy';
 import { authHeaders, extractDataArray } from '@/lib/apiProxy';
 import { applyUserDataScope } from '@/utils/requestScope';
+import { validateSecurity } from '@/lib/security';
 
 interface KaryawanRow {
   fcba?: string | number | null;
@@ -21,6 +22,9 @@ const ALLOWED_PARAMS = [
 ];
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
+  const securityError = await validateSecurity(req);
+  if (securityError) return securityError;
+
   const token = req.cookies.get('auth_token')?.value;
   if (!token) {
     return NextResponse.json({ ok: false, error: 'Not authenticated' }, { status: 401 });

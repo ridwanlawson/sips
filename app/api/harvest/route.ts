@@ -57,6 +57,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
+  const securityError = await validateSecurity(req);
+  if (securityError) return securityError;
+
   const token = await getTokenFromCookie();
   if (!token) {
     return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });

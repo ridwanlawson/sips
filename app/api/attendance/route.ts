@@ -9,6 +9,9 @@ export const dynamic = 'force-dynamic'; // no cache
 export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
+  const securityError = await validateSecurity(req);
+  if (securityError) return securityError;
+
   const token = await getTokenFromCookie();
   if (!token) {
     return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
