@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { BACKEND_URL } from '@/utils/absensiProxy';
+import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
 import { authHeaders, parseJsonSafe, isRecord } from '@/lib/apiProxy';
+import { validateSecurity } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -8,7 +9,10 @@ export const runtime = 'nodejs';
 const KENDARAAN_BASE = `${BACKEND_URL}/api/master/sips-kendaraan`;
 
 export async function GET(req: NextRequest) {
-  const token = req.cookies.get('auth_token')?.value;
+  const securityError = await validateSecurity(req);
+  if (securityError) return securityError;
+
+  const token = await getTokenFromCookie();
   if (!token) {
     return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
   }
