@@ -55,3 +55,8 @@
 **Learning:** Standardizing unauthorized access states with a localized, visual-first component improves both accessibility for multi-lingual users and the overall professional feel of the application. Pairing technical messages with recognizable visual icons (like a pulsing lock) aids immediate recognition even before the text is read.
 
 **Action:** Use the `Common` translation namespace for global application states. Always pair high-impact feedback (like Access Denied) with thematic icons and entry animations to provide clear, delightful interactive feedback.
+
+## 2026-07-12 - [Unified and Localized Quick Search UX]
+**Learning:** Standardizing frequently used UI patterns like search bars into localized, reusable components ensures interaction consistency across the application. Providing real-time feedback on filtered results (e.g., "Showing X of Y records") enhances the user's sense of control and confirms their actions. Accessible labels for search and clear actions are essential for screen reader users and should be centralized in a 'Common' translation namespace.
+
+**Action:** Extract manual search implementations into a unified `QuickSearch` component. Always include a results summary with interpolated counts. Centralize shared UI strings like `quickSearch`, `clearSearch`, and `showingRecords` in the `Common` namespace to ensure multi-language accessibility.

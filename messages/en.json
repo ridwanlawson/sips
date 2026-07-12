@@ -983,7 +983,11 @@
   "Common": {
     "accessDenied": "Access Denied",
     "accessDeniedDesc": "This page can only be accessed by users with MGR or ADM levels.",
-    "backToDashboard": "Back to Dashboard"
+    "backToDashboard": "Back to Dashboard",
+    "quickSearch": "Quick Search",
+    "clearSearch": "Clear search",
+    "showingRecords": "Showing {filtered} of {total} records",
+    "searchPlaceholder": "Search..."
   },
   "Errors": {
     "notFoundTitle": "404 - Page Not Found",
