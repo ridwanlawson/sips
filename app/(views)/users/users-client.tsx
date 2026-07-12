@@ -10,8 +10,8 @@ import { SkeletonTable } from '@/app/components/skeletons';
 import { centerHeaderStyle } from '@/utils/tableHelper';
 import { useTranslations } from 'next-intl';
 import { SearchSelect, type Option } from '@/app/components/search-select';
+import { QuickSearch } from '@/app/components/quick-search';
 import { EmptyState } from '@/app/components/empty-state';
-import { useSearchShortcut } from '@/hooks/useSearchShortcut';
 import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/authHelper';
 import { extractArrayData, extractSingleData } from '@/utils/apiHelpers';
 import { fetchBusinessUnits } from '@/utils/businessUnitService';
@@ -174,11 +174,9 @@ export default function UsersClient() {
     },
   ], [t]);
   const queryClient = useQueryClient();
-  const searchInputRef = useSearchShortcut();
   const [q, setQ] = useState('');
   const [filters, setFilters] = useState<Filters>({});
   const [showFilters, setShowFilters] = useState(false);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [userLevel, setUserLevel] = useState('');
   const [userFcba, setUserFcba] = useState('');
 
@@ -830,38 +828,12 @@ export default function UsersClient() {
 
         {/* ── Search ── */}
         <div className="mb-3 flex justify-end">
-          <div className="relative w-full md:w-96 group" data-tour="quick-search">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Icon name="search" className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all" />
-            </div>
-            <input
-              ref={searchInputRef}
-              type="text"
-              className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-              placeholder={t('searchPlaceholder')}
-              value={q}
-              onChange={e => setQ(e.target.value)}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setIsSearchFocused(false)}
-              aria-label={t('quickSearch')}
-              title={t('quickSearch')}
-            />
-            {!isSearchFocused && !q && (
-              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                <kbd className="kbd kbd-sm bg-base-200/50 opacity-50">/</kbd>
-              </div>
-            )}
-            {q && (
-              <button
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-base-content/50 hover:text-error transition-colors"
-                onClick={() => setQ('')}
-                aria-label={t('clearSearch')}
-                title={t('clearSearch')}
-              >
-                <Icon name="close" className="h-5 w-5" />
-              </button>
-            )}
-          </div>
+          <QuickSearch
+            value={q}
+            onChange={setQ}
+            placeholder={t('searchPlaceholder')}
+            data-tour="quick-search"
+          />
         </div>
 
         {/* ── Filters ── */}

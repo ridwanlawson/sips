@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useSearchShortcut } from '@/hooks/useSearchShortcut';
 import { Icon } from '@/app/components/icons';
+import { useTranslations } from 'next-intl';
 
 interface QuickSearchProps {
   value: string;
@@ -13,16 +14,25 @@ interface QuickSearchProps {
   'data-tour'?: string;
 }
 
-export function QuickSearch({
+/**
+ * ⚡ Bolt Optimization: Optimized QuickSearch component.
+ * - Wrapped in React.memo to prevent unnecessary re-renders when parent data updates.
+ * - Uses 'Common' translation namespace for standardized UI strings.
+ * - Internalizes search focus state and shortcut logic.
+ */
+function QuickSearchInner({
   value,
   onChange,
-  placeholder = 'Cari...',
+  placeholder,
   totalCount,
   filteredCount,
   ...rest
 }: QuickSearchProps) {
+  const t = useTranslations('Common');
   const [isFocused, setIsFocused] = useState(false);
   const searchInputRef = useSearchShortcut();
+
+  const displayPlaceholder = placeholder || t('searchPlaceholder');
 
   return (
     <div className="relative w-full sm:w-72 md:w-80 group shrink-0" {...rest}>
@@ -36,13 +46,13 @@ export function QuickSearch({
         ref={searchInputRef}
         type="text"
         className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
-        placeholder={placeholder}
+        placeholder={displayPlaceholder}
         value={value}
         onChange={e => onChange(e.target.value)}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
-        aria-label={placeholder}
-        title={placeholder}
+        aria-label={displayPlaceholder}
+        title={displayPlaceholder}
       />
       {!isFocused && !value && (
         <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
@@ -53,17 +63,19 @@ export function QuickSearch({
         <button
           onClick={() => onChange('')}
           className="absolute inset-y-0 right-0 pr-3 flex items-center text-base-content/50 hover:text-error transition-colors"
-          aria-label="Clear search"
-          title="Clear search"
+          aria-label={t('clearSearch')}
+          title={t('clearSearch')}
         >
           <Icon name="close" className="h-5 w-5" />
         </button>
       )}
       {value && totalCount !== undefined && filteredCount !== undefined && (
         <p className="text-xs text-base-content/60 mt-1">
-          Menampilkan {filteredCount} dari {totalCount} records
+          {t('showingRecords', { filtered: filteredCount, total: totalCount })}
         </p>
       )}
     </div>
   );
 }
+
+export const QuickSearch = React.memo(QuickSearchInner);

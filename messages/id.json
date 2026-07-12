@@ -983,7 +983,11 @@
   "Common": {
     "accessDenied": "Akses Ditolak",
     "accessDeniedDesc": "Halaman ini hanya dapat diakses oleh user dengan level MGR atau ADM.",
-    "backToDashboard": "Kembali ke Dashboard"
+    "backToDashboard": "Kembali ke Dashboard",
+    "quickSearch": "Pencarian Cepat",
+    "clearSearch": "Hapus pencarian",
+    "showingRecords": "Menampilkan {filtered} dari {total} records",
+    "searchPlaceholder": "Cari..."
   },
   "Errors": {
     "notFoundTitle": "404 - Halaman Tidak Ditemukan",

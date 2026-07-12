@@ -10,13 +10,13 @@ import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 import { SkeletonTable } from '@/app/components/skeletons';
-import { useSearchShortcut } from '@/hooks/useSearchShortcut';
 import { centerHeaderStyle } from '@/utils/tableHelper';
 import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/authHelper';
 import { exportJsonToCsv } from '@/utils/exportCsv';
 import { formatPerfNumber } from '@/utils/perf-formatter';
 import { useLocale } from '@/hooks/useLocale';
 import { SearchSelect, type Option } from '@/app/components/search-select';
+import { QuickSearch } from '@/app/components/quick-search';
 import { EmptyState } from '@/app/components/empty-state';
 import { HarvestGalleryView, type HarvestGalleryHandle } from '@/app/components/harvest-gallery-view';
 import AppTour from '@/app/components/app-tour';
@@ -335,8 +335,6 @@ export default function HarvestPage() {
   const tH = useTranslations('Harvest');
   const queryClient = useQueryClient();
   const [q, setQ] = useState('');
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const searchInputRef = useSearchShortcut();
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'gallery'>('table');
   const [allExpanded, setAllExpanded] = useState(false);
@@ -2086,37 +2084,14 @@ export default function HarvestPage() {
 
           {/* SEARCH & VIEW TOGGLE (dorong ke kanan) */}
           <div className="ml-auto flex items-center gap-2">
-            <div className="w-full md:w-72 group relative" data-tour="quick-search">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Icon name="search" className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all" />
-              </div>
-              <input
-                ref={searchInputRef}
-                className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
-                placeholder={tH('searchPlaceholder')}
-                value={q}
-                onChange={e => setQ(e.target.value)}
-                onFocus={() => setIsSearchFocused(true)}
-                onBlur={() => setIsSearchFocused(false)}
-                aria-label={tH('quickSearch')}
-                title={tH('quickSearch')}
-              />
-              {!isSearchFocused && !q && (
-                <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none animate-fadeIn">
-                  <kbd className="kbd kbd-sm bg-base-200/50 opacity-50">/</kbd>
-                </div>
-              )}
-              {q && (
-                <button
-                  onClick={() => setQ('')}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-base-content/50 hover:text-error transition-colors"
-                  aria-label={tH('clearSearch')}
-                  title={tH('clearSearch')}
-                >
-                  <Icon name="close" className="h-5 w-5" />
-                </button>
-              )}
-            </div>
+            <QuickSearch
+              value={q}
+              onChange={setQ}
+              placeholder={tH('searchPlaceholder')}
+              data-tour="quick-search"
+              totalCount={items.length}
+              filteredCount={filtered.length}
+            />
             <div className="join">
               <button
                 className="btn btn-outline join-item"
