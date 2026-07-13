@@ -13,9 +13,9 @@ import { SearchSelect, type Option } from '@/app/components/search-select';
 import { extractArrayData } from '@/utils/apiHelpers';
 import { exportJsonToCsv } from '@/utils/exportCsv';
 import { useLocale } from '@/hooks/useLocale';
-import { useSearchShortcut } from '@/hooks/useSearchShortcut';
 import { useTranslations } from 'next-intl';
 import { EmptyState } from '@/app/components/empty-state';
+import { QuickSearch } from '@/app/components/quick-search';
 import toast from 'react-hot-toast';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { SkeletonTable } from '@/app/components/skeletons';
@@ -332,8 +332,6 @@ export default function PengangkutanPage() {
   }, []);
 
   const [q, setQ] = useState('');
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const searchInputRef = useSearchShortcut();
   const [showFilters, setShowFilters] = useState(false);
   const queryClient = useQueryClient();
   const [userLevel, setUserLevel] = useState<
@@ -1818,38 +1816,15 @@ export default function PengangkutanPage() {
           </div>
 
           {/* SEARCH (dorong ke kanan) */}
-          <div className="ml-auto w-full md:w-96 group relative" data-tour="quick-search">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Icon name="search" className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all" />
-            </div>
-            <input
-              ref={searchInputRef}
-              className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
-              placeholder={t('searchPlaceholder')}
-              value={q}
-              onChange={e => setQ(e.target.value)}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setIsSearchFocused(false)}
-              aria-label={t('quickSearch')}
-              title={t('quickSearch')}
-            />
-            {!isSearchFocused && !q && (
-              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none animate-fadeIn">
-                <kbd className="kbd kbd-sm bg-base-200/50 opacity-50">/</kbd>
-              </div>
-            )}
-            {q && (
-              <button
-                type="button"
-                onClick={() => setQ('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-base-content/50 hover:text-error transition-colors"
-                aria-label={t('clearSearch')}
-                title={t('clearSearch')}
-              >
-                <Icon name="close" className="h-5 w-5" />
-              </button>
-            )}
-          </div>
+          <QuickSearch
+            data-tour="quick-search"
+            value={q}
+            onChange={setQ}
+            placeholder={t('searchPlaceholder')}
+            totalCount={items.length}
+            filteredCount={filtered.length}
+            className="ml-auto w-full md:w-96"
+          />
         </div>
 
         {showFilters && (
