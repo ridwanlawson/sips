@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { LanguageSwitcher } from './components/language-switcher';
 import { Icon } from '@/app/components/icons';
+import { cookieStore } from '@/utils/cookieStore';
 
 import { isValidRedirect } from '@/utils/sanitization';
 
@@ -90,8 +91,8 @@ export default function Home() {
     setError('');
 
     try {
-      // Get CSRF token from cookie
-      const csrfToken = document.cookie.match(/csrf_token=([^;]+)/)?.[1];
+      // ⚡ Bolt Optimization: Use centralized and optimized CSRF token retrieval.
+      const csrfToken = cookieStore.getCsrfToken();
 
       const response = await fetch('/api/auth/login', {
         method: 'POST',

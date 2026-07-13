@@ -1,3 +1,5 @@
+import { cookieStore } from '@/utils/cookieStore';
+
 export interface AttendanceUploadData {
   totalcount: number;
   id: number;
@@ -205,7 +207,8 @@ export async function insertAttendanceData(payload: {
 }): Promise<InsertAttendanceResponse> {
   const url = `/api/attendance/submit`;
 
-  const csrfToken = typeof document !== 'undefined' ? document.cookie.match(/csrf_token=([^;]+)/)?.[1] : null;
+  // ⚡ Bolt Optimization: Use centralized and optimized CSRF token retrieval.
+  const csrfToken = cookieStore.getCsrfToken();
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     Accept: 'application/json',

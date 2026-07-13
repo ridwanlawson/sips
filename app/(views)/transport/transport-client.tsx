@@ -900,8 +900,8 @@ export default function PengangkutanPage() {
     try {
       const formData = buildFormData();
 
-      // Add CSRF token to FormData
-      const csrfToken = document.cookie.match(/csrf_token=([^;]+)/)?.[1];
+      // ⚡ Bolt Optimization: Use centralized and optimized CSRF token retrieval.
+      const csrfToken = cookieStore.getCsrfToken();
       if (csrfToken && !formData.has('_csrf_token')) {
         formData.append('_csrf_token', csrfToken);
       }
@@ -966,8 +966,8 @@ export default function PengangkutanPage() {
       body.append('ba_deleted', file);
       body.append('_method', 'DELETE');
 
-      // Add CSRF token for file upload
-      const csrfToken = document.cookie.match(/csrf_token=([^;]+)/)?.[1];
+      // ⚡ Bolt Optimization: Use centralized and optimized CSRF token retrieval.
+      const csrfToken = cookieStore.getCsrfToken();
       if (csrfToken) {
         body.append('_csrf_token', csrfToken);
       }

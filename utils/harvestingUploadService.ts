@@ -3,6 +3,8 @@
  * All requests go through Next.js API routes (never directly to backend).
  */
 
+import { cookieStore } from '@/utils/cookieStore';
+
 export type HarvestingUploadData = {
   nospb: string;
   fieldcode: string;
@@ -81,7 +83,8 @@ export const fetchHarvestingUpload = async (
 export const insertHarvestingData = async (payload: {
   data: Record<string, unknown>[];
 }): Promise<ApiResponse<string[]>> => {
-  const csrfToken = typeof document !== 'undefined' ? document.cookie.match(/csrf_token=([^;]+)/)?.[1] : null;
+  // ⚡ Bolt Optimization: Use centralized and optimized CSRF token retrieval.
+  const csrfToken = cookieStore.getCsrfToken();
   const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' };
   if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
 

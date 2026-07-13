@@ -29,6 +29,7 @@ import { useTranslations } from 'next-intl';
 import { toTitleCase } from '@/utils/textManipulation';
 import { getProxiedImageUrl } from '@/utils/imageHelper';
 import type { UserProfile } from '@/app/types';
+import { cookieStore } from '@/utils/cookieStore';
 import AppTour from '@/app/components/app-tour';
 import type { TourStep } from '@/app/components/app-tour';
 import { Icon } from '@/app/components/icons';
@@ -131,8 +132,8 @@ function useChangePassword() {
 
     setLoading(true);
     try {
-      // Get CSRF token from cookie
-      const csrfToken = document.cookie.match(/csrf_token=([^;]+)/)?.[1];
+      // ⚡ Bolt Optimization: Use centralized and optimized CSRF token retrieval.
+      const csrfToken = cookieStore.getCsrfToken();
 
       const res = await fetch('/api/change-password', {
         method: 'POST',

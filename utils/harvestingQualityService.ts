@@ -4,6 +4,8 @@
  */
 'use client';
 
+import { cookieStore } from '@/utils/cookieStore';
+
 export type HarvestingQualityData = {
   empcode: string;
   fddate: string;
@@ -81,7 +83,8 @@ export const fetchHarvestingQuality = async (
 export const insertHarvestingQualityData = async (payload: {
   data: Record<string, unknown>[];
 }): Promise<ApiResponse<string[]>> => {
-  const csrfToken = typeof document !== 'undefined' ? document.cookie.match(/csrf_token=([^;]+)/)?.[1] : null;
+  // ⚡ Bolt Optimization: Use centralized and optimized CSRF token retrieval.
+  const csrfToken = cookieStore.getCsrfToken();
   const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' };
   if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
 

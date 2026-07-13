@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { backendApiUrl } from '@/utils/backendConfig';
 import { Icon } from '@/app/components/icons';
+import { cookieStore } from '@/utils/cookieStore';
 
 interface UploadFormData {
   platform: string;
@@ -55,16 +56,7 @@ export default function ApkUploadPage() {
 
   // Check user level from cookie
   useEffect(() => {
-    const readCookie = (name: string) => {
-      if (typeof document === 'undefined') return '';
-      const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
-      return m ? decodeURIComponent(m.pop() as string) : '';
-    };
-
-    const levelRaw =
-      readCookie('user_Level') || readCookie('user_LEVEL') || readCookie('user_level') || '';
-    const levelUpper = String(levelRaw).toUpperCase();
-    const level = levelUpper === 'ADMIN' ? 'ADM' : levelUpper;
+    const level = cookieStore.getLevel();
     setIsMgr(level === 'MGR');
     setIsAdmin(level === 'ADM');
     setInitCheck(true);

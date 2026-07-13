@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { cookieStore } from '@/utils/cookieStore';
 
 export interface BatchSubmitOptions<T> {
   /** Convert a single record to the API payload shape */
@@ -93,7 +94,8 @@ async function submitBatch<T>(
   endpoint: string
 ): Promise<{ ok: boolean; data?: string[]; message?: string }> {
   try {
-    const csrfToken = typeof document !== 'undefined' ? document.cookie.match(/csrf_token=([^;]+)/)?.[1] : null;
+    // ⚡ Bolt Optimization: Use centralized and optimized CSRF token retrieval.
+    const csrfToken = cookieStore.getCsrfToken();
     const headers: Record<string, string> = { 'Content-Type': 'application/json', Accept: 'application/json' };
     if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
 

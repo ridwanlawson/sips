@@ -599,8 +599,8 @@ export default function Approval() {
 
       const payload = { data: dataArr };
 
-      // Add CSRF token
-      const csrfToken = document.cookie.match(/csrf_token=([^;]+)/)?.[1];
+      // ⚡ Bolt Optimization: Use centralized and optimized CSRF token retrieval.
+      const csrfToken = cookieStore.getCsrfToken();
 
       const res = await fetch('/api/approval/lhm/submit', {
         method: 'POST',

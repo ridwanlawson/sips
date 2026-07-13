@@ -367,7 +367,8 @@ export default function UsersClient() {
   // Mutations
   const statusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: UserStatus }) => {
-      const csrfToken = document.cookie.match(/csrf_token=([^;]+)/)?.[1];
+      // ⚡ Bolt Optimization: Use centralized and optimized CSRF token retrieval.
+      const csrfToken = cookieStore.getCsrfToken();
       const res = await fetch(`/api/user/${id}/status`, {
         method: 'PATCH',
         headers: {

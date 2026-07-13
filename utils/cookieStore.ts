@@ -92,6 +92,8 @@ export const cookieStore = {
 
   getPhoto: () => getFromMap(getCookiesMap(), PHOTO_VARIANTS),
 
+  getCsrfToken: () => getCookiesMap()['csrf_token'] || '',
+
   getLocale: () => getCookiesMap()['NEXT_LOCALE'] || 'id',
 
   /** Returns BCP 47 locale tag for use with toLocaleString / toLocaleDateString */
