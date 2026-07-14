@@ -181,20 +181,12 @@ export async function proxyPost(
 // ─── FormData proxy helpers ──────────────────────────────────────────────────
 
 /**
- * Rebuild a FormData ensuring File objects retain their filenames.
- * Some runtimes drop filename info when copying FormData entries;
- * this helper preserves them.
+ * Clean internal-only fields from FormData before forwarding upstream.
+ * The Next.js security layer adds _csrf_token which should never reach
+ * the upstream Laravel backend.
  */
-export function rebuildFormData(incoming: FormData): FormData {
-  const form = new FormData();
-  for (const [key, value] of incoming.entries()) {
-    if (typeof value === 'string') {
-      form.append(key, value);
-    } else {
-      form.append(key, value, value.name);
-    }
-  }
-  return form;
+export function cleanInternalFields(form: FormData): void {
+  form.delete('_csrf_token');
 }
 
 async function handleFormDataResponse(
@@ -225,6 +217,10 @@ async function handleFormDataResponse(
 
 /**
  * Proxy a FormData PUT (with _method override) to an upstream URL.
+ * Forwards the original FormData directly instead of rebuilding it,
+ * to avoid File serialisation issues on Vercel serverless runtime
+ * (File objects from req.formData() lose binary data when moved to a
+ * new FormData instance).
  */
 export async function proxyFormDataPut(
   upstreamUrl: string,
@@ -232,13 +228,13 @@ export async function proxyFormDataPut(
   incoming: FormData,
   logTag: string
 ): Promise<NextResponse> {
-  const form = rebuildFormData(incoming);
-  form.append('_method', 'PUT');
+  cleanInternalFields(incoming);
+  incoming.append('_method', 'PUT');
 
   const upstream = await fetch(upstreamUrl, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-    body: form,
+    body: incoming,
   });
 
   return handleFormDataResponse(upstream, `${logTag}_PUT`, upstreamUrl);
@@ -246,6 +242,8 @@ export async function proxyFormDataPut(
 
 /**
  * Proxy a FormData DELETE (with ba_deleted validation) to an upstream URL.
+ * Forwards the original FormData directly to avoid File serialisation
+ * issues on Vercel serverless runtime.
  */
 export async function proxyFormDataDelete(
   upstreamUrl: string,
@@ -261,13 +259,12 @@ export async function proxyFormDataDelete(
     );
   }
 
-  const form = new FormData();
-  form.append('ba_deleted', baDeleted, baDeleted.name);
+  cleanInternalFields(incoming);
 
   const upstream = await fetch(upstreamUrl, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-    body: form,
+    body: incoming,
   });
 
   return handleFormDataResponse(upstream, `${logTag}_DELETE`, upstreamUrl);
@@ -275,6 +272,8 @@ export async function proxyFormDataDelete(
 
 /**
  * Proxy a FormData POST (for method-override scenarios) to an upstream URL.
+ * Forwards the original FormData directly to avoid File serialisation
+ * issues on Vercel serverless runtime.
  */
 export async function proxyFormDataPost(
   upstreamUrl: string,
@@ -282,12 +281,12 @@ export async function proxyFormDataPost(
   incoming: FormData,
   logTag: string
 ): Promise<NextResponse> {
-  const form = rebuildFormData(incoming);
+  cleanInternalFields(incoming);
 
   const upstream = await fetch(upstreamUrl, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-    body: form,
+    body: incoming,
   });
 
   return handleFormDataResponse(upstream, `${logTag}_POST`, upstreamUrl);

@@ -46,29 +46,19 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
     return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
   }
 
-  // Ambil form dari client
+  // Forward original FormData directly to avoid File serialisation
+  // issues on Vercel serverless runtime.
   const incoming = await req.formData();
+  incoming.delete('_csrf_token');
+  incoming.append('_method', 'PUT');
 
-  // Salin field ke FormData baru + override method
-  const form = new FormData();
-  for (const [k, v] of incoming.entries()) {
-    if (typeof v === 'string') {
-      form.append(k, v); // string oke langsung
-    } else {
-      // v adalah File
-      form.append(k, v, v.name); // sertakan filename agar aman pada sebagian backend
-    }
-  }
-  form.append('_method', 'PUT');
-
-  // Kirim ke upstream sebagai POST (method override)
   const upstream = await fetch(`${HARVEST_BASE}/${encodeURIComponent(String(id))}`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: 'application/json',
     },
-    body: form,
+    body: incoming,
   });
 
   const { data, parseError } = await parseJsonSafe(upstream);
@@ -102,13 +92,12 @@ export async function DELETE(req: NextRequest, context: { params: Promise<{ id: 
     return NextResponse.json({ ok: false, error: 'BA delete PDF wajib diisi' }, { status: 400 });
   }
 
-  const form = new FormData();
-  form.append('ba_deleted', baDeleted, baDeleted.name);
+  incoming.delete('_csrf_token');
 
   const upstream = await fetch(`${HARVEST_BASE}/${encodeURIComponent(String(id))}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-    body: form,
+    body: incoming,
   });
 
   const { data, parseError } = await parseJsonSafe(upstream);
@@ -146,19 +135,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ ok: false, error: 'BA delete PDF wajib diisi' }, { status: 400 });
     }
 
-    const form = new FormData();
-    for (const [k, v] of incoming.entries()) {
-      if (typeof v === 'string') {
-        form.append(k, v);
-      } else {
-        form.append(k, v, v.name);
-      }
-    }
+    incoming.delete('_csrf_token');
 
     const upstream = await fetch(`${HARVEST_BASE}/${encodeURIComponent(String(id))}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-      body: form,
+      body: incoming,
     });
 
     const { data, parseError } = await parseJsonSafe(upstream);

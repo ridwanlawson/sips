@@ -114,19 +114,24 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const form = new FormData();
   for (const [key, value] of incoming.entries()) {
     const sanitizedKey = sanitizeHtml(key);
-    
+
     if (typeof value === 'string') {
       // Sanitize string values
       const sanitizedValue = sanitizeHtml(value);
       form.append(sanitizedKey, sanitizedValue);
     } else if (value instanceof File) {
-      // Sanitize filename
+      // Read file bytes and create a brand-new File to avoid
+      // File serialisation issues on Vercel serverless runtime.
       const sanitizedFilename = sanitizeFilename(value.name);
-      form.append(sanitizedKey, value, sanitizedFilename);
+      const buffer = await value.arrayBuffer();
+      form.append(sanitizedKey, new File([buffer], sanitizedFilename, { type: value.type }));
     } else {
       form.append(sanitizedKey, value);
     }
   }
+
+  // Clean internal fields before forwarding upstream
+  form.delete('_csrf_token');
 
   const upstream = await fetch(PENGANGKUTAN_BASE, {
     method: 'POST',
