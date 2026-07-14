@@ -134,6 +134,10 @@ type DetailMode = 'perHari' | 'perBaris';
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
 
+/* ⚡ Bolt Optimization: Define constants for O(1) status classification lookups */
+const ALPHA_CODES = new Set(['P1', 'MK']);
+const ZERO_TIME_VALUES = new Set(['0', '00:00', '0:00', '', null, undefined]);
+
 // Range tanggal utk filter FRONTEND
 const getDateRange = (frame: Timeframe, month?: string, year?: string): { from: string; to: string } => {
   if (month && month !== 'ALL' && year) {
@@ -198,31 +202,20 @@ type ClassifiedStatus = 'HADIR' | 'TEPAT_WAKTU' | 'TELAT' | 'PULANG_AWAL' | 'ALP
 
 const isNonZeroTime = (raw?: string | null): boolean => {
   if (!raw) return false;
-  const t = raw.trim();
-  if (!t) return false;
-  if (t === '0' || t === '00:00' || t === '0:00') return false;
-  return true;
+  return !ZERO_TIME_VALUES.has(raw.trim());
 };
 
 const classifyStatus = (record: AttendanceRecord): ClassifiedStatus => {
   const code = (record.attendance || '').toUpperCase().trim();
-  const lateRaw = record.total_late_time;
-  const goHomeRaw = record.go_home_early;
 
-  // ALPHA hanya untuk MK dan P1
-  const isAlphaCode = ['P1', 'MK'].includes(code);
-  if (isAlphaCode) return 'ALPHA';
+  // ⚡ Bolt: ALPHA only for codes in ALPHA_CODES (O(1) lookup)
+  if (ALPHA_CODES.has(code)) return 'ALPHA';
 
-  // Semua kode lainnya dianggap HADIR
-  // Tapi kita tetap klasifikasi detail untuk TEPAT_WAKTU, TELAT, PULANG_AWAL
-  const isLate = isNonZeroTime(lateRaw);
-  const isEarly = isNonZeroTime(goHomeRaw);
-
-  // Selalu return HADIR untuk total count
-  // Tapi untuk detail breakdown:
-  if (isEarly) return 'PULANG_AWAL';
-  if (isLate) return 'TELAT';
-  return 'TEPAT_WAKTU'; // Tepat waktu (tidak telat, tidak pulang awal)
+  // All other codes are considered PRESENT (HADIR)
+  // Breakdown into specific categories:
+  if (isNonZeroTime(record.go_home_early)) return 'PULANG_AWAL';
+  if (isNonZeroTime(record.total_late_time)) return 'TELAT';
+  return 'TEPAT_WAKTU';
 };
 
 // Ekstrak array data dari response API (ok + data / data.data)
@@ -786,14 +779,32 @@ export default function UserDashboard() {
     return base;
   }, [triplets, userLevel]);
 
-  const afdelingOptions: Option[] = useMemo(() => {
-    const uniq = new Set<string>();
-    const isAllFcba = !filterFcba || filterFcba === 'ALL';
-
+  /* ⚡ Bolt Optimization: Pre-calculate FCBA-to-Afdeling map for O(1) lookup */
+  const fcbaToAfdelingMap = useMemo(() => {
+    const map = new Map<string, Set<string>>();
     for (const t of triplets) {
-      if (t.sectionname && (isAllFcba || t.fcba === filterFcba)) {
-        uniq.add(t.sectionname);
+      if (!t.fcba || !t.sectionname) continue;
+      if (!map.has(t.fcba)) map.set(t.fcba, new Set());
+      map.get(t.fcba)!.add(t.sectionname);
+    }
+    return map;
+  }, [triplets]);
+
+  const afdelingOptions: Option[] = useMemo(() => {
+    const isAllFcba = !filterFcba || filterFcba === 'ALL';
+    let uniq: Set<string>;
+
+    if (isAllFcba) {
+      // ⚡ Bolt: Merge all afdelings from all FCBAs
+      uniq = new Set<string>();
+      for (const afdelings of fcbaToAfdelingMap.values()) {
+        for (const afd of afdelings) {
+          uniq.add(afd);
+        }
       }
+    } else {
+      // ⚡ Bolt: O(1) lookup for specific FCBA
+      uniq = fcbaToAfdelingMap.get(filterFcba) || new Set<string>();
     }
 
     const options = Array.from(uniq)
@@ -801,7 +812,7 @@ export default function UserDashboard() {
       .map(v => ({ value: v, label: v }));
 
     return [{ value: '', label: 'Semua Afdeling' }, ...options];
-  }, [triplets, filterFcba]);
+  }, [fcbaToAfdelingMap, filterFcba]);
 
   const monthOptions: Option[] = useMemo(() => {
     const months = [
@@ -911,10 +922,10 @@ export default function UserDashboard() {
         keyObj = { date: dateOnly };
       }
 
-      const keyParts = [keyObj.date];
-      if (keyObj.fcba) keyParts.push(`FCBA:${keyObj.fcba}`);
-      if (keyObj.afdeling) keyParts.push(`AFD:${keyObj.afdeling}`);
-      const dailyKey = keyParts.join('|');
+      // ⚡ Bolt Optimization: Use template literals for O(1) string construction
+      const dailyKey = `${keyObj.date}${keyObj.fcba ? `|FCBA:${keyObj.fcba}` : ''}${
+        keyObj.afdeling ? `|AFD:${keyObj.afdeling}` : ''
+      }`;
 
       let dSummary = dailyMap.get(dailyKey);
       if (!dSummary) {
@@ -1056,42 +1067,39 @@ export default function UserDashboard() {
 
   // 🔥 Data untuk Line Chart berdasarkan timeframe (sekarang sudah ada Pulang Awal)
   const lineChartData = useMemo(() => {
+    const mapToTrendItem = (item: {
+      tepatWaktu: number;
+      telat: number;
+      pulangAwal: number;
+      alpa: number;
+      hadir: number;
+      _displayDate?: string;
+      date?: string;
+      monthName?: string;
+      year?: number;
+    }) => {
+      const total = item.tepatWaktu + item.telat + item.pulangAwal + item.alpa || 1;
+      return {
+        label: item.monthName || item._displayDate || item.date || formatYearID(item.year || 0),
+        hadir: item.hadir,
+        tepatWaktu: item.tepatWaktu,
+        telat: item.telat,
+        pulangAwal: item.pulangAwal,
+        alpa: item.alpa,
+        // ⚡ Bolt Optimization: Pre-calculate percentages once
+        pTepat: ((item.tepatWaktu / total) * 100).toFixed(1),
+        pTelat: ((item.telat / total) * 100).toFixed(1),
+        pPulangAwal: ((item.pulangAwal / total) * 100).toFixed(1),
+        pAlpa: ((item.alpa / total) * 100).toFixed(1),
+      };
+    };
+
     if (timeframe === 'daily' || timeframe === 'weekly') {
-      return dailySummaries
-        .slice()
-        .reverse()
-        .map(d => ({
-          label: d._displayDate || d.date,
-          hadir: d.hadir,
-          tepatWaktu: d.tepatWaktu,
-          telat: d.telat,
-          pulangAwal: d.pulangAwal,
-          alpa: d.alpa,
-        }));
+      return dailySummaries.slice().reverse().map(mapToTrendItem);
     } else if (timeframe === 'monthly') {
-      return monthlySummaries
-        .slice()
-        .reverse()
-        .map(m => ({
-          label: m.monthName,
-          hadir: m.hadir,
-          tepatWaktu: m.tepatWaktu,
-          telat: m.telat,
-          pulangAwal: m.pulangAwal,
-          alpa: m.alpa,
-        }));
+      return monthlySummaries.slice().reverse().map(mapToTrendItem);
     } else if (timeframe === 'yearly') {
-      return yearlySummaries
-        .slice()
-        .reverse()
-        .map(y => ({
-          label: formatYearID(y.year),
-          hadir: y.hadir,
-          tepatWaktu: y.tepatWaktu,
-          telat: y.telat,
-          pulangAwal: y.pulangAwal,
-          alpa: y.alpa,
-        }));
+      return yearlySummaries.slice().reverse().map(mapToTrendItem);
     }
     return [];
   }, [timeframe, dailySummaries, monthlySummaries, yearlySummaries]);

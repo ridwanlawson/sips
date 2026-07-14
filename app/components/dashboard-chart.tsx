@@ -204,6 +204,11 @@ interface LineChartData {
   telat: number;
   pulangAwal: number;
   alpa: number;
+  // ⚡ Bolt Optimization: Optional pre-calculated percentage strings
+  pTepat?: string;
+  pTelat?: string;
+  pPulangAwal?: string;
+  pAlpa?: string;
 }
 
 interface LineChartProps {
@@ -242,13 +247,19 @@ export const SimpleLineChart = memo(function SimpleLineChart({ data, title }: Li
           </thead>
           <tbody>
             {data.map((item, idx) => {
-              // Use mutually-exclusive categories for percentage: tepatWaktu + telat + pulangAwal + alpa
-              const total = item.tepatWaktu + item.telat + item.pulangAwal + item.alpa || 1;
-
-              const pTepat = ((item.tepatWaktu / total) * 100).toFixed(1);
-              const pTelat = ((item.telat / total) * 100).toFixed(1);
-              const pPulangAwal = ((item.pulangAwal / total) * 100).toFixed(1);
-              const pAlpa = ((item.alpa / total) * 100).toFixed(1);
+              // ⚡ Bolt Optimization: Use pre-calculated percentages if available
+              const pTepat =
+                item.pTepat ??
+                ((item.tepatWaktu / (item.tepatWaktu + item.telat + item.pulangAwal + item.alpa || 1)) * 100).toFixed(1);
+              const pTelat =
+                item.pTelat ??
+                ((item.telat / (item.tepatWaktu + item.telat + item.pulangAwal + item.alpa || 1)) * 100).toFixed(1);
+              const pPulangAwal =
+                item.pPulangAwal ??
+                ((item.pulangAwal / (item.tepatWaktu + item.telat + item.pulangAwal + item.alpa || 1)) * 100).toFixed(1);
+              const pAlpa =
+                item.pAlpa ??
+                ((item.alpa / (item.tepatWaktu + item.telat + item.pulangAwal + item.alpa || 1)) * 100).toFixed(1);
 
               return (
                 <tr key={idx} className="hover:bg-base-200">
