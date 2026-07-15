@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
 import { applyUserDataScope } from '@/utils/requestScope';
 import { authHeaders, parseJsonSafe, isRecord } from '@/lib/apiProxy';
+import { validateSecurity } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -9,6 +10,9 @@ export const runtime = 'nodejs';
 const MASTER_USERS_BASE = `${BACKEND_URL}/api/master/sips-users`;
 
 export async function GET(req: NextRequest) {
+  const securityError = await validateSecurity(req);
+  if (securityError) return securityError;
+
   const token = await getTokenFromCookie();
   if (!token) {
     return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
@@ -29,6 +33,9 @@ export async function GET(req: NextRequest) {
   }
 
   if (!upstream.ok) {
+    // SECURITY: Log original error details server-side but return generic message
+    // to client to prevent information leakage (CWE-209).
+    console.error('[API_MASTER_USERS_GET_ERROR]', { status: upstream.status, data });
     return NextResponse.json(
       { ok: false, error: 'Failed to fetch master users' },
       { status: upstream.status }
