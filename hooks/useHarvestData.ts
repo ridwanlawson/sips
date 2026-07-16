@@ -12,6 +12,8 @@ import { initialHarvestForm } from '@/types/domain';
 import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/auth/authHelper';
 import { exportJsonToCsv } from '@/utils/services/exportCsv';
 import { getProxiedImageUrl } from '@/utils/helpers/imageHelper';
+import { formatPerfDate } from '@/utils/helpers/perf-formatter';
+import { useLocale } from '@/hooks/useLocale';
 import { getTodayISO, getYesterdayISO } from '@/utils/helpers/datetime';
 import { cookieStore } from '@/utils/auth/cookieStore';
 import { type UserLevel } from '@/utils/helpers/filterHelper';
@@ -126,6 +128,7 @@ const buildHarvestDocumentNo = ({
 };
 
 export function useHarvestData() {
+  const localeTag = useLocale();
   const tH = useTranslations('Harvest');
   const queryClient = useQueryClient();
   const [q, setQ] = useState('');
@@ -332,6 +335,8 @@ export function useHarvestData() {
       const seen = new Set<string>();
       return dataRaw.map((it, idx) => {
         const dateOnly = (it.tanggal || '').split(' ')[0];
+        const displayDate = dateOnly ? formatPerfDate(dateOnly, localeTag) : '-';
+
         const searchContent = [
           it.nodokumen,
           it.kode_karyawan,
@@ -355,6 +360,7 @@ export function useHarvestData() {
         return {
           ...it,
           _rowKey: key,
+          _displayDate: displayDate,
           _searchContent: searchContent,
           _outputNum: toNumber(it.output),
           _mentahNum: toNumber(it.mentah),
