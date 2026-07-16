@@ -22,7 +22,7 @@ const gisOrigin = process.env.NEXT_PUBLIC_GIS_URL
 
 const cspDirectives = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live",
   "style-src 'self' 'unsafe-inline'",
   // All HTTP images are proxied through /api/system/image-proxy ('self').
   // HTTPS origins listed as fallback if proxy edge case fails.
