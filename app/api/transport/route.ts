@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
-import { applyUserDataScope } from '@/utils/requestScope';
-import { authHeaders, isRecord, parseJsonSafe } from '@/lib/apiProxy';
-import { sanitizeHtml, sanitizeFilename } from '@/lib/inputSanitizer';
-import { validateSecurity } from '@/lib/security';
+import { BACKEND_URL, getTokenFromCookie } from '@/utils/api/absensiProxy';
+import { applyUserDataScope } from '@/utils/api/requestScope';
+import { authHeaders, isRecord, parseJsonSafe } from '@/lib/api/apiProxy';
+import { sanitizeHtml, sanitizeFilename } from '@/lib/utils/inputSanitizer';
+import { validateSecurity } from '@/lib/auth/security';
 
 const PENGANGKUTAN_BASE = `${BACKEND_URL}/api/apps/pengangkutans`;
 
@@ -154,3 +154,4 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   return NextResponse.json({ ok: true, data });
 }
+

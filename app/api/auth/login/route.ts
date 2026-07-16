@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { cookies } from 'next/headers';
-import { BACKEND_URL } from '@/utils/absensiProxy';
-import { loginRateLimiter } from '@/lib/rateLimiter';
-import { validateCsrfToken } from '@/lib/csrf';
+import { BACKEND_URL } from '@/utils/api/absensiProxy';
+import { loginRateLimiter } from '@/lib/auth/rateLimiter';
+import { validateCsrfToken } from '@/lib/auth/csrf';
 import { CookieName } from '@/lib/constants';
-import * as CryptoJS from 'crypto-js';
+
 
 const loginSchema = z.object({
   username: z.string().min(1).max(100),
@@ -111,8 +111,11 @@ export async function POST(request: Request) {
     res.cookies.set('auth_token', String(token), base);
     res.cookies.set('log_id', String(userId), base);
 
-    // Set CSRF token cookie (generated server-side)
-    res.cookies.set('csrf_token', CryptoJS.lib.WordArray.random(16).toString(CryptoJS.enc.Hex), {
+    // Set CSRF token cookie (generated server-side via Web Crypto API)
+    const csrfBytes = new Uint8Array(16);
+    crypto.getRandomValues(csrfBytes);
+    const csrfHex = Array.from(csrfBytes, b => b.toString(16).padStart(2, '0')).join('');
+    res.cookies.set('csrf_token', csrfHex, {
       httpOnly: false, // Must be accessible to JavaScript for X-CSRF-Token header
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict' as const,
@@ -142,3 +145,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: 'Internal server error' }, { status: 500 });
   }
 }
+
+

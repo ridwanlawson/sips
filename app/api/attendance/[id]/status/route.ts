@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ABSENSI_BASE, getTokenFromCookie } from '@/utils/absensiProxy';
-import { validateSecurity } from '@/lib/security';
-import { authHeaders, parseJsonSafe, unauthorizedResponse } from '@/lib/apiProxy';
+import { ABSENSI_BASE, getTokenFromCookie } from '@/utils/api/absensiProxy';
+import { validateSecurity } from '@/lib/auth/security';
+import { authHeaders, parseJsonSafe, unauthorizedResponse } from '@/lib/api/apiProxy';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -52,3 +52,5 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     );
   }
 }
+
+

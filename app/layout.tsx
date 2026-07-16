@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
-import { ThemeProvider } from './components/theme-provider';
+import { ThemeProvider } from './components/theme/theme-provider';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages, getTranslations } from 'next-intl/server';
-import Providers from './components/providers';
+import Providers from './components/auth/providers';
 
 // Use font-display swap so fonts do not block the initial render.
 const geistSans = Geist({
@@ -25,23 +25,25 @@ const geistMono = Geist_Mono({
   fallback: ['monospace'],
 });
 
-export const metadata: Metadata = {
-  title: {
-    template: '%s | SiPS Mobile Web',
-    default: 'SiPS Mobile Web',
-  },
-  description: 'SiPS Mobile Web application by PT Sentosa Kalimantan Jaya',
-  manifest: '/manifest.json',
-  icons: {
-    icon: '/logo.svg',
-    apple: '/logo.svg',
-  },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'default',
-    title: 'SiPS Mobile',
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: {
+      template: '%s | SiPS Mobile Web',
+      default: 'SiPS Mobile Web',
+    },
+    description: 'SiPS Mobile Web application by PT Sentosa Kalimantan Jaya',
+    manifest: '/manifest.json',
+    icons: {
+      icon: '/logo.svg',
+      apple: '/logo.svg',
+    },
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: 'default',
+      title: 'SiPS Mobile',
+    },
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: '#000000',
@@ -79,3 +81,4 @@ export default async function RootLayout({
     </html>
   );
 }
+

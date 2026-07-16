@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { SkeletonTable } from '@/app/components/skeletons';
+import { SkeletonTable } from '@/app/components/ui/skeletons';
 
 const HarvestingUploadPage = dynamic(() => import('./harvest-upload-client'), {
   
@@ -15,3 +15,4 @@ const HarvestingUploadPage = dynamic(() => import('./harvest-upload-client'), {
 export default function HarvestUploadWrapper() {
   return <HarvestingUploadPage />;
 }
+

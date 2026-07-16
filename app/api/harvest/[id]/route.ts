@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
-import { parseJsonSafe } from '@/lib/apiProxy';
-import { validateSecurity } from '@/lib/security';
+import { BACKEND_URL, getTokenFromCookie } from '@/utils/api/absensiProxy';
+import { parseJsonSafe } from '@/lib/api/apiProxy';
+import { validateSecurity } from '@/lib/auth/security';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -177,3 +177,5 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
   return NextResponse.json({ ok: false, error: 'Method Not Allowed' }, { status: 405 });
 }
+
+

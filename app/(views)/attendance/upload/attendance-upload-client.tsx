@@ -1,20 +1,20 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import DataTable from '@/app/components/dynamic-data-table';
+import { AppDataTable } from '@/app/components/data/app-data-table';
 import type { TableColumn } from 'react-data-table-component';
 import {
   AttendanceUploadParams,
   fetchAttendanceUpload,
   insertAttendanceData,
   AttendanceUploadData as BaseAttendanceUploadData,
-} from '@/utils/attendanceUploadService';
-import { SkeletonTable } from '@/app/components/skeletons';
-import { AccessDenied } from '@/app/components/access-denied';
+} from '@/utils/services/attendanceUploadService';
+import { AccessDenied } from '@/app/components/feedback/access-denied';
 import { useLocale } from '@/hooks/useLocale';
-import { formatPerfDate, formatPerfNumber } from '@/utils/perf-formatter';
+import { formatPerfDate, formatPerfNumber } from '@/utils/helpers/perf-formatter';
 import { useUploadPage } from '@/hooks/useUploadPage';
-import { Icon } from '@/app/components/icons';
+import { Icon } from '@/app/components/ui/icons';
+import { FilterBar } from '@/app/components/ui/filter-bar';
 
 const EMPTY_PARAMS: AttendanceUploadParams = {
   tanggal: '',
@@ -25,7 +25,7 @@ const EMPTY_PARAMS: AttendanceUploadParams = {
 };
 
 /**
- * ⚡ Bolt Optimization: Safely convert mixed API values to numbers.
+ * ? Bolt Optimization: Safely convert mixed API values to numbers.
  * Handles strings with commas and ensures a valid finite number is returned.
  */
 const toNumber = (value: string | number | null | undefined): number => {
@@ -80,8 +80,6 @@ export default function AttendanceUploadPage() {
             new Map(response.data.map(item => [item.linenokey, item])).values()
           );
 
-          console.log(`Total records: ${response.data.length}, After dedup: ${uniqueData.length}`);
-
           setData(uniqueData);
         }
         // Keep empty data as an empty state without setting an error
@@ -115,16 +113,8 @@ export default function AttendanceUploadPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initCheck]);
 
-  const handleParamChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormParams(prev => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSearch = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     await fetchData();
   };
 
@@ -137,7 +127,7 @@ export default function AttendanceUploadPage() {
   // Add row keys for DataTable
   const dataWithKey = useMemo(() => {
     return data.map((item, idx) => {
-      // ⚡ Bolt Optimization: Pre-calculate display values and numbers once.
+      // ? Bolt Optimization: Pre-calculate display values and numbers once.
       // This converts O(N*R) work during render into O(N) work here.
       const _displayDate = formatPerfDate(item.fddate, localeTag) || '-';
       const _mandaysNum = toNumber(item.mandays);
@@ -150,7 +140,7 @@ export default function AttendanceUploadPage() {
       const _kgJanjangNum = toNumber(item.kg_janjang);
       const _bjrNum = toNumber(item.bjr);
 
-      // ⚡ Bolt Optimization: Pre-calculate search content to avoid O(N*M) string operations during search.
+      // ? Bolt Optimization: Pre-calculate search content to avoid O(N*M) string operations during search.
       const _searchContent = [
         item.employeecode,
         item.gangcode,
@@ -193,7 +183,7 @@ export default function AttendanceUploadPage() {
       return dataWithKey;
     }
     const search = searchTerm.toLowerCase();
-    // ⚡ Bolt Optimization: Use pre-calculated search content for O(N) filtering.
+    // ? Bolt Optimization: Use pre-calculated search content for O(N) filtering.
     return dataWithKey.filter(record => record._searchContent?.includes(search));
   }, [dataWithKey, searchTerm]);
 
@@ -238,9 +228,9 @@ export default function AttendanceUploadPage() {
       },
       {
         name: 'Date',
-        // ⚡ Bolt: Use raw date in selector for correct chronological sorting.
+        // ? Bolt: Use raw date in selector for correct chronological sorting.
         selector: row => row.fddate || '',
-        // ⚡ Bolt: Use pre-calculated display date in cell for O(1) rendering.
+        // ? Bolt: Use pre-calculated display date in cell for O(1) rendering.
         cell: row => <span>{row._displayDate}</span>,
         sortable: true,
         width: '120px',
@@ -529,11 +519,11 @@ export default function AttendanceUploadPage() {
 
       setSubmitProgress('');
       if (successCount === totalRecords) {
-        alert(`✓ Sukses! Semua ${successCount} data berhasil dikirim ke SIPS.`);
+        alert(`? Sukses! Semua ${successCount} data berhasil dikirim ke SIPS.`);
         setData([]); // Clear list on full success
       } else {
         // Partial success or failure
-        const msg = `⚠️ Selesai dengan catatan.\nBerhasil: ${successCount}\nGagal: ${totalRecords - successCount}\n\nDetail Error:\n${failMessages.slice(0, 20).join('\n')}${failMessages.length > 20 ? '\n...dan ' + (failMessages.length - 20) + ' lainnya' : ''}`;
+        const msg = `??? Selesai dengan catatan.\nBerhasil: ${successCount}\nGagal: ${totalRecords - successCount}\n\nDetail Error:\n${failMessages.slice(0, 20).join('\n')}${failMessages.length > 20 ? '\n...dan ' + (failMessages.length - 20) + ' lainnya' : ''}`;
         alert(msg);
 
         if (successCount > 0) {
@@ -577,117 +567,30 @@ export default function AttendanceUploadPage() {
 
         {/* Filter Section */}
         {showFilters && (
-          <div className="bg-base-100 p-4 rounded-xl shadow-sm mb-4 border border-base-200">
-            <form
-              onSubmit={handleSearch}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
-            >
-              <div className="form-group">
-                <label className="block text-sm font-medium text-base-content mb-1">
-                  Tanggal Mulai
-                </label>
-                <input
-                  type="date"
-                  name="tanggal"
-                  value={formParams.tanggal}
-                  onChange={handleParamChange}
-                  className="input input-bordered w-full"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="block text-sm font-medium text-base-content mb-1">
-                  Tanggal Akhir
-                </label>
-                <input
-                  type="date"
-                  name="tanggal_end"
-                  value={formParams.tanggal_end}
-                  onChange={handleParamChange}
-                  className="input input-bordered w-full"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="block text-sm font-medium text-base-content mb-1">
-                  FCBA
-                  {userFcba && (
-                    <span className="text-xs text-info ml-2">(Default: {userFcba})</span>
-                  )}
-                </label>
-                <input
-                  type="text"
-                  name="fcba"
-                  placeholder="e.g., MTE"
-                  value={formParams.fcba}
-                  onChange={handleParamChange}
-                  className="input input-bordered w-full"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="block text-sm font-medium text-base-content mb-1">
-                  Afdeling
-                  {userAfdeling && (
-                    <span className="text-xs text-info ml-2">(Default: {userAfdeling})</span>
-                  )}
-                </label>
-                <input
-                  type="text"
-                  name="afdeling"
-                  placeholder="e.g., AFD-01"
-                  value={formParams.afdeling}
-                  onChange={handleParamChange}
-                  className="input input-bordered w-full"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="block text-sm font-medium text-base-content mb-1">
-                  Gang Code
-                </label>
-                <input
-                  type="text"
-                  name="gangcode"
-                  placeholder="e.g., PN013"
-                  value={formParams.gangcode}
-                  onChange={handleParamChange}
-                  className="input input-bordered w-full"
-                />
-              </div>
-
-              <div className="flex items-end gap-2">
-                <button type="submit" disabled={loading} className="btn btn-primary btn-sm flex-1">
-                  {loading ? (
-                    <>
-                      <span className="loading loading-spinner loading-xs"></span>
-                      Loading...
-                    </>
-                  ) : (
-                    'Search'
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleResetFilter}
-                  disabled={loading}
-                  className="btn btn-outline btn-sm flex-1"
-                >
-                  Reset
-                </button>
-              </div>
-            </form>
-          </div>
+          <FilterBar
+            fields={[
+              { key: 'tanggal', label: '', type: 'date', placeholder: 'Tanggal Mulai' },
+              { key: 'tanggal_end', label: '', type: 'date', placeholder: 'Tanggal Akhir' },
+              { key: 'fcba', label: 'FCBA', type: 'text', placeholder: 'e.g., MTE' },
+              { key: 'afdeling', label: 'Afdeling', type: 'text', placeholder: 'e.g., AFD-01' },
+              { key: 'gangcode', label: 'Gang Code', type: 'text', placeholder: 'e.g., PN013' },
+            ]}
+            values={formParams as Record<string, string>}
+            onChange={(key, value) => setFormParams(prev => ({ ...prev, [key]: value }))}
+            onApply={() => handleSearch()}
+            onReset={handleResetFilter}
+            loading={loading}
+          />
         )}
 
         {/* Error Message */}
         {error && (
           <div className="alert alert-error mb-4 shadow-sm">
             <div className="w-full">
-              <p className="font-semibold">❌ Error: {error}</p>
+              <p className="font-semibold">? Error: {error}</p>
               <details className="mt-3 border-t border-base-content/20 pt-3">
                 <summary className="text-xs cursor-pointer font-medium opacity-75 select-none">
-                  📋 Debug Info (Klik untuk expand)
+                  ?? Debug Info (Klik untuk expand)
                 </summary>
                 <div className="mt-2 text-xs opacity-75 space-y-2">
                   <div className="bg-base-200 p-2 rounded">
@@ -705,9 +608,9 @@ export default function AttendanceUploadPage() {
                   <div>
                     <p className="font-semibold">Cara Debug:</p>
                     <ol className="list-decimal ml-4 space-y-1">
-                      <li>Tekan F12 → buka tab &quot;Console&quot;</li>
+                      <li>Tekan F12 ? buka tab &quot;Console&quot;</li>
                       <li>Cari log dengan prefix &quot;ATTENDANCE UPLOAD DEBUG&quot;</li>
-                      <li>Buka tab &quot;Network&quot; → cari request ke /api/attendance/upload</li>
+                      <li>Buka tab &quot;Network&quot; ? cari request ke /api/attendance/upload</li>
                       <li>Cek response details dan error message</li>
                       <li>Jika perlu login ulang: refresh halaman & login kembali</li>
                     </ol>
@@ -753,7 +656,7 @@ export default function AttendanceUploadPage() {
                 {submitProgress || 'Submitting...'}
               </>
             ) : (
-              '📤 Submit to SIPS'
+              '?? Submit to SIPS'
             )}
           </button>
 
@@ -812,34 +715,18 @@ export default function AttendanceUploadPage() {
 
         {/* Data Table */}
         {data.length > 0 && (
-          <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100">
-            <div className="min-w-[900px] md:min-w-0">
-              {loading ? (
-                <div className="p-8">
-                  <SkeletonTable rows={10} />
-                </div>
-              ) : (
-                <DataTable
-                  keyField="_rowKey"
-                  columns={columns}
-                  data={filteredDataWithKey}
-                  progressPending={loading}
-                  pagination
-                  paginationPerPage={10}
-                  paginationRowsPerPageOptions={[10, 30, 100, 500]}
-                  dense
-                  highlightOnHover
-                  fixedHeader
-                  fixedHeaderScrollHeight="520px"
-                  persistTableHead
-                  responsive
-                  noDataComponent={<div className="py-8 text-base-content/70">Tidak ada data.</div>}
-                />
-              )}
-            </div>
-          </div>
+          <AppDataTable
+            columns={columns}
+            data={filteredDataWithKey}
+            loading={loading}
+            paginationPerPage={10}
+            paginationRowsPerPageOptions={[10, 30, 100, 500]}
+            noDataComponent={<div className="py-8 text-base-content/70">Tidak ada data.</div>}
+          />
         )}
       </div>
     </div>
   );
 }
+
+

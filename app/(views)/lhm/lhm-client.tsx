@@ -1,23 +1,21 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import DataTable from '@/app/components/dynamic-data-table';
-import { useSearchShortcut } from '@/hooks/useSearchShortcut';
 import type { TableColumn } from 'react-data-table-component';
 import toast from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
-import { SkeletonTable } from '@/app/components/skeletons';
-import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/authHelper';
-import { getTodayISO, formatDateDMY, getYesterdayISO } from '@/utils/datetime';
-import { centerHeaderStyle } from '@/utils/tableHelper';
-import { exportJsonToCsv } from '@/utils/exportCsv';
-import { formatPerfNumber, formatPerfDate } from '@/utils/perf-formatter';
+import { AppDataTable } from '@/app/components/data/app-data-table';
+import AppTour from '@/app/components/feedback/app-tour';
+import type { TourStep } from '@/app/components/feedback/app-tour';
+import { Icon } from '@/app/components/ui/icons';
+import { ExportButton } from '@/app/components/ui/export-button';
+import { useSearchShortcut } from '@/hooks/useSearchShortcut';
 import { useLocale } from '@/hooks/useLocale';
-import { EmptyState } from '@/app/components/empty-state';
-import AppTour from '@/app/components/app-tour';
-import type { TourStep } from '@/app/components/app-tour';
-import { Icon } from '@/app/components/icons';
-import { toNumber } from '@/lib/helpers';
+import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/auth/authHelper';
+import { getTodayISO, formatDateDMY, getYesterdayISO } from '@/utils/helpers/datetime';
+import { exportJsonToCsv } from '@/utils/services/exportCsv';
+import { formatPerfNumber, formatPerfDate } from '@/utils/helpers/perf-formatter';
+import { toNumber } from '@/lib/utils/helpers';
 
 /* =========================
    T Y P E S
@@ -142,8 +140,8 @@ type Filters = Partial<{
   attendance: string;
 }>;
 
-import { cookieStore } from '@/utils/cookieStore';
-import { getFilterCriteria, getLockedFields, type UserLevel } from '@/utils/filterHelper';
+import { cookieStore } from '@/utils/auth/cookieStore';
+import { getFilterCriteria, getLockedFields, type UserLevel } from '@/utils/helpers/filterHelper';
 
 /* =========================
    M A I N
@@ -931,7 +929,7 @@ export default function Lhm() {
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
-      <div className="p-4 sm:p-6 max-w-screen-2xl mx-auto w-full overflow-x-hidden">
+      <div className="p-4 sm:p-6 max-w-screen-2xl mx-auto w-full overflow-x-hidden space-y-4">
         {/* Header */}
         <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start animate-slideUp">
           <h1
@@ -948,10 +946,10 @@ export default function Lhm() {
               steps={tourSteps}
               storageKey="tour-lhm"
               onStepChange={handleTourStepChange}
-              btnClassName="join-item"
+              btnClassName="join-item flex-1 sm:flex-none"
             />
             <button
-              className="btn btn-outline btn-sm join-item"
+              className="btn btn-outline btn-sm flex-1 sm:flex-none join-item"
               onClick={() => setShowFilters(s => !s)}
               title={tL('filterToggleTooltip')}
               data-tour="filter-button"
@@ -960,7 +958,7 @@ export default function Lhm() {
               <span className="hidden sm:inline">{showFilters ? tL('hideFilters') : tL('showFilters')}</span>
             </button>
             <button
-              className={`btn btn-outline btn-sm join-item ${loading ? 'btn-disabled' : ''}`}
+              className={`btn btn-outline btn-sm flex-1 sm:flex-none join-item ${loading ? 'btn-disabled' : ''}`}
               onClick={() => fetchData(appliedFilters ?? getScopedFilters(filters))}
               disabled={loading}
               title={tL('refreshTooltip')}
@@ -977,14 +975,7 @@ export default function Lhm() {
                 </>
               )}
             </button>
-            <button
-              className="btn btn-outline btn-sm join-item"
-              onClick={handleExport}
-              title={tL('exportTooltip')}
-            >
-              <Icon name="export" className="h-4 w-4" />
-              <span className="hidden sm:inline">{tL('export')}</span>
-            </button>
+            <ExportButton onClick={handleExport} label={tL('export')} />
           </div>
         </div>
 
@@ -1183,36 +1174,16 @@ export default function Lhm() {
         {/* Error visual dihilangkan, cukup toast saja yang muncul */}
 
         {/* DataTable */}
-        <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100 animate-slideUp [animation-delay:200ms]" data-tour="data-table">
-          <div className="min-w-[900px] md:min-w-0">
-            {loading ? (
-              <div className="p-8">
-                <SkeletonTable rows={10} />
-              </div>
-            ) : (
-              <DataTable
-                keyField="_rowKey"
-                columns={columns}
-                data={filtered}
-                progressPending={loading}
-                pagination
-                customStyles={centerHeaderStyle}
-                paginationPerPage={100}
-                paginationRowsPerPageOptions={[100, 500, 1000, 5000]}
-                dense
-                highlightOnHover
-                fixedHeader
-                fixedHeaderScrollHeight="520px"
-                persistTableHead
-                responsive
-                noDataComponent={
-                  <EmptyState namespace="Lhm" onClearSearch={q ? () => setQ('') : undefined} />
-                }
-              />
-            )}
-          </div>
-        </div>
+        <AppDataTable
+          columns={columns}
+          data={filtered}
+          loading={loading}
+          namespace="Lhm"
+          onClearSearch={q ? () => setQ('') : undefined}
+        />
       </div>
     </div>
   );
 }
+
+

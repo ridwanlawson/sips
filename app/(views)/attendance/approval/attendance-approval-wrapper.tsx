@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { SkeletonTable } from '@/app/components/skeletons';
+import { SkeletonTable } from '@/app/components/ui/skeletons';
 
 const AttendanceApproval = dynamic(() => import('./attendance-approval-client'), {
   loading: () => (
@@ -14,3 +14,4 @@ const AttendanceApproval = dynamic(() => import('./attendance-approval-client'),
 export default function AttendanceApprovalWrapper() {
   return <AttendanceApproval />;
 }
+

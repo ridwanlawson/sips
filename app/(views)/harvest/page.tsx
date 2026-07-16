@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import HarvestWrapper from './harvest-wrapper';
 
-export const metadata: Metadata = { title: 'Harvesting' };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: 'Harvesting' };
+}
 
 export default function Page() {
   return <HarvestWrapper />;

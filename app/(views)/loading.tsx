@@ -1,4 +1,4 @@
-import { SkeletonTable } from '@/app/components/skeletons';
+import { SkeletonTable } from '@/app/components/ui/skeletons';
 
 export default function Loading() {
   return (
@@ -27,3 +27,4 @@ export default function Loading() {
     </div>
   );
 }
+

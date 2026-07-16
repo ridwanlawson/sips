@@ -1,1178 +1,81 @@
 'use client';
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { SimpleBarChart, SimplePieChart, SimpleLineChart } from '@/app/components/dashboard-chart';
-import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/authHelper';
-import { SkeletonCard, SkeletonTable, SkeletonChart } from '@/app/components/skeletons';
-import { formatPerfNumber, formatPerfDate } from '@/utils/perf-formatter';
-import { useLocale } from '@/hooks/useLocale';
-import { Icon } from '@/app/components/icons';
 import { useTranslations } from 'next-intl';
-import { SearchSelect, type Option } from '@/app/components/search-select';
-import { cookieStore } from '@/utils/cookieStore';
-import { toTitleCase } from '@/utils/textManipulation';
-import { EmptyState } from '@/app/components/empty-state';
+import { SkeletonCard, SkeletonTable, SkeletonChart } from '@/app/components/ui/skeletons';
 
-/* =========================
-   T Y P E S
-========================= */
-
-type UserLevel = 'ADM' | 'MGR' | 'KSI' | 'AST' | 'KRA' | 'MD1' | 'KRT' | 'KRP' | 'MDP' | 'OTHER';
-
-interface UserProfile {
-  id?: string | number;
-  username?: string;
-  fullname?: string;
-  level?: string;
-  fcba?: string;
-  afdeling?: string;
-  section?: string;
-  gang?: string;
-}
-
-interface AttendanceRecord {
-  id?: string | number;
-  tanggal?: string | null; // "YYYY-MM-DD HH:mm:ss"
-  attendance?: string | null; // KJ, WH, WS, KB, OT, P1, MK, dll
-  total_late_time?: string | null; // "HH:MM"
-  go_home_early?: string | null; // "HH:MM" → pulang awal
-  fcba?: string | null;
-  section?: string | null;
-  gang?: string | null;
-  // ⚡ Bolt Optimization: cached display values
-  _displayDate?: string;
-  _status?: ClassifiedStatus;
-}
-
-interface DashboardStats {
-  totalHadir: number; // Total semua hadir (termasuk telat & pulang awal)
-  totalTepatWaktu: number; // Hadir tepat waktu
-  totalTelat: number;
-  totalPulangAwal: number;
-  totalAlpa: number;
-}
-
-interface HarvestingRecord {
-  id?: string;
-  nodokumen?: string;
-  tanggal?: string;
-  kode_karyawan?: string;
-  nama_karyawan?: string;
-  output?: string | number;
-  status_harvesting?: string;
-  fcba?: string;
-  afdeling?: string;
-}
-
-interface PengangkutanRecord {
-  id?: string;
-  nopengangkutan?: string;
-  tanggal?: string;
-  status_pengangkutan?: string;
-  driver?: string;
-  type_pengangkutan?: string;
-  fcba?: string;
-  afdeling?: string;
-  output?: string | number;
-  jjg?: string | number;
-  jumlah?: string | number;
-  quantity?: string | number;
-  tonase?: string | number;
-  berat?: string | number;
-}
+const SimpleBarChart = dynamic(() => import('@/app/components/features/dashboard-chart').then(mod => mod.SimpleBarChart), { ssr: false });
+const SimplePieChart = dynamic(() => import('@/app/components/features/dashboard-chart').then(mod => mod.SimplePieChart), { ssr: false });
+const SimpleLineChart = dynamic(() => import('@/app/components/features/dashboard-chart').then(mod => mod.SimpleLineChart), { ssr: false });
+import { Icon } from '@/app/components/ui/icons';
+import { SearchSelect } from '@/app/components/ui/search-select';
+import { EmptyState } from '@/app/components/feedback/empty-state';
+import { useLocale } from '@/hooks/useLocale';
+import { useDashboardData, isNonZeroTime } from '@/hooks/useDashboardData';
+import { formatPerfNumber } from '@/utils/helpers/perf-formatter';
 
 type Timeframe = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
-interface DailyGroupKey {
-  date: string;
-  fcba?: string;
-  afdeling?: string;
-}
-
-interface DailySummary extends DailyGroupKey {
-  hadir: number;
-  tepatWaktu: number;
-  telat: number;
-  pulangAwal: number;
-  alpa: number;
-  _displayDate?: string;
-}
-
-interface MonthlySummary {
-  year: number;
-  month: number;
-  monthName: string;
-  hadir: number;
-  tepatWaktu: number;
-  telat: number;
-  pulangAwal: number;
-  alpa: number;
-}
-
-interface YearlySummary {
-  year: number;
-  hadir: number;
-  tepatWaktu: number;
-  telat: number;
-  pulangAwal: number;
-  alpa: number;
-}
-
-interface Triplet {
-  fcba: string;
-  sectionname: string;
-  gangcode: string;
-}
-
-type DetailMode = 'perHari' | 'perBaris';
-
-/* =========================
-   U T I L S
-========================= */
-
-const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
-
-// Range tanggal utk filter FRONTEND
-const getDateRange = (frame: Timeframe, month?: string, year?: string): { from: string; to: string } => {
-  if (month && month !== 'ALL' && year) {
-    const m = parseInt(month, 10) - 1;
-    const y = parseInt(year, 10);
-    const dateFrom = new Date(y, m, 1);
-    const dateTo = new Date(y, m + 1, 0);
-    const toISO = (d: Date) => d.toISOString().split('T')[0];
-    return { from: toISO(dateFrom), to: toISO(dateTo) };
+const timeframeLabel = (tf: Timeframe): string => {
+  switch (tf) {
+    case 'daily':
+      return 'Per Hari';
+    case 'weekly':
+      return '7 Hari Terakhir';
+    case 'monthly':
+      return 'Per Bulan (bulan ini)';
+    case 'yearly':
+      return 'Per Tahun (tahun ini)';
+    default:
+      return '';
   }
+};
 
-  const today = new Date();
-  const dateTo = new Date(today);
-  const dateFrom = new Date(today);
-
-  if (frame === 'daily') {
-    // hanya hari ini
-  } else if (frame === 'weekly') {
-    dateFrom.setDate(today.getDate() - 6);
-  } else if (frame === 'monthly') {
-    dateFrom.setDate(1);
-  } else if (frame === 'yearly') {
-    dateFrom.setMonth(0, 1);
-    dateTo.setMonth(11, 31);
+const getTrendLabel = (tf: Timeframe): string => {
+  switch (tf) {
+    case 'daily':
+      return 'Per Hari';
+    case 'weekly':
+      return 'Per Hari (7 Hari Terakhir)';
+    case 'monthly':
+      return 'Per Bulan';
+    case 'yearly':
+      return 'Per Tahun';
+    default:
+      return 'Per Hari';
   }
-
-  const toISO = (d: Date) => d.toISOString().split('T')[0];
-  return { from: toISO(dateFrom), to: toISO(dateTo) };
 };
-
-const parseDateOnly = (raw?: string | null): string | null => {
-  if (!raw) return null;
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-  const onlyDate = trimmed.split(' ')[0];
-  if (!onlyDate) return null;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(onlyDate)) return null;
-  return onlyDate;
-};
-
-/* ⚡ Bolt Optimization: Define formatting options for reuse via formatPerfDate */
-const DASHBOARD_DATE_OPTIONS: Intl.DateTimeFormatOptions = {
-  weekday: 'short',
-  day: '2-digit',
-  month: 'short',
-  year: 'numeric',
-};
-
-const DASHBOARD_MONTH_OPTIONS: Intl.DateTimeFormatOptions = {
-  month: 'long',
-  year: 'numeric',
-};
-
-const formatYearID = (year: number): string => {
-  return year.toString();
-};
-
-// Klasifikasi berdasarkan KODE + total_late_time + go_home_early
-// HADIR = semua kode kecuali MK dan P1 (tidak peduli telat/pulang awal)
-// TEPAT_WAKTU = hadir tanpa telat dan tanpa pulang awal
-type ClassifiedStatus = 'HADIR' | 'TEPAT_WAKTU' | 'TELAT' | 'PULANG_AWAL' | 'ALPHA' | 'OTHER';
-
-const isNonZeroTime = (raw?: string | null): boolean => {
-  if (!raw) return false;
-  const t = raw.trim();
-  if (!t) return false;
-  if (t === '0' || t === '00:00' || t === '0:00') return false;
-  return true;
-};
-
-const classifyStatus = (record: AttendanceRecord): ClassifiedStatus => {
-  const code = (record.attendance || '').toUpperCase().trim();
-  const lateRaw = record.total_late_time;
-  const goHomeRaw = record.go_home_early;
-
-  // ALPHA hanya untuk MK dan P1
-  const isAlphaCode = ['P1', 'MK'].includes(code);
-  if (isAlphaCode) return 'ALPHA';
-
-  // Semua kode lainnya dianggap HADIR
-  // Tapi kita tetap klasifikasi detail untuk TEPAT_WAKTU, TELAT, PULANG_AWAL
-  const isLate = isNonZeroTime(lateRaw);
-  const isEarly = isNonZeroTime(goHomeRaw);
-
-  // Selalu return HADIR untuk total count
-  // Tapi untuk detail breakdown:
-  if (isEarly) return 'PULANG_AWAL';
-  if (isLate) return 'TELAT';
-  return 'TEPAT_WAKTU'; // Tepat waktu (tidak telat, tidak pulang awal)
-};
-
-// Ekstrak array data dari response API (ok + data / data.data)
-const extractAttendanceArray = (payload: unknown): AttendanceRecord[] => {
-  if (!isRecord(payload)) return [];
-  if ('ok' in payload && payload.ok === true && 'data' in payload) {
-    const d = (payload as { data: unknown }).data;
-    if (Array.isArray(d)) return d as AttendanceRecord[];
-    if (isRecord(d) && 'data' in d && Array.isArray((d as { data: unknown }).data)) {
-      return (d as { data: AttendanceRecord[] }).data;
-    }
-  }
-  return [];
-};
-
-const extractTriplets = (payload: unknown): Triplet[] => {
-  if (!isRecord(payload)) return [];
-  if ('ok' in payload && payload.ok === true && 'data' in payload) {
-    const d = (payload as { data: unknown }).data;
-    if (Array.isArray(d)) {
-      // ⚡ Bolt Optimization: deduplicate triplets early using a Set and single-pass loop.
-      // This reduces memory pressure and speeds up subsequent filtering/rendering.
-      const triplets: Triplet[] = [];
-      const seen = new Set<string>();
-
-      for (const row of d) {
-        if (!isRecord(row)) continue;
-        const fcba = String(row.fcba ?? '').trim();
-        const sectionname = String(row.sectionname ?? '').trim();
-        const gangcode = String(row.gangcode ?? '').trim();
-
-        if (!fcba && !sectionname && !gangcode) continue;
-
-        const key = `${fcba}|${sectionname}|${gangcode}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          triplets.push({ fcba, sectionname, gangcode });
-        }
-      }
-      return triplets;
-    }
-    if (isRecord(d) && 'data' in d && Array.isArray((d as { data: unknown }).data)) {
-      return extractTriplets({ ok: true, data: (d as { data: unknown }).data });
-    }
-  }
-  return [];
-};
-
-/* =========================
-   M A I N  D A S H B O A R D
-========================= */
 
 export default function UserDashboard() {
-  const localeTag = useLocale();
   const t = useTranslations('Dashboard');
-  const queryClient = useQueryClient();
+  const localeTag = useLocale();
 
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [userLevel, setUserLevel] = useState<UserLevel>('OTHER');
-
-  const [timeframe, setTimeframe] = useState<Timeframe>('monthly');
-
-  const [filterFcba, setFilterFcba] = useState<string>('ALL');
-  const [filterAfdeling, setFilterAfdeling] = useState<string>('');
-
-  const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
-  const [selectedYear, setSelectedYear] = useState<string>(String(new Date().getFullYear()));
-
-  const [showFilters, setShowFilters] = useState(false);
-
-  // Mode tampilan riwayat: per hari (rekap) / per baris (detail)
-  const [detailMode, setDetailMode] = useState<DetailMode>('perHari');
-
-  const handleClearFilters = useCallback(() => {
-    setFilterFcba('ALL');
-    setFilterAfdeling('');
-    setSelectedMonth('ALL');
-    setSelectedYear(String(new Date().getFullYear()));
-    setTimeframe('monthly');
-  }, []);
-
-  // State untuk mengatasi hydration mismatch
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  // Prefetch data saat component mount untuk mempercepat load
-  useEffect(() => {
-    if (!isClient) return;
-
-    // Prefetch triplets (data master yang jarang berubah)
-    queryClient.prefetchQuery({
-      queryKey: ['triplets'],
-      queryFn: async () => {
-        const ckTrip = cookieStore.getCookie('opt_triplets');
-        if (ckTrip) {
-          try {
-            const arr = JSON.parse(ckTrip) as Triplet[];
-            if (Array.isArray(arr) && arr.length > 0) return arr;
-          } catch {
-            /* ignore */
-          }
-        }
-        const res = await fetch('/api/karyawans', { credentials: 'include' });
-        if (!res.ok) return [];
-        const json = await res.json();
-        return extractTriplets(json);
-      },
-      staleTime: 30 * 60 * 1000, // 30 menit
-    });
-
-    // Prefetch user profile
-    queryClient.prefetchQuery({
-      queryKey: ['userProfile'],
-      queryFn: async () => {
-        const res = await fetch('/api/user/profile', {
-          method: 'GET',
-          headers: { Accept: 'application/json' },
-          credentials: 'include',
-        });
-        if (!res.ok) return null;
-        const json = await res.json();
-        if (json.ok && typeof json.data === 'object' && json.data !== null) {
-          const data = json.data as Record<string, unknown>;
-          return data.data ? data.data : data;
-        }
-        return null;
-      },
-      staleTime: 5 * 60 * 1000, // 5 menit
-    });
-  }, [isClient, queryClient]);
-
-  // combine userProfile fields into a single stable dependency key
-  const userProfileKey = useMemo(() => {
-    return `${userProfile?.fcba || ''}|${userProfile?.afdeling || ''}|${
-      userProfile?.section || ''
-    }`;
-  }, [userProfile?.fcba, userProfile?.afdeling, userProfile?.section]);
-
-  /* ===== Queries ===== */
-
-  // 1. Triplets Query
-  const { data: triplets = [] } = useQuery({
-    queryKey: ['triplets'],
-    queryFn: async () => {
-      // Cek cookie dulu
-      const ckTrip = cookieStore.getCookie('opt_triplets');
-      if (ckTrip) {
-        try {
-          const arr = JSON.parse(ckTrip) as Triplet[];
-          if (Array.isArray(arr) && arr.length > 0) return arr;
-        } catch {
-          /* ignore */
-        }
-      }
-
-      const res = await fetch('/api/karyawans', { credentials: 'include' });
-      if (!res.ok) {
-        if (res.status === 401) {
-          await logoutAndRedirect();
-        }
-        return [];
-      }
-      const json = await res.json();
-      if (isUnauthenticatedJson(json)) {
-        await logoutAndRedirect();
-        return [];
-      }
-      return extractTriplets(json);
-    },
-    enabled: isClient,
-    staleTime: 30 * 60 * 1000, // 30 menit
-    gcTime: 60 * 60 * 1000, // 1 jam cache
-  });
-
-  // 2. User Profile Query
-  const { data: profileData } = useQuery<UserProfile | null>({
-    queryKey: ['userProfile'],
-    queryFn: async () => {
-      const res = await fetch('/api/user/profile', {
-        method: 'GET',
-        headers: { Accept: 'application/json' },
-        credentials: 'include',
-      });
-      if (!res.ok) {
-        if (res.status === 401) {
-          await logoutAndRedirect();
-        }
-        return null;
-      }
-      const json: Record<string, unknown> = await res.json();
-      if (isUnauthenticatedJson(json)) {
-        await logoutAndRedirect();
-        return null;
-      }
-      if (json.ok && typeof json.data === 'object' && json.data !== null) {
-        const data = json.data as Record<string, unknown>;
-        const inner = data.data ? data.data : data;
-        return inner as UserProfile;
-      }
-      return null;
-    },
-    enabled: isClient,
-    staleTime: 10 * 60 * 1000, // 10 menit untuk user profile
-    gcTime: 20 * 60 * 1000,
-  });
-
-  useEffect(() => {
-    if (profileData) {
-      setUserProfile(prev => ({ ...(prev || {}), ...profileData }));
-      const lvl2 = (profileData.level || '').toUpperCase() as UserLevel;
-      const validLevels: UserLevel[] = ['ADM', 'MGR', 'KSI', 'AST', 'KRA', 'MD1', 'KRT', 'KRP', 'MDP'];
-      const finalLevel = validLevels.includes(lvl2) ? lvl2 : 'OTHER';
-      if (finalLevel !== 'OTHER') {
-        setUserLevel(finalLevel);
-        if (finalLevel === 'ADM') {
-          setFilterFcba('ALL');
-        } else if (['MGR', 'KSI'].includes(finalLevel)) {
-          setFilterFcba(profileData.fcba || '');
-        } else if (['AST', 'KRA', 'MD1', 'KRT'].includes(finalLevel)) {
-          setFilterFcba(profileData.fcba || '');
-          setFilterAfdeling(profileData.afdeling || profileData.section || '');
-        } else if (['KRP', 'MDP'].includes(finalLevel)) {
-          setFilterFcba(profileData.fcba || '');
-          setFilterAfdeling(profileData.afdeling || profileData.section || '');
-        }
-      }
-    }
-  }, [profileData]);
-
-  // 3. Attendance Query
   const {
-    data: attendanceRaw = [],
-    isLoading: loading,
-    error: attendanceError,
-  } = useQuery({
-    queryKey: ['attendance', timeframe, selectedMonth, selectedYear, filterFcba, filterAfdeling, userLevel, userProfileKey],
-    queryFn: async () => {
-      const { from, to } = getDateRange(timeframe, selectedMonth, selectedYear);
-      const params = new URLSearchParams();
-      params.set('tanggal', from);
-      params.set('tanggal_end', to);
-
-      const homeFcba = userProfile?.fcba || cookieStore.getCookie('user_Fcba') || '';
-      const homeAfdeling =
-        userProfile?.afdeling || userProfile?.section || cookieStore.getCookie('user_Section') || '';
-      const homeGang = userProfile?.gang || cookieStore.getCookie('user_Gang') || '';
-
-      if (userLevel === 'ADM') {
-        if (filterFcba && filterFcba !== 'ALL') params.set('fcba', filterFcba.trim());
-        if (filterAfdeling.trim()) params.set('afdeling', filterAfdeling.trim());
-      } else if (['MGR', 'KSI'].includes(userLevel)) {
-        if (homeFcba) params.set('fcba', homeFcba.trim());
-        if (filterAfdeling.trim()) params.set('afdeling', filterAfdeling.trim());
-      } else if (['AST', 'KRA', 'MD1'].includes(userLevel)) {
-        if (homeFcba) params.set('fcba', homeFcba.trim());
-        if (homeAfdeling) params.set('afdeling', homeAfdeling.trim());
-      } else if (['MDP', 'KRT', 'KRP'].includes(userLevel)) {
-        if (homeFcba) params.set('fcba', homeFcba.trim());
-        if (homeAfdeling) params.set('afdeling', homeAfdeling.trim());
-        if (homeGang) params.set('kemandoran', homeGang.trim());
-      }
-
-      const res = await fetch(`/api/attendance?${params.toString()}`, {
-        method: 'GET',
-        headers: { Accept: 'application/json' },
-        credentials: 'include',
-      });
-
-      if (!res.ok) {
-        if (res.status === 404) return [];
-        if (res.status === 401) {
-          await logoutAndRedirect();
-          return [];
-        }
-        // Baca error message dari response body untuk user-friendly feedback
-        let detail = `HTTP ${res.status}`;
-        try {
-          const errBody = await res.clone().json();
-          if (errBody?.error) detail = errBody.error;
-        } catch { /* fallback ke HTTP status */ }
-        throw new Error(detail);
-      }
-
-      const json: unknown = await res.json();
-      if (isUnauthenticatedJson(json)) {
-        await logoutAndRedirect();
-        return [];
-      }
-      return extractAttendanceArray(json);
-    },
-    enabled: isClient,
-    staleTime: 2 * 60 * 1000, // 2 menit - attendance lebih sering berubah
-    gcTime: 5 * 60 * 1000,
-  });
-
-  // 4. Harvesting Query
-  const {
-    data: harvestingStats = {
-      total: 0,
-      totalOutput: 0,
-      approved: 0,
-      planned: 0,
-    },
-    isLoading: loadingHarvesting,
-  } = useQuery({
-    queryKey: ['harvesting', timeframe, selectedMonth, selectedYear, filterFcba, filterAfdeling, userLevel, userProfileKey],
-    queryFn: async () => {
-      const { from, to } = getDateRange(timeframe, selectedMonth, selectedYear);
-      const p = new URLSearchParams();
-      p.set('tanggal', from);
-      p.set('tanggal_end', to);
-
-      const homeFcba = userProfile?.fcba || cookieStore.getCookie('user_Fcba') || '';
-      const homeAfdeling =
-        userProfile?.afdeling || userProfile?.section || cookieStore.getCookie('user_Section') || '';
-      const homeGang = userProfile?.gang || cookieStore.getCookie('user_Gang') || '';
-
-      if (userLevel === 'ADM') {
-        if (filterFcba && filterFcba !== 'ALL') p.set('fcba', filterFcba.trim());
-        if (filterAfdeling.trim()) p.set('afdeling', filterAfdeling.trim());
-      } else if (['MGR', 'KSI'].includes(userLevel)) {
-        if (homeFcba) p.set('fcba', homeFcba.trim());
-        if (filterAfdeling.trim()) p.set('afdeling', filterAfdeling.trim());
-      } else if (['AST', 'KRA', 'KRT', 'MD1'].includes(userLevel)) {
-        if (homeFcba) p.set('fcba', homeFcba.trim());
-        if (homeAfdeling) p.set('afdeling', homeAfdeling.trim());
-      } else if (['MDP', 'KRP'].includes(userLevel)) {
-        if (homeFcba) p.set('fcba', homeFcba.trim());
-        if (homeAfdeling) p.set('afdeling', homeAfdeling.trim());
-        if (homeGang) p.set('kemandoran', homeGang.trim());
-      }
-
-      const res = await fetch(`/api/harvest?${p.toString()}`, {
-        credentials: 'include',
-      });
-      if (res.status === 401) {
-        await logoutAndRedirect();
-        return { total: 0, totalOutput: 0, approved: 0, planned: 0 };
-      }
-      if (res.status === 404 || !res.ok)
-        return { total: 0, totalOutput: 0, approved: 0, planned: 0 };
-
-      const json: Record<string, unknown> = await res.json();
-      if (isUnauthenticatedJson(json)) {
-        await logoutAndRedirect();
-        return { total: 0, totalOutput: 0, approved: 0, planned: 0 };
-      }
-      let rows: unknown[] = [];
-      if (Array.isArray(json)) {
-        rows = json;
-      } else if (
-        json &&
-        typeof json === 'object' &&
-        'data' in json &&
-        Array.isArray((json as Record<string, unknown>).data)
-      ) {
-        rows = (json as Record<string, unknown>).data as unknown[];
-      }
-      const harvestRows = rows as HarvestingRecord[];
-
-      // ⚡ Bolt Optimization: Single-pass stats calculation (O(N) vs O(3N))
-      let totalOutput = 0;
-      let approved = 0;
-      let planned = 0;
-
-      for (const r of harvestRows) {
-        totalOutput += parseInt(String(r.output || 0)) || 0;
-        if (r.status_harvesting === 'Approved') approved++;
-        else if (r.status_harvesting === 'Planned') planned++;
-      }
-
-      return {
-        total: harvestRows.length,
-        totalOutput,
-        approved,
-        planned,
-      };
-    },
-    enabled: isClient,
-    staleTime: 3 * 60 * 1000, // 3 menit
-    gcTime: 6 * 60 * 1000,
-  });
-
-  // 5. Pengangkutan Query
-  const {
-    data: pengangkutanStats = {
-      total: 0,
-      approved: 0,
-      planned: 0,
-      completed: 0,
-      totalOutput: 0,
-    },
-    isLoading: loadingPengangkutan,
-  } = useQuery({
-    queryKey: ['pengangkutans', timeframe, selectedMonth, selectedYear, filterFcba, filterAfdeling, userLevel, userProfileKey],
-    queryFn: async () => {
-      const { from, to } = getDateRange(timeframe, selectedMonth, selectedYear);
-      const p = new URLSearchParams();
-      p.set('tanggal', from);
-      p.set('tanggal_end', to);
-
-      const homeFcba = userProfile?.fcba || cookieStore.getCookie('user_Fcba') || '';
-      const homeAfdeling =
-        userProfile?.afdeling || userProfile?.section || cookieStore.getCookie('user_Section') || '';
-      const homeGang = userProfile?.gang || cookieStore.getCookie('user_Gang') || '';
-
-      if (userLevel === 'ADM') {
-        if (filterFcba && filterFcba !== 'ALL') p.set('fcba', filterFcba.trim());
-        if (filterAfdeling.trim()) p.set('afdeling', filterAfdeling.trim());
-      } else if (['MGR', 'KSI'].includes(userLevel)) {
-        if (homeFcba) p.set('fcba', homeFcba.trim());
-        if (filterAfdeling.trim()) p.set('afdeling', filterAfdeling.trim());
-      } else if (['AST', 'KRA', 'KRT', 'MD1'].includes(userLevel)) {
-        if (homeFcba) p.set('fcba', homeFcba.trim());
-        if (homeAfdeling) p.set('afdeling', homeAfdeling.trim());
-      } else if (['MDP', 'KRP'].includes(userLevel)) {
-        if (homeFcba) p.set('fcba', homeFcba.trim());
-        if (homeAfdeling) p.set('afdeling', homeAfdeling.trim());
-        if (homeGang) p.set('kemandoran', homeGang.trim());
-      }
-
-      const res = await fetch(`/api/transport?${p.toString()}`, {
-        credentials: 'include',
-      });
-      if (res.status === 401) {
-        await logoutAndRedirect();
-        return {
-          total: 0,
-          approved: 0,
-          planned: 0,
-          completed: 0,
-          totalOutput: 0,
-        };
-      }
-      if (res.status === 404 || !res.ok)
-        return {
-          total: 0,
-          approved: 0,
-          planned: 0,
-          completed: 0,
-          totalOutput: 0,
-        };
-
-      const json: Record<string, unknown> = await res.json();
-      if (isUnauthenticatedJson(json)) {
-        await logoutAndRedirect();
-        return {
-          total: 0,
-          approved: 0,
-          planned: 0,
-          completed: 0,
-          totalOutput: 0,
-        };
-      }
-      let rows: unknown[] = [];
-      if (Array.isArray(json)) {
-        rows = json;
-      } else if (
-        json &&
-        typeof json === 'object' &&
-        'data' in json &&
-        Array.isArray((json as Record<string, unknown>).data)
-      ) {
-        rows = (json as Record<string, unknown>).data as unknown[];
-      }
-      const pengangkutanRows = rows as PengangkutanRecord[];
-
-      // ⚡ Bolt Optimization: Single-pass stats calculation (O(N) vs O(4N))
-      let totalOutput = 0;
-      let approved = 0;
-      let planned = 0;
-      let completed = 0;
-
-      for (const r of pengangkutanRows) {
-        const candidates = [r.output, r.jjg, r.jumlah, r.quantity, r.tonase, r.berat];
-        for (const c of candidates) {
-          if (c === null || c === undefined || c === '') continue;
-          const n = parseInt(String(c).replace(/[^0-9-]/g, ''), 10);
-          if (!Number.isNaN(n)) {
-            totalOutput += n;
-            break;
-          }
-        }
-        if (r.status_pengangkutan === 'Approved') approved++;
-        else if (r.status_pengangkutan === 'Planned') planned++;
-        else if (r.status_pengangkutan === 'Completed') completed++;
-      }
-
-      return {
-        total: pengangkutanRows.length,
-        approved,
-        planned,
-        completed,
-        totalOutput,
-      };
-    },
-    enabled: isClient,
-    staleTime: 3 * 60 * 1000, // 3 menit
-    gcTime: 6 * 60 * 1000,
-  });
-
-  const error = attendanceError
-    ? attendanceError instanceof Error
-      ? attendanceError.message
-      : 'Gagal memuat data dashboard'
-    : null;
-
-  /* ===== Bootstrap user dari cookies ===== */
-  useEffect(() => {
-    // ⚡ Bolt Optimization: Use single-pass cookie retrieval to avoid O(N*K) lookups.
-    const userInfo = cookieStore.getAllUserInfo();
-    const { fullName, level, fcba, section, gang } = userInfo;
-    const lvl = (level || '').toUpperCase() as UserLevel;
-    const validLevels: UserLevel[] = ['ADM', 'MGR', 'KSI', 'AST', 'KRA', 'MD1', 'KRT', 'KRP', 'MDP'];
-    const finalLevel = validLevels.includes(lvl) ? lvl : 'OTHER';
-
-    setUserLevel(finalLevel);
-    setUserProfile(prev => ({
-      ...(prev || {}),
-      fullname: fullName || prev?.fullname,
-      level: level || prev?.level,
-      fcba: fcba || prev?.fcba,
-      afdeling: section || prev?.afdeling,
-      gang: gang || prev?.gang,
-    }));
-
-    if (finalLevel === 'ADM') {
-      setFilterFcba('ALL');
-      setFilterAfdeling('');
-    } else if (['MGR', 'KSI'].includes(finalLevel)) {
-      setFilterFcba(fcba || '');
-      setFilterAfdeling('');
-    } else if (['AST', 'KRA', 'MD1', 'KRT'].includes(finalLevel)) {
-      setFilterFcba(fcba || '');
-      setFilterAfdeling(section || '');
-    } else if (['KRP', 'MDP'].includes(finalLevel)) {
-      setFilterFcba(fcba || '');
-      setFilterAfdeling(section || '');
-    }
-  }, []);
-
-  /* ===== Options FCBA & Afdeling (chain) ===== */
-  // ⚡ Bolt Optimization: Replace multi-pass chains with single-pass loops and Set for O(N) complexity.
-  // This avoids redundant array allocations and multiple iterations over potentially large triplets datasets.
-  const fcbaOptions: Option[] = useMemo(() => {
-    const uniq = new Set<string>();
-    for (const t of triplets) {
-      if (t.fcba) uniq.add(t.fcba);
-    }
-
-    const base = Array.from(uniq)
-      .sort()
-      .map(v => ({ value: v, label: v }));
-
-    if (userLevel === 'ADM') {
-      return [{ value: 'ALL', label: 'ALL FCBA' }, ...base];
-    }
-    return base;
-  }, [triplets, userLevel]);
-
-  const afdelingOptions: Option[] = useMemo(() => {
-    const uniq = new Set<string>();
-    const isAllFcba = !filterFcba || filterFcba === 'ALL';
-
-    for (const t of triplets) {
-      if (t.sectionname && (isAllFcba || t.fcba === filterFcba)) {
-        uniq.add(t.sectionname);
-      }
-    }
-
-    const options = Array.from(uniq)
-      .sort()
-      .map(v => ({ value: v, label: v }));
-
-    return [{ value: '', label: 'Semua Afdeling' }, ...options];
-  }, [triplets, filterFcba]);
-
-  const monthOptions: Option[] = useMemo(() => {
-    const months = [
-      { value: 'ALL', label: 'Semua Bulan' },
-      { value: '01', label: 'Januari' },
-      { value: '02', label: 'Februari' },
-      { value: '03', label: 'Maret' },
-      { value: '04', label: 'April' },
-      { value: '05', label: 'Mei' },
-      { value: '06', label: 'Juni' },
-      { value: '07', label: 'Juli' },
-      { value: '08', label: 'Agustus' },
-      { value: '09', label: 'September' },
-      { value: '10', label: 'Oktober' },
-      { value: '11', label: 'November' },
-      { value: '12', label: 'Desember' },
-    ];
-    return months;
-  }, []);
-
-  const yearOptions: Option[] = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    const years: Option[] = [];
-    for (let y = 2026; y <= currentYear; y++) {
-      years.push({ value: String(y), label: String(y) });
-    }
-    return years.reverse();
-  }, []);
-
-  /* ===== Consolidated Attendance Data Processing (O(n) single-pass) ===== */
-  const {
+    isClient,
+    loading, error,
+    userLevel, userProfile,
+    displayName, displayLevel, displayFcba, displayAfdeling, displayGang,
+    timeframe, setTimeframe,
+    filterFcba, setFilterFcba,
+    filterAfdeling, setFilterAfdeling,
+    selectedMonth, setSelectedMonth,
+    selectedYear, setSelectedYear,
+    showFilters, setShowFilters,
+    fcbaOptions, afdelingOptions, monthOptions, yearOptions,
+    detailMode, setDetailMode,
     stats,
+    harvestingStats, loadingHarvesting,
+    transportStats, loadingTransport,
     dailySummaries,
-    monthlySummaries,
-    yearlySummaries,
-    rowDetails,
-    filteredAttendance,
-  } = useMemo(() => {
-    const { from, to } = getDateRange(timeframe);
-
-    const stats: DashboardStats = {
-      totalHadir: 0,
-      totalTepatWaktu: 0,
-      totalTelat: 0,
-      totalPulangAwal: 0,
-      totalAlpa: 0,
-    };
-
-    const dailyMap = new Map<string, DailySummary>();
-    const monthlyMap = new Map<string, MonthlySummary>();
-    const yearlyMap = new Map<number, YearlySummary>();
-    const filteredAttendance: AttendanceRecord[] = [];
-    const rowDetailsWithDates: { record: AttendanceRecord; date: string }[] = [];
-
-    if (!attendanceRaw.length) {
-      return {
-        stats,
-        dailySummaries: [],
-        monthlySummaries: [],
-        yearlySummaries: [],
-        rowDetails: [],
-        filteredAttendance: [],
-      };
-    }
-
-    for (const r of attendanceRaw) {
-      const dateOnly = parseDateOnly(r.tanggal);
-      if (!dateOnly || dateOnly < from || dateOnly > to) continue;
-
-      const cls = classifyStatus(r);
-
-      // ⚡ Bolt Optimization: pre-calculate values for rendering
-      r._displayDate = formatPerfDate(dateOnly, localeTag, DASHBOARD_DATE_OPTIONS);
-      r._status = cls;
-
-      filteredAttendance.push(r);
-      rowDetailsWithDates.push({ record: r, date: dateOnly });
-
-      // 1. Update Global Stats
-      if (cls === 'TEPAT_WAKTU') {
-        stats.totalTepatWaktu += 1;
-        stats.totalHadir += 1;
-      } else if (cls === 'TELAT') {
-        stats.totalTelat += 1;
-        stats.totalHadir += 1;
-      } else if (cls === 'PULANG_AWAL') {
-        stats.totalPulangAwal += 1;
-        stats.totalHadir += 1;
-      } else if (cls === 'ALPHA') {
-        stats.totalAlpa += 1;
-      }
-
-      // 2. Aggregasi Harian
-      let keyObj: DailyGroupKey;
-      if (userLevel === 'ADM') {
-        keyObj = {
-          date: dateOnly,
-          fcba: r.fcba || '-',
-          afdeling: r.section || '-',
-        };
-      } else if (userLevel === 'MGR') {
-        keyObj = {
-          date: dateOnly,
-          afdeling: r.section || '-',
-        };
-      } else {
-        keyObj = { date: dateOnly };
-      }
-
-      const keyParts = [keyObj.date];
-      if (keyObj.fcba) keyParts.push(`FCBA:${keyObj.fcba}`);
-      if (keyObj.afdeling) keyParts.push(`AFD:${keyObj.afdeling}`);
-      const dailyKey = keyParts.join('|');
-
-      let dSummary = dailyMap.get(dailyKey);
-      if (!dSummary) {
-        dSummary = {
-          ...keyObj,
-          hadir: 0,
-          tepatWaktu: 0,
-          telat: 0,
-          pulangAwal: 0,
-          alpa: 0,
-          _displayDate: r._displayDate,
-        };
-        dailyMap.set(dailyKey, dSummary);
-      }
-
-      if (cls === 'TEPAT_WAKTU') {
-        dSummary.tepatWaktu += 1;
-        dSummary.hadir += 1;
-      } else if (cls === 'TELAT') {
-        dSummary.telat += 1;
-        dSummary.hadir += 1;
-      } else if (cls === 'PULANG_AWAL') {
-        dSummary.pulangAwal += 1;
-        dSummary.hadir += 1;
-      } else if (cls === 'ALPHA') {
-        dSummary.alpa += 1;
-      }
-
-      // 3. Aggregasi Bulanan (hanya jika monthly/yearly)
-      if (timeframe === 'monthly' || timeframe === 'yearly') {
-        const [year, month] = dateOnly.split('-').map(Number);
-        const monthKey = `${year}-${month.toString().padStart(2, '0')}`;
-
-        let mSummary = monthlyMap.get(monthKey);
-        if (!mSummary) {
-          mSummary = {
-            year,
-            month,
-            monthName: formatPerfDate(new Date(year, month - 1, 1), localeTag, DASHBOARD_MONTH_OPTIONS),
-            hadir: 0,
-            tepatWaktu: 0,
-            telat: 0,
-            pulangAwal: 0,
-            alpa: 0,
-          };
-          monthlyMap.set(monthKey, mSummary);
-        }
-
-        if (cls === 'TEPAT_WAKTU') {
-          mSummary.tepatWaktu += 1;
-          mSummary.hadir += 1;
-        } else if (cls === 'TELAT') {
-          mSummary.telat += 1;
-          mSummary.hadir += 1;
-        } else if (cls === 'PULANG_AWAL') {
-          mSummary.pulangAwal += 1;
-          mSummary.hadir += 1;
-        } else if (cls === 'ALPHA') {
-          mSummary.alpa += 1;
-        }
-      }
-
-      // 4. Aggregasi Tahunan (hanya jika yearly)
-      if (timeframe === 'yearly') {
-        const year = parseInt(dateOnly.split('-')[0]);
-        let ySummary = yearlyMap.get(year);
-        if (!ySummary) {
-          ySummary = {
-            year,
-            hadir: 0,
-            tepatWaktu: 0,
-            telat: 0,
-            pulangAwal: 0,
-            alpa: 0,
-          };
-          yearlyMap.set(year, ySummary);
-        }
-
-        if (cls === 'TEPAT_WAKTU') {
-          ySummary.tepatWaktu += 1;
-          ySummary.hadir += 1;
-        } else if (cls === 'TELAT') {
-          ySummary.telat += 1;
-          ySummary.hadir += 1;
-        } else if (cls === 'PULANG_AWAL') {
-          ySummary.pulangAwal += 1;
-          ySummary.hadir += 1;
-        } else if (cls === 'ALPHA') {
-          ySummary.alpa += 1;
-        }
-      }
-    }
-
-    // Final Sorts
-    const dailySummaries = Array.from(dailyMap.values()).sort((a, b) =>
-      b.date.localeCompare(a.date)
-    );
-    const monthlySummaries = Array.from(monthlyMap.values()).sort((a, b) => {
-      if (a.year !== b.year) return b.year - a.year;
-      return b.month - a.month;
-    });
-    const yearlySummaries = Array.from(yearlyMap.values()).sort((a, b) => b.year - a.year);
-    const sortedRowDetails = rowDetailsWithDates
-      .sort((a, b) => b.date.localeCompare(a.date))
-      .map(item => item.record);
-
-    return {
-      stats,
-      dailySummaries,
-      monthlySummaries,
-      yearlySummaries,
-      rowDetails: sortedRowDetails,
-      filteredAttendance,
-    };
-  }, [attendanceRaw, timeframe, userLevel, localeTag]);
-
-  /* ===== Data Chart ===== */
-
-  const barChartData = useMemo(
-    () => [
-      { label: 'Hadir (Total)', value: stats.totalHadir },
-      { label: 'Tepat Waktu', value: stats.totalTepatWaktu },
-      { label: 'Telat', value: stats.totalTelat },
-      { label: 'Pulang Awal', value: stats.totalPulangAwal },
-      { label: 'Alpha', value: stats.totalAlpa },
-    ],
-    [stats]
-  );
-
-  const pieChartData = useMemo(
-    () => [
-      { label: 'Tepat Waktu', value: stats.totalTepatWaktu, color: '#10b981' },
-      { label: 'Telat', value: stats.totalTelat, color: '#f59e0b' },
-      { label: 'Pulang Awal', value: stats.totalPulangAwal, color: '#ef4444' },
-      { label: 'Alpha', value: stats.totalAlpa, color: '#000000' },
-    ],
-    [stats]
-  );
-
-  // 🔥 Data untuk Line Chart berdasarkan timeframe (sekarang sudah ada Pulang Awal)
-  const lineChartData = useMemo(() => {
-    if (timeframe === 'daily' || timeframe === 'weekly') {
-      return dailySummaries
-        .slice()
-        .reverse()
-        .map(d => ({
-          label: d._displayDate || d.date,
-          hadir: d.hadir,
-          tepatWaktu: d.tepatWaktu,
-          telat: d.telat,
-          pulangAwal: d.pulangAwal,
-          alpa: d.alpa,
-        }));
-    } else if (timeframe === 'monthly') {
-      return monthlySummaries
-        .slice()
-        .reverse()
-        .map(m => ({
-          label: m.monthName,
-          hadir: m.hadir,
-          tepatWaktu: m.tepatWaktu,
-          telat: m.telat,
-          pulangAwal: m.pulangAwal,
-          alpa: m.alpa,
-        }));
-    } else if (timeframe === 'yearly') {
-      return yearlySummaries
-        .slice()
-        .reverse()
-        .map(y => ({
-          label: formatYearID(y.year),
-          hadir: y.hadir,
-          tepatWaktu: y.tepatWaktu,
-          telat: y.telat,
-          pulangAwal: y.pulangAwal,
-          alpa: y.alpa,
-        }));
-    }
-    return [];
-  }, [timeframe, dailySummaries, monthlySummaries, yearlySummaries]);
-
-  // Memoize secondary metrics (percentages) to avoid redundant calculations
-  const { pctHadir, pctTepatWaktu, pctTelat, pctPulangAwal, pctAlpa } = useMemo(() => {
-    // grandTotal is the sum of mutually-exclusive categories: TepatWaktu, Telat, PulangAwal, Alpa
-    const total =
-      stats.totalTepatWaktu + stats.totalTelat + stats.totalPulangAwal + stats.totalAlpa;
-
-    const calculatePct = (value: number) => (total ? Math.round((value / total) * 100) : 0);
-
-    return {
-      pctHadir: calculatePct(stats.totalHadir),
-      pctTepatWaktu: calculatePct(stats.totalTepatWaktu),
-      pctTelat: calculatePct(stats.totalTelat),
-      pctPulangAwal: calculatePct(stats.totalPulangAwal),
-      pctAlpa: calculatePct(stats.totalAlpa),
-    };
-  }, [stats]);
-
-  /* ===== UI Helpers ===== */
-
-  const displayName =
-    toTitleCase(
-      userProfile?.fullname || cookieStore.getCookie('user_FullName') || userProfile?.username || ''
-    ) || 'User';
-
-  const displayLevel = (userProfile?.level || '').toUpperCase() || userLevel;
-
-  const displayFcba = userProfile?.fcba || '-';
-  const displayAfdeling = userProfile?.afdeling || userProfile?.section || '-';
-  const displayGang = userProfile?.gang || '-';
-
-  const dashboardDateRange = useMemo(() => {
-    return getDateRange(timeframe, selectedMonth, selectedYear);
-  }, [timeframe, selectedMonth, selectedYear]);
-
-  const linkParams = useMemo(() => {
-    const { from, to } = dashboardDateRange;
-    const p = new URLSearchParams();
-    p.set('tanggal', from);
-    p.set('tanggal_end', to);
-    return p.toString();
-  }, [dashboardDateRange]);
-
-  const timeframeLabel = (tf: Timeframe): string => {
-    switch (tf) {
-      case 'daily':
-        return 'Per Hari';
-      case 'weekly':
-        return '7 Hari Terakhir';
-      case 'monthly':
-        return 'Per Bulan (bulan ini)';
-      case 'yearly':
-        return 'Per Tahun (tahun ini)';
-      default:
-        return '';
-    }
-  };
-
-  const getTrendLabel = (): string => {
-    switch (timeframe) {
-      case 'daily':
-        return 'Per Hari';
-      case 'weekly':
-        return 'Per Hari (7 Hari Terakhir)';
-      case 'monthly':
-        return 'Per Bulan';
-      case 'yearly':
-        return 'Per Tahun';
-      default:
-        return 'Per Hari';
-    }
-  };
+    rowDetails, filteredAttendance,
+    barChartData, pieChartData, lineChartData,
+    pctHadir, pctTepatWaktu, pctTelat, pctPulangAwal, pctAlpa,
+    handleClearFilters,
+    linkParams,
+  } = useDashboardData();
 
   const detailModeLabel = detailMode === 'perHari' ? 'Per Hari (Rekap)' : 'Per Baris (Detail)';
-
-  /* =========================
-     R E N D E R
-  ========================== */
 
   if (!isClient) {
     return (
@@ -1201,7 +104,7 @@ export default function UserDashboard() {
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
-      <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
+      <div className="p-4 md:p-6 max-w-screen-2xl mx-auto space-y-6 overflow-x-hidden">
         {/* Header */}
         <div className="animate-slideUp flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
@@ -1444,7 +347,6 @@ export default function UserDashboard() {
                   <div className="stat place-items-center p-3 bg-base-200 rounded">
                     <div className="stat-title text-xs">Panen (JJG)</div>
                     <div className="stat-value text-2xl font-bold">
-                      {/* ⚡ Bolt Optimization: use cached formatters from formatPerfNumber (~50x faster than toLocaleString) */}
                       {formatPerfNumber(harvestingStats.totalOutput, localeTag)}
                     </div>
                   </div>
@@ -1474,9 +376,9 @@ export default function UserDashboard() {
           <div className="card bg-base-100 shadow-md border border-base-300">
             <div className="card-body">
               <h2 className="card-title text-sm md:text-lg gap-2">
-                🚛 Pengangkutan ({timeframeLabel(timeframe)})
+                🚛 Transport ({timeframeLabel(timeframe)})
               </h2>
-              {loadingPengangkutan ? (
+              {loadingTransport ? (
                 <div className="grid grid-cols-2 gap-2">
                   <SkeletonCard />
                   <SkeletonCard />
@@ -1485,27 +387,26 @@ export default function UserDashboard() {
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="stat place-items-center p-3 bg-base-200 rounded">
                     <div className="stat-title text-xs">Total</div>
-                    <div className="stat-value text-2xl font-bold">{pengangkutanStats.total}</div>
+                    <div className="stat-value text-2xl font-bold">{transportStats.total}</div>
                   </div>
                   <div className="stat place-items-center p-3 bg-base-200 rounded">
                     <div className="stat-title text-xs">JJG</div>
                     <div className="stat-value text-2xl font-bold text-primary">
-                      {/* ⚡ Bolt Optimization: use cached formatters from formatPerfNumber (~50x faster than toLocaleString) */}
-                      {pengangkutanStats.totalOutput && pengangkutanStats.totalOutput > 0
-                        ? formatPerfNumber(pengangkutanStats.totalOutput, localeTag)
-                        : pengangkutanStats.total}
+                      {transportStats.totalOutput && transportStats.totalOutput > 0
+                        ? formatPerfNumber(transportStats.totalOutput, localeTag)
+                        : transportStats.total}
                     </div>
                   </div>
                   <div className="stat place-items-center p-3 bg-success/20 rounded">
                     <div className="stat-title text-xs">Approved</div>
                     <div className="stat-value text-xl font-bold text-success">
-                      {pengangkutanStats.approved}
+                      {transportStats.approved}
                     </div>
                   </div>
                   <div className="stat place-items-center p-3 bg-info/20 rounded">
                     <div className="stat-title text-xs">Planned</div>
                     <div className="stat-value text-xl font-bold text-info">
-                      {pengangkutanStats.planned}
+                      {transportStats.planned}
                     </div>
                   </div>
                 </div>
@@ -1599,7 +500,7 @@ export default function UserDashboard() {
         <div className="card bg-base-100 shadow-md border border-base-300 animate-slideUp">
           <div className="card-body">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
-              <h2 className="card-title text-sm md:text-lg">📈 Tren Absensi ({getTrendLabel()})</h2>
+              <h2 className="card-title text-sm md:text-lg">📈 Tren Absensi ({getTrendLabel(timeframe)})</h2>
               <div className="flex flex-wrap gap-2 text-xs">
                 <span className="badge badge-primary gap-1">
                   Hadir (Total) {stats.totalHadir} ({pctHadir}%)
@@ -1774,10 +675,8 @@ export default function UserDashboard() {
                     </thead>
                     <tbody>
                       {rowDetails.map((r, idx) => {
-                        // ⚡ Bolt Optimization: Use pre-calculated values
                         const status = r._status;
 
-                        // FIX DUPLICATE KEY: gabungkan id + index
                         const keyBase =
                           r.id !== undefined && r.id !== null ? String(r.id) : `${r.tanggal}`;
                         const rowKey = `${keyBase}-${idx}`;
@@ -1786,7 +685,6 @@ export default function UserDashboard() {
                           <tr key={rowKey} className="hover:bg-base-200">
                             <td className="whitespace-nowrap">{r._displayDate || '-'}</td>
 
-                            {/* Kolom lokasi disesuaikan level */}
                             {userLevel === 'ADM' && (
                               <>
                                 <td>

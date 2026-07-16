@@ -5,12 +5,16 @@
 Set these values in the deployment environment:
 
 ```env
-NEXT_PUBLIC_BACKEND_URL=http://your-backend-url
 BACKEND_URL=http://your-backend-url
-ABSENSI_BASE=http://your-backend-url/api/apps/absensis
+NEXT_PUBLIC_SITE_URL=https://your-site-url
+NEXT_PUBLIC_GIS_URL=http://your-gis-url
+TRUSTED_IMAGE_DOMAINS=your-domain.com
 ```
 
-`NEXT_PUBLIC_BACKEND_URL` is available to client-side bundles. `BACKEND_URL` is used by server-side routes and configuration.
+- `BACKEND_URL`: Backend API server (used server-side only via proxy routes).
+- `NEXT_PUBLIC_SITE_URL`: Public site URL for sitemap, archive links, and CSP.
+- `NEXT_PUBLIC_GIS_URL`: Internal GIS server URL for map links (optional — link hidden if not set).
+- `TRUSTED_IMAGE_DOMAINS`: Comma-separated hostname suffixes allowed by the image proxy.
 
 ## Build Process
 

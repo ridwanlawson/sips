@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { SkeletonTable } from '@/app/components/skeletons';
+import { SkeletonTable } from '@/app/components/ui/skeletons';
 
 const HarvestPage = dynamic(() => import('./harvest-client'), {
   
@@ -31,3 +31,4 @@ const HarvestPage = dynamic(() => import('./harvest-client'), {
 export default function HarvestWrapper() {
   return <HarvestPage />;
 }
+

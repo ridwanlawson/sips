@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { buildFilteredUrl, getTokenFromCookie, BACKEND_URL } from '@/utils/absensiProxy';
-import { applyUserDataScope } from '@/utils/requestScope';
-import { authHeaders, isRecord, parseJsonSafe } from '@/lib/apiProxy';
-import { validateSecurity } from '@/lib/security';
+import { buildFilteredUrl, getTokenFromCookie, BACKEND_URL } from '@/utils/api/absensiProxy';
+import { applyUserDataScope } from '@/utils/api/requestScope';
+import { authHeaders, isRecord, parseJsonSafe } from '@/lib/api/apiProxy';
+import { validateSecurity } from '@/lib/auth/security';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -102,3 +102,4 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   return NextResponse.json({ ok: true, data: [], message: 'OK' });
 }
+

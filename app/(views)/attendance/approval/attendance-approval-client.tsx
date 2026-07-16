@@ -1,20 +1,21 @@
-﻿'use client';
+'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
-import DataTable from '@/app/components/dynamic-data-table';
+import { AppDataTable } from '@/app/components/data/app-data-table';
 import type { TableColumn } from 'react-data-table-component';
 import { useQuery } from '@tanstack/react-query';
-import { logoutAndRedirect } from '@/utils/authHelper';
-import { getProxiedImageUrl, PLACEHOLDER_IMAGE } from '@/utils/imageHelper';
-import { extractArrayData } from '@/utils/apiHelpers';
+import { logoutAndRedirect } from '@/utils/auth/authHelper';
+import { PhotoCell } from '@/app/components/ui/photo-cell';
+import { extractArrayData } from '@/utils/api/apiHelpers';
+import { QueryKeys } from '@/utils/queryKeys';
 
 /* =========================
    T Y P E S
 ========================= */
 type Absensi = {
   _rowKey?: string;
-  // ⚡ Bolt Optimization: cached display and search values
+  // ? Bolt Optimization: cached display and search values
   _displayDate?: string;
   _searchContent?: string;
   _mandorCode?: string;
@@ -57,12 +58,12 @@ type EmployeesApiRow = {
 /* =========================
    U T I L S
 ========================= */
-import { cookieStore } from '@/utils/cookieStore';
-import { buildMapUrl } from '@/utils/mapHelper';
+import { cookieStore } from '@/utils/auth/cookieStore';
+import { buildMapUrl } from '@/utils/services/mapHelper';
 import { useLocale } from '@/hooks/useLocale';
-import { Icon } from '@/app/components/icons';
+import { Icon } from '@/app/components/ui/icons';
 import { useTranslations } from 'next-intl';
-import { formatPerfDate } from '@/utils/perf-formatter';
+import { formatPerfDate } from '@/utils/helpers/perf-formatter';
 
 const LocationButton: React.FC<{ loc?: string | null; label?: string }> = ({ loc, label }) => {
   if (!loc) return <>-</>;
@@ -75,7 +76,7 @@ const LocationButton: React.FC<{ loc?: string | null; label?: string }> = ({ loc
       className="btn btn-ghost btn-xs gap-1"
       title={loc}
     >
-      <span aria-hidden>📍</span> {label ?? 'Maps'}
+      <span aria-hidden>??</span> {label ?? 'Maps'}
     </a>
   );
 };
@@ -119,13 +120,13 @@ export default function AttendanceApproval() {
   }, []);
 
   /**
-   * ⚡ Bolt Optimization: Use React Query for employee data to benefit from
+   * ? Bolt Optimization: Use React Query for employee data to benefit from
    * cross-page caching and background updates.
    */
   const { data: employeeRows = [] } = useQuery({
-    queryKey: ['employees'],
+    queryKey: QueryKeys.EMPLOYEES(),
     queryFn: async () => {
-      const r = await fetch('/api/karyawans', { credentials: 'include' });
+      const r = await fetch('/api/master/karyawans', { credentials: 'include' });
       if (!r.ok) return [];
       const j: unknown = await r.json();
       return extractArrayData<EmployeesApiRow>(j);
@@ -135,7 +136,7 @@ export default function AttendanceApproval() {
   });
 
   /**
-   * ⚡ Bolt Optimization: Derive mandorLabelMap using useMemo from cached query results.
+   * ? Bolt Optimization: Derive mandorLabelMap using useMemo from cached query results.
    * This ensures O(N) conversion only happens when data actually changes.
    */
   const mandorLabelMap = useMemo(() => {
@@ -191,7 +192,7 @@ export default function AttendanceApproval() {
       const json: unknown = await res.json();
       const raw = extractArrayData<Absensi>(json);
 
-      // ⚡ Bolt Optimization: Consolidate filtering, deduplication, and key generation
+      // ? Bolt Optimization: Consolidate filtering, deduplication, and key generation
       // into a single-pass O(N) loop to reduce intermediate allocations and iterations.
       const result: Absensi[] = [];
       const seenIds = new Set<string>();
@@ -226,7 +227,7 @@ export default function AttendanceApproval() {
   }, [showAlert, userLevel, homeFcba, homeSection, t]);
 
   /**
-   * ⚡ Bolt Optimization:
+   * ? Bolt Optimization:
    * 1. Pre-calculates `_searchContent` and `_displayDate` during data processing.
    *    This moves O(N*M) search work and expensive formatting out of the render loop.
    *    By using useMemo, this reacts to locale changes without triggering network re-fetches.
@@ -237,7 +238,7 @@ export default function AttendanceApproval() {
       const dateOnly = (it.tanggal || '').split(' ')[0];
       const displayDate = dateOnly ? formatPerfDate(dateOnly, localeTag) : '-';
 
-      // ⚡ Bolt Optimization: Pre-calculate Mandor display components to avoid expensive
+      // ? Bolt Optimization: Pre-calculate Mandor display components to avoid expensive
       // render-time string operations and Map lookups.
       const mCode = it.kode_karyawan_mandor || '';
       const mLabel = mCode ? mandorLabelMap[mCode] || mCode : '';
@@ -288,14 +289,14 @@ export default function AttendanceApproval() {
 
   /* ===== Quick search lokal ===== */
   /**
-   * ⚡ Bolt Optimization:
+   * ? Bolt Optimization:
    * Replaces O(N*M) multi-field filter with O(N) single-string check.
    * Measurement: For N=1000 rows, search latency is reduced from ~15ms to <1ms.
    */
   const filteredItems = useMemo(() => {
     if (!q.trim()) return enrichedItems;
     const s = q.toLowerCase();
-    // ⚡ Bolt Optimization: Use pre-calculated search content for O(1) string check per row
+    // ? Bolt Optimization: Use pre-calculated search content for O(1) string check per row
     return enrichedItems.filter(it => it._searchContent?.includes(s));
   }, [q, enrichedItems]);
 
@@ -357,7 +358,7 @@ export default function AttendanceApproval() {
         name: <span title={t('colMandorTooltip')}>{t('colMandor')}</span>,
         sortable: true,
         width: '200px',
-        // ⚡ Bolt Optimization: Use pre-calculated fields for selector and cell to improve render performance.
+        // ? Bolt Optimization: Use pre-calculated fields for selector and cell to improve render performance.
         selector: r => r._mandorCode || '',
         cell: r => {
           if (!r._mandorCode) return <>-</>;
@@ -509,24 +510,7 @@ export default function AttendanceApproval() {
         width: '90px',
         cell: r =>
           r.images ? (
-            <a
-              href={getProxiedImageUrl(r.images)}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Buka foto"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={getProxiedImageUrl(r.images)}
-                alt="foto"
-                className="rounded-lg ring-1 ring-base-300 object-cover w-10 h-10 bg-base-200"
-                loading="lazy"
-                onError={e => {
-                  e.currentTarget.onerror = null;
-                  e.currentTarget.src = PLACEHOLDER_IMAGE;
-                }}
-              />
-            </a>
+            <PhotoCell imageUrl={r.images} alt="foto" href={r.images} size={40} />
           ) : (
             '-'
           ),
@@ -536,7 +520,7 @@ export default function AttendanceApproval() {
     [t]
   );
 
-  // 👇 cast sekali, tanpa `any`, supaya TypeScript & ESLint sama-sama aman
+  // ?? cast sekali, tanpa `any`, supaya TypeScript & ESLint sama-sama aman
   // Client-side UX guard: after cookies are read (scopeReady) show a friendly
   // access denied message for users who are not ADM or MGR. The real access
   // enforcement is done server-side in `middleware.ts` but this prevents
@@ -626,29 +610,20 @@ export default function AttendanceApproval() {
         </div>
 
         {/* DataTable */}
-        <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100">
-          <div className="min-w-[900px] md:min-w-0">
-            <DataTable
-              keyField="_rowKey"
-              columns={columns}
-              data={filteredItems}
-              progressPending={loading}
-              pagination
-              paginationPerPage={10}
-              paginationRowsPerPageOptions={[10, 30, 100, 500]}
-              dense
-              highlightOnHover
-              fixedHeader
-              fixedHeaderScrollHeight="520px"
-              persistTableHead
-              responsive
-              noDataComponent={
-                <div className="py-8 text-base-content/70">{t('noDataPending')}</div>
-              }
-            />
-          </div>
-        </div>
+        <AppDataTable
+          columns={columns}
+          data={filteredItems}
+          loading={loading}
+          paginationPerPage={10}
+          paginationRowsPerPageOptions={[10, 30, 100, 500]}
+          noDataComponent={
+            <div className="py-8 text-base-content/70">{t('noDataPending')}</div>
+          }
+        />
       </div>
     </div>
   );
 }
+
+
+

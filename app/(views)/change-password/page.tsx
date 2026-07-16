@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
-import { BACKEND_URL } from '@/utils/backendConfig';
+import { BACKEND_URL } from '@/utils/auth/backendConfig';
 import ChangePasswordPage from './change-password-client';
 import type { UserProfile } from '@/app/types';
 
@@ -41,3 +41,4 @@ export default async function Page() {
 
   return <ChangePasswordPage profile={profile} />;
 }
+

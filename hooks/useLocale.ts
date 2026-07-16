@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { cookieStore } from '@/utils/cookieStore';
+import { cookieStore } from '@/utils/auth/cookieStore';
 
 /**
  * Reactive hook that reads the current locale from the NEXT_LOCALE cookie.
@@ -17,3 +17,4 @@ export function useLocale(): string {
 
   return localeTag;
 }
+

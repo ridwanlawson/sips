@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
-import { applyUserDataScope } from '@/utils/requestScope';
-import { authHeaders, parseJsonSafe, extractMessage, unauthorizedResponse } from '@/lib/apiProxy';
-import { uploadSubmitSchema, validateInput } from '@/lib/inputSanitizer';
-import { validateSecurity } from '@/lib/security';
+import { BACKEND_URL, getTokenFromCookie } from '@/utils/api/absensiProxy';
+import { applyUserDataScope } from '@/utils/api/requestScope';
+import { authHeaders, parseJsonSafe, extractMessage, unauthorizedResponse } from '@/lib/api/apiProxy';
+import { uploadSubmitSchema, validateInput } from '@/lib/utils/inputSanitizer';
+import { validateSecurity } from '@/lib/auth/security';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -52,9 +52,13 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
 
   try {
     const body = await req.json();
-    // TODO: recordId is expected from query param `id` based on client usage (attendanceUploadService.ts:126).
-    // Current pathname parsing is fragile; should use `req.nextUrl.searchParams.get('id')` instead.
-    const recordId = new URL(req.url).pathname.split('/').pop();
+    const recordId = req.nextUrl.searchParams.get('id');
+    if (!recordId) {
+      return NextResponse.json(
+        { ok: false, error: 'Missing required query parameter: id' },
+        { status: 400 }
+      );
+    }
     
     // Validate dan sanitize input
     const validation = validateInput(body, uploadSubmitSchema);
@@ -97,3 +101,4 @@ export async function PUT(req: NextRequest): Promise<NextResponse> {
     );
   }
 }
+

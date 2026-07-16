@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
-import { applyUserDataScope } from '@/utils/requestScope';
-import { authHeaders, parseJsonSafe, isRecord } from '@/lib/apiProxy';
+import { BACKEND_URL, getTokenFromCookie } from '@/utils/api/absensiProxy';
+import { applyUserDataScope } from '@/utils/api/requestScope';
+import { authHeaders, parseJsonSafe, isRecord } from '@/lib/api/apiProxy';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -45,3 +45,4 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ ok: true, data: [] });
 }
+

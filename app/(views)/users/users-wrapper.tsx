@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { SkeletonTable } from '@/app/components/skeletons';
+import { SkeletonTable } from '@/app/components/ui/skeletons';
 
 const UsersClient = dynamic(() => import('./users-client'), {
   loading: () => (
@@ -28,3 +28,4 @@ const UsersClient = dynamic(() => import('./users-client'), {
 export default function UsersWrapper() {
   return <UsersClient />;
 }
+

@@ -1,14 +1,14 @@
-# 🔒 Security Documentation — SIPS Mobile Web
+# Security Documentation — SIPS Mobile Web
 
-> **Status:** Security Hardened ✅  
-> **Last Updated:** 2026-06-10  
+> **Status:** Security Hardened
+> **Last Updated:** 2026-06-10
 > **Maintainer:** Security Team
 
 ---
 
-## 📋 Security Checklist (Pre-Deployment)
+## Security Checklist (Pre-Deployment)
 
-### ✅ Implemented
+### Implemented
 
 - [x] **Rate Limiting** - Login & change-password endpoints
 - [x] **CSRF Protection** - All forms require CSRF token
@@ -22,7 +22,7 @@
 - [x] **HTTPS Warning** - Console warning for non-HTTPS backend in production
 - [x] **CORS Configuration** - Production-only, whitelist-based
 
-### ⚠️ Backend Dependencies (Must be secured)
+### Backend Dependencies (Must be secured)
 
 - [ ] **HTTPS Enforcement** - Backend MUST use HTTPS
 - [ ] **Password Hashing** - Backend must hash passwords (bcrypt/scrypt/argon2)
@@ -32,10 +32,10 @@
 
 ---
 
-## 🛡️ Security Features
+## Security Features
 
 ### 1. Rate Limiting
-**File:** `lib/rateLimiter.ts`  
+**File:** `lib/auth/rateLimiter.ts`  
 **Purpose:** Prevent brute force attacks
 
 | Endpoint | Limit | Duration |
@@ -53,7 +53,7 @@ RATE_LIMIT_LOGIN_DURATION=60
 ---
 
 ### 2. CSRF Protection
-**File:** `lib/csrf.ts`  
+**File:** `lib/auth/csrf.ts`  
 **Purpose:** Prevent Cross-Site Request Forgery
 
 - CSRF token generated using `crypto.randomBytes(32)`
@@ -113,12 +113,12 @@ Content-Security-Policy:
   base-uri 'self';
 ```
 
-**Note:** `'unsafe-inline'` diperlukan untuk DaisyUI. Consider migrate to non-inline styles.
+**Note:** `'unsafe-inline'` is required for DaisyUI. Consider migrating to non-inline styles.
 
 ---
 
 ### 5. Security Headers
-**Applied in:** `next.config.ts` & `middleware.ts`
+**Applied in:** `next.config.ts` and `middleware.ts`
 
 | Header | Value | Purpose |
 |--------|-------|---------|
@@ -133,7 +133,7 @@ Content-Security-Policy:
 ---
 
 ### 6. Password Complexity
-**File:** `app/api/change-password/route.ts`
+**File:** `app/api/change-password/route.ts` (if exists; logic may be in `lib/validations/`)
 
 Password must contain:
 - ✅ Minimum 8 characters
@@ -147,7 +147,7 @@ Password must contain:
 ---
 
 ### 7. HTTPS Backend Enforcement
-**File:** `utils/backendConfig.ts`
+**File:** `lib/utils/helpers.ts` (backed config logic)
 
 ```typescript
 if (isProduction && backendUrl && !backendUrl.startsWith('https://')) {
@@ -179,7 +179,7 @@ const cleanInput = DOMPurify.sanitize(userInput);
 
 ---
 
-## 🚨 Known Limitations & Future Improvements
+## Known Limitations & Future Improvements
 
 ### Current Limitations
 
@@ -220,7 +220,7 @@ const cleanInput = DOMPurify.sanitize(userInput);
 
 ---
 
-## 🔍 Security Testing
+## Security Testing
 
 ### Manual Tests
 
@@ -270,14 +270,14 @@ npx playwright test
 
 ---
 
-## 📊 Security Configuration Reference
+## Security Configuration Reference
 
 ### Environment Variables
 
 ```env
 # Required
 BACKEND_URL=https://your-backend-api.com
-NEXT_PUBLIC_BACKEND_URL=https://your-backend-api.com
+NEXT_PUBLIC_SITE_URL=https://your-site-url
 
 # Security
 NODE_ENV=production
@@ -290,7 +290,7 @@ RATE_LIMIT_LOGIN_DURATION=60
 
 ---
 
-## 🆘 Incident Response
+## Incident Response
 
 ### If Compromised
 
@@ -316,7 +316,7 @@ If you find a security vulnerability:
 
 ---
 
-## 📚 Resources
+## Resources
 
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
 - [CWE Top 25](https://cwe.mitre.org/top25/)
@@ -325,4 +325,4 @@ If you find a security vulnerability:
 
 ---
 
-**⚠️ DISCLAIMER:** Security is an ongoing process. Regular audits and updates are required to maintain security posture.
+**DISCLAIMER:** Security is an ongoing process. Regular audits and updates are required to maintain security posture.

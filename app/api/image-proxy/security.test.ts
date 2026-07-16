@@ -63,7 +63,7 @@ describe('Image Proxy Security', () => {
     expect(res.headers.get('content-type')).toBe('image/jpeg');
   });
 
-  it('should allow subdomains of trusted parent domain (skj.my.id)', async () => {
+  it('should allow subdomains of trusted parent domain', async () => {
     (getTokenFromCookie as Mock).mockResolvedValue('valid-token');
 
     global.fetch = vi.fn().mockResolvedValue({
@@ -73,7 +73,7 @@ describe('Image Proxy Security', () => {
     });
 
     const req = new NextRequest(
-      'http://localhost/api/image-proxy?url=https://any.skj.my.id/photo.png'
+      'http://localhost/api/image-proxy?url=https://any.company.com/photo.png'
     );
     const res = await GET(req);
 

@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { SkeletonCard, SkeletonChart } from '@/app/components/skeletons';
+import { SkeletonCard, SkeletonChart } from '@/app/components/ui/skeletons';
 
 // Lazy load the large dashboard component to keep it out of the initial bundle.
 const UserDashboard = dynamic(() => import('./dashboard-client'), {
@@ -21,3 +21,4 @@ const UserDashboard = dynamic(() => import('./dashboard-client'), {
 export default function DashboardWrapper() {
   return <UserDashboard />;
 }
+

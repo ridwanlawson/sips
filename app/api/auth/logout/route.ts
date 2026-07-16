@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { BACKEND_URL } from '@/utils/absensiProxy';
+import { BACKEND_URL } from '@/utils/api/absensiProxy';
 import { CookieName } from '@/lib/constants';
-import { validateSecurity } from '@/lib/security';
+import { validateSecurity } from '@/lib/auth/security';
 
 // Single source of truth; force-logout uses the same list.
 const COOKIES_TO_DELETE = [
@@ -57,3 +57,5 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   return NextResponse.json({ ok: true });
 }
+
+

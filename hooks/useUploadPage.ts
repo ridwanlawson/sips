@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { cookieStore } from '@/utils/cookieStore';
+import { cookieStore } from '@/utils/auth/cookieStore';
 
 export interface UploadPageState {
   isMgr: boolean;
@@ -41,3 +41,4 @@ export function useUploadPage(): UploadPageState {
 
   return state;
 }
+

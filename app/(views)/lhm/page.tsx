@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import LhmWrapper from './lhm-wrapper';
+import LhmClient from './lhm-client';
 
 export const metadata: Metadata = { title: 'LHM' };
 
 export default function Page() {
-  return <LhmWrapper />;
+  return <LhmClient />;
 }

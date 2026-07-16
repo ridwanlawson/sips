@@ -1,69 +1,23 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import Image from 'next/image';
-import DataTable from '@/app/components/dynamic-data-table';
+import { useMemo, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import type { TableColumn } from 'react-data-table-component';
-import toast from 'react-hot-toast';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { SkeletonTable } from '@/app/components/skeletons';
-import { centerHeaderStyle } from '@/utils/tableHelper';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import { SearchSelect, type Option } from '@/app/components/search-select';
-import { EmptyState } from '@/app/components/empty-state';
-import { useSearchShortcut } from '@/hooks/useSearchShortcut';
-import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/authHelper';
-import { extractArrayData, extractSingleData } from '@/utils/apiHelpers';
-import { fetchBusinessUnits } from '@/utils/businessUnitService';
-import { fetchGangs, fetchSections } from '@/utils/masterDataService';
-import type { BusinessUnit } from '@/utils/businessUnitService';
-import { cookieStore } from '@/utils/cookieStore';
-import { exportJsonToCsv } from '@/utils/exportCsv';
-import { Icon } from '@/app/components/icons';
-import AppTour from '@/app/components/app-tour';
-import type { TourStep } from '@/app/components/app-tour';
-
-const getBusinessUnitLookups = (businessUnits: BusinessUnit[] | undefined) => {
-  const codeMap = new Map<string, BusinessUnit>();
-  const nameMap = new Map<string, BusinessUnit>();
-  if (Array.isArray(businessUnits)) {
-    for (const bu of businessUnits) {
-      if (bu.fccode) codeMap.set(bu.fccode, bu);
-      if (bu.fcname) nameMap.set(bu.fcname.toLowerCase(), bu);
-    }
-  }
-  return { codeMap, nameMap };
-};
-
-const resolveBusinessUnitCode = (
-  value: string,
-  lookups: { codeMap: Map<string, BusinessUnit>; nameMap: Map<string, BusinessUnit> }
-): string => {
-  if (!value) return '';
-  const directMatch = lookups.codeMap.get(value);
-  if (directMatch) return directMatch.fccode;
-  const nameMatch = lookups.nameMap.get(value.toLowerCase());
-  return nameMatch?.fccode || value;
-};
-
-type UserStatus = 'Y' | 'N';
-
-type SipsUser = {
-  id: number;
-  username?: string;
-  fullname?: string;
-  email?: string;
-  phone?: string;
-  fcba?: string;
-  afdeling?: string;
-  gangcode?: string;
-  level?: string;
-  position?: string;
-  idkaryawan?: string;
-  photo?: string;
-  status?: UserStatus;
-  _search?: string;
-};
+import { AppDataTable } from '@/app/components/data/app-data-table';
+import { SkeletonTable } from '@/app/components/ui/skeletons';
+import { SearchSelect, type Option } from '@/app/components/ui/search-select';
+import { EmptyState } from '@/app/components/feedback/empty-state';
+import { Icon } from '@/app/components/ui/icons';
+import { PhotoCell } from '@/app/components/ui/photo-cell';
+import { ExportButton } from '@/app/components/ui/export-button';
+import AppTour from '@/app/components/feedback/app-tour';
+import type { TourStep } from '@/app/components/feedback/app-tour';
+import { useUsersData } from '@/hooks/useUsersData';
+import { QueryKeys } from '@/utils/queryKeys';
+import type { SipsUser, UserFormState } from '@/types/domain';
+import { initialUserForm } from '@/types/domain';
 
 const LEVEL_OPTIONS: Option[] = [
   { value: 'MGR', label: 'MGR - Manager' },
@@ -87,52 +41,78 @@ const POSITION_OPTIONS: Option[] = [
   { value: 'KR.AFDELING', label: 'KR.AFDELING - Kerani Afdeling' },
 ];
 
-function isSipsUser(v: unknown): v is SipsUser {
-  if (!v || typeof v !== 'object') return false;
-  const u = v as Record<string, unknown>;
-  return typeof u.id === 'number' || typeof u.id === 'string';
-}
-
-type FormState = {
-  username: string;
-  fullname: string;
-  email: string;
-  phone: string;
-  password: string;
-  fcba: string;
-  afdeling: string;
-  gangcode: string;
-  level: string;
-  position: string;
-  idkaryawan: string;
+const POSITION_TO_LEVEL: Record<string, string> = {
+  EM: 'MGR',
+  KASIE: 'KSI',
+  ASISTEN: 'AST',
+  MANDOR1: 'MD1',
+  'MD.PANEN': 'MDP',
+  'KR.PANEN': 'KRP',
+  'KR.TRANS': 'KRT',
+  'KR.AFDELING': 'KRA',
 };
 
-const initialForm: FormState = {
-  username: '',
-  fullname: '',
-  email: '',
-  phone: '',
-  password: '',
-  fcba: '',
-  afdeling: '',
-  gangcode: '',
-  level: '',
-  position: '',
-  idkaryawan: '',
-};
-
-const initialBulkRow: FormState = { ...initialForm, password: '12345678' };
-
-type Filters = Partial<{
-  fcba: string;
-  afdeling: string;
-  gangcode: string;
-  level: string;
-  position: string;
-}>;
+const initialBulkRow: UserFormState = { ...initialUserForm, password: '12345678' };
 
 export default function UsersClient() {
   const t = useTranslations('Users');
+  const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const initialQ = searchParams.get('q') || '';
+  const initialFilters = useMemo(() => {
+    const f: Record<string, string> = {};
+    const qp = ['fcba', 'afdeling', 'gangcode', 'level', 'position'];
+    for (const key of qp) {
+      const v = searchParams.get(key);
+      if (v) f[key] = v;
+    }
+    return f;
+  }, [searchParams]);
+
+  const {
+    q, setQ, isSearchFocused, setIsSearchFocused, searchInputRef,
+    showFilters, setShowFilters,
+    filters, setFilters, clearFilters,
+    afdelingFilterOptions, gangcodeFilterOptions,
+    scopedFcbaOptions,
+    sectionOptions, gangOptions,
+    bulkSectionOptions, bulkGangOptions,
+    isFcbaRestricted, userFcba,
+    isLoading, isFetching, filteredUsers,
+    setSelFcba, setSelAfdeling,
+    form, setForm,
+    registerMutation,
+    addOpen, setAddOpen,
+    bulkOpen, setBulkOpen,
+    bulkFcba, setBulkFcba,
+    bulkAfdeling, setBulkAfdeling,
+    bulkGang, setBulkGang,
+    setBulkRows, bulkRows, bulkLoading,
+    detailOpen, setDetailOpen,
+    detailUser, detailLoading,
+    onChangeFcba, onChangeAfdeling, onChangeGang,
+    applyBulkDefaults,
+    addBulkRow, removeBulkRow, updateBulkRow,
+    handleBulkSubmit,
+    handleDetail, handleToggleStatus,
+    handleAddUser, handleExport,
+    resolveSection,
+  } = useUsersData(initialQ, initialFilters);
+
+  useEffect(() => {
+    const sp = new URLSearchParams();
+    if (q) sp.set('q', q);
+    Object.entries(filters).forEach(([k, v]) => { if (v) sp.set(k, v); });
+    const qs = sp.toString();
+    const current = window.location.search;
+    const next = qs ? `?${qs}` : '';
+    if (current !== next) {
+      router.replace(next || window.location.pathname, { scroll: false });
+    }
+  }, [q, filters, router]);
+
   const tourSteps: TourStep[] = useMemo(() => [
     {
       icon: '👋',
@@ -173,467 +153,6 @@ export default function UsersClient() {
       modalPosition: 'top-left',
     },
   ], [t]);
-  const queryClient = useQueryClient();
-  const searchInputRef = useSearchShortcut();
-  const [q, setQ] = useState('');
-  const [filters, setFilters] = useState<Filters>({});
-  const [showFilters, setShowFilters] = useState(false);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [userLevel, setUserLevel] = useState('');
-  const [userFcba, setUserFcba] = useState('');
-
-  const effectiveFilters = useMemo<Filters>(() => {
-    if (!userLevel || userLevel === 'ADM' || !userFcba) return filters;
-    return { ...filters, fcba: userFcba };
-  }, [filters, userLevel, userFcba]);
-
-  const formatFilterParams = useCallback((f: Filters): string => {
-    const params = new URLSearchParams();
-    Object.entries(f).forEach(([k, v]) => {
-      if (v) params.append(k, v as string);
-    });
-    return params.toString();
-  }, []);
-
-  const {
-    data: users = [],
-    isLoading,
-    isFetching,
-  } = useQuery({
-    queryKey: ['sips-users', effectiveFilters],
-    queryFn: async () => {
-      const params = formatFilterParams(effectiveFilters);
-      const res = await fetch(`/api/master/sips-users${params ? `?${params}` : ''}`, {
-        credentials: 'include',
-      });
-      if (!res.ok) {
-        if (res.status === 401) {
-          await logoutAndRedirect();
-          return [];
-        }
-        throw new Error(`HTTP ${res.status}`);
-      }
-      const json: Record<string, unknown> = await res.json();
-      if (isUnauthenticatedJson(json)) {
-        await logoutAndRedirect();
-        return [];
-      }
-      return extractArrayData<SipsUser>(json).filter(isSipsUser);
-    },
-    staleTime: 2 * 60 * 1000,
-    gcTime: 5 * 60 * 1000,
-  });
-
-  const { data: businessUnits = [] } = useQuery({
-    queryKey: ['businessUnits'],
-    queryFn: async () => {
-      try {
-        const bu = await fetchBusinessUnits();
-        localStorage.setItem('business_units', JSON.stringify(bu));
-        return bu;
-      } catch {
-        const cached = localStorage.getItem('business_units');
-        if (cached) {
-          try {
-            return JSON.parse(cached) as BusinessUnit[];
-          } catch {
-            return [];
-          }
-        }
-        return [];
-      }
-    },
-    staleTime: 30 * 60 * 1000,
-    gcTime: 60 * 60 * 1000,
-  });
-
-  const buLookups = useMemo(() => getBusinessUnitLookups(businessUnits), [businessUnits]);
-
-  /**
-   * ⚡ Bolt Optimization: Consolidated enrichment pass.
-   * Processes users once to:
-   * 1. Pre-calculate lowercase search content for O(N) filtering.
-   * 2. Extract unique values for Afdeling and Gangcode filters.
-   * 3. Provide fallback FCBA options if businessUnits are unavailable.
-   */
-  const { enrichedUsers, afdelingFilterOptions, gangcodeFilterOptions, fallbackFcbaOptions } =
-    useMemo(() => {
-      const afdSet = new Set<string>();
-      const gangSet = new Set<string>();
-      const fcbaSet = new Set<string>();
-
-      const enriched = users.map(u => {
-        if (u.afdeling) afdSet.add(u.afdeling);
-        if (u.gangcode) gangSet.add(u.gangcode);
-        if (u.fcba) fcbaSet.add(u.fcba);
-
-        return {
-          ...u,
-          _search:
-            `${u.username ?? ''} ${u.fullname ?? ''} ${u.email ?? ''} ${u.phone ?? ''} ${u.fcba ?? ''} ${u.afdeling ?? ''} ${u.gangcode ?? ''} ${u.level ?? ''} ${u.position ?? ''} ${u.idkaryawan ?? ''}`.toLowerCase(),
-        };
-      });
-
-      const toOption = (v: string) => ({ value: v, label: v });
-      const sorter = (a: Option, b: Option) => a.label.localeCompare(b.label);
-
-      return {
-        enrichedUsers: enriched,
-        afdelingFilterOptions: Array.from(afdSet).map(toOption).sort(sorter),
-        gangcodeFilterOptions: Array.from(gangSet).map(toOption).sort(sorter),
-        fallbackFcbaOptions: Array.from(fcbaSet).map(toOption).sort(sorter),
-      };
-    }, [users]);
-
-  const fcbaOptions: Option[] = useMemo(() => {
-    if (businessUnits.length) {
-      return businessUnits
-        .map(b => ({ value: b.fccode, label: b.fcname ? `${b.fccode} - ${b.fcname}` : b.fccode }))
-        .sort((a, b) => a.label.localeCompare(b.label));
-    }
-    return fallbackFcbaOptions;
-  }, [businessUnits, fallbackFcbaOptions]);
-
-  const isFcbaRestricted = userLevel !== '' && userLevel !== 'ADM' && !!userFcba;
-  const scopedFcbaOptions = useMemo<Option[]>(() => {
-    if (!isFcbaRestricted) return fcbaOptions;
-    return fcbaOptions.filter(o => o.value === userFcba);
-  }, [fcbaOptions, isFcbaRestricted, userFcba]);
-
-  const filteredUsers = useMemo(() => {
-    if (!q.trim()) return enrichedUsers;
-    const s = q.toLowerCase();
-    // ⚡ Bolt Optimization: Use pre-calculated search content for O(N) string check.
-    return enrichedUsers.filter(u => u._search?.includes(s));
-  }, [enrichedUsers, q]);
-
-  // Single add form cascading state
-  const [selFcba, setSelFcba] = useState('');
-  const [selAfdeling, setSelAfdeling] = useState('');
-  const [form, setForm] = useState<FormState>(initialForm);
-
-  const onChangeFcba = (v: string) => {
-    setSelFcba(v);
-    setSelAfdeling('');
-    setForm(s => ({ ...s, fcba: v, afdeling: '', gangcode: '' }));
-  };
-  const onChangeAfdeling = (v: string) => {
-    setSelAfdeling(v);
-    setForm(s => ({ ...s, afdeling: v, gangcode: '' }));
-  };
-  const onChangeGang = (v: string) => {
-    setForm(s => ({ ...s, gangcode: v }));
-  };
-
-  const selectedFcbaCode = useMemo(
-    () => resolveBusinessUnitCode(selFcba, buLookups),
-    [selFcba, buLookups]
-  );
-
-  const { data: sectionOptions = [] } = useQuery({
-    queryKey: ['masterSections', selectedFcbaCode],
-    queryFn: async () => {
-      if (!selectedFcbaCode) return [];
-      const rows = await fetchSections({ fcba: selectedFcbaCode });
-      return rows
-        .map(s => ({
-          value: s.fccode,
-          label: s.fcname && s.fcname !== s.fccode ? `${s.fccode} - ${s.fcname}` : s.fccode,
-        }))
-        .sort((a, b) => a.label.localeCompare(b.label));
-    },
-    enabled: !!selectedFcbaCode,
-    staleTime: 30 * 60 * 1000,
-    gcTime: 60 * 60 * 1000,
-  });
-
-  const { data: gangOptions = [] } = useQuery({
-    queryKey: ['masterGangs', selectedFcbaCode, selAfdeling],
-    queryFn: async () => {
-      if (!selectedFcbaCode || !selAfdeling) return [];
-      const rows = await fetchGangs({ fcba: selectedFcbaCode, afdeling: selAfdeling });
-      return rows
-        .map(g => ({
-          value: g.fccode,
-          label: g.fcname && g.fcname !== g.fccode ? `${g.fccode} - ${g.fcname}` : g.fccode,
-        }))
-        .sort((a, b) => a.label.localeCompare(b.label));
-    },
-    enabled: !!selectedFcbaCode && !!selAfdeling,
-    staleTime: 30 * 60 * 1000,
-    gcTime: 60 * 60 * 1000,
-  });
-
-  // Mutations
-  const statusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: number; status: UserStatus }) => {
-      const csrfToken = document.cookie.match(/csrf_token=([^;]+)/)?.[1];
-      const res = await fetch(`/api/user/${id}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          'X-CSRF-Token': csrfToken || '',
-        },
-        body: JSON.stringify({ status }),
-      });
-      if (res.status === 401) {
-        await logoutAndRedirect();
-        throw new Error('Unauthorized');
-      }
-      const json: Record<string, unknown> = await res.json();
-      if (isUnauthenticatedJson(json)) {
-        await logoutAndRedirect();
-        throw new Error('Unauthorized');
-      }
-      if (!res.ok || !json.ok)
-        throw new Error(String(json.message ?? json.error ?? 'Failed to update status'));
-      return json;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sips-users'] });
-      toast.success(t('statusUpdated'));
-    },
-    onError: (err: Error) => toast.error(err.message),
-  });
-
-  const registerMutation = useMutation({
-    mutationFn: async (formData: FormData) => {
-      const res = await fetch('/api/register', {
-        method: 'POST',
-        credentials: 'include',
-        body: formData,
-      });
-      if (res.status === 401) {
-        await logoutAndRedirect();
-        throw new Error('Unauthorized');
-      }
-      const json: Record<string, unknown> = await res.json();
-      if (isUnauthenticatedJson(json)) {
-        await logoutAndRedirect();
-        throw new Error('Unauthorized');
-      }
-      if (!res.ok || !json.ok)
-        throw new Error(String(json.message ?? json.error ?? 'Registration failed'));
-      return json;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sips-users'] });
-    },
-  });
-
-  // Modal state
-  const [addOpen, setAddOpen] = useState(false);
-  const [bulkOpen, setBulkOpen] = useState(false);
-  const [detailOpen, setDetailOpen] = useState(false);
-  const [detailUser, setDetailUser] = useState<SipsUser | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-
-  // Bulk add
-  const [bulkRows, setBulkRows] = useState<FormState[]>([{ ...initialBulkRow }]);
-  const [bulkLoading, setBulkLoading] = useState(false);
-  const [bulkFcba, setBulkFcba] = useState('');
-  const [bulkAfdeling, setBulkAfdeling] = useState('');
-  const [bulkGang, setBulkGang] = useState('');
-
-  const selectedBulkFcbaCode = useMemo(
-    () => resolveBusinessUnitCode(bulkFcba, buLookups),
-    [bulkFcba, buLookups]
-  );
-
-  const { data: bulkSectionOptions = [] } = useQuery({
-    queryKey: ['masterSections', 'bulk', selectedBulkFcbaCode],
-    queryFn: async () => {
-      if (!selectedBulkFcbaCode) return [];
-      const rows = await fetchSections({ fcba: selectedBulkFcbaCode });
-      return rows
-        .map(s => ({
-          value: s.fccode,
-          label: s.fcname && s.fcname !== s.fccode ? `${s.fccode} - ${s.fcname}` : s.fccode,
-        }))
-        .sort((a, b) => a.label.localeCompare(b.label));
-    },
-    enabled: !!selectedBulkFcbaCode,
-    staleTime: 30 * 60 * 1000,
-    gcTime: 60 * 60 * 1000,
-  });
-
-  const { data: bulkGangOptions = [] } = useQuery({
-    queryKey: ['masterGangs', 'bulk', selectedBulkFcbaCode, bulkAfdeling],
-    queryFn: async () => {
-      if (!selectedBulkFcbaCode || !bulkAfdeling) return [];
-      const rows = await fetchGangs({ fcba: selectedBulkFcbaCode, afdeling: bulkAfdeling });
-      return rows
-        .map(g => ({
-          value: g.fccode,
-          label: g.fcname && g.fcname !== g.fccode ? `${g.fccode} - ${g.fcname}` : g.fccode,
-        }))
-        .sort((a, b) => a.label.localeCompare(b.label));
-    },
-    enabled: !!selectedBulkFcbaCode && !!bulkAfdeling,
-    staleTime: 30 * 60 * 1000,
-    gcTime: 60 * 60 * 1000,
-  });
-
-  const applyBulkDefaults = () => {
-    setBulkRows(prev =>
-      prev.map(row => ({
-        ...row,
-        fcba: bulkFcba || row.fcba,
-        afdeling: bulkAfdeling || row.afdeling,
-        gangcode: bulkGang || row.gangcode,
-      }))
-    );
-  };
-
-  const handleDetail = useCallback(
-    async (id: number) => {
-      setDetailLoading(true);
-      setDetailOpen(true);
-      try {
-        const res = await fetch(`/api/user/${id}`, { credentials: 'include' });
-        const json: unknown = await res.json();
-        const d = extractSingleData<SipsUser>(json) || users.find(u => u.id === id) || null;
-        if (!res.ok || !d) throw new Error('Failed to load user details');
-        setDetailUser(d);
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'Failed to load user details');
-        setDetailOpen(false);
-      } finally {
-        setDetailLoading(false);
-      }
-    },
-    [users]
-  );
-
-  const handleToggleStatus = useCallback(
-    (user: SipsUser) => {
-      statusMutation.mutate({ id: user.id, status: user.status === 'Y' ? 'N' : 'Y' });
-    },
-    [statusMutation]
-  );
-
-  const handleAddUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (registerMutation.isPending) return;
-    if (!form.username || !form.fullname || !form.password) {
-      toast.error(t('requiredFields'));
-      return;
-    }
-    if (form.password.length < 8) {
-      toast.error(t('passwordLength'));
-      return;
-    }
-    const fd = new FormData();
-    fd.append('username', form.username);
-    fd.append('fullname', form.fullname);
-    if (form.email) fd.append('email', form.email);
-    if (form.phone) fd.append('phone', form.phone);
-    fd.append('password', form.password);
-    const submitFcba = isFcbaRestricted ? userFcba : form.fcba;
-    if (submitFcba) fd.append('fcba', submitFcba);
-    if (form.afdeling) fd.append('afdeling', form.afdeling);
-    if (form.gangcode) fd.append('gangcode', form.gangcode);
-    if (form.level) fd.append('level', form.level);
-    if (form.position) fd.append('position', form.position);
-    if (form.idkaryawan) fd.append('idkaryawan', form.idkaryawan);
-    registerMutation.mutate(fd, {
-      onSuccess: () => {
-        toast.success(t('userAdded'));
-        setAddOpen(false);
-        setForm(initialForm);
-        setSelFcba('');
-        setSelAfdeling('');
-      },
-      onError: (err: Error) => toast.error(err.message),
-    });
-  };
-
-  const addBulkRow = () => setBulkRows(prev => [...prev, { ...initialBulkRow }]);
-  const removeBulkRow = (idx: number) => setBulkRows(prev => prev.filter((_, i) => i !== idx));
-  const updateBulkRow = (idx: number, field: keyof FormState, value: string) =>
-    setBulkRows(prev => prev.map((row, i) => (i === idx ? { ...row, [field]: value } : row)));
-
-  const handleBulkSubmit = async () => {
-    if (bulkLoading) return;
-    const validRows = bulkRows.filter(r => r.username && r.fullname && r.password);
-    if (validRows.length === 0) {
-      toast.error(t('noValidRows'));
-      return;
-    }
-    setBulkLoading(true);
-    let success = 0,
-      failed = 0;
-    for (const row of validRows) {
-      const fd = new FormData();
-      fd.append('username', row.username);
-      fd.append('fullname', row.fullname);
-      if (row.email) fd.append('email', row.email);
-      if (row.phone) fd.append('phone', row.phone);
-      fd.append('password', row.password);
-      const rowFcba = isFcbaRestricted ? userFcba : row.fcba;
-      if (rowFcba) fd.append('fcba', rowFcba);
-      if (row.afdeling) fd.append('afdeling', row.afdeling);
-      if (row.gangcode) fd.append('gangcode', row.gangcode);
-      if (row.level) fd.append('level', row.level);
-      if (row.position) fd.append('position', row.position);
-      if (row.idkaryawan) fd.append('idkaryawan', row.idkaryawan);
-      try {
-        const res = await fetch('/api/register', {
-          method: 'POST',
-          credentials: 'include',
-          body: fd,
-        });
-        const json: Record<string, unknown> = await res.json();
-        if (res.ok && json.ok) success++;
-        else {
-          failed++;
-          console.error(`Failed ${row.username}:`, json.message || json.error);
-        }
-      } catch {
-        failed++;
-      }
-    }
-    setBulkLoading(false);
-    queryClient.invalidateQueries({ queryKey: ['sips-users'] });
-    toast.success(t('bulkResult', { success, failed }));
-    if (failed === 0) {
-      setBulkOpen(false);
-      setBulkRows([{ ...initialBulkRow }]);
-      setBulkFcba('');
-      setBulkAfdeling('');
-      setBulkGang('');
-    }
-  };
-
-  const resolveSection = useCallback(
-    (fcbaCode: string) => buLookups.codeMap.get(fcbaCode)?.fcname || fcbaCode,
-    [buLookups]
-  );
-
-  const loading = isLoading || isFetching;
-
-  const handleExport = () => {
-    if (filteredUsers.length === 0) {
-      toast.error(t('noData'));
-      return;
-    }
-    const dataToExport = filteredUsers.map((r, idx) => ({
-      No: idx + 1,
-      [t('username')]: r.username ?? '-',
-      [t('fullname')]: r.fullname ?? '-',
-      Email: r.email ?? '-',
-      [t('phone')]: r.phone ?? '-',
-      FCBA: r.fcba ?? '-',
-      [t('afdeling')]: r.afdeling ?? '-',
-      [t('gangcode')]: r.gangcode ?? '-',
-      [t('level')]: r.level ?? '-',
-      [t('position')]: r.position ?? '-',
-      [t('idkaryawan')]: r.idkaryawan ?? '-',
-      [t('status')]: r.status === 'Y' ? t('active') : t('inactive'),
-    }));
-    exportJsonToCsv(dataToExport, `Users_${new Date().toISOString().slice(0, 10)}.csv`);
-  };
 
   const columns: TableColumn<SipsUser>[] = useMemo(
     () => [
@@ -738,49 +257,25 @@ export default function UsersClient() {
     [t, handleDetail, handleToggleStatus]
   );
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setAddOpen(false);
-        setBulkOpen(false);
-        setDetailOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
-
-  useEffect(() => {
-    const level = cookieStore.getLevel();
-    const fcba = cookieStore.getFcba();
-    setUserLevel(level);
-    setUserFcba(fcba);
-    if (level && level !== 'ADM' && fcba) {
-      setFilters(prev => ({ ...prev, fcba }));
-    }
-  }, []);
-
-  const clearFilters = () => setFilters({});
-
   return (
     <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
-      <div className="p-4 sm:p-6 max-w-screen-2xl mx-auto w-full">
+      <div className="p-4 sm:p-6 max-w-screen-2xl mx-auto w-full overflow-x-hidden space-y-4">
         {/* ── Header ── */}
-        <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-start">
           <h1 className="text-2xl sm:text-3xl font-bold min-w-0 truncate">{t('userManagement')}</h1>
           <div className="flex justify-start sm:justify-end flex-wrap w-full join" data-tour="action-buttons">
-            <AppTour steps={tourSteps} storageKey="tour-users" onStepChange={stepIndex => { if (stepIndex === 3) { setShowFilters(true); } }} btnClassName="join-item" />
-            <button className="btn btn-outline btn-sm join-item" data-tour="filter-button" onClick={() => setShowFilters(s => !s)}>
+            <AppTour steps={tourSteps} storageKey="tour-users" onStepChange={stepIndex => { if (stepIndex === 3) { setShowFilters(true); } }} btnClassName="join-item flex-1 sm:flex-none" />
+            <button className="btn btn-outline btn-sm flex-1 sm:flex-none join-item" data-tour="filter-button" onClick={() => setShowFilters(s => !s)}>
               <Icon name="filter" className="h-4 w-4" />
               <span className="hidden sm:inline">{showFilters ? t('hideFilters') : t('showFilters')}</span>
             </button>
             <button
-              className={`btn btn-outline btn-sm join-item ${loading ? 'btn-disabled' : ''}`}
-              onClick={() => queryClient.invalidateQueries({ queryKey: ['sips-users'] })}
-              disabled={loading}
+              className={`btn btn-outline btn-sm flex-1 sm:flex-none join-item ${isFetching ? 'btn-disabled' : ''}`}
+              onClick={() => queryClient.invalidateQueries({ queryKey: QueryKeys.USERS() })}
+              disabled={isFetching}
               title={t('refresh')}
             >
-              {loading ? (
+              {isFetching ? (
                 <>
                   <span className="loading loading-spinner loading-xs" />
                   <span className="hidden sm:inline">{t('loading')}</span>
@@ -792,17 +287,14 @@ export default function UsersClient() {
                 </>
               )}
             </button>
-            <button className="btn btn-outline btn-sm join-item" onClick={handleExport} title={t('export')}>
-              <Icon name="export" className="h-4 w-4" />
-              <span className="hidden sm:inline">{t('export')}</span>
-            </button>
+            <ExportButton onClick={handleExport} label={t('export')} />
             <button
-              className="btn btn-primary btn-sm join-item"
+              className="btn btn-primary btn-sm flex-1 sm:flex-none join-item"
               data-tour="add-button"
               onClick={() => {
                 const defaultFcba = isFcbaRestricted ? userFcba : '';
-                setForm({ ...initialForm, fcba: defaultFcba });
-                setForm({ ...initialForm, fcba: defaultFcba });
+                setForm({ ...initialUserForm, fcba: defaultFcba });
+                setForm({ ...initialUserForm, fcba: defaultFcba });
                 setSelFcba(defaultFcba);
                 setSelAfdeling('');
                 setAddOpen(true);
@@ -812,7 +304,7 @@ export default function UsersClient() {
               <span className="hidden sm:inline">{t('addUser')}</span>
             </button>
             <button
-              className="btn btn-secondary btn-sm join-item"
+              className="btn btn-secondary btn-sm flex-1 sm:flex-none join-item"
               onClick={() => {
                 const defaultFcba = isFcbaRestricted ? userFcba : '';
                 setBulkRows([{ ...initialBulkRow, fcba: defaultFcba }]);
@@ -829,7 +321,7 @@ export default function UsersClient() {
         </div>
 
         {/* ── Search ── */}
-        <div className="mb-3 flex justify-end">
+        <div className="flex justify-end">
           <div className="relative w-full md:w-96 group" data-tour="quick-search">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Icon name="search" className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all" />
@@ -866,7 +358,7 @@ export default function UsersClient() {
 
         {/* ── Filters ── */}
         {showFilters && (
-          <div className="bg-base-100 p-4 rounded-xl shadow-sm mb-4 border border-base-200">
+          <div className="bg-base-100 p-4 rounded-xl shadow-sm border border-base-200">
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
               <div>
                 <SearchSelect
@@ -924,33 +416,26 @@ export default function UsersClient() {
         )}
 
         {/* ── Table ── */}
-        <div className="rounded-lg border border-base-200 shadow-sm bg-base-100 p-4" data-tour="data-table">
-          {isLoading ? (
-            <SkeletonTable rows={10} />
-          ) : filteredUsers.length === 0 ? (
-            <EmptyState
-              namespace="Users"
-              onClearSearch={() => {
-                setQ('');
-                clearFilters();
-              }}
-            />
-          ) : (
-            <DataTable
-              columns={columns}
-              data={filteredUsers}
-              pagination
-              paginationPerPage={25}
-              paginationRowsPerPageOptions={[10, 25, 50, 100]}
-              customStyles={centerHeaderStyle}
-              dense
-              highlightOnHover
-              striped
-              responsive
-              noDataComponent={<EmptyState namespace="Users" />}
-            />
-          )}
-        </div>
+        {isLoading ? (
+          <SkeletonTable rows={10} />
+        ) : filteredUsers.length === 0 ? (
+          <EmptyState
+            namespace="Users"
+            onClearSearch={() => {
+              setQ('');
+              clearFilters();
+            }}
+          />
+        ) : (
+          <AppDataTable
+            columns={columns}
+            data={filteredUsers}
+            paginationPerPage={25}
+            paginationRowsPerPageOptions={[10, 25, 50, 100]}
+            striped
+            noDataComponent={<EmptyState namespace="Users" />}
+          />
+        )}
       </div>
 
       {/* ═══════════════════════ ADD USER MODAL ═══════════════════════ */}
@@ -976,10 +461,10 @@ export default function UsersClient() {
             <form
               id="user-form"
               onSubmit={handleAddUser}
-              className="grid grid-cols-12 gap-2 max-h-[80vh] overflow-y-auto"
+              className="grid grid-cols-12 gap-3 max-h-[80vh] overflow-y-auto px-1"
             >
               {/* Account Information */}
-              <div className="col-span-12">
+              <div className="col-span-12 mt-1">
                 <h4 className="text-sm font-semibold text-base-content/80">{t('accountInfo')}</h4>
                 <div className="mt-1 border-t border-base-300" />
               </div>
@@ -1021,7 +506,7 @@ export default function UsersClient() {
                   onChange={e => setForm(s => ({ ...s, phone: e.target.value }))}
                 />
               </fieldset>
-              <fieldset className="fieldset col-span-12 md:col-span-6">
+              <fieldset className="fieldset col-span-12">
                 <legend className="fieldset-legend">{t('password')} *</legend>
                 <input
                   type="password"
@@ -1031,14 +516,17 @@ export default function UsersClient() {
                   required
                   minLength={8}
                 />
+                <span className="text-[0.6rem] text-base-content/40 mt-0.5 block leading-tight">
+                  {'Minimal 8 karakter'}
+                </span>
               </fieldset>
 
-              {/* Assignment */}
-              <div className="col-span-12 mt-1">
+              {/* Penempatan */}
+              <div className="col-span-12 mt-2">
                 <h4 className="text-sm font-semibold text-base-content/80">{t('assignment')}</h4>
                 <div className="mt-1 border-t border-base-300" />
               </div>
-              <fieldset className="fieldset col-span-12 md:col-span-3">
+              <fieldset className="fieldset col-span-12 md:col-span-4">
                 <legend className="fieldset-legend">FCBA</legend>
                 <SearchSelect
                   options={scopedFcbaOptions}
@@ -1049,7 +537,7 @@ export default function UsersClient() {
                   disabled={isFcbaRestricted}
                 />
               </fieldset>
-              <fieldset className="fieldset col-span-12 md:col-span-3">
+              <fieldset className="fieldset col-span-12 md:col-span-4">
                 <legend className="fieldset-legend">{t('afdeling')}</legend>
                 <SearchSelect
                   options={sectionOptions}
@@ -1059,8 +547,13 @@ export default function UsersClient() {
                   translationNamespace="Users"
                   disabled={!form.fcba}
                 />
+                {!form.fcba && (
+                  <span className="text-[0.6rem] text-base-content/40 mt-0.5 block leading-tight">
+                    {'Isi FCBA terlebih dahulu'}
+                  </span>
+                )}
               </fieldset>
-              <fieldset className="fieldset col-span-12 md:col-span-3">
+              <fieldset className="fieldset col-span-12 md:col-span-4">
                 <legend className="fieldset-legend">{t('gangcode')}</legend>
                 <SearchSelect
                   options={gangOptions}
@@ -1071,27 +564,22 @@ export default function UsersClient() {
                   disabled={!form.afdeling}
                 />
               </fieldset>
-              <fieldset className="fieldset col-span-12 md:col-span-3">
-                <legend className="fieldset-legend">{t('level')}</legend>
-                <select
-                  className="select select-bordered w-full"
-                  value={form.level}
-                  onChange={e => setForm(s => ({ ...s, level: e.target.value }))}
-                >
-                  <option value="">{t('select')}</option>
-                  {LEVEL_OPTIONS.map(o => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </fieldset>
-              <fieldset className="fieldset col-span-12 md:col-span-3">
+
+              {/* Jabatan & Identitas */}
+              <div className="col-span-12 mt-2">
+                <h4 className="text-sm font-semibold text-base-content/80">{t('position')}</h4>
+                <div className="mt-1 border-t border-base-300" />
+              </div>
+              <fieldset className="fieldset col-span-12 md:col-span-6">
                 <legend className="fieldset-legend">{t('position')}</legend>
                 <select
                   className="select select-bordered w-full"
                   value={form.position}
-                  onChange={e => setForm(s => ({ ...s, position: e.target.value }))}
+                  onChange={e => {
+                    const pos = e.target.value;
+                    const lvl = POSITION_TO_LEVEL[pos] || '';
+                    setForm(s => ({ ...s, position: pos, level: lvl }));
+                  }}
                 >
                   <option value="">{t('select')}</option>
                   {POSITION_OPTIONS.map(o => (
@@ -1101,7 +589,7 @@ export default function UsersClient() {
                   ))}
                 </select>
               </fieldset>
-              <fieldset className="fieldset col-span-12 md:col-span-3">
+              <fieldset className="fieldset col-span-12 md:col-span-6">
                 <legend className="fieldset-legend">{t('idkaryawan')}</legend>
                 <input
                   type="text"
@@ -1175,7 +663,12 @@ export default function UsersClient() {
                     disabled={isFcbaRestricted}
                   >
                     <option value="">{t('select')}</option>
-                    {fcbaOptions.map(o => (
+                    {bulkFcba && !scopedFcbaOptions.some(o => o.value === bulkFcba) && (
+                      <option value={bulkFcba} disabled>
+                        {bulkFcba}
+                      </option>
+                    )}
+                    {scopedFcbaOptions.map(o => (
                       <option key={o.value} value={o.value}>
                         {o.label}
                       </option>
@@ -1250,7 +743,6 @@ export default function UsersClient() {
                     <th>FCBA</th>
                     <th>{t('afdeling')}</th>
                     <th>{t('gangcode')}</th>
-                    <th>{t('level')}</th>
                     <th>{t('position')}</th>
                     <th>{t('idkaryawan')}</th>
                     <th></th>
@@ -1312,7 +804,12 @@ export default function UsersClient() {
                           disabled={isFcbaRestricted}
                         >
                           <option value="">-</option>
-                          {fcbaOptions.map(o => (
+                          {row.fcba && !scopedFcbaOptions.some(o => o.value === row.fcba) && (
+                            <option value={row.fcba} disabled>
+                              {row.fcba}
+                            </option>
+                          )}
+                          {scopedFcbaOptions.map(o => (
                             <option key={o.value} value={o.value}>
                               {o.value}
                             </option>
@@ -1337,23 +834,14 @@ export default function UsersClient() {
                       </td>
                       <td>
                         <select
-                          className="select select-bordered select-xs w-22"
-                          value={row.level}
-                          onChange={e => updateBulkRow(idx, 'level', e.target.value)}
-                        >
-                          <option value="">-</option>
-                          {LEVEL_OPTIONS.map(o => (
-                            <option key={o.value} value={o.value}>
-                              {o.value}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
-                        <select
-                          className="select select-bordered select-xs w-22"
+                          className="select select-bordered select-xs w-28"
                           value={row.position}
-                          onChange={e => updateBulkRow(idx, 'position', e.target.value)}
+                          onChange={e => {
+                            const pos = e.target.value;
+                            const lvl = POSITION_TO_LEVEL[pos] || '';
+                            updateBulkRow(idx, 'position', pos);
+                            updateBulkRow(idx, 'level', lvl);
+                          }}
                         >
                           <option value="">-</option>
                           {POSITION_OPTIONS.map(o => (
@@ -1443,23 +931,8 @@ export default function UsersClient() {
                 </div>
               ) : detailUser ? (
                 <div className="flex flex-col gap-4">
-                  <div className="avatar flex justify-center mb-1">
-                    <div className="w-20 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
-                      {detailUser.photo ? (
-                        <Image
-                          src={`/api/image-proxy?url=${encodeURIComponent(detailUser.photo)}`}
-                          alt={detailUser.fullname ?? ''}
-                          className="object-cover"
-                          width={80}
-                          height={80}
-                          unoptimized
-                        />
-                      ) : (
-                        <div className="w-full h-20 bg-base-300 flex items-center justify-center text-2xl font-bold">
-                          {(detailUser.fullname ?? '?')[0]}
-                        </div>
-                      )}
-                    </div>
+                  <div className="flex justify-center mb-1">
+                    <PhotoCell imageUrl={detailUser.photo} alt="foto" href={detailUser.photo ?? ''} size={40} />
                   </div>
                   <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                     <dt className="text-base-content/60">{t('username')}</dt>

@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { CookieName } from '@/lib/constants';
-import { apiRateLimiter } from '@/lib/rateLimiter';
+import { apiRateLimiter } from '@/lib/auth/rateLimiter';
+import { validateSecurity } from '@/lib/auth/security';
 
 /**
  * Force logout endpoint that clears all cookies regardless of token validity.
  * Used when token is invalid/expired and normal logout fails.
+ *
+ * CSRF strategy (hybrid):
+ * - Try CSRF validation first using validateSecurity()
+ * - If CSRF passes or fails → always clear cookies
+ * - This avoids deadlock when CSRF cookie is already expired
+ * - Acceptable trade-off: CSRF can at worst cause a logout DoS, not data breach
  */
 const COOKIES_TO_DELETE = [
   CookieName.AUTH_TOKEN,
@@ -43,10 +50,6 @@ const COOKIES_TO_DELETE = [
 
 export async function POST(req: NextRequest) {
   try {
-    // Rate limiting only — CSRF is intentionally skipped for this last-resort
-    // endpoint. When called after session expiry, the CSRF cookie may already
-    // be inaccessible, making CSRF validation impossible and creating a
-    // deadlock where the user can never log out.
     const ip =
       req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
       req.headers.get('x-real-ip') ||
@@ -60,6 +63,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Hybrid CSRF: validate if possible, but never block logout
+    const csrfError = await validateSecurity(req);
+    if (csrfError) {
+      console.warn('[FORCE_LOGOUT] CSRF validation failed, proceeding anyway');
+    }
+
     const cookieStore = await cookies();
 
     for (const name of COOKIES_TO_DELETE) {
@@ -68,7 +77,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, message: 'All cookies cleared successfully' });
   } catch {
-    // Even on error, return success because logout should continue anyway.
     return NextResponse.json({ ok: true, message: 'Logout completed with warnings' });
   }
 }
+

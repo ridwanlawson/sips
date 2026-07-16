@@ -1,28 +1,36 @@
 import type { NextConfig } from 'next';
 import createNextIntlPlugin from 'next-intl/plugin';
+import withBundleAnalyzer from '@next/bundle-analyzer';
 
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 
-const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL
-  ? new URL(process.env.NEXT_PUBLIC_BACKEND_URL)
-  : process.env.BACKEND_URL
-    ? new URL(process.env.BACKEND_URL)
-    : null;
+const withBundle = withBundleAnalyzer({
+  enabled: process.env.ANALYZE === 'true',
+});
+
+const backendUrl = process.env.BACKEND_URL ? new URL(process.env.BACKEND_URL) : null;
 
 const backendOrigin = backendUrl ? backendUrl.origin : '';
 const backendOriginHttps = backendOrigin ? backendOrigin.replace('http://', 'https://') : '';
+
+const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL
+  ? new URL(process.env.NEXT_PUBLIC_SITE_URL).origin
+  : '';
+const gisOrigin = process.env.NEXT_PUBLIC_GIS_URL
+  ? new URL(process.env.NEXT_PUBLIC_GIS_URL).origin
+  : '';
 
 const cspDirectives = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
-  // All HTTP images are proxied through /api/image-proxy ('self').
+  // All HTTP images are proxied through /api/system/image-proxy ('self').
   // HTTPS origins listed as fallback if proxy edge case fails.
   `img-src 'self' data: blob: https://img.daisyui.com ${backendOriginHttps}`.trim(),
-  `connect-src 'self' https://skj.my.id ${backendOrigin} ${backendOriginHttps}`.trim(),
+  `connect-src 'self'${siteOrigin ? ` ${siteOrigin}` : ''} ${backendOrigin} ${backendOriginHttps}`.trim(),
   "frame-ancestors 'none'",
   "base-uri 'self'",
-  "form-action 'self' https://www.google.com http://gis.skj.my.id:91 https://skj.my.id",
+  `form-action 'self' https://www.google.com${gisOrigin ? ` ${gisOrigin}` : ''}${siteOrigin ? ` ${siteOrigin}` : ''}`,
 ];
 
 const securityHeaders = [
@@ -68,7 +76,7 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 60 * 60 * 24 * 7,
     localPatterns: [
       {
-        pathname: '/api/image-proxy',
+        pathname: '/api/system/image-proxy',
         search: '*',
       },
     ],
@@ -174,4 +182,5 @@ const nextConfig: NextConfig = {
   // Keep default ETag generation enabled for conditional caching.
 };
 
-export default withNextIntl(nextConfig);
+export default withNextIntl(withBundle(nextConfig));
+

@@ -127,9 +127,41 @@ Setiap halaman utama **wajib** memiliki tombol bantuan (AppTour) di action bar.
 
 Gunakan `btn-sm` secara konsisten di action bar halaman.
 
+### 5.1 Toolbar — Button Group di Action Bar
+
+Semua halaman **WAJIB** menggunakan komponen `<Toolbar>` (dari `@/app/components/ui/toolbar`)
+untuk action bar. Komponen ini sudah menerapkan pola berikut secara otomatis:
+
+| Aturan | Keterangan |
+|--------|------------|
+| **`join`** (tanpa `sm:`) | Button terlihat menyambung di semua ukuran layar, termasuk mobile |
+| **`flex-1 sm:flex-none`** | Setiap button mendapat lebar sama di mobile (`flex-1`), kembali ke ukuran konten di `sm`+ |
+| **`flex-wrap`** | Button otomatis turun baris jika tidak muat dalam satu baris |
+| **`btn-sm`** | Semua button action pakai ukuran `btn-sm` |
+| **`<span className="hidden sm:inline">`** | Label hanya muncul di `sm`+; di mobile hanya icon yang terlihat |
+
+**Urutan button dalam `actions[]` HARUS:**
+```
+Filter → Refresh → Export → Add (primary, paling kanan)
+```
+
+**Jika tidak menggunakan `<Toolbar>`** (misal halaman Users, LHM, LHM Approval, LHM Open),
+button group harus mengikuti pola yang sama secara manual:
+
+```tsx
+<div className="flex justify-start sm:justify-end flex-wrap w-full join">
+  <button className="btn btn-outline btn-sm flex-1 sm:flex-none join-item" />
+  <button className="btn btn-primary btn-sm flex-1 sm:flex-none join-item" />
+</div>
+```
+
+**Kunci:** `join` (bukan `sm:join`), `flex-1 sm:flex-none`, `flex-wrap`, `btn-sm`.
+
 ---
 
 ## 6. Quick Search Input
+
+### 6.1 Standar Input
 
 ```tsx
 <div className="relative w-full sm:w-72 md:w-80 group shrink-0">
@@ -144,6 +176,61 @@ Gunakan `btn-sm` secara konsisten di action bar halaman.
 </div>
 ```
 
+### 6.2 Search + Gallery/Table View Toggle (satu baris)
+
+Quick Search dan tombol Gallery/Table View HARUS berada dalam satu baris baik di mobile
+maupun desktop, dengan search mengambil sisa lebar dan toggle tetap di kanan:
+
+```tsx
+<div className="mb-3 flex items-center gap-2">
+  <div className="relative flex-1 md:flex-none md:max-w-96 group" data-tour="quick-search">
+    {/* input search — lihat 6.1 */}
+  </div>
+  <div className="join flex-none">
+    <button className="btn btn-outline join-item">   {/* ⚠️ tanpa btn-sm */}
+      <Icon name="layout-grid" className="h-4 w-4" />
+      <span className="hidden sm:inline">Gallery</span>
+    </button>
+  </div>
+</div>
+```
+
+**Aturan penting:**
+- Search input: `flex-1` (mobile) → `md:flex-none md:max-w-96` (desktop)
+- View toggle button: **`btn btn-outline join-item`** (tanpa `btn-sm`) agar tingginya
+  sama dengan search input (default `input` = default `btn`, sama-sama `h-12`)
+- Container: `flex items-center gap-2` (default row, sebaris di semua layar)
+
+### 6.3 Stat Cards + Search (Responsive Row)
+
+Jika halaman memiliki total cards (Janjang & Brondolan, dll) di samping search,
+gunakan pola **stack on mobile, same-row on desktop**:
+
+```tsx
+<div className="mb-3 flex flex-col md:flex-row md:items-center gap-4">
+  {/* TOTAL CARDS */}
+  <div className="flex gap-2 w-full md:w-auto overflow-x-auto">
+    {/* kartu statistik */}
+  </div>
+
+  {/* SEARCH + VIEW TOGGLE — pola 6.2 */}
+  <div className="flex items-center gap-2 md:ml-auto">
+    <div className="relative flex-1 md:flex-none md:max-w-96 group">
+      {/* input search */}
+    </div>
+    <div className="join flex-none">
+      {/* toggle button gallery/table */}
+    </div>
+  </div>
+</div>
+```
+
+**Aturan:**
+- Container luar: `flex flex-col md:flex-row md:items-center gap-4`
+- Total cards: `w-full md:w-auto` (full width mobile, auto desktop)
+- Search section: `md:ml-auto` (dorong ke kanan di desktop)
+- Di mobile: cards di baris pertama, search+toggle di baris kedua
+
 ---
 
 ## 7. Checklist Sebelum Merge
@@ -156,3 +243,8 @@ Gunakan `btn-sm` secara konsisten di action bar halaman.
 - [ ] AppTour ada di action bar dengan `storageKey` unik.
 - [ ] `data-tour` target sudah dipasang sesuai section 4.
 - [ ] Build `npm run build` lulus tanpa warning `MISSING_MESSAGE`.
+- [ ] Action bar button group pakai `join` (bukan `sm:join`) + `flex-1 sm:flex-none`.
+- [ ] Urutan action button: Filter → Refresh → Export → Add (primary).
+- [ ] Search + Gallery toggle dalam satu baris (`flex items-center gap-2`).
+- [ ] View toggle button pakai default `btn` (tanpa `btn-sm`) agar sama tinggi dengan search.
+- [ ] Stat cards + search: `flex-col md:flex-row` (stack mobile, same-row desktop).

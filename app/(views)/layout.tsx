@@ -1,6 +1,6 @@
-import { Footer } from '../components/footer';
+import { Footer } from '../components/layout/footer';
 import NavbarWrapper from './navbar-wrapper';
-import ScrollToTop from '../components/scroll-to-top';
+import ScrollToTop from '../components/ui/scroll-to-top';
 
 export default function UserLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -14,3 +14,4 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     </div>
   );
 }
+

@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { SkeletonTable } from '@/app/components/skeletons';
+import { SkeletonTable } from '@/app/components/ui/skeletons';
 
 const PengangkutanPage = dynamic(() => import('./transport-client'), {
   
@@ -31,3 +31,4 @@ const PengangkutanPage = dynamic(() => import('./transport-client'), {
 export default function PengangkutanWrapper() {
   return <PengangkutanPage />;
 }
+

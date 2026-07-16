@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ABSENSI_BASE, getTokenFromCookie } from '@/utils/absensiProxy';
-import { parseJsonSafe, authHeaders, proxyFormDataPut, proxyFormDataDelete, proxyFormDataPost } from '@/lib/apiProxy';
-import { validateSecurity } from '@/lib/security';
+import { ABSENSI_BASE, getTokenFromCookie } from '@/utils/api/absensiProxy';
+import { parseJsonSafe, authHeaders, proxyFormDataPut, proxyFormDataDelete, proxyFormDataPost } from '@/lib/api/apiProxy';
+import { validateSecurity } from '@/lib/auth/security';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -90,3 +90,5 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
   return NextResponse.json({ ok: false, error: 'Method Not Allowed' }, { status: 405 });
 }
+
+

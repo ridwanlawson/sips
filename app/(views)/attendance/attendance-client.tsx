@@ -1,29 +1,29 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { BusinessUnit } from '@/utils/businessUnitService';
-import { fetchBusinessUnits } from '@/utils/businessUnitService';
-import type { SectionMaster } from '@/utils/masterDataService';
-import { fetchGangs, fetchSections } from '@/utils/masterDataService';
-import Image from 'next/image';
-import DataTable from '@/app/components/dynamic-data-table';
 import type { TableColumn } from 'react-data-table-component';
 import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { SkeletonTable } from '@/app/components/skeletons';
-import { centerHeaderStyle } from '@/utils/tableHelper';
-import { exportJsonToCsv } from '@/utils/exportCsv';
 import { useTranslations } from 'next-intl';
-import { Icon } from '@/app/components/icons';
-import { SearchSelect, type Option } from '@/app/components/search-select';
-import { EmptyState } from '@/app/components/empty-state';
-import { AttendanceGalleryView, type AttendanceGalleryViewHandle } from '@/app/components/attendance-gallery-view';
-import { DeleteModal } from '@/app/components/delete-modal';
+import { AppDataTable } from '@/app/components/data/app-data-table';
+import { SkeletonTable } from '@/app/components/ui/skeletons';
+import { Icon } from '@/app/components/ui/icons';
+import type { Option } from '@/app/components/ui/search-select';
+import { AttendanceGalleryView, type AttendanceGalleryViewHandle } from '@/app/components/features/attendance-gallery-view';
+import AttendanceFormModal from '@/app/components/features/attendance-form-modal';
+import { DeleteModal } from '@/app/components/feedback/delete-modal';
+import { PhotoCell } from '@/app/components/ui/photo-cell';
+import { Toolbar } from '@/app/components/ui/toolbar';
+import AppTour from '@/app/components/feedback/app-tour';
+import type { TourStep } from '@/app/components/feedback/app-tour';
 import { useSearchShortcut } from '@/hooks/useSearchShortcut';
 import { useLocale } from '@/hooks/useLocale';
-import { formatPerfDate } from '@/utils/perf-formatter';
-import AppTour from '@/app/components/app-tour';
-import type { TourStep } from '@/app/components/app-tour';
+import type { BusinessUnit } from '@/utils/services/businessUnitService';
+import { fetchBusinessUnits } from '@/utils/services/businessUnitService';
+import type { SectionMaster } from '@/utils/services/masterDataService';
+import { fetchGangs, fetchSections } from '@/utils/services/masterDataService';
+import { exportJsonToCsv } from '@/utils/services/exportCsv';
+import { formatPerfDate } from '@/utils/helpers/perf-formatter';
 
 /* =========================
    T Y P E S
@@ -228,14 +228,14 @@ const matchesEmployeeFcba = (
 /* =========================
    U T I L S
 ========================= */
-import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/authHelper';
-import { getProxiedImageUrl, PLACEHOLDER_IMAGE } from '@/utils/imageHelper';
-import { getTodayISO, getYesterdayISO } from '@/utils/datetime';
-import { buildMapUrl } from '@/utils/mapHelper';
-import { cookieStore } from '@/utils/cookieStore';
-import { getFilterCriteria, getLockedFields, type UserLevel } from '@/utils/filterHelper';
-import { getReadableDevice, getOrCreateDeviceIds } from '@/utils/deviceHelper';
-import { extractArrayData, extractSingleData } from '@/utils/apiHelpers';
+import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/auth/authHelper';
+import { getProxiedImageUrl } from '@/utils/helpers/imageHelper';
+import { getTodayISO, getYesterdayISO } from '@/utils/helpers/datetime';
+import { buildMapUrl } from '@/utils/services/mapHelper';
+import { cookieStore } from '@/utils/auth/cookieStore';
+import { getFilterCriteria, getLockedFields, type UserLevel } from '@/utils/helpers/filterHelper';
+import { getReadableDevice, getOrCreateDeviceIds } from '@/utils/helpers/deviceHelper';
+import { extractArrayData, extractSingleData } from '@/utils/api/apiHelpers';
 
 const LocationButton: React.FC<{ loc?: string | null; label?: string }> = ({ loc, label }) => {
   const t = useTranslations('Attendance');
@@ -454,6 +454,7 @@ export default function Attendance() {
   const {
     data: items = [],
     isLoading: loading,
+    isFetching,
     error: queryError,
   } = useQuery({
     queryKey: ['attendance', filters, userLevel, homeFcba, homeSection, homeKemandoran],
@@ -855,7 +856,7 @@ export default function Attendance() {
   const { data: employees = [], isLoading: isLoadingSmp } = useQuery({
     queryKey: ['employees', userLevel, homeFcba, homeSection],
     queryFn: async () => {
-      let apiUrl = '/api/karyawans';
+      let apiUrl = '/api/master/karyawans';
       const params = new URLSearchParams();
 
       if (userLevel === 'AST' || userLevel === 'KRA') {
@@ -1829,37 +1830,7 @@ export default function Attendance() {
         width: '90px',
         cell: (r: Absensi) =>
           r.images ? (
-            <a
-              href={getProxiedImageUrl(r.images)}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={t('openPhoto')}
-            >
-              {/*
-                Changed: use container with fixed size and Image fill to avoid aspect ratio warnings.
-                - Container is 40x40 with rounded corners and ring
-                - Image fills container with object-cover for cropping
-                - Maintains aspect ratio by cropping instead of distorting
-              */}
-              <div className="relative w-10 h-10 rounded-lg ring-1 ring-base-300 bg-base-200 overflow-hidden">
-                <Image
-                  src={getProxiedImageUrl(r.images)}
-                  alt="foto"
-                  fill
-                  className="object-cover"
-                  loading="lazy"
-                  onError={e => {
-                    // fallback to placeholder on error
-                    const img = e?.currentTarget as HTMLImageElement | null;
-                    if (img) {
-                      img.onerror = null;
-                      img.src = PLACEHOLDER_IMAGE;
-                    }
-                  }}
-                  unoptimized
-                />
-              </div>
-            </a>
+            <PhotoCell imageUrl={r.images} alt="foto" href={r.images} size={40} />
           ) : (
             '-'
           ),
@@ -1963,73 +1934,51 @@ export default function Attendance() {
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
-      <div className="p-4 sm:p-6 max-w-screen-2xl mx-auto w-full overflow-x-hidden">
-        {/* Header */}
-        <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start animate-slideUp">
-          <h1
-            className="text-2xl sm:text-3xl font-bold min-w-0 truncate"
-            title={t('pageTitleTooltip')}
-          >
-            {t('pageTitle')}
-          </h1>
-          <div className="flex justify-start sm:justify-end flex-wrap w-full join" data-tour="action-buttons">
-            <AppTour
-              steps={tourSteps}
-              storageKey="tour-attendance"
-              btnClassName="join-item"
-            />
-            <button
-              className="btn btn-outline btn-sm join-item"
-              onClick={() => setShowFilters(s => !s)}
-              title={t('filterToggleTooltip')}
-              data-tour="filter-button"
-            >
-              <Icon name="filter" className="h-4 w-4" />
-              <span className="hidden sm:inline">{showFilters ? t('hideFilters') : t('showFilters')}</span>
-            </button>
-            <button
-              className={`btn btn-outline btn-sm join-item ${loading ? 'btn-disabled' : ''}`}
-              onClick={() => queryClient.invalidateQueries({ queryKey: ['attendance'] })}
-              disabled={loading}
-              title={t('refreshTooltip')}
-            >
-              {loading ? (
-                <>
-                  <span className="loading loading-spinner loading-xs" />
-                  <span className="hidden sm:inline">{t('loading')}</span>
-                </>
-              ) : (
-                <>
-                  <Icon name="refresh" className="h-4 w-4" />
-                  <span className="hidden sm:inline">{t('refresh')}</span>
-                </>
-              )}
-            </button>
-            <button
-              className="btn btn-outline btn-sm join-item"
-              onClick={handleExport}
-              title={t('exportTooltip')}
-            >
-              <Icon name="export" className="h-4 w-4" />
-              <span className="hidden sm:inline">{t('export')}</span>
-            </button>
-            {canAddOrEdit && (
-              <button
-                className="btn btn-primary btn-sm join-item"
-                onClick={onAddClick}
-                title={t('addAttendanceTooltip')}
-                data-tour="add-button"
-              >
-                <Icon name="plus" className="h-4 w-4" />
-                <span className="hidden sm:inline">{t('addAttendance')}</span>
-              </button>
-            )}
-          </div>
-        </div>
+      <div className="p-4 sm:p-6 max-w-screen-2xl mx-auto w-full overflow-x-hidden space-y-4">
+        <Toolbar
+          title={t('pageTitle')}
+          titleTooltip={t('pageTitleTooltip')}
+          actions={[
+            {
+              key: 'filter',
+              label: showFilters ? t('hideFilters') : t('showFilters'),
+              icon: 'filter',
+              onClick: () => setShowFilters(s => !s),
+              tour: 'filter-button',
+            },
+            {
+              key: 'refresh',
+              label: t('refresh'),
+              icon: 'refresh',
+              onClick: () => queryClient.invalidateQueries({ queryKey: ['attendance'] }),
+              loading: isFetching,
+            },
+            {
+              key: 'export',
+              label: t('export'),
+              icon: 'export',
+              onClick: handleExport,
+            },
+            ...(canAddOrEdit ? [{
+              key: 'add',
+              label: t('addAttendance'),
+              icon: 'plus',
+              onClick: onAddClick,
+              variant: 'primary' as const,
+              tour: 'add-button',
+            }] : []),
+          ]}
+        >
+          <AppTour
+            steps={tourSteps}
+            storageKey="tour-attendance"
+            btnClassName="join-item flex-1 sm:flex-none"
+          />
+        </Toolbar>
 
         {/* Quick Search & View Toggle */}
-        <div className="mb-3 flex items-center gap-2 justify-end animate-slideUp [animation-delay:100ms]">
-          <div className="relative w-full md:w-96 group" data-tour="quick-search">
+        <div className="flex items-center gap-2 justify-end animate-slideUp [animation-delay:100ms]">
+          <div className="relative flex-1 md:flex-none md:w-96 group" data-tour="quick-search">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Icon name="search" className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all" />
             </div>
@@ -2060,7 +2009,7 @@ export default function Attendance() {
               </button>
             )}
           </div>
-          <div className="join">
+          <div className="join flex-none">
             <button
               className="btn btn-outline join-item"
               onClick={() => setViewMode(v => v === 'table' ? 'gallery' : 'table')}
@@ -2280,39 +2229,14 @@ export default function Attendance() {
 
         {/* Data Table / Gallery View */}
         {viewMode === 'table' ? (
-          <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100 animate-slideUp [animation-delay:200ms]" data-tour="data-table">
-            <div className="min-w-[900px] md:min-w-0">
-              {loading ? (
-                <div className="p-8">
-                  <SkeletonTable rows={10} />
-                </div>
-              ) : (
-                <DataTable
-                  keyField="_rowKey"
-                  columns={columns}
-                  data={filtered}
-                  pagination
-                  customStyles={centerHeaderStyle}
-                  paginationPerPage={100}
-                  paginationRowsPerPageOptions={[100, 500, 1000, 5000]}
-                  dense
-                  highlightOnHover
-                  pointerOnHover
-                  fixedHeader
-                  fixedHeaderScrollHeight="520px"
-                  persistTableHead
-                  responsive
-                  noDataComponent={
-                    <EmptyState
-                      namespace="Attendance"
-                      onClearSearch={q ? () => setQ('') : undefined}
-                    />
-                  }
-                  progressPending={loading}
-                />
-              )}
-            </div>
-          </div>
+          <AppDataTable
+            columns={columns}
+            data={filtered}
+            loading={loading}
+            pointerOnHover
+            namespace="Attendance"
+            onClearSearch={q ? () => setQ('') : undefined}
+          />
         ) : (
           <div className="animate-slideUp [animation-delay:200ms]">
             {loading ? (
@@ -2329,580 +2253,79 @@ export default function Attendance() {
           </div>
         )}
 
-        {/* MODAL ADD/EDIT */}
-        {open && (
-          <div className="modal modal-open">
-            <div className="modal-box max-w-[calc(100vw-1rem)] sm:max-w-5xl mx-2 sm:mx-0 p-2 sm:p-6">
-              {/* Sticky Header */}
-              <div className="sticky top-0 z-10 bg-base-100 pb-2 -mx-2 sm:-mx-6 px-2 sm:px-6 border-b border-base-300">
-                <div className="flex items-start justify-between">
-                  <h3 className="font-bold text-xl">
-                    {isEditing ? t('modalEditTitle') : t('modalAddTitle')}
-                  </h3>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-circle btn-ghost"
-                    onClick={() => setOpen(false)}
-                    aria-label={t('close')}
-                    title={t('close')}
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-              {detailLoading && (
-                <div className="absolute inset-0 bg-base-100/70 backdrop-blur-sm flex items-center justify-center rounded-2xl z-10">
-                  <div className="flex items-center gap-3">
-                    <span className="loading loading-spinner loading-lg" />
-                    <span>{t('modalLoadingDetail')}</span>
-                  </div>
-                </div>
-              )}
-              <form
-                id="attendance-form"
-                onSubmit={handleSubmit}
-                className="grid grid-cols-12 gap-2 max-h-[80vh] overflow-y-auto"
-              >
-                <div className="col-span-12">
-                  <h4 className="text-sm font-semibold text-base-content/80">
-                    {t('formInfoTitle')}
-                  </h4>
-                  <div className="mt-1 border-t border-base-300" />
-                </div>
-
-                {/* Tanggal */}
-                <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">{t('formTanggal')}</legend>
-                  <input
-                    type="date"
-                    className="input input-bordered w-full"
-                    value={form.tanggal ?? ''}
-                    max={getTodayISO()}
-                    onChange={e => setForm(s => ({ ...s, tanggal: e.target.value }))}
-                    required
-                    disabled={disableUnlessAllowed(false)}
-                    title={t('formTanggalTooltip')}
-                  />
-                </fieldset>
-
-                {/* Time In */}
-                <fieldset className="fieldset col-span-12 md:col-span-2">
-                  <legend className="fieldset-legend">{t('formTimeIn')}</legend>
-                  <input
-                    type="time"
-                    className="input input-bordered w-full"
-                    value={form.time_in ?? ''}
-                    onChange={e => setForm(s => ({ ...s, time_in: e.target.value }))}
-                    required
-                    disabled={disableUnlessAllowed(false)}
-                    title={t('hintTimeIn')}
-                  />
-                </fieldset>
-
-                {/* Time Out */}
-                <fieldset className="fieldset col-span-12 md:col-span-2">
-                  <legend className="fieldset-legend">{t('formTimeOut')}</legend>
-                  <input
-                    type="time"
-                    className="input input-bordered w-full"
-                    value={form.time_out ?? ''}
-                    onChange={e => setForm(s => ({ ...s, time_out: e.target.value }))}
-                    disabled={disableUnlessAllowed(true)}
-                    title={t('hintTimeOut')}
-                  />
-                </fieldset>
-
-                {/* Type */}
-                <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">{t('formAttendanceType')}</legend>
-                  <SearchSelect
-                    options={[
-                      { value: 'REGULAR', label: 'REGULAR' },
-                      { value: 'ASSISTENSI', label: 'ASSISTENSI' },
-                    ]}
-                    value={form.attendance_type}
-                    onChange={v =>
-                      setForm(s => ({
-                        ...s,
-                        attendance_type: v as FormState['attendance_type'],
-                      }))
-                    }
-                    disabled={disableUnlessAllowed(false)}
-                  />
-                </fieldset>
-
-                {/* Attendance */}
-                <fieldset className="fieldset col-span-12 md:col-span-2">
-                  <legend className="fieldset-legend">{t('formAttendance')}</legend>
-                  <SearchSelect
-                    options={['KJ', 'MK', 'WH', 'WS', 'ML', 'P1', 'KB', 'OT'].map(v => ({
-                      value: v,
-                      label: v,
-                    }))}
-                    value={form.attendance ?? 'KJ'}
-                    onChange={v =>
-                      setForm(s => ({
-                        ...s,
-                        attendance: v as FormState['attendance'],
-                      }))
-                    }
-                    disabled={disableUnlessAllowed(false)}
-                  />
-                </fieldset>
-
-                {form.attendance_type === 'ASSISTENSI' && (
-                  <div className="col-span-12 mt-1">
-                    <h4 className="text-sm font-semibold text-base-content/80">
-                      {t('formDestTitle')}
-                    </h4>
-                    <div className="mt-1 border-t border-base-300" />
-                  </div>
-                )}
-
-                {/* FCBA Dest */}
-                {form.attendance_type === 'ASSISTENSI' && (
-                  <fieldset className="fieldset col-span-12 md:col-span-4">
-                    <legend className="fieldset-legend">{t('formFcbaDest')}</legend>
-                    <SearchSelect
-                      options={destOptions}
-                      value={destFcba ?? ''}
-                      onChange={onChangeDestFcba}
-                      placeholder={isLoadingBU ? 'Memuat...' : 'Pilih FCBA tujuan'}
-                      disabled={disableUnlessAllowed(false) || isLoadingBU}
-                    />
-                  </fieldset>
-                )}
-
-                {/* Section Dest */}
-                {form.attendance_type === 'ASSISTENSI' && (
-                  <fieldset className="fieldset col-span-12 md:col-span-4">
-                    <legend className="fieldset-legend">{t('formSectionDest')}</legend>
-                    <SearchSelect
-                      key={`section-dest-${destFcba}`}
-                      options={destSectionOptions}
-                      value={destSection ?? ''}
-                      onChange={onChangeDestSection}
-                      placeholder={
-                        isLoadingBU || isLoadingDestSections
-                          ? 'Memuat...'
-                          : destFcba
-                            ? destSectionOptions.length > 0
-                              ? 'Pilih Section tujuan'
-                              : 'Tidak ada Section tujuan'
-                            : 'Pilih FCBA tujuan dulu'
-                      }
-                      disabled={
-                        !destFcba ||
-                        disableUnlessAllowed(false) ||
-                        isLoadingBU ||
-                        isLoadingDestSections
-                      }
-                    />
-                  </fieldset>
-                )}
-
-                <div className="col-span-12 mt-1">
-                  <h4 className="text-sm font-semibold text-base-content/80">
-                    {t('formOriginTitle')}
-                  </h4>
-                  <div className="mt-1 border-t border-base-300" />
-                </div>
-
-                {/* FCBA */}
-                <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">
-                    {userLevel === 'ADM' ? t('formFcba') : t('formFcbaAccount')}
-                  </legend>
-                  {userLevel === 'ADM' ? (
-                    <SearchSelect
-                      options={fcbaOptions}
-                      value={selFcba}
-                      onChange={v => {
-                        setSelFcba(v);
-                        setSelSection('');
-                        setSelGang('');
-                        setForm(s => ({
-                          ...s,
-                          fcba: v,
-                          section: '',
-                          gang: '',
-                          kode_karyawan: '',
-                          pengancakan: '',
-                        }));
-                      }}
-                      placeholder={isLoadingBU ? 'Memuat FCBA...' : 'Pilih FCBA'}
-                      disabled={disableUnlessAllowed(false) || isLoadingBU}
-                    />
-                  ) : (
-                    <input
-                      type="text"
-                      className="input input-bordered w-full"
-                      value={homeFcba ?? ''}
-                      readOnly
-                      disabled
-                    />
-                  )}
-                </fieldset>
-
-                {/* Section / Gang / Karyawan */}
-                <fieldset className="fieldset col-span-12 md:col-span-3">
-                  <legend className="fieldset-legend">{t('formAfdeling')}</legend>
-                  <SearchSelect
-                    options={sectionOptions}
-                    value={selSection ?? ''}
-                    onChange={onChangeSection}
-                    placeholder={
-                      isLoadingSections
-                        ? 'Memuat...'
-                        : selFcba
-                          ? userLevel === 'AST'
-                            ? homeSection || 'Afdeling terkunci'
-                            : 'Pilih Afdeling'
-                          : 'Pilih FCBA dulu'
-                    }
-                    disabled={
-                      !selFcba ||
-                      disableUnlessAllowed(false) ||
-                      userLevel === 'AST' ||
-                      isLoadingSections
-                    }
-                  />
-                </fieldset>
-
-                <fieldset className="fieldset col-span-12 md:col-span-4">
-                  <legend className="fieldset-legend">{t('formGang')}</legend>
-                  <SearchSelect
-                    options={gangOptions}
-                    value={selGang ?? ''}
-                    onChange={onChangeGang}
-                    placeholder={
-                      isLoadingGangs
-                        ? 'Memuat...'
-                        : selSection
-                          ? 'Pilih Gang'
-                          : 'Pilih Afdeling dulu'
-                    }
-                    disabled={!selSection || disableUnlessAllowed(false) || isLoadingGangs}
-                  />
-                </fieldset>
-
-                <div className="col-span-12 mt-1">
-                  <h4 className="text-sm font-semibold text-base-content/80">
-                    {t('formPersonnelTitle')}
-                  </h4>
-                  <div className="mt-1 border-t border-base-300" />
-                </div>
-
-                {/* Mandor */}
-                <fieldset className="fieldset col-span-12 md:col-span-4">
-                  <legend className="fieldset-legend">{t('formMandor')}</legend>
-                  <SearchSelect
-                    options={mandorOptions}
-                    value={form.kode_karyawan_mandor ?? ''}
-                    onChange={onChangeMandor}
-                    placeholder={isLoadingSmp ? 'Memuat Mandor...' : 'Pilih Mandor'}
-                    disabled={disableUnlessAllowed(false) || isLoadingSmp}
-                  />
-                </fieldset>
-
-                {/* Kemandoran */}
-                <fieldset className="fieldset col-span-12 md:col-span-2">
-                  <legend className="fieldset-legend">{t('formKemandoran')}</legend>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full"
-                    value={selectedMandorGang}
-                    readOnly
-                    disabled
-                    title={t('formKemandoranTooltip')}
-                  />
-                </fieldset>
-
-                <fieldset className="fieldset col-span-12 md:col-span-4">
-                  <legend className="fieldset-legend">{t('formKaryawan')}</legend>
-                  <SearchSelect
-                    options={employeeOptions}
-                    value={form.kode_karyawan ?? ''}
-                    onChange={onChangeEmployee}
-                    placeholder={
-                      isLoadingSmp
-                        ? 'Memuat Karyawan...'
-                        : selGang
-                          ? 'Pilih Karyawan'
-                          : 'Pilih Gang dulu'
-                    }
-                    disabled={!selGang || disableUnlessAllowed(false) || isLoadingSmp}
-                  />
-                </fieldset>
-
-                {/* Pengancakan */}
-                <fieldset className="fieldset col-span-12 md:col-span-2">
-                  <legend className="fieldset-legend">{t('formPengancakan')}</legend>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full"
-                    value={form.pengancakan ?? ''}
-                    onChange={e => setForm(s => ({ ...s, pengancakan: e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() }))}
-                    placeholder={
-                      selGang
-                        ? 'Masukkan No Ancak'
-                        : 'Pilih Gang/Karyawan dulu'
-                    }
-                    disabled={!selGang || disableUnlessAllowed(false) || isLoadingSmp}
-                  />
-                </fieldset>
-
-                {/* Perhitungan & Perangkat */}
-                <details className="col-span-12" open={false}>
-                  <summary className="text-sm font-semibold text-base-content/80 cursor-pointer select-none">
-                    {t('formCalcDeviceTitle')}
-                  </summary>
-                  <div className="mt-2 border-t border-base-300" />
-                  <div className="grid grid-cols-12 gap-2 mt-2">
-
-                    {/* Lain-lain */}
-                    <fieldset className="fieldset col-span-6 md:col-span-2">
-                      <legend className="fieldset-legend">{t('formTotalLate')}</legend>
-                      <input
-                        type="text"
-                        className="input input-bordered w-full text-center pointer-events-none select-none"
-                        value={form.total_late_time ?? ''}
-                        readOnly
-                        tabIndex={-1}
-                      />
-                    </fieldset>
-
-                    <fieldset className="fieldset col-span-6 md:col-span-2">
-                      <legend className="fieldset-legend">{t('formHomeEarly')}</legend>
-                      <input
-                        type="text"
-                        className="input input-bordered w-full text-center pointer-events-none select-none"
-                        value={form.go_home_early ?? ''}
-                        readOnly
-                        tabIndex={-1}
-                      />
-                    </fieldset>
-
-                    {/* Mandays/HK */}
-                    <fieldset className="fieldset col-span-12 md:col-span-2">
-                      <legend className="fieldset-legend">{t('formHk')}</legend>
-                      <input
-                        type="text"
-                        className="input input-bordered w-full text-center"
-                        value={form.mandays}
-                        readOnly
-                      />
-                    </fieldset>
-
-                    {/* Location In */}
-                    <fieldset className="fieldset col-span-12 md:col-span-3">
-                      <legend className="fieldset-legend">{t('formLocIn')}</legend>
-                      <div className="join w-full">
-                        <input
-                          type="text"
-                          className="join-item input input-bordered flex-1 pointer-events-none select-none"
-                          value={form.location_in ?? ''}
-                          readOnly
-                          tabIndex={-1}
-                        />
-                        {form.location_in && (
-                          <a
-                            className="join-item btn btn-square btn-outline"
-                            href={buildMapUrl(form.location_in)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title={t('gpsOpenMaps')}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                          </a>
-                        )}
-                      </div>
-                    </fieldset>
-
-                    {/* Location Out */}
-                    <fieldset className="fieldset col-span-12 md:col-span-3">
-                      <legend className="fieldset-legend">{t('formLocOut')}</legend>
-                      <div className="join w-full">
-                        <input
-                          type="text"
-                          className="join-item input input-bordered flex-1 pointer-events-none select-none"
-                          value={form.location_out ?? ''}
-                          readOnly
-                          tabIndex={-1}
-                        />
-                        {form.location_out && (
-                          <a
-                            className="join-item btn btn-square btn-outline"
-                            href={buildMapUrl(form.location_out)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title={t('gpsOpenMaps')}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                          </a>
-                        )}
-                      </div>
-                    </fieldset>
-
-                    <fieldset className="fieldset col-span-12 md:col-span-3">
-                      <legend className="fieldset-legend">{t('formMac')}</legend>
-                      <input
-                        type="text"
-                        className="input input-bordered w-full"
-                        value={form.mac_address ?? ''}
-                        readOnly
-                      />
-                    </fieldset>
-
-                    {/* Device */}
-                    <fieldset className="fieldset col-span-12 md:col-span-3">
-                      <legend className="fieldset-legend">{t('formDeviceId')}</legend>
-                      <input
-                        type="text"
-                        className="input input-bordered w-full"
-                        value={form.id_device ?? ''}
-                        readOnly
-                      />
-                    </fieldset>
-
-                  </div>
-                </details>
-
-                <div className="col-span-12 mt-1">
-                  <h4 className="text-sm font-semibold text-base-content/80">
-                    {t('formDocNotesTitle')}
-                  </h4>
-                  <div className="mt-1 border-t border-base-300" />
-                </div>
-
-                {/* Exception Case */}
-                <fieldset className="fieldset col-span-12 md:col-span-6">
-                  <legend className="fieldset-legend">
-                    {t('formExceptionCase')}
-                    {!isEditing ? ' *' : ''}
-                  </legend>
-                  <textarea
-                    className="textarea textarea-bordered min-h-24 w-full"
-                    value={form.exception_case ?? ''}
-                    onChange={e => setForm(s => ({ ...s, exception_case: e.target.value }))}
-                    required={!isEditing}
-                  />
-                </fieldset>
-
-                {/* BA EXCA PDF */}
-                <fieldset className="fieldset col-span-12 md:col-span-6">
-                  <legend className="fieldset-legend">
-                    {t('formBaExca')}
-                    {!isEditing ? ' *' : ''}
-                  </legend>
-                  <input
-                    ref={pdfRef}
-                    type="file"
-                    accept="application/pdf"
-                    className="file-input file-input-bordered w-full"
-                    onChange={e =>
-                      setForm(s => ({
-                        ...s,
-                        no_ba_exca_file: e.target.files?.[0],
-                      }))
-                    }
-                    required={!isEditing}
-                  />
-                  {form.no_ba_exca && (
-                    <div className="mt-1">
-                      <a
-                        className="link link-primary text-sm"
-                        href={form.no_ba_exca}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {t('hintLinkBaExca')}
-                      </a>
-                    </div>
-                  )}
-                </fieldset>
-
-                {/* Upload Foto & Preview */}
-                <div className="col-span-12">
-                  <fieldset className="fieldset">
-                    <legend className="fieldset-legend">{t('formFoto')}</legend>
-                    <input
-                      ref={imgRef}
-                      type="file"
-                      accept="image/*"
-                      className="file-input file-input-bordered w-full"
-                      onChange={e => {
-                        const f = e.target.files?.[0];
-                        setForm(s => ({ ...s, images: f }));
-                        onChangeImage(f);
-                      }}
-                      disabled={disableUnlessAllowed(false)}
-                    />
-                  </fieldset>
-                  {preview && (
-                    <div className="mt-3 relative w-full h-80 rounded-xl overflow-hidden border">
-                      <Image
-                        src={preview}
-                        alt="preview"
-                        fill
-                        className="object-contain bg-base-200"
-                        sizes="100vw"
-                        unoptimized
-                      />
-                    </div>
-                  )}
-                </div>
-              </form>
-              {/* Sticky Footer */}
-              <div className="sticky bottom-0 z-10 bg-base-100 pt-2 -mx-2 sm:-mx-6 px-2 sm:px-6 border-t border-base-300">
-                <div className="flex flex-wrap gap-2 justify-end">
-                  <button type="button" className="btn" onClick={() => setOpen(false)}>
-                    {t('modalCancel')}
-                  </button>
-                  <button
-                    type="submit"
-                    form="attendance-form"
-                    className={`btn btn-primary ${mutation.isPending ? 'btn-disabled' : ''}`}
-                    disabled={mutation.isPending}
-                  >
-                    {mutation.isPending ? (
-                      <span className="loading loading-spinner" />
-                    ) : isEditing ? (
-                      t('modalUpdate')
-                    ) : (
-                      t('modalSave')
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <DeleteModal
-          open={deleteOpen}
-          title={t('modalDeleteTitle')}
-          description={t('modalDeleteDesc')}
-          label={t('modalDeleteLabel')}
-          hint={t('modalDeleteHint')}
-          cancelText={t('modalCancel')}
-          confirmText={t('modalDelete')}
-          isLoading={deleteMutation.isPending}
-          onClose={closeDeleteModal}
-          onConfirm={file => {
-            if (file.type !== 'application/pdf') {
-              toast.error(t('toastPdfFormat'));
-              return;
-            }
-            if (file.size > 2 * 1024 * 1024) {
-              toast.error(t('toastPdfSize'));
-              return;
-            }
-            if (deleteTargetId) {
-              deleteMutation.mutate({ id: deleteTargetId, file });
-            }
-          }}
+        <AttendanceFormModal
+          open={open}
+          isEditing={isEditing}
+          detailLoading={detailLoading}
+          form={form}
+          setForm={setForm}
+          preview={preview}
+          imgRef={imgRef}
+          pdfRef={pdfRef}
+          mutation={mutation}
+          handleSubmit={handleSubmit}
+          setOpen={setOpen}
+          onChangeImage={onChangeImage}
+          disableUnlessAllowed={disableUnlessAllowed}
+          destOptions={destOptions}
+          destFcba={destFcba}
+          destSection={destSection}
+          isLoadingBU={isLoadingBU}
+          isLoadingDestSections={isLoadingDestSections}
+          destSectionOptions={destSectionOptions}
+          userLevel={userLevel}
+          selFcba={selFcba}
+          setSelFcba={setSelFcba}
+          setSelSection={setSelSection}
+          setSelGang={setSelGang}
+          homeFcba={homeFcba}
+          homeSection={homeSection}
+          fcbaOptions={fcbaOptions}
+          sectionOptions={sectionOptions}
+          selSection={selSection}
+          gangOptions={gangOptions}
+          selGang={selGang}
+          mandorOptions={mandorOptions}
+          selectedMandorGang={selectedMandorGang}
+          employeeOptions={employeeOptions}
+          onChangeSection={onChangeSection}
+          onChangeGang={onChangeGang}
+          onChangeEmployee={onChangeEmployee}
+          onChangeMandor={onChangeMandor}
+          onChangeDestFcba={onChangeDestFcba}
+          onChangeDestSection={onChangeDestSection}
+          isLoadingSections={isLoadingSections}
+          isLoadingGangs={isLoadingGangs}
+          isLoadingSmp={isLoadingSmp}
+          t={t}
         />
+
+        {deleteOpen && (
+          <DeleteModal
+            open={deleteOpen}
+            title={t('modalDeleteTitle')}
+            description={t('modalDeleteDesc')}
+            label={t('modalDeleteLabel')}
+            hint={t('modalDeleteHint')}
+            cancelText={t('modalCancel')}
+            confirmText={t('modalDelete')}
+            isLoading={deleteMutation.isPending}
+            onClose={closeDeleteModal}
+            onConfirm={file => {
+              if (file.type !== 'application/pdf') {
+                toast.error(t('toastPdfFormat'));
+                return;
+              }
+              if (file.size > 2 * 1024 * 1024) {
+                toast.error(t('toastPdfSize'));
+                return;
+              }
+              if (deleteTargetId) {
+                deleteMutation.mutate({ id: deleteTargetId, file });
+              }
+            }}
+          />
+        )}
       </div>
     </div>
   );

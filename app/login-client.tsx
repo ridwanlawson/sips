@@ -1,14 +1,15 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { useTranslations } from 'next-intl';
-import { LanguageSwitcher } from './components/language-switcher';
-import { Icon } from '@/app/components/icons';
+import { LanguageSwitcher } from './components/layout/language-switcher';
+import { Icon } from '@/app/components/ui/icons';
 
-import { isValidRedirect } from '@/utils/sanitization';
+import { isValidRedirect } from '@/utils/helpers/sanitization';
+import { env } from '@/lib/env';
 
 
 type Firefly = {
@@ -105,6 +106,7 @@ export default function Home() {
       const data = await response.json();
 
       if (response.ok) {
+        setIsLoading(false);
         router.push(redirectTo);
       } else {
         setError(data.message || data.error || tAuth('loginError'));
@@ -118,7 +120,7 @@ export default function Home() {
 
   return (
     <div className="relative font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 bg-base-200 overflow-hidden">
-      {/* 🎨 Palette Improvement: Language Switcher for accessibility on login page */}
+      {/* ?? Palette Improvement: Language Switcher for accessibility on login page */}
       <div className="fixed top-4 right-4 z-50 animate-fadeIn">
         <div className="bg-base-100/50 backdrop-blur-sm rounded-full p-0.5 shadow-sm border border-base-300/50 hover:bg-base-100 transition-all duration-300">
           <LanguageSwitcher />
@@ -168,10 +170,10 @@ export default function Home() {
       <main
         id="main-content"
         tabIndex={-1}
-        className="relative z-10 flex flex-col sm:flex-row gap-10 sm:gap-16 row-start-2 items-center sm:items-center focus:outline-none"
+        className="relative z-10 flex flex-col sm:flex-row gap-6 sm:gap-10 lg:gap-16 row-start-2 items-center sm:items-start focus:outline-none"
       >
         {/* Left side text / highlight */}
-        <section className="hidden sm:flex flex-col gap-3 max-w-xs animate-fadeIn [animation-duration:700ms]">
+        <section className="hidden sm:flex sm:flex-1 flex-col gap-3 max-w-md animate-fadeIn [animation-duration:700ms]">
           <p className="text-xs font-semibold tracking-[0.2em] text-primary/80 uppercase">
             SIPS MOBILE WEB
           </p>
@@ -187,25 +189,27 @@ export default function Home() {
             <span>{tAuth('features')}</span>
           </div>
 
-          <a
-            target="_blank"
-            rel="noopener noreferrer"
-            href="https://skj.my.id/app_archive.asp"
-            className="mt-4 inline-flex items-center gap-3 rounded-2xl bg-base-100/80 px-3 py-2 shadow-md animate-bounce transition hover:bg-base-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary outline-none"
-          >
-            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <Icon name="lock" className="h-5 w-5 text-primary" />
-            </div>
-            <div className="text-[0.7rem] leading-snug">
-              <p className="font-semibold text-base-content">
-                {tAuth('downloadText')}
-              </p>
-            </div>
-          </a>
+          {env.NEXT_PUBLIC_SITE_URL && (
+            <a
+              target="_blank"
+              rel="noopener noreferrer"
+              href={`${env.NEXT_PUBLIC_SITE_URL}/app_archive.asp`}
+              className="mt-4 inline-flex items-center gap-3 rounded-2xl bg-base-100/80 px-3 py-2 shadow-md animate-bounce transition hover:bg-base-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-primary outline-none"
+            >
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <Icon name="lock" className="h-5 w-5 text-primary" />
+              </div>
+              <div className="text-[0.7rem] leading-snug">
+                <p className="font-semibold text-base-content">
+                  {tAuth('downloadText')}
+                </p>
+              </div>
+            </a>
+          )}
         </section>
 
         {/* Login Card */}
-        <div className="card bg-base-100 card-border border-base-300 card-sm overflow-hidden shadow-lg shadow-base-300/40 animate-fadeIn [animation-duration:600ms] [animation-delay:150ms] transition-all duration-500 hover:-translate-y-1 hover:shadow-xl">
+        <div className="card bg-base-100 card-border border-base-300 sm:flex-1 sm:max-w-sm overflow-hidden shadow-lg shadow-base-300/40 animate-fadeIn [animation-duration:600ms] [animation-delay:150ms] transition-all duration-500 hover:-translate-y-1 hover:shadow-xl">
           <div className="border-base-300 border-b border-dashed">
             <div className="flex items-center gap-2 p-4">
               <div className="grow flex items-center gap-2">
@@ -233,7 +237,7 @@ export default function Home() {
 
             {/* Username */}
             <div className="flex flex-col gap-1">
-              <label className="input input-border flex max-w-none items-center gap-2 transition-all duration-300 focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary/70">
+              <label className="input input-border flex w-full max-w-none items-center gap-2 transition-all duration-300 focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary/70">
                 <Icon name="user" className="h-4 w-4 opacity-70" />
                 <input
                   type="text"
@@ -251,7 +255,7 @@ export default function Home() {
 
             {/* Password */}
             <div className="flex flex-col gap-1">
-              <label className="input input-border flex max-w-none items-center gap-2 transition-all duration-300 focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary/70">
+              <label className="input input-border flex w-full max-w-none items-center gap-2 transition-all duration-300 focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary/70">
                 <Icon name="key" className="h-4 w-4 opacity-70" />
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -335,8 +339,27 @@ export default function Home() {
                 )}
               </button>
             </div>
+
+            {env.NEXT_PUBLIC_SITE_URL && (
+              <a
+                target="_blank"
+                rel="noopener noreferrer"
+                href={`${env.NEXT_PUBLIC_SITE_URL}/app_archive.asp`}
+                className="sm:hidden mt-3 flex items-center gap-3 rounded-2xl border border-base-300 bg-base-100/80 w-full px-4 py-3 shadow-sm transition-all duration-200 hover:bg-base-200 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98] cursor-pointer focus-visible:ring-2 focus-visible:ring-primary outline-none"
+              >
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Icon name="lock" className="h-4 w-4 text-primary" />
+                </div>
+                <div className="text-left">
+                  <p className="text-xs font-semibold text-base-content leading-tight">{tAuth('downloadText')}</p>
+                  <p className="text-[0.6rem] text-base-content/50 leading-tight">{env.NEXT_PUBLIC_SITE_URL.replace(/^https?:\/\//, '')}</p>
+                </div>
+                <Icon name="chevron-right" className="h-4 w-4 ml-auto text-base-content/30" />
+              </a>
+            )}
           </form>
         </div>
+
       </main>
 
       {/* Custom CSS for the firefly animation */}
@@ -401,3 +424,6 @@ export default function Home() {
     </div>
   );
 }
+
+
+

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ABSENSI_BASE, buildFilteredUrl, getTokenFromCookie } from '@/utils/absensiProxy';
-import { parseJsonSafe } from '@/lib/apiProxy';
-import { validateSecurity } from '@/lib/security';
+import { ABSENSI_BASE, buildFilteredUrl, getTokenFromCookie } from '@/utils/api/absensiProxy';
+import { parseJsonSafe } from '@/lib/api/apiProxy';
+import { validateSecurity } from '@/lib/auth/security';
 import { attendanceFilterSchema, attendanceApiResponseSchema } from '@/lib/validations/attendance';
-import { applyUserDataScope } from '@/utils/requestScope';
+import { applyUserDataScope } from '@/utils/api/requestScope';
 
 export const dynamic = 'force-dynamic'; // no cache
 export const runtime = 'nodejs';
@@ -155,3 +155,4 @@ export async function POST(req: NextRequest) {
   }
   return NextResponse.json({ ok: true, data });
 }
+

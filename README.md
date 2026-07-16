@@ -9,7 +9,8 @@ SIPS Mobile Web is a Next.js application for operational attendance, harvest, tr
 - Tailwind CSS and DaisyUI
 - TanStack Query
 - next-intl
-- Vitest
+- Vitest (unit tests)
+- Playwright (E2E tests)
 - ESLint and Prettier
 
 ## Active Features
@@ -37,14 +38,35 @@ app/
     lhm/               LHM views
     pengangkutan/      Transport views
   api/                 Server-side API proxies
-  components/          Shared React components
-  types/               Shared application types
-config/                Shared configuration
-hooks/                 React hooks
+  components/
+    auth/              Auth-related components
+    features/          Feature-specific components (FilterBar, Toolbar, AttendanceFormModal, etc.)
+    feedback/          Loading, error, empty states
+    layout/            Layout components
+    theme/             Theme components
+    ui/                Generic UI primitives
+  types/               Shared application types (legacy)
+config/                Configuration files
+e2e/
+  fixtures/            E2E test fixtures
+  helpers/             E2E helper utilities
+  specs/               Playwright test specs
+hooks/                 React hooks (useAttendanceData, useHarvestData, useTransportData, etc.)
 i18n/                  next-intl routing and request setup
-lib/                   Constants, validation, and shared library utilities
+lib/
+  api/                 API proxy utilities
+  auth/                Auth helpers (csrf, rateLimiter, fetchWithCsrf)
+  constants/           Shared constants and menu config
+  utils/               Utility functions (helpers, input sanitizer)
+  validations/         Zod schemas
 messages/              Locale message files
-utils/                 Client and server utilities
+types/                 Shared domain types (domain.ts)
+utils/
+  api/                 API client utilities
+  auth/                Auth utilities
+  helpers/             Helper functions
+  queryKeys.ts         Centralized TanStack Query key constants
+  services/            Service layer (attendanceService, harvestService, transportService, etc.)
 ```
 
 ## Getting Started
@@ -60,22 +82,51 @@ Open `http://localhost:3000`.
 Required environment variables:
 
 ```env
-NEXT_PUBLIC_BACKEND_URL=http://your-backend-url
 BACKEND_URL=http://your-backend-url
-ABSENSI_BASE=http://your-backend-url/api/apps/absensis
+NEXT_PUBLIC_SITE_URL=https://your-site-url
+NEXT_PUBLIC_GIS_URL=http://your-gis-url
+TRUSTED_IMAGE_DOMAINS=your-domain.com
 ```
 
 ## Common Commands
 
 ```bash
-npm run dev
-npm run build
-npm run start
-npm run lint
+npm run dev           Start development server
+npm run build         Production build
+npm run start         Start production server
+npm run lint          Run ESLint
+npm run test          Run Vitest unit tests
+npm run test:coverage Run Vitest with coverage
+npm run format:check  Check Prettier formatting
+npx playwright test   Run Playwright E2E tests
+```
+
+## Testing
+
+### Unit Tests (Vitest)
+
+```bash
 npm run test
 npm run test:coverage
-npm run format:check
 ```
+
+### E2E Tests (Playwright)
+
+```bash
+npx playwright test
+npx playwright test --reporter=list --workers=1
+npx playwright test --headed  # Run with browser visible
+npx playwright test --debug   # Run with Playwright inspector
+```
+
+E2E tests are located in `e2e/specs/`:
+- `auth.spec.ts` - Login, logout, password change
+- `attendance.spec.ts` - Attendance CRUD workflows
+- `harvest.spec.ts` - Harvest CRUD workflows
+- `transport.spec.ts` - Transport CRUD workflows
+- `lhm.spec.ts` - LHM report and approval
+- `dashboard.spec.ts` - Dashboard analytics
+- `users.spec.ts` - User management
 
 ## Architecture
 
@@ -95,20 +146,45 @@ Backend API
 Data services
 ```
 
+### Frontend Layered Architecture
+
+```text
+Views (app/(views)/*)     → Page components composing hooks and shared UI
+  |
+Hooks (hooks/*)           → Data fetching, form state, side effects
+  |
+Services (utils/services/*) → API call logic
+  |
+API Proxy (app/api/*)       → Server-side route handlers
+  |
+Backend API
+```
+
+### Key Patterns
+
+- **Query Keys** are centralized in `utils/queryKeys.ts` as a `QueryKeys` constant — never inline query keys.
+- **Domain types** live in `types/domain.ts` (Absensi, Harvest, Transport, etc.).
+- **Data hooks** (e.g., `useAttendanceData`) encapsulate TanStack Query calls and return `{ data, isLoading, error }`.
+- **Service functions** (e.g., `attendanceService.fetchAll(filters)`) handle HTTP requests and response parsing.
+- **Shared UI components** (FilterBar, Toolbar, DataTable, AttendanceFormModal) live in `app/components/features/`.
+
 The middleware handles public-route redirects, locale defaults, authentication checks, and LHM approval role protection. API handlers should keep backend credentials and server-only behavior on the server side.
 
 ## Troubleshooting
 
-- `Missing backend URL`: set `NEXT_PUBLIC_BACKEND_URL` or `BACKEND_URL` in `.env.local`.
+- `Missing backend URL`: set `BACKEND_URL` in `.env.local`.
 - Login redirects back to `/`: confirm the backend login response sets the expected auth cookies.
 - Backend images do not render: confirm `BACKEND_URL` is configured and reachable.
 - PowerShell blocks `npm`: run commands through `npm.cmd`.
-- Tests fail with browser globals missing: confirm Vitest is using the configured `jsdom` environment.
+- Unit tests fail with browser globals missing: confirm Vitest is using the configured `jsdom` environment.
+- E2E tests fail: ensure the dev server is running (`npm run dev`) before `npx playwright test`.
 
 ## Quality Standards
 
-- Keep shared constants in `lib/constants.ts`.
-- Use shared types from `app/types`.
+- Keep shared constants in `lib/constants/`.
+- Use domain types from `types/domain.ts`.
+- Use centralized `QueryKeys` from `utils/queryKeys.ts`.
 - Use centralized error helpers for route-handler failures.
-- Keep comments in English.
-- Run lint, tests, and format checks before opening a PR.
+- Follow the hook + service + types pattern when adding new features.
+- Keep comments in English (minimize comments).
+- Run lint, unit tests, E2E tests, and format checks before opening a PR.

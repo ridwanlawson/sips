@@ -1,13 +1,13 @@
-﻿'use client';
+'use client';
 
 /**
- * Change Password Page — Client Component
+ * Change Password Page ? Client Component
  *
  * Prinsip yang diterapkan (Software Design & Architecture Roadmap):
  *
  * Clean Code:
  *   - Meaningful names over comments
- *   - Keep classes/files small → UI dipecah ke sub-komponen
+ *   - Keep classes/files small ? UI dipecah ke sub-komponen
  *   - Pure functions untuk helper/validator
  *   - Command-query separation: submit handler hanya memberi perintah,
  *     state query dikelola hook
@@ -26,14 +26,14 @@
 import { useState, useMemo } from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
-import { toTitleCase } from '@/utils/textManipulation';
-import { getProxiedImageUrl } from '@/utils/imageHelper';
+import { toTitleCase } from '@/utils/helpers/textManipulation';
+import { getProxiedImageUrl } from '@/utils/helpers/imageHelper';
 import type { UserProfile } from '@/app/types';
-import AppTour from '@/app/components/app-tour';
-import type { TourStep } from '@/app/components/app-tour';
-import { Icon } from '@/app/components/icons';
+import AppTour from '@/app/components/feedback/app-tour';
+import type { TourStep } from '@/app/components/feedback/app-tour';
+import { Icon } from '@/app/components/ui/icons';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// --- Types --------------------------------------------------------------------
 
 interface ChangePasswordPageProps {
   /** Profile di-fetch di server (SSR) dan diteruskan sebagai prop. */
@@ -46,7 +46,7 @@ interface ChangePasswordFormState {
   confirmPassword: string;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// --- Constants ----------------------------------------------------------------
 
 const PROFILE_FIELDS: { label: string; key: keyof UserProfile }[] = [
   { label: 'Username', key: 'username' },
@@ -64,7 +64,7 @@ const PROFILE_FIELDS: { label: string; key: keyof UserProfile }[] = [
 const FALLBACK_AVATAR =
   'https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp';
 
-// ─── Pure Validators (Clean Code: pure functions) ─────────────────────────────
+// --- Pure Validators (Clean Code: pure functions) -----------------------------
 
 function validatePasswordMatch(
   newPassword: string,
@@ -80,7 +80,7 @@ function validatePasswordLength(password: string, message: string, minLength = 8
   return null;
 }
 
-// ─── Custom Hook (SRP: enkapsulasi form logic) ────────────────────────────────
+// --- Custom Hook (SRP: enkapsulasi form logic) --------------------------------
 
 function useChangePassword() {
   const t = useTranslations('Profile');
@@ -107,7 +107,7 @@ function useChangePassword() {
     setForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
   }
 
-  /** Command: submit form — satu-satunya fungsi yang menyentuh API. */
+  /** Command: submit form ? satu-satunya fungsi yang menyentuh API. */
   async function submitChangePassword(e: React.FormEvent) {
     e.preventDefault();
     setError('');
@@ -134,7 +134,7 @@ function useChangePassword() {
       // Get CSRF token from cookie
       const csrfToken = document.cookie.match(/csrf_token=([^;]+)/)?.[1];
 
-      const res = await fetch('/api/change-password', {
+      const res = await fetch('/api/auth/change-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -172,7 +172,7 @@ function useChangePassword() {
   };
 }
 
-// ─── Sub-Components (SRP: satu komponen, satu tanggung jawab) ─────────────────
+// --- Sub-Components (SRP: satu komponen, satu tanggung jawab) -----------------
 
 /** Menampilkan satu field input password. */
 function PasswordField({
@@ -342,12 +342,12 @@ function ChangePasswordForm() {
   const t = useTranslations('Profile');
   const tourSteps: TourStep[] = useMemo(() => [
     {
-      icon: '👋',
+      icon: '??',
       title: t('tourWelcomeTitle'),
       content: t('tourWelcomeDesc'),
     },
     {
-      icon: '🔒',
+      icon: '??',
       title: t('tourFormTitle'),
       content: t('tourFormDesc'),
     },
@@ -436,7 +436,7 @@ function ChangePasswordForm() {
   );
 }
 
-// ─── Page Component (Composition Root) ───────────────────────────────────────
+// --- Page Component (Composition Root) ---------------------------------------
 
 export default function ChangePasswordPage({ profile }: ChangePasswordPageProps) {
   return (
@@ -458,3 +458,6 @@ export default function ChangePasswordPage({ profile }: ChangePasswordPageProps)
     </div>
   );
 }
+
+
+

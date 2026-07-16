@@ -16,15 +16,17 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "test:e2e": "playwright test",
+    "analyze": "ANALYZE=true next build",
     "security:audit": "npm audit",
     "security:audit-fix": "npm audit fix",
     "security:check": "npm audit && echo 'Check for vulnerabilities complete'"
   },
   "dependencies": {
+    "@swc/core": "^1.7.24",
+    "@t3-oss/env-nextjs": "^0.13.11",
     "@tanstack/react-query": "^5.90.20",
     "crypto-js": "^4.2.0",
     "daisyui": "^5.1.13",
-    "@swc/core": "^1.7.24",
     "next": "^15.5.18",
     "next-intl": "^4.8.1",
     "rate-limiter-flexible": "^5.0.5",
@@ -32,15 +34,16 @@
     "react-data-table-component": "^7.7.0",
     "react-dom": "^19.1.0",
     "react-hot-toast": "^2.6.0",
-    "zod": "^4.3.6"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@next/bundle-analyzer": "^16.2.10",
     "@playwright/test": "^1.58.1",
-    "@types/crypto-js": "^4.2.2",
     "@tailwindcss/postcss": "^4.1.13",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
+    "@types/crypto-js": "^4.2.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

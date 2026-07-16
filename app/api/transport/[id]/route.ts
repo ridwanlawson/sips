@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
-import { authHeaders, parseJsonSafe, proxyFormDataPut, proxyFormDataDelete, proxyFormDataPost } from '@/lib/apiProxy';
-import { validateSecurity } from '@/lib/security';
+import { BACKEND_URL, getTokenFromCookie } from '@/utils/api/absensiProxy';
+import { authHeaders, parseJsonSafe, proxyFormDataPut, proxyFormDataDelete, proxyFormDataPost } from '@/lib/api/apiProxy';
+import { validateSecurity } from '@/lib/auth/security';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -104,3 +104,5 @@ export async function POST(
     'API_TRANSPORTS_ID'
   );
 }
+
+

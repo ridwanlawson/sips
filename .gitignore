@@ -13,6 +13,10 @@
 # testing
 /coverage
 coverage
+/e2e/reports/
+/e2e/test-results/
+/playwright-report/
+/test-results/
 
 # next.js
 /.next/

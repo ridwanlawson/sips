@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { BACKEND_URL, getTokenFromCookie } from '@/utils/absensiProxy';
-import { authHeaders, parseJsonSafe, unauthorizedResponse } from '@/lib/apiProxy';
-import { attendanceSubmitSchema, validateInput, sanitizeObject } from '@/lib/inputSanitizer';
-import { validateSecurity } from '@/lib/security';
+import { BACKEND_URL, getTokenFromCookie } from '@/utils/api/absensiProxy';
+import { authHeaders, parseJsonSafe, unauthorizedResponse } from '@/lib/api/apiProxy';
+import { attendanceSubmitSchema, validateInput, sanitizeObject } from '@/lib/utils/inputSanitizer';
+import { validateSecurity } from '@/lib/auth/security';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -54,3 +54,4 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 }
+

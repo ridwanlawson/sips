@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { backendApiUrl } from '@/utils/backendConfig';
-import { Icon } from '@/app/components/icons';
+import { backendApiUrl } from '@/utils/auth/backendConfig';
+import { Icon } from '@/app/components/ui/icons';
 
 interface UploadFormData {
   platform: string;
@@ -207,14 +207,6 @@ export default function ApkUploadPage() {
     uploadFormData.append('min_version', formData.min_version.trim());
     uploadFormData.append('changelog', formData.changelog.trim());
 
-    console.log('📤 FormData prepared:', {
-      platform: formData.platform,
-      version: formData.version,
-      force_update: formData.force_update,
-      file: selectedFile.name,
-      file_size: selectedFile.size,
-    });
-
     // Use XMLHttpRequest for real-time progress tracking
     const xhr = new XMLHttpRequest();
     xhrRef.current = xhr;
@@ -276,12 +268,6 @@ export default function ApkUploadPage() {
           console.warn('❗ Response parsing bukan JSON', rawText.slice(0, 600));
         }
       }
-
-      console.log('📥 Response received:', {
-        status: xhr.status,
-        response,
-        rawText: rawText.slice(0, 800),
-      });
 
       if (xhr.status >= 200 && xhr.status < 300 && response?.success) {
         setUploadStatus('success');
@@ -724,3 +710,5 @@ export default function ApkUploadPage() {
     </div>
   );
 }
+
+

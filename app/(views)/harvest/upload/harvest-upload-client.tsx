@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import DataTable from '@/app/components/dynamic-data-table';
+import { AppDataTable } from '@/app/components/data/app-data-table';
 import type { TableColumn } from 'react-data-table-component';
-import { SkeletonTable } from '@/app/components/skeletons';
-import { AccessDenied } from '@/app/components/access-denied';
+import { AccessDenied } from '@/app/components/feedback/access-denied';
 import { useLocale } from '@/hooks/useLocale';
 import { useUploadPage } from '@/hooks/useUploadPage';
 import { useBatchSubmit } from '@/hooks/useBatchSubmit';
-import { formatPerfDate, formatPerfNumber } from '@/utils/perf-formatter';
+import { formatPerfDate, formatPerfNumber } from '@/utils/helpers/perf-formatter';
+import { FilterBar } from '@/app/components/ui/filter-bar';
 
 interface HarvestingUploadData {
   spbno?: string;
@@ -170,13 +170,8 @@ export default function HarvestingUploadPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initCheck]);
 
-  const handleParamChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormParams(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSearch = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     await fetchData();
   };
 
@@ -371,70 +366,23 @@ export default function HarvestingUploadPage() {
 
         {/* Filter Section */}
         {showFilters && (
-          <div className="bg-base-100 p-4 rounded-xl shadow-sm mb-4 border border-base-200">
-            <form
-              onSubmit={handleSearch}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3"
-            >
-              {[
-                { label: 'No SPB', name: 'nospb', placeholder: 'SPB2026004804' },
-                { label: 'Tanggal Mulai', name: 'tanggal', type: 'date' },
-                { label: 'Tanggal Akhir', name: 'tanggal_end', type: 'date' },
-                { label: 'Mill', name: 'mill', placeholder: 'DOM, PPI, dll' },
-                { label: 'Kode Kendaraan', name: 'kode_kendaraan', placeholder: 'L9770CL' },
-                { label: 'Driver', name: 'kode_karyawan_driver', placeholder: 'Nama driver' },
-                { label: 'Chit Number', name: 'chitno', placeholder: 'TBS2026004804' },
-              ].map(({ label, name, placeholder, type = 'text' }) => (
-                <div key={name} className="form-group">
-                  <label className="block text-sm font-medium text-base-content mb-1">
-                    {label}
-                  </label>
-                  <input
-                    type={type}
-                    name={name}
-                    placeholder={placeholder}
-                    value={formParams[name as keyof HarvestingUploadParams] ?? ''}
-                    onChange={handleParamChange}
-                    className="input input-bordered w-full"
-                  />
-                </div>
-              ))}
-              <div className="form-group">
-                <label className="block text-sm font-medium text-base-content mb-1">
-                  FCBA{' '}
-                  {userFcba && <span className="text-xs text-info ml-2">Default: {userFcba}</span>}
-                </label>
-                <input
-                  type="text"
-                  name="fcba"
-                  placeholder="PTE, MTE, dll"
-                  value={formParams.fcba ?? ''}
-                  onChange={handleParamChange}
-                  className="input input-bordered w-full"
-                />
-              </div>
-              <div className="col-span-1 md:col-span-2 lg:col-span-4 flex items-end gap-2">
-                <button type="submit" disabled={loading} className="btn btn-primary btn-sm flex-1">
-                  {loading ? (
-                    <>
-                      <span className="loading loading-spinner loading-xs" />
-                      Loading...
-                    </>
-                  ) : (
-                    '🔍 Search'
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleResetFilter}
-                  disabled={loading}
-                  className="btn btn-outline btn-sm flex-1"
-                >
-                  Reset
-                </button>
-              </div>
-            </form>
-          </div>
+          <FilterBar
+            fields={[
+              { key: 'nospb', label: 'No SPB', type: 'text', placeholder: 'SPB2026004804' },
+              { key: 'tanggal', label: '', type: 'date', placeholder: 'Tanggal Mulai' },
+              { key: 'tanggal_end', label: '', type: 'date', placeholder: 'Tanggal Akhir' },
+              { key: 'mill', label: 'Mill', type: 'text', placeholder: 'DOM, PPI, dll' },
+              { key: 'kode_kendaraan', label: 'Kode Kendaraan', type: 'text', placeholder: 'L9770CL' },
+              { key: 'kode_karyawan_driver', label: 'Driver', type: 'text', placeholder: 'Nama driver' },
+              { key: 'chitno', label: 'Chit Number', type: 'text', placeholder: 'TBS2026004804' },
+              { key: 'fcba', label: 'FCBA', type: 'text', placeholder: 'PTE, MTE, dll' },
+            ]}
+            values={formParams as Record<string, string>}
+            onChange={(key, value) => setFormParams(prev => ({ ...prev, [key]: value }))}
+            onApply={() => handleSearch()}
+            onReset={handleResetFilter}
+            loading={loading}
+          />
         )}
 
         {error && (
@@ -533,32 +481,18 @@ export default function HarvestingUploadPage() {
 
         {/* Data Table */}
         {data.length > 0 && (
-          <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100">
-            {loading ? (
-              <div className="p-8">
-                <SkeletonTable rows={10} />
-              </div>
-            ) : (
-              <DataTable
-                keyField="_rowKey"
-                columns={columns}
-                data={filteredDataWithKey}
-                progressPending={loading}
-                pagination
-                paginationPerPage={10}
-                paginationRowsPerPageOptions={[10, 30, 100, 500]}
-                dense
-                highlightOnHover
-                fixedHeader
-                fixedHeaderScrollHeight="520px"
-                persistTableHead
-                responsive
-                noDataComponent={<div className="py-8 text-base-content/70">Tidak ada data.</div>}
-              />
-            )}
-          </div>
+          <AppDataTable
+            columns={columns}
+            data={filteredDataWithKey}
+            loading={loading}
+            paginationPerPage={10}
+            paginationRowsPerPageOptions={[10, 30, 100, 500]}
+            noDataComponent={<div className="py-8 text-base-content/70">Tidak ada data.</div>}
+          />
         )}
       </div>
     </div>
   );
 }
+
+

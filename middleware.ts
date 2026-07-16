@@ -70,6 +70,36 @@ export function middleware(request: NextRequest) {
     'Permissions-Policy',
     'camera=(), microphone=(), geolocation=(self), payment=()'
   );
+  const backendUrl = process.env.BACKEND_URL ? new URL(process.env.BACKEND_URL) : null;
+  const backendOrigin = backendUrl ? backendUrl.origin : '';
+  const backendOriginHttps = backendOrigin ? backendOrigin.replace('http://', 'https://') : '';
+
+  const siteOrigin = process.env.NEXT_PUBLIC_SITE_URL
+    ? new URL(process.env.NEXT_PUBLIC_SITE_URL).origin
+    : '';
+  const gisOrigin = process.env.NEXT_PUBLIC_GIS_URL
+    ? new URL(process.env.NEXT_PUBLIC_GIS_URL).origin
+    : '';
+
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    "style-src 'self' 'unsafe-inline'",
+    `img-src 'self' data: blob: https://img.daisyui.com ${backendOriginHttps}`.trim(),
+    `font-src 'self' data:`,
+    `connect-src 'self'${siteOrigin ? ` ${siteOrigin}` : ''} ${backendOrigin} ${backendOriginHttps}`.trim(),
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    `form-action 'self' https://www.google.com${gisOrigin ? ` ${gisOrigin}` : ''}${siteOrigin ? ` ${siteOrigin}` : ''}`,
+  ].join('; ');
+
+  response.headers.set('Content-Security-Policy', csp);
+  if (isProduction) {
+    response.headers.set(
+      'Strict-Transport-Security',
+      'max-age=31536000; includeSubDomains; preload'
+    );
+  }
 
   // === CORS HEADERS ===
   // Hanya izinkan CORS untuk API routes di production
@@ -165,3 +195,4 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: ['/((?!api/health).*)'],
 };
+

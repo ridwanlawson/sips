@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { getTokenFromCookie, BACKEND_URL } from '@/utils/absensiProxy';
+import { getTokenFromCookie, BACKEND_URL } from '@/utils/api/absensiProxy';
 import { UserLevel } from '@/lib/constants';
-import { validateSecurity } from '@/lib/security';
+import { validateSecurity } from '@/lib/auth/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
     const profileData = await profileRes.json();
     const level = (profileData?.level || '').toUpperCase();
 
-    if (level !== UserLevel.ADMIN && level !== 'ADMIN') {
+    if (level !== UserLevel.ADMIN) {
       return NextResponse.json(
         { success: false, message: 'Forbidden: Admin access required' },
         { status: 403 }
@@ -58,3 +58,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: false, message: 'Internal server error' }, { status: 500 });
   }
 }
+
+

@@ -1,205 +1,48 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { BusinessUnit } from '../../../utils/businessUnitService';
-import { fetchBusinessUnits } from '../../../utils/businessUnitService';
-import DataTable from '@/app/components/dynamic-data-table';
-import type { TableColumn } from 'react-data-table-component';
+import { useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import toast from 'react-hot-toast';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { TableColumn } from 'react-data-table-component';
 import { useTranslations } from 'next-intl';
-import { SkeletonTable } from '@/app/components/skeletons';
-import { useSearchShortcut } from '@/hooks/useSearchShortcut';
-import { centerHeaderStyle } from '@/utils/tableHelper';
-import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/authHelper';
-import { exportJsonToCsv } from '@/utils/exportCsv';
-import { formatPerfNumber } from '@/utils/perf-formatter';
+import { AppDataTable } from '@/app/components/data/app-data-table';
+import { SkeletonTable } from '@/app/components/ui/skeletons';
+import { Icon } from '@/app/components/ui/icons';
+import { SearchSelect } from '@/app/components/ui/search-select';
+import { FilterBar } from '@/app/components/ui/filter-bar';
+import { Toolbar } from '@/app/components/ui/toolbar';
+import { env } from '@/lib/env';
+import AppTour from '@/app/components/feedback/app-tour';
+import type { TourStep } from '@/app/components/feedback/app-tour';
+import { DeleteModal } from '@/app/components/feedback/delete-modal';
+import { PhotoCell } from '@/app/components/ui/photo-cell';
+
+const HarvestGalleryView = dynamic(
+  () => import('@/app/components/features/harvest-gallery-view').then(mod => mod.HarvestGalleryView),
+  {
+    loading: () => <div className="p-8"><span className="loading loading-spinner loading-lg" /></div>,
+    ssr: false,
+  }
+);
 import { useLocale } from '@/hooks/useLocale';
-import { SearchSelect, type Option } from '@/app/components/search-select';
-import { EmptyState } from '@/app/components/empty-state';
-import { HarvestGalleryView, type HarvestGalleryHandle } from '@/app/components/harvest-gallery-view';
-import AppTour from '@/app/components/app-tour';
-import type { TourStep } from '@/app/components/app-tour';
-import { Icon } from '@/app/components/icons';
+import { useHarvestData } from '@/hooks/useHarvestData';
+import { QueryKeys } from '@/utils/queryKeys';
+import type { Harvest } from '@/types/domain';
+import { buildMapUrl } from '@/utils/services/mapHelper';
+import { formatPerfNumber } from '@/utils/helpers/perf-formatter';
+import { formatDateDMY, getTodayISO } from '@/utils/helpers/datetime';
 
-/* =========================
-   T Y P E S
-========================= */
-type Harvest = {
-  _rowKey?: string;
-  _index?: number;
-  /**
-   * ⚡ Bolt Optimization: Cached values to avoid O(N*M) lookups and
-   * expensive regex-based number parsing in render/search loops.
-   */
-  _searchContent?: string;
-  _outputNum?: number;
-  _mentahNum?: number;
-  _overNum?: number;
-  _busukNum?: number;
-  _busuk2Num?: number;
-  _kecilNum?: number;
-  _partenoNum?: number;
-  _parteno50Num?: number;
-  _brondolNum?: number;
-  _panjangNum?: number;
-
-  id: string;
-  nodokumen: string;
-  tanggal: string;
-  kode_karyawan_mandor1?: string | null;
-  nama_karyawan_mandor1?: string | null;
-  kode_karyawan_mandor_panen?: string | null;
-  nama_karyawan_mandor_panen?: string | null;
-  kode_karyawan_kerani?: string | null;
-  nama_karyawan_kerani?: string | null;
-  kode_karyawan: string;
-  nama_karyawan: string;
-  noancak: string;
-  tph: string;
-  fieldcode: string;
-  fcba: string;
-  afdeling: string;
-  output: string;
-  mentah: string;
-  overripe: string;
-  busuk: string;
-  busuk2: string;
-  buahkecil: string;
-  brondol: string;
-  alasbrondol: string;
-  tangkaipanjang: string;
-  parteno: string;
-  parteno50plus: string;
-  status_assistensi?: string | null;
-  status_harvesting: string;
-  kemandoran?: string | null;
-  images?: string | null;
-  no_ba_exca?: string | null;
-  exception_case?: string | null;
-  id_device?: string | null;
-  location?: string | null;
-  card_id?: string | null;
-  created_at?: string | null;
-  created_by?: string | null;
+const toNumber = (value: string | number | null | undefined): number => {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  if (!value) return 0;
+  const normalized = value.replace(',', '.').trim();
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
 };
 
-type Triplet = { fcba: string; sectionname: string; gangcode: string };
-
-type Employee = {
-  fccode: string;
-  fullname?: string;
-  fcba?: string;
-  sectionname?: string;
-  gangcode?: string;
-  noancak?: string;
-  attendance_type?: string;
-  section_destination?: string;
-  fcba_destination?: string;
-};
-
-type EmployeesApiRow = {
-  [key: string]: unknown;
-  fccode?: unknown;
-  fcname?: unknown;
-  fcba?: unknown;
-  sectionname?: unknown;
-  gangcode?: unknown;
-  noancak?: unknown;
-  NOANCAK?: unknown;
-};
-
-type FormState = {
-  id?: string;
-  nodokumen: string;
-  tanggal: string;
-  kode_karyawan_mandor1: string;
-  kode_karyawan_mandor_panen: string;
-  kode_karyawan_kerani: string;
-  kode_karyawan: string;
-  noancak: string;
-  tph: string;
-  fieldcode: string;
-  fcba: string;
-  afdeling: string;
-  output: string;
-  mentah: string;
-  overripe: string;
-  busuk: string;
-  busuk2: string;
-  buahkecil: string;
-  brondol: string;
-  alasbrondol: string;
-  tangkaipanjang: string;
-  parteno: string;
-  parteno50plus: string;
-  status_assistensi: string;
-  status_harvesting: string;
-  kemandoran: string;
-  exception_case: string;
-  location: string;
-  id_device: string;
-  card_id: string;
-  images: File | null;
-  no_ba_exca: File | string | null;
-};
-
-const initialForm: FormState = {
-  nodokumen: '',
-  tanggal: getTodayISO(),
-  kode_karyawan_mandor1: '',
-  kode_karyawan_mandor_panen: '',
-  kode_karyawan_kerani: '',
-  kode_karyawan: '',
-  noancak: '',
-  tph: '',
-  fieldcode: '',
-  fcba: '',
-  afdeling: '',
-  output: '',
-  mentah: '0',
-  overripe: '0',
-  busuk: '0',
-  busuk2: '0',
-  buahkecil: '0',
-  brondol: '0',
-  alasbrondol: '',
-  tangkaipanjang: '0',
-  parteno: '0',
-  parteno50plus: '0',
-  status_assistensi: '',
-  status_harvesting: 'Planned',
-  kemandoran: '',
-  exception_case: '',
-  location: '',
-  id_device: '',
-  card_id: '',
-  images: null,
-  no_ba_exca: null,
-};
-
-type Filters = Partial<{
-  tanggal: string;
-  tanggal_end: string;
-  nodokumen: string;
-  kode_karyawan: string;
-  fcba: string;
-  afdeling: string;
-  tph: string;
-  kemandoran: string;
-}>;
-
-/* =========================
-   U T I L S
-========================= */
-import { getProxiedImageUrl, PLACEHOLDER_IMAGE } from '@/utils/imageHelper';
-import { getTodayISO, formatDateDMY, formatDateISO, getYesterdayISO } from '@/utils/datetime';
-import { buildMapUrl } from '@/utils/mapHelper';
-import { cookieStore } from '@/utils/cookieStore';
-import { type UserLevel } from '@/utils/filterHelper';
-import { getReadableDevice, getOrCreateDeviceIds } from '@/utils/deviceHelper';
-import { extractArrayData, extractSingleData } from '@/utils/apiHelpers';
+const formatTotal = (value: number, localeTag = 'id-ID'): string =>
+  formatPerfNumber(value, localeTag, { maximumFractionDigits: 2 });
 
 const LocationButton: React.FC<{
   loc?: string | null;
@@ -209,8 +52,9 @@ const LocationButton: React.FC<{
   if (!loc) return <span className="text-gray-400">-</span>;
   const googleUrl = buildMapUrl(loc);
 
-  // Geo Sips URL dengan parameter
-  const geoSipsUrl = `http://gis.skj.my.id:91?${new URLSearchParams({ dateFrom: formatDateISO(new Date(tanggal || '')) || '', dateTo: formatDateISO(new Date(tanggal || '')) || '', nodokumen: nodokumen || '' }).toString()}`;
+  const geoSipsUrl = env.NEXT_PUBLIC_GIS_URL
+    ? `${env.NEXT_PUBLIC_GIS_URL}?${new URLSearchParams({ dateFrom: formatDateISO(new Date(tanggal || '')) || '', dateTo: formatDateISO(new Date(tanggal || '')) || '', nodokumen: nodokumen || '' }).toString()}`
+    : '';
 
   return (
     <div className="flex gap-1">
@@ -236,111 +80,54 @@ const LocationButton: React.FC<{
   );
 };
 
-const toNumber = (value: string | number | null | undefined): number => {
-  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
-  if (!value) return 0;
-  const normalized = value.replace(',', '.').trim();
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : 0;
+const formatDateISO = (d: Date): string => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 };
 
-const formatTotal = (value: number, localeTag = 'id-ID'): string =>
-  formatPerfNumber(value, localeTag, { maximumFractionDigits: 2 });
-
-/**
- * ⚡ Bolt Optimization: Use Map-based lookups for Business Units to avoid O(N) .find() in loops.
- */
-const getBusinessUnitLookups = (businessUnits: BusinessUnit[] | undefined) => {
-  const codeMap = new Map<string, BusinessUnit>();
-  const nameMap = new Map<string, BusinessUnit>();
-
-  if (Array.isArray(businessUnits)) {
-    for (const bu of businessUnits) {
-      if (bu.fccode) codeMap.set(bu.fccode, bu);
-      if (bu.fcname) nameMap.set(bu.fcname.toLowerCase(), bu);
-    }
-  }
-
-  return { codeMap, nameMap };
-};
-
-const resolveBusinessUnitCode = (
-  value: string,
-  lookups: { codeMap: Map<string, BusinessUnit>; nameMap: Map<string, BusinessUnit> }
-): string => {
-  if (!value) return '';
-  const directMatch = lookups.codeMap.get(value);
-  if (directMatch) return directMatch.fccode;
-
-  const nameMatch = lookups.nameMap.get(value.toLowerCase());
-  return nameMatch?.fccode || value;
-};
-
-const resolveBusinessUnitName = (
-  value: string,
-  lookups: { codeMap: Map<string, BusinessUnit>; nameMap: Map<string, BusinessUnit> }
-): string => {
-  if (!value) return '';
-  const directMatch = lookups.codeMap.get(value);
-  if (directMatch) return directMatch.fcname || directMatch.fccode;
-  return value;
-};
-
-const getMonthDateRange = (isoDate: string) => {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
-  if (!match) return null;
-  const year = Number(match[1]);
-  const monthIndex = Number(match[2]) - 1;
-  const start = new Date(year, monthIndex, 1);
-  const end = new Date(year, monthIndex + 1, 0);
-  return { start: formatDateISO(start), end: formatDateISO(end) };
-};
-
-const formatDocDate = (isoDate: string) => {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
-  if (!match) return '';
-  return `${match[3]}${match[2]}${match[1].slice(-2)}`;
-};
-
-const getRunningNumber = (nodokumen: string | null | undefined) => {
-  const match = /\/(\d{4})$/.exec((nodokumen || '').trim());
-  return match ? Number(match[1]) : 0;
-};
-
-const buildHarvestDocumentNo = ({
-  fcba,
-  afdeling,
-  fieldcode,
-  noancak,
-  tanggal,
-  running,
-}: {
-  fcba: string;
-  afdeling: string;
-  fieldcode: string;
-  noancak: string;
-  tanggal: string;
-  running: number;
-}) => {
-  const docDate = formatDocDate(tanggal);
-  if (!fcba || !afdeling || !fieldcode || !noancak || !docDate || running <= 0) return '';
-  return `${fcba}/${afdeling}/${fieldcode}-${noancak}/${docDate}/${String(running).padStart(4, '0')}`;
-};
-
-/* =========================
-   M A I N
-========================= */
 export default function HarvestPage() {
   const localeTag = useLocale();
   const tH = useTranslations('Harvest');
-  const queryClient = useQueryClient();
-  const [q, setQ] = useState('');
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const searchInputRef = useSearchShortcut();
-  const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useState<'table' | 'gallery'>('table');
-  const [allExpanded, setAllExpanded] = useState(false);
-  const galleryRef = useRef<HarvestGalleryHandle>(null);
+  const {
+    q, setQ, isSearchFocused, setIsSearchFocused, searchInputRef,
+    showFilters, setShowFilters,
+    viewMode, setViewMode, allExpanded, setAllExpanded, galleryRef,
+    filters, setFilters,
+    filtered, loading, isFetching, harvestTotals,
+    isLoadingBU,
+    isLoadingEmp,
+    isLoadingFieldcode,
+    isLoadingTph,
+    isLoadingEmpByGang,
+    fcbaOptions, sectionOptions, kemandoranOptions,
+    fieldcodeOptions, tphOptions,
+    employeeOptions, tphDetailMap,
+    userLevel, canModify,
+    isFcbaLocked, isAfdelingLocked, isKemandoranLocked,
+    userFcbaCookie, userAfdelingCookie,
+    homeFcba, homeSection,
+    mutation, deleteMutation, queryClient,
+    open, setOpen,
+    isEditing, detailLoading,
+    deleteOpen,
+    form, setForm,
+    preview, setPreview,
+    imgRef, pdfRef,
+    selFcba,
+    selSection,
+    locLoading,
+    isFetchingDocumentNo,
+    getScopedFilters,
+    onAddClick,
+    handleSubmit, handleDelete,
+    closeDeleteModal, handleConfirmDelete,
+    onChangeFcba, onChangeSection, onChangeFieldcode,
+    onChangeGang, onChangeEmployee,
+    handleGetLocation, fetchDetail,
+    handleExport,
+  } = useHarvestData();
 
   const tourSteps: TourStep[] = useMemo(() => [
     {
@@ -383,1283 +170,6 @@ export default function HarvestPage() {
     },
   ], [tH]);
 
-  const [filters, setFilters] = useState<Filters>(() => {
-    const yesterday = getYesterdayISO();
-    const today = getTodayISO();
-    return {
-      tanggal: yesterday,
-      tanggal_end: today,
-      nodokumen: '',
-      kode_karyawan: '',
-      fcba: '',
-      afdeling: '',
-      tph: '',
-      kemandoran: '',
-    };
-  });
-
-  // Read tanggal/tanggal_end from URL params (from dashboard navigation)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tanggal = params.get('tanggal');
-    const tanggal_end = params.get('tanggal_end');
-    if (tanggal || tanggal_end) {
-      setFilters(prev => ({
-        ...prev,
-        ...(tanggal ? { tanggal } : {}),
-        ...(tanggal_end ? { tanggal_end } : {}),
-      }));
-    }
-  }, []);
-
-  const [userLevel, setUserLevel] = useState<UserLevel>('OTHER');
-  const [homeFcba, setHomeFcba] = useState<string>('');
-  const [homeSection, setHomeSection] = useState<string>('');
-  const [homeGang, setHomeGang] = useState<string>('');
-  const [userFcbaCookie, setUserFcbaCookie] = useState<string>('');
-  const [userAfdelingCookie, setUserAfdelingCookie] = useState<string>('');
-
-  // Modal states
-  const [open, setOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleteTargetId, setDeleteTargetId] = useState('');
-  const [deleteFile, setDeleteFile] = useState<File | undefined>(undefined);
-
-  // Form states
-  const [form, setForm] = useState<FormState>(initialForm);
-  const [preview, setPreview] = useState<string>('');
-  const imgRef = useRef<HTMLInputElement | null>(null);
-  const pdfRef = useRef<HTMLInputElement | null>(null);
-  const deletePdfRef = useRef<HTMLInputElement | null>(null);
-
-  // Cascading states for form
-  const [triplets, setTriplets] = useState<Triplet[]>([]);
-  const [selFcba, setSelFcba] = useState<string>('');
-  const [selSection, setSelSection] = useState<string>('');
-
-  // Location loading state
-  const [locLoading, setLocLoading] = useState<boolean>(false);
-
-  // Check if user can modify (ADM or KSI only)
-  const canModify = userLevel === 'ADM' || userLevel === 'KSI';
-
-  // ESC to close modal
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        setOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [open]);
-
-  /* ===== Bootstrap cookies ===== */
-  useEffect(() => {
-    setHomeFcba(cookieStore.getFcba());
-    setHomeSection(cookieStore.getSection());
-    setHomeGang(cookieStore.getGang());
-    setUserFcbaCookie(
-      cookieStore.getCookie('user_Fcba') || cookieStore.getCookie('user_fcba') || ''
-    );
-    setUserAfdelingCookie(
-      cookieStore.getCookie('user_Afdeling') || cookieStore.getCookie('user_afdeling') || ''
-    );
-
-    const levelRaw = cookieStore.getLevel();
-    if (
-      levelRaw === 'ADM' ||
-      levelRaw === 'MGR' ||
-      levelRaw === 'KSI' ||
-      levelRaw === 'MD1' ||
-      levelRaw === 'AST' ||
-      levelRaw === 'KRT' ||
-      levelRaw === 'KRA' ||
-      levelRaw === 'KRP' ||
-      levelRaw === 'MDP'
-    ) {
-      setUserLevel(levelRaw as UserLevel);
-    } else {
-      setUserLevel('OTHER');
-    }
-
-    const ckTrip = cookieStore.getCookie('opt_triplets');
-    if (ckTrip) {
-      try {
-        const arr = JSON.parse(ckTrip) as Triplet[];
-        if (Array.isArray(arr) && arr.length) setTriplets(arr);
-      } catch {
-        // ignore
-      }
-    }
-  }, []);
-
-  const getScopedFilters = useCallback(
-    (baseFilters: Filters): Filters => {
-      const scopedFilters: Filters = { ...baseFilters };
-      if (userLevel === 'ADM' || userLevel === 'OTHER') {
-        return scopedFilters;
-      }
-      scopedFilters.fcba = userFcbaCookie || homeFcba;
-      if (userLevel === 'MGR' || userLevel === 'KSI') {
-        // only FCBA locked
-      } else if (userLevel === 'MDP' || userLevel === 'KRP') {
-        scopedFilters.afdeling = userAfdelingCookie || homeSection;
-        scopedFilters.kemandoran = homeGang;
-      } else {
-        // MD1, AST, KRT, KRA
-        scopedFilters.afdeling = userAfdelingCookie || homeSection;
-      }
-      return scopedFilters;
-    },
-    [userLevel, homeFcba, homeSection, homeGang, userFcbaCookie, userAfdelingCookie]
-  );
-
-  const isFcbaLocked = userLevel !== 'ADM' && userLevel !== 'OTHER';
-  const isAfdelingLocked = !(
-    userLevel === 'ADM' ||
-    userLevel === 'MGR' ||
-    userLevel === 'KSI' ||
-    userLevel === 'OTHER'
-  );
-  const isKemandoranLocked = userLevel === 'MDP' || userLevel === 'KRP';
-
-  useEffect(() => {
-    setFilters(current => {
-      const next = getScopedFilters(current);
-      return JSON.stringify(next) === JSON.stringify(current) ? current : next;
-    });
-  }, [getScopedFilters]);
-
-  /* ===== Sync selFcba/selSection with user cookies ===== */
-  useEffect(() => {
-    if (userLevel !== 'ADM' && !selFcba) {
-      setSelFcba(userFcbaCookie || homeFcba || '');
-    }
-    if (!(userLevel === 'ADM' || userLevel === 'MGR' || userLevel === 'KSI') && !selSection) {
-      setSelSection(userAfdelingCookie || homeSection || '');
-    }
-  }, [userLevel, homeFcba, homeSection, selFcba, selSection, userFcbaCookie, userAfdelingCookie]);
-
-  /* ===== Query for harvest list ===== */
-
-  const {
-    data: items = [],
-    isLoading,
-    isFetching,
-    error: queryError,
-  } = useQuery({
-    queryKey: ['harvest', filters, userLevel, homeFcba, homeSection, homeGang],
-    queryFn: async () => {
-      const p = new URLSearchParams();
-      if (filters.tanggal) p.set('tanggal', filters.tanggal);
-      if (filters.tanggal_end) p.set('tanggal_end', filters.tanggal_end!);
-      if (filters.nodokumen) p.set('nodokumen', filters.nodokumen);
-      if (filters.kode_karyawan) p.set('kode_karyawan', filters.kode_karyawan);
-      if (filters.fcba) p.set('fcba', filters.fcba);
-      if (filters.afdeling) p.set('afdeling', filters.afdeling);
-      if (filters.tph) p.set('tph', filters.tph);
-      if (filters.kemandoran) p.set('kemandoran', filters.kemandoran);
-
-      const res = await fetch(`/api/harvest?${p.toString()}`, {
-        credentials: 'include',
-      });
-
-      if (!res.ok) {
-        if (res.status === 401) {
-          await logoutAndRedirect();
-          return [];
-        }
-        if (res.status === 404) return [];
-        throw new Error(`HTTP ${res.status}`);
-      }
-
-      const json: unknown = await res.json();
-      if (isUnauthenticatedJson(json)) {
-        await logoutAndRedirect();
-        return [];
-      }
-      const raw = extractArrayData<Harvest>(json);
-
-      // Remove duplicates and add row keys
-      const byId = new Map<string, Harvest>();
-      for (const row of raw) {
-        if (row?.id && !byId.has(row.id)) byId.set(row.id, row);
-      }
-      const dataRaw = Array.from(byId.values());
-
-      const seen = new Set<string>();
-      return dataRaw.map((it, idx) => {
-        const dateOnly = (it.tanggal || '').split(' ')[0];
-        // ⚡ Bolt Optimization: pre-calculate search content string
-        const searchContent = [
-          it.nodokumen,
-          it.kode_karyawan,
-          it.nama_karyawan,
-          it.fcba,
-          it.afdeling,
-          it.tph,
-          it.fieldcode,
-          it.status_harvesting,
-          it.kemandoran,
-          dateOnly,
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-
-        const candidate = [it.id || '', it.nodokumen || '', dateOnly, String(idx)].join('|');
-        let key = candidate;
-        while (seen.has(key)) key = `${key}_`;
-        seen.add(key);
-        return {
-          ...it,
-          _rowKey: key,
-          _searchContent: searchContent,
-          // ⚡ Bolt Optimization: pre-calculate numeric values to avoid redundant regex parsing in loops
-          _outputNum: toNumber(it.output),
-          _mentahNum: toNumber(it.mentah),
-          _overNum: toNumber(it.overripe),
-          _busukNum: toNumber(it.busuk),
-          _busuk2Num: toNumber(it.busuk2),
-          _kecilNum: toNumber(it.buahkecil),
-          _partenoNum: toNumber(it.parteno),
-          _parteno50Num: toNumber(it.parteno50plus),
-          _brondolNum: toNumber(it.brondol),
-          _panjangNum: toNumber(it.tangkaipanjang),
-        };
-      });
-    },
-    enabled: !!homeFcba || userLevel === 'ADM',
-  });
-
-  const loading = isLoading || isFetching;
-
-  // Show toast on error
-  useEffect(() => {
-    if (queryError) {
-      const msg =
-        typeof queryError === 'string'
-          ? queryError
-          : queryError instanceof Error
-            ? queryError.message
-            : tH('toastFetchError');
-      toast.error(msg);
-    }
-  }, [queryError, tH]);
-
-  const { data: nextDocumentNo = '', isFetching: isFetchingDocumentNo } = useQuery({
-    queryKey: [
-      'harvest-document-no',
-      form.tanggal,
-      form.fcba,
-      form.afdeling,
-      form.fieldcode,
-      form.noancak,
-      form.kemandoran,
-    ],
-    queryFn: async () => {
-      const range = getMonthDateRange(form.tanggal);
-      if (
-        !range ||
-        !form.fcba ||
-        !form.afdeling ||
-        !form.fieldcode ||
-        !form.noancak ||
-        !form.kemandoran
-      ) {
-        return '';
-      }
-
-      const params = new URLSearchParams({
-        tanggal: range.start,
-        tanggal_end: range.end,
-        fcba: form.fcba,
-        afdeling: form.afdeling,
-        kemandoran: form.kemandoran,
-      });
-
-      const res = await fetch(`/api/harvest?${params.toString()}`, {
-        credentials: 'include',
-      });
-      if (res.status === 401) {
-        await logoutAndRedirect();
-        return '';
-      }
-      if (!res.ok) return '';
-
-      const json: unknown = await res.json();
-      if (isUnauthenticatedJson(json)) {
-        await logoutAndRedirect();
-        return '';
-      }
-
-      const rows = extractArrayData<Harvest>(json);
-      const maxRunning = rows.reduce(
-        (max, row) => Math.max(max, getRunningNumber(row.nodokumen)),
-        0
-      );
-
-      return buildHarvestDocumentNo({
-        fcba: form.fcba,
-        afdeling: form.afdeling,
-        fieldcode: form.fieldcode,
-        noancak: form.noancak,
-        tanggal: form.tanggal,
-        running: maxRunning + 1,
-      });
-    },
-    enabled:
-      !isEditing &&
-      !!form.tanggal &&
-      !!form.fcba &&
-      !!form.afdeling &&
-      !!form.fieldcode &&
-      !!form.noancak &&
-      !!form.kemandoran,
-    staleTime: 0,
-  });
-
-  useEffect(() => {
-    if (isEditing || !nextDocumentNo) return;
-    setForm(s => (s.nodokumen === nextDocumentNo ? s : { ...s, nodokumen: nextDocumentNo }));
-  }, [isEditing, nextDocumentNo]);
-
-  useEffect(() => {
-    if (isEditing) return;
-    setForm(s => (s.nodokumen ? { ...s, nodokumen: '' } : s));
-  }, [
-    isEditing,
-    form.tanggal,
-    form.fcba,
-    form.afdeling,
-    form.fieldcode,
-    form.noancak,
-    form.kemandoran,
-  ]);
-
-  /* ===== Parallel data fetching with useQuery ===== */
-  // Business units query - runs in parallel
-  const { data: businessUnits = [], isLoading: isLoadingBU } = useQuery({
-    queryKey: ['businessUnits'],
-    queryFn: async () => {
-      try {
-        const bu = await fetchBusinessUnits({ fctype: 'E' });
-        localStorage.setItem('business_units', JSON.stringify(bu));
-        return bu;
-      } catch (err) {
-        console.warn('failed to fetch business units:', err);
-        const cached = localStorage.getItem('business_units');
-        if (cached) {
-          try {
-            return JSON.parse(cached) as BusinessUnit[];
-          } catch {
-            return [];
-          }
-        }
-        return [];
-      }
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-
-  // Employees query - runs in parallel, depends on cookies only
-  const { data: employees = [], isLoading: isLoadingEmp } = useQuery({
-    queryKey: ['employees', userLevel, homeFcba, homeSection],
-    queryFn: async () => {
-      let apiUrl = '/api/karyawans';
-      const params = new URLSearchParams();
-
-      if (userLevel === 'AST') {
-        if (homeFcba) params.append('fcba', homeFcba);
-        if (homeSection) params.append('sectionname', homeSection);
-      } else if (userLevel === 'MGR' || userLevel === 'KSI') {
-        // ADM, MGR, KSI get employees by fcba (can select afdeling in UI)
-        if (homeFcba) params.append('fcba', homeFcba);
-      }
-
-      if (params.toString()) {
-        apiUrl += `?${params.toString()}`;
-      }
-
-      const r = await fetch(apiUrl, { credentials: 'include' });
-      const j: unknown = await r.json();
-      const rowsRaw = extractArrayData<EmployeesApiRow>(j);
-
-      // Build triplets from employees if no cookie
-      const ckTrip = cookieStore.getCookie('opt_triplets');
-      if (!ckTrip && rowsRaw.length > 0) {
-        const map = new Map<string, Triplet>();
-        for (const it of rowsRaw) {
-          const fcba = String(it.fcba ?? '').trim();
-          const sectionname = String(it.sectionname ?? '').trim();
-          const gangcode = String(it.gangcode ?? '').trim();
-          if (!fcba && !sectionname && !gangcode) continue;
-          const key = `${fcba}|${sectionname}|${gangcode}`;
-          if (!map.has(key)) map.set(key, { fcba, sectionname, gangcode });
-        }
-        setTriplets(Array.from(map.values()));
-      }
-
-      // Build employees map
-      const mapEmp = new Map<string, Employee>();
-      for (const it of rowsRaw) {
-        const fccode = String(it.fccode ?? '').trim();
-        if (!fccode) continue;
-        if (!mapEmp.has(fccode)) {
-          // Extract noancak from API response
-          const noancakValue =
-            (it as { noancak?: unknown }).noancak ?? (it as { NOANCAK?: unknown }).NOANCAK;
-          const noancak = typeof noancakValue === 'string' ? noancakValue.trim() : undefined;
-
-          mapEmp.set(fccode, {
-            fccode,
-            fullname: typeof it.fcname === 'string' ? it.fcname : undefined,
-            fcba: String(it.fcba ?? '').trim(),
-            sectionname: String(it.sectionname ?? '').trim(),
-            gangcode: String(it.gangcode ?? '').trim(),
-            noancak,
-            attendance_type: String(it.attendance_type ?? '').trim(),
-            section_destination: String(it.section_destination ?? '').trim(),
-          });
-        }
-      }
-      return Array.from(mapEmp.values());
-    },
-    enabled: !!homeFcba || userLevel === 'ADM',
-    staleTime: 30 * 60 * 1000, // 30 minutes - for poor network conditions
-    gcTime: 60 * 60 * 1000, // 1 hour garbage collection
-  });
-
-  const buLookups = useMemo(() => getBusinessUnitLookups(businessUnits), [businessUnits]);
-
-  // Query: Field Codes from TPH API (by fcba + afdeling)
-  const { data: tphFieldcodeData = [], isLoading: isLoadingFieldcode } = useQuery({
-    queryKey: ['tph-fieldcodes', selFcba, selSection],
-    queryFn: async () => {
-      if (!selFcba || !selSection) return [];
-
-      const params = new URLSearchParams();
-      params.append('fcba', selFcba);
-      params.append('afdeling', selSection);
-
-      try {
-        const res = await fetch(`/api/fields?${params.toString()}`, {
-          credentials: 'include',
-        });
-        if (!res.ok) {
-          if (res.status === 404) return [];
-          throw new Error(`HTTP ${res.status}`);
-        }
-        const json = await res.json();
-        const data = extractArrayData<{
-          fccode?: string;
-          fcname?: string;
-          planting_year?: string;
-          bjr?: string;
-          ha_planted?: string;
-          ownership?: string;
-          status?: string;
-          afdeling?: string;
-          fcba?: string;
-        }>(json);
-        return data;
-      } catch (err) {
-        console.error('Failed to fetch TPH fieldcodes:', err);
-        return [];
-      }
-    },
-    enabled: !!selFcba && !!selSection,
-    staleTime: 30 * 60 * 1000, // 30 minutes
-    gcTime: 60 * 60 * 1000,
-  });
-
-  // Derived: distinct Field Code options from TPH data
-  const fieldcodeOptions: Option[] = useMemo(() => {
-    if (!tphFieldcodeData.length) return [];
-    const set = new Set<string>();
-    for (const t of tphFieldcodeData) {
-      const fc = String(t.fccode ?? '').trim();
-      if (fc) set.add(fc);
-    }
-    return Array.from(set)
-      .sort()
-      .map(v => ({ value: v, label: v }));
-  }, [tphFieldcodeData]);
-
-  // Query: TPH data from API (by fcba + afdeling + fieldcode)
-  const { data: tphDetailData = [], isLoading: isLoadingTph } = useQuery({
-    queryKey: ['tph-detail', selFcba, selSection, form.fieldcode],
-    queryFn: async () => {
-      if (!selFcba || !selSection || !form.fieldcode) return [];
-
-      const params = new URLSearchParams();
-      params.append('fcba', selFcba);
-      params.append('afdeling', selSection);
-      params.append('fieldcode', form.fieldcode);
-
-      try {
-        const res = await fetch(`/api/tph?${params.toString()}`, {
-          credentials: 'include',
-        });
-        if (!res.ok) {
-          if (res.status === 404) return [];
-          throw new Error(`HTTP ${res.status}`);
-        }
-        const json = await res.json();
-        const data = extractArrayData<{
-          notph?: string;
-          fieldcode?: string;
-          ancakno?: string;
-          division?: string;
-        }>(json);
-        return data;
-      } catch (err) {
-        console.error('Failed to fetch TPH detail:', err);
-        return [];
-      }
-    },
-    enabled: !!selFcba && !!selSection && !!form.fieldcode,
-    staleTime: 30 * 60 * 1000, // 30 minutes
-    gcTime: 60 * 60 * 1000,
-  });
-
-  // Derived: TPH (notph) options based on selected fieldcode
-  const tphOptions: Option[] = useMemo(() => {
-    if (!tphDetailData.length) return [];
-    const set = new Map<string, string>();
-    for (const t of tphDetailData) {
-      const notph = String(t.notph ?? '').trim();
-      if (notph && !set.has(notph)) {
-        set.set(notph, notph);
-      }
-    }
-    return Array.from(set, ([value, label]) => ({ value, label })).sort((a, b) =>
-      a.label.localeCompare(b.label)
-    );
-  }, [tphDetailData]);
-
-  // Derived: Ancak options based on selected fieldcode (from detail data)
-  /* ===== Prefetch TPH data for poor network conditions ===== */
-  const prefetchTphData = useCallback(
-    async (fcba: string, section: string, fieldcode?: string) => {
-      // ⚡ Bolt Optimization: Use Map lookup for O(1) BU name resolution
-      const fcbaName = resolveBusinessUnitName(fcba, buLookups);
-
-      if (fieldcode) {
-        // Prefetch TPH Detail
-        await queryClient.prefetchQuery({
-          queryKey: ['tph-detail', fcba, section, fieldcode],
-          queryFn: async () => {
-            try {
-              const params = new URLSearchParams({
-                fcba: fcbaName,
-                afdeling: section,
-                fieldcode,
-              });
-              const res = await fetch(`/api/tph?${params.toString()}`, {
-                credentials: 'include',
-              });
-              if (!res.ok) return [];
-              const json = await res.json();
-              return extractArrayData<{
-                notph?: string;
-                fieldcode?: string;
-                ancakno?: string;
-                division?: string;
-              }>(json);
-            } catch {
-              return [];
-            }
-          },
-          staleTime: 30 * 60 * 1000,
-        });
-      } else {
-        // Prefetch Field Codes
-        await queryClient.prefetchQuery({
-          queryKey: ['tph-fieldcodes', fcba, section],
-          queryFn: async () => {
-            try {
-              const params = new URLSearchParams({
-                fcba: fcbaName,
-                afdeling: section,
-              });
-              const res = await fetch(`/api/tph?${params.toString()}`, {
-                credentials: 'include',
-              });
-              if (!res.ok) return [];
-              const json = await res.json();
-              return extractArrayData<{
-                notph?: string;
-                fieldcode?: string;
-                ancakno?: string;
-                division?: string;
-              }>(json);
-            } catch {
-              return [];
-            }
-          },
-          staleTime: 30 * 60 * 1000,
-        });
-      }
-    },
-    [buLookups, queryClient]
-  );
-
-  useEffect(() => {
-    // Prefetch Field Codes saat FCBA & Afdeling sudah terpilih
-    if (selFcba && selSection) {
-      prefetchTphData(selFcba, selSection);
-    }
-  }, [selFcba, selSection, prefetchTphData]);
-
-  useEffect(() => {
-    // Prefetch TPH Detail saat Field Code terpilih
-    if (selFcba && selSection && form.fieldcode) {
-      prefetchTphData(selFcba, selSection, form.fieldcode);
-    }
-  }, [selFcba, selSection, form.fieldcode, prefetchTphData]);
-
-  /* ===== Location handler ===== */
-  const handleGetLocation = () => {
-    if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
-      toast.error(tH('toastGeolocUnsupported'));
-      return;
-    }
-
-    setLocLoading(true);
-
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        const { latitude, longitude } = pos.coords;
-        const value = `${latitude},${longitude}`;
-        setForm(s => ({ ...s, location: value }));
-        setLocLoading(false);
-      },
-      err => {
-        console.error('Geolocation error:', err);
-        toast.error(
-          err.code === err.PERMISSION_DENIED ? tH('toastGeolocDenied') : tH('toastGeolocError')
-        );
-        setLocLoading(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 0,
-      }
-    );
-  };
-
-  /* ===== Mutations ===== */
-  const mutation = useMutation({
-    mutationFn: async ({ url, method, body }: { url: string; method: string; body: FormData }) => {
-      // Add CSRF token to FormData if not already present
-      const csrfToken = document.cookie.match(/csrf_token=([^;]+)/)?.[1];
-      if (csrfToken && !body.has('_csrf_token')) {
-        body.append('_csrf_token', csrfToken);
-      }
-
-      const headers: Record<string, string> = {};
-      if (csrfToken) {
-        headers['X-CSRF-Token'] = csrfToken;
-      }
-
-      const res = await fetch(url, {
-        method,
-        body,
-        credentials: 'include',
-        headers,
-      });
-      if (res.status === 401) {
-        await logoutAndRedirect();
-        throw new Error('Unauthorized');
-      }
-      const json: Record<string, unknown> = await res.json();
-      if (isUnauthenticatedJson(json)) {
-        await logoutAndRedirect();
-        throw new Error('Unauthorized');
-      }
-      if (!res.ok || !json.ok) {
-        const errorMsg =
-          typeof json.message === 'string'
-            ? json.message
-            : typeof json.error === 'string'
-              ? json.error
-              : 'Operation failed';
-        throw new Error(errorMsg);
-      }
-      return json;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['harvest'] });
-      setOpen(false);
-      setForm(initialForm);
-      setPreview('');
-      if (imgRef.current) imgRef.current.value = '';
-      if (pdfRef.current) pdfRef.current.value = '';
-      toast.success(isEditing ? tH('toastSaveSuccess') : tH('toastAddSuccess'));
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async ({ id, file }: { id: string; file: File }) => {
-      const body = new FormData();
-      body.append('ba_deleted', file);
-      body.append('_method', 'DELETE');
-
-      const res = await fetch(`/api/harvest/${id}`, {
-        method: 'POST',
-        body,
-        credentials: 'include',
-      });
-      if (res.status === 401) {
-        await logoutAndRedirect();
-        throw new Error('Unauthorized');
-      }
-      const json: Record<string, unknown> = await res.json();
-      if (isUnauthenticatedJson(json)) {
-        await logoutAndRedirect();
-        throw new Error('Unauthorized');
-      }
-      if (!res.ok || !json.ok) {
-        const errorMsg =
-          typeof json.message === 'string'
-            ? json.message
-            : typeof json.error === 'string'
-              ? json.error
-              : tH('toastDeleteError');
-        throw new Error(errorMsg);
-      }
-      return id;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['harvest'] });
-      toast.success(tH('toastDeleteSuccess'));
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
-  });
-
-  /* ===== Fetch detail for edit ===== */
-  const fetchDetail = useCallback(
-    async (id: string) => {
-      setIsEditing(true);
-      setDetailLoading(true);
-      setOpen(true);
-      try {
-        const res = await fetch(`/api/harvest/${id}`, {
-          credentials: 'include',
-        });
-        if (res.status === 401) {
-          await logoutAndRedirect();
-          return;
-        }
-        const json = await res.json();
-        if (isUnauthenticatedJson(json)) {
-          await logoutAndRedirect();
-          return;
-        }
-        const data = extractSingleData<Harvest>(json);
-        if (!res.ok || !data) throw new Error('Gagal ambil data');
-
-        setForm({
-          id: data.id,
-          nodokumen: data.nodokumen || '',
-          tanggal: data.tanggal ? data.tanggal.split(' ')[0] : '',
-          kode_karyawan_mandor1: data.kode_karyawan_mandor1 || '',
-          kode_karyawan_mandor_panen: data.kode_karyawan_mandor_panen || '',
-          kode_karyawan_kerani: data.kode_karyawan_kerani || '',
-          kode_karyawan: data.kode_karyawan || '',
-          noancak: data.noancak || '',
-          tph: data.tph || '',
-          fieldcode: data.fieldcode || '',
-          fcba: data.fcba || '',
-          afdeling: data.afdeling || '',
-          output: data.output || '',
-          mentah: data.mentah || '0',
-          overripe: data.overripe || '0',
-          busuk: data.busuk || '0',
-          busuk2: data.busuk2 || '0',
-          buahkecil: data.buahkecil || '0',
-          brondol: data.brondol || '0',
-          alasbrondol: data.alasbrondol || '',
-          tangkaipanjang: data.tangkaipanjang || '0',
-          parteno: data.parteno || '0',
-          parteno50plus: data.parteno50plus || '0',
-          status_assistensi: data.status_assistensi || '',
-          status_harvesting: data.status_harvesting || 'Planned',
-          kemandoran: data.kemandoran || '',
-          exception_case: data.exception_case || '',
-          location: data.location || '',
-          id_device:
-            data.id_device || `${getReadableDevice()} • ${getOrCreateDeviceIds().deviceId}`,
-          card_id: data.card_id || '',
-          images: null,
-          no_ba_exca: data.no_ba_exca || null,
-        });
-        setPreview(data.images ? getProxiedImageUrl(data.images) : '');
-        setSelFcba(data.fcba || homeFcba || '');
-        setSelSection(data.afdeling || homeSection || '');
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : tH('toastFetchDetailError');
-        toast.error(msg);
-        setOpen(false);
-      } finally {
-        setDetailLoading(false);
-      }
-    },
-    [homeFcba, homeSection, tH]
-  );
-
-  /* ===== Computed options for cascading selects ===== */
-  const fcbaOptions = useMemo(() => {
-    if (businessUnits && businessUnits.length) {
-      return businessUnits
-        .map(b => ({
-          value: b.fccode,
-          label: b.fcname ? `${b.fccode} - ${b.fcname}` : b.fccode,
-        }))
-        .sort((a, b) => a.label.localeCompare(b.label));
-    }
-    return Array.from(new Set(triplets.map(t => t.fcba).filter(Boolean)))
-      .sort()
-      .map(v => ({ value: v, label: v }));
-  }, [triplets, businessUnits]);
-
-  const sectionOptions: Option[] = useMemo(() => {
-    if (!selFcba) return [];
-    // ⚡ Bolt Optimization: Pre-resolve the current FCBA code and name once.
-    const selCode = resolveBusinessUnitCode(selFcba, buLookups);
-    const selName = resolveBusinessUnitName(selFcba, buLookups);
-
-    // ⚡ Bolt Optimization: Single-pass O(N) loop to build unique section names
-    const sections = new Set<string>();
-    for (const t of triplets) {
-      if (t.fcba === selFcba || t.fcba === selCode || t.fcba === selName) {
-        if (t.sectionname) sections.add(t.sectionname);
-      }
-    }
-
-    return Array.from(sections)
-      .sort()
-      .map(v => ({ value: v, label: v }));
-  }, [triplets, selFcba, buLookups]);
-
-  // Kemandoran: only gangs starting with MD
-  const kemandoranOptions: Option[] = useMemo(() => {
-    if (!selFcba || !selSection) return [];
-    // ⚡ Bolt Optimization: Use Map lookup for O(1) BU name resolution
-    const fcbaName = resolveBusinessUnitName(selFcba, buLookups);
-
-    // ⚡ Bolt Optimization: Single-pass O(N) loop to build unique gang codes
-    const set = new Set<string>();
-    for (const e of employees) {
-      if (
-        (e.fcba || '') === fcbaName &&
-        (e.sectionname || '') === selSection &&
-        (e.gangcode || '').toUpperCase().startsWith('MD')
-      ) {
-        const raw = (e.gangcode || '').trim();
-        if (raw) set.add(raw);
-      }
-    }
-
-    return Array.from(set)
-      .sort()
-      .map(v => ({ value: v, label: v }));
-  }, [employees, selFcba, selSection, buLookups]);
-
-  // Query: Employees from absensi/attendance API - independent of cascading selects
-  const { data: employeesByGang = [], isLoading: isLoadingEmpByGang } = useQuery({
-    queryKey: ['employees-absensi', form.tanggal, userLevel, homeFcba, homeSection, homeGang],
-    queryFn: async () => {
-      if (!form.tanggal) return [];
-
-      const params = new URLSearchParams();
-      params.append('tanggal', form.tanggal);
-
-      // Filter berdasarkan fcba login user
-      if (['KRP', 'MDP', 'KRA', 'MD1', 'AST', 'KSI', 'MGR'].includes(userLevel)) {
-        if (homeFcba) params.append('fcba', homeFcba);
-      }
-
-      // Filter berdasarkan level user
-      if (['KRP', 'MDP', 'KRA', 'MD1', 'AST'].includes(userLevel)) {
-        if (homeSection) params.append('afdeling', homeSection);
-      }
-      if (['KRP', 'MDP'].includes(userLevel)) {
-        if (homeGang) params.append('kemandoran', homeGang);
-      }
-
-      try {
-        const res = await fetch(`/api/attendance?${params.toString()}`, {
-          credentials: 'include',
-        });
-        if (!res.ok) {
-          if (res.status === 404) return [];
-          // Baca error message dari response body untuk user-friendly feedback
-          let detail = `HTTP ${res.status}`;
-          try {
-            const errBody = await res.clone().json();
-            if (errBody?.error) detail = errBody.error;
-          } catch {
-            /* fallback ke HTTP status */
-          }
-          throw new Error(detail);
-        }
-        const json = await res.json();
-        const rowsRaw = extractArrayData<Record<string, unknown>>(json);
-
-        // Build employees map
-        const mapEmp = new Map<string, Employee>();
-        for (const it of rowsRaw) {
-          const fccode = String(it.kode_karyawan ?? it.fccode ?? '').trim();
-          if (!fccode) continue;
-          if (!mapEmp.has(fccode)) {
-            const noancakValue =
-              (it as { noancak?: unknown }).noancak ??
-              (it as { NOANCAK?: unknown }).NOANCAK ??
-              (it as { pengancakan?: unknown }).pengancakan;
-            const noancak = typeof noancakValue === 'string' ? noancakValue.trim() : undefined;
-
-            mapEmp.set(fccode, {
-              fccode,
-              fullname:
-                typeof it.namakaryawan === 'string'
-                  ? it.namakaryawan
-                  : typeof it.fcname === 'string'
-                    ? it.fcname
-                    : undefined,
-              fcba: String(it.fcba ?? '').trim(),
-              sectionname: String(it.section ?? it.sectionname ?? '').trim(),
-              gangcode: String(it.gangcode ?? it.kemandoran ?? '').trim(),
-              noancak,
-              attendance_type: String(it.attendance_type ?? '').trim(),
-              section_destination: String(it.section_destination ?? '').trim(),
-              fcba_destination: String(it.fcba_destination ?? '').trim(),
-            });
-          }
-        }
-        return Array.from(mapEmp.values());
-      } catch (err) {
-        console.error('Failed to fetch employees from absensi:', err);
-        return [];
-      }
-    },
-    enabled: !!form.tanggal && (!!homeFcba || userLevel === 'ADM'),
-    staleTime: 2 * 60 * 1000, // 2 minutes - data absensi segar
-    gcTime: 5 * 60 * 1000,
-  });
-
-  /**
-   * ⚡ Bolt Optimization: Use a Map for O(1) employee lookups from the gang list.
-   * This replaces O(N) searches during employee selection and auto-fills.
-   */
-  const employeeByGangMap = useMemo(() => {
-    const map = new Map<string, Employee>();
-    for (const e of employeesByGang) {
-      if (e.fccode) map.set(e.fccode, e);
-    }
-    return map;
-  }, [employeesByGang]);
-
-  // Employee options from employeesByGang query
-  const employeeOptions: Option[] = useMemo(() => {
-    if (!employeesByGang.length) return [];
-    return employeesByGang
-      .map(e => ({
-        value: e.fccode,
-        label: e.fullname ? `${e.fccode} - ${e.fullname}` : e.fccode,
-      }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [employeesByGang]);
-
-  /**
-   * ⚡ Bolt Optimization: Use a Map for O(1) TPH detail lookups.
-   * This ensures immediate UI responsiveness when selecting a TPH from the list.
-   */
-  const tphDetailMap = useMemo(() => {
-    const map = new Map<string, (typeof tphDetailData)[0]>();
-    for (const t of tphDetailData) {
-      if (t.notph) map.set(t.notph, t);
-    }
-    return map;
-  }, [tphDetailData]);
-
-  /* ===== Cascading change handlers ===== */
-  const onChangeFcba = (v: string) => {
-    setSelFcba(v);
-    setSelSection('');
-    setForm(s => ({
-      ...s,
-      fcba: v,
-      afdeling: '',
-      fieldcode: '', // fieldcode dari TPH, reset saat FCBA berubah
-      kemandoran: '',
-      noancak: '',
-      kode_karyawan: '',
-      tph: '',
-    }));
-  };
-
-  const onChangeSection = (v: string) => {
-    setSelSection(v);
-    // fieldcode tidak direset saat section berubah (karena dari TPH API)
-    setForm(s => ({
-      ...s,
-      afdeling: v,
-      kemandoran: '',
-      kode_karyawan: '',
-    }));
-  };
-
-  const onChangeFieldcode = (v: string) => {
-    setForm(s => ({
-      ...s,
-      fieldcode: v,
-      noancak: '', // reset noancak saat fieldcode berubah
-      tph: '',
-    }));
-  };
-
-  const onChangeGang = (v: string) => {
-    setForm(s => ({
-      ...s,
-      kemandoran: v,
-      kode_karyawan: '',
-    }));
-  };
-
-  const onChangeEmployee = (fccode: string) => {
-    // ⚡ Bolt Optimization: O(1) lookup via Map instead of O(N) .find()
-    const emp = employeeByGangMap.get(fccode);
-    if (!emp) return;
-
-    // Update state FCBA & Afdeling untuk trigger cascading query Field Code & TPH
-    setSelFcba(emp.fcba || '');
-    setSelSection(emp.sectionname || '');
-
-    // Isi form dari data karyawan — otomatis mengisi FCBA, Afdeling, dan
-    // mereset fieldcode/tph/noancak agar cascading select terpicu
-    setForm(s => ({
-      ...s,
-      kode_karyawan: fccode,
-      fcba: emp.fcba || '',
-      afdeling: emp.sectionname || '',
-      kemandoran: emp.gangcode || '',
-      fieldcode: '',
-      tph: '',
-      noancak: '',
-    }));
-  };
-
-  /* ===== Device IDs ===== */
-  useEffect(() => {
-    const { deviceId } = getOrCreateDeviceIds();
-    setForm(s => ({
-      ...s,
-      id_device: s.id_device || `${getReadableDevice()} • ${deviceId}`,
-    }));
-  }, []);
-
-  /* ===== Form handlers ===== */
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (mutation.isPending) return;
-    if (!canModify) {
-      toast.error(tH('toastNoPermission'));
-      return;
-    }
-
-    // Validasi semua field bertanda *
-    const requiredFields: { value: string; label: string }[] = [
-      { value: form.tanggal, label: tH('formTanggal') },
-      { value: form.kode_karyawan, label: tH('formKaryawan') },
-      { value: form.fcba, label: tH('formFcba') },
-      { value: form.afdeling, label: tH('formAfdeling') },
-      { value: form.fieldcode, label: tH('formFieldCode') },
-      { value: form.tph, label: tH('formTph') },
-      { value: form.nodokumen, label: tH('formNoDokumen') },
-      { value: form.output, label: tH('formOutput') },
-    ];
-    const emptyFields = requiredFields.filter(f => !f.value);
-    if (emptyFields.length > 0) {
-      const names = emptyFields.map(f => `'${f.label}'`).join(', ');
-      toast.error(tH('toastFieldRequired', { fields: names }));
-      return;
-    }
-
-    // Validasi file upload
-    if (!isEditing) {
-      if (!(form.no_ba_exca instanceof File)) {
-        toast.error(tH('toastPdfUploadRequired'));
-        return;
-      }
-    } else {
-      // Edit: wajib diisi jika belum ada file sebelumnya
-      if (
-        !(form.no_ba_exca instanceof File) &&
-        !(typeof form.no_ba_exca === 'string' && form.no_ba_exca)
-      ) {
-        toast.error(tH('toastPdfUploadRequired'));
-        return;
-      }
-    }
-
-    const formData = new FormData();
-    Object.entries(form).forEach(([key, value]) => {
-      if (key === 'images' && value instanceof File) {
-        formData.append(key, value);
-      } else if (key === 'no_ba_exca' && value instanceof File) {
-        formData.append(key, value);
-      } else if (key === 'no_ba_exca') {
-        // skip — jangan kirim string nama file lama
-      } else if (value !== null && value !== undefined) {
-        formData.append(key, String(value));
-      }
-    });
-
-    const url = isEditing && form.id ? `/api/harvest/${form.id}` : '/api/harvest';
-    const method = isEditing && form.id ? 'PUT' : 'POST';
-
-    mutation.mutate({ url, method, body: formData });
-  };
-
-  const handleDelete = useCallback((id: string) => {
-    setDeleteTargetId(id);
-    setDeleteFile(undefined);
-    if (deletePdfRef.current) deletePdfRef.current.value = '';
-    setDeleteOpen(true);
-  }, []);
-
-  const closeDeleteModal = () => {
-    if (deleteMutation.isPending) return;
-    setDeleteOpen(false);
-    setDeleteTargetId('');
-    setDeleteFile(undefined);
-    if (deletePdfRef.current) deletePdfRef.current.value = '';
-  };
-
-  const handleConfirmDelete = () => {
-    if (!deleteTargetId) return;
-    if (!deleteFile) {
-      toast.error(tH('toastPdfRequired'));
-      return;
-    }
-    if (deleteFile.type !== 'application/pdf') {
-      toast.error(tH('toastPdfFormat'));
-      return;
-    }
-    if (deleteFile.size > 2 * 1024 * 1024) {
-      toast.error(tH('toastPdfSize'));
-      return;
-    }
-
-    deleteMutation.mutate(
-      { id: deleteTargetId, file: deleteFile },
-      {
-        onSuccess: () => {
-          setDeleteOpen(false);
-          setDeleteTargetId('');
-          setDeleteFile(undefined);
-          if (deletePdfRef.current) deletePdfRef.current.value = '';
-        },
-      }
-    );
-  };
-
-  /* ===== Quick search ===== */
-  // ⚡ Bolt Optimization: Consolidate filtering and totals calculation into a single-pass O(N) loop.
-  // This reduces iterations by 50% during search/filter operations.
-  const { filtered, harvestTotals } = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    const result: Harvest[] = [];
-    const totals = {
-      output: 0,
-      mentah: 0,
-      overripe: 0,
-      busuk: 0,
-      brondol: 0,
-    };
-
-    for (const it of items) {
-      if (!s || it._searchContent?.includes(s)) {
-        result.push(it);
-
-        // ⚡ Bolt Optimization: Use pre-calculated numbers to avoid thousands of O(N*M) toNumber/regex calls during search
-        totals.output += it._outputNum || 0;
-        totals.mentah += it._mentahNum || 0;
-        totals.overripe += it._overNum || 0;
-        totals.busuk += it._busukNum || 0;
-        totals.brondol += it._brondolNum || 0;
-      }
-    }
-
-    return { filtered: result, harvestTotals: totals };
-  }, [q, items]);
-
-  const totalCards = [
-    {
-      label: tH('totalJanjang'),
-      value: harvestTotals.output,
-      className: 'text-primary',
-    },
-    {
-      label: tH('totalBrondolan'),
-      value: harvestTotals.brondol,
-      className: 'text-success',
-    },
-  ];
-
-  /* ===== EXPORT EXCEL ===== */
-  const handleExport = async () => {
-    if (filtered.length === 0) {
-      toast.error(tH('toastNoExportData'));
-      return;
-    }
-
-    const dataToExport = filtered.map((r, idx) => ({
-      No: idx + 1,
-      'No Dokumen': r.nodokumen || '-',
-      Tanggal: (r.tanggal || '').split(' ')[0],
-      'Kode Karyawan': r.kode_karyawan || '-',
-      'Nama Karyawan': r.nama_karyawan || '-',
-      Kemandoran: r.kemandoran || '-',
-      FCBA: r.fcba || '-',
-      Afdeling: r.afdeling || '-',
-      TPH: r.tph || '-',
-      'Field Code': r.fieldcode || '-',
-      Output: r.output || '0',
-      Mentah: r.mentah || '0',
-      Overripe: r.overripe || '0',
-      Busuk: r.busuk || '0',
-      Busuk2: r.busuk2 || '0',
-      'Buah Kecil': r.buahkecil || '0',
-      Brondol: r.brondol || '0',
-      'Alas Brondol': r.alasbrondol || '0',
-      'Tangkai Panjang': r.tangkaipanjang || '0',
-      Parteno: r.parteno || '0',
-      'Parteno 50+': r.parteno50plus || '0',
-      Status: r.status_harvesting || '-',
-      Lokasi: r.location || '-',
-    }));
-
-    exportJsonToCsv(
-      dataToExport,
-      `Harvesting_${filters.tanggal || 'all'}_${filters.tanggal_end || 'all'}.csv`
-    );
-  };
-
-  /* ===== Columns ===== */
   const columns: TableColumn<Harvest>[] = useMemo(
     () => [
       {
@@ -1955,30 +465,7 @@ export default function HarvestPage() {
         width: '90px',
         cell: (r: Harvest) =>
           r.images ? (
-            <a
-              href={getProxiedImageUrl(r.images)}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={tH('openPhoto')}
-            >
-              <div className="relative w-10 h-10 rounded-lg ring-1 ring-base-300 bg-base-200 overflow-hidden">
-                <Image
-                  src={getProxiedImageUrl(r.images)}
-                  alt="foto"
-                  fill
-                  className="object-cover"
-                  loading="lazy"
-                  onError={e => {
-                    const img = e?.currentTarget as HTMLImageElement | null;
-                    if (img) {
-                      img.onerror = null;
-                      img.src = PLACEHOLDER_IMAGE;
-                    }
-                  }}
-                  unoptimized
-                />
-              </div>
-            </a>
+            <PhotoCell imageUrl={r.images} alt="foto" href={r.images} size={40} />
           ) : (
             '-'
           ),
@@ -1988,89 +475,63 @@ export default function HarvestPage() {
     [canModify, fetchDetail, handleDelete, userLevel, localeTag, tH]
   );
 
+  const totalCards = [
+    {
+      label: tH('totalJanjang'),
+      value: harvestTotals.output,
+      className: 'text-primary',
+    },
+    {
+      label: tH('totalBrondolan'),
+      value: harvestTotals.brondol,
+      className: 'text-success',
+    },
+  ];
+
   return (
     <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
       <div className="p-4 sm:p-6 max-w-screen-2xl mx-auto w-full overflow-x-hidden space-y-4">
-        {/* Header */}
-        <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start animate-slideUp">
-          <h1
-            className="text-2xl sm:text-3xl font-bold min-w-0 truncate"
-            title={tH('pageTitleTooltip')}
-          >
-            {tH('pageTitle')}
-          </h1>
-          <div className="flex justify-start sm:justify-end flex-wrap w-full join" data-tour="action-buttons">
-            <AppTour steps={tourSteps} btnClassName="join-item" />
-            <button className="btn btn-outline btn-sm join-item" onClick={() => setShowFilters(s => !s)} data-tour="filter-button">
-              <Icon name="filter" className="h-4 w-4" />
-              <span className="hidden sm:inline">{showFilters ? tH('hideFilters') : tH('showFilters')}</span>
-            </button>
-            <button
-              className={`btn btn-outline btn-sm join-item ${loading ? 'btn-disabled' : ''}`}
-              onClick={() => queryClient.invalidateQueries({ queryKey: ['harvest'] })}
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <span className="loading loading-spinner loading-xs" />
-                  <span className="hidden sm:inline">{tH('loading')}</span>
-                </>
-              ) : (
-                <>
-                  <Icon name="refresh" className="h-4 w-4" />
-                  <span className="hidden sm:inline">{tH('refresh')}</span>
-                </>
-              )}
-            </button>
-            <button
-              className="btn btn-outline btn-sm join-item"
-              onClick={handleExport}
-              title={tH('exportTooltip')}
-            >
-              <Icon name="export" className="h-4 w-4" />
-              <span className="hidden sm:inline">{tH('export')}</span>
-            </button>
-            {canModify && (
-              <button
-                className="btn btn-primary btn-sm join-item"
-                data-tour="add-button"
-                onClick={() => {
-                  setIsEditing(false);
-                  // Initialize form with today's date and user cookies
-                  setForm({
-                    ...initialForm,
-                    tanggal: getTodayISO(),
-                    fcba: userLevel === 'ADM' ? '' : userFcbaCookie || homeFcba || '',
-                    afdeling:
-                      userLevel === 'ADM' || userLevel === 'KSI'
-                        ? ''
-                        : userAfdelingCookie || homeSection || '',
-                  });
-                  setPreview('');
-                  // Initialize cascading selects with user cookies
-                  setSelFcba(userLevel === 'ADM' ? '' : userFcbaCookie || homeFcba || '');
-                  setSelSection(
-                    userLevel === 'ADM' || userLevel === 'KSI'
-                      ? ''
-                      : userAfdelingCookie || homeSection || ''
-                  );
-                  setOpen(true);
-                  // Auto get location
-                  setTimeout(() => {
-                    handleGetLocation();
-                  }, 0);
-                }}
-              >
-                <Icon name="plus" className="h-4 w-4" />
-                <span className="hidden sm:inline">{tH('addHarvest')}</span>
-              </button>
-            )}
-          </div>
-        </div>
+        <Toolbar
+          title={tH('pageTitle')}
+          titleTooltip={tH('pageTitleTooltip')}
+          actions={[
+            {
+              key: 'filter',
+              label: showFilters ? tH('hideFilters') : tH('showFilters'),
+              icon: 'filter',
+              onClick: () => setShowFilters(s => !s),
+              tour: 'filter-button',
+            },
+            {
+              key: 'refresh',
+              label: tH('refresh'),
+              icon: 'refresh',
+              onClick: () => queryClient.invalidateQueries({ queryKey: QueryKeys.HARVEST() }),
+              loading: isFetching,
+            },
+            {
+              key: 'export',
+              label: tH('export'),
+              icon: 'export',
+              onClick: handleExport,
+            },
+            ...(canModify ? [{
+              key: 'add',
+              label: tH('addHarvest'),
+              icon: 'plus',
+              onClick: onAddClick,
+              variant: 'primary' as const,
+              tour: 'add-button',
+            }] : []),
+          ]}
+        >
+          <AppTour steps={tourSteps} btnClassName="join-item flex-1 sm:flex-none" />
+        </Toolbar>
 
-        <div className="mb-3 flex flex-col md:flex-row items-center gap-4 animate-slideUp [animation-delay:100ms]">
-          {/* TOTAL CARDS (di kiri) */}
-          <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+        {/* TOTAL CARDS + SEARCH & VIEW TOGGLE */}
+        <div className="mb-3 flex flex-col md:flex-row md:items-center gap-4 animate-slideUp [animation-delay:100ms]">
+          {/* TOTAL CARDS */}
+          <div className="flex gap-2 w-full md:w-auto overflow-x-auto">
             {totalCards.map(card => (
               <div
                 key={card.label}
@@ -2084,211 +545,107 @@ export default function HarvestPage() {
             ))}
           </div>
 
-          {/* SEARCH & VIEW TOGGLE (dorong ke kanan) */}
-          <div className="ml-auto flex items-center gap-2">
-            <div className="w-full md:w-72 group relative" data-tour="quick-search">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Icon name="search" className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all" />
-              </div>
-              <input
-                ref={searchInputRef}
-                className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
-                placeholder={tH('searchPlaceholder')}
-                value={q}
-                onChange={e => setQ(e.target.value)}
-                onFocus={() => setIsSearchFocused(true)}
-                onBlur={() => setIsSearchFocused(false)}
-                aria-label={tH('quickSearch')}
-                title={tH('quickSearch')}
-              />
-              {!isSearchFocused && !q && (
-                <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none animate-fadeIn">
-                  <kbd className="kbd kbd-sm bg-base-200/50 opacity-50">/</kbd>
-                </div>
-              )}
-              {q && (
-                <button
-                  onClick={() => setQ('')}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-base-content/50 hover:text-error transition-colors"
-                  aria-label={tH('clearSearch')}
-                  title={tH('clearSearch')}
-                >
-                  <Icon name="close" className="h-5 w-5" />
-                </button>
-              )}
+          {/* SEARCH & VIEW TOGGLE */}
+          <div className="flex items-center gap-2 md:ml-auto">
+            <div className="relative flex-1 md:flex-none md:max-w-96 group" data-tour="quick-search">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Icon name="search" className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all" />
             </div>
-            <div className="join">
+            <input
+              ref={searchInputRef}
+              className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
+              placeholder={tH('searchPlaceholder')}
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
+              aria-label={tH('quickSearch')}
+              title={tH('quickSearch')}
+            />
+            {!isSearchFocused && !q && (
+              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none animate-fadeIn">
+                <kbd className="kbd kbd-sm bg-base-200/50 opacity-50">/</kbd>
+              </div>
+            )}
+            {q && (
+              <button
+                onClick={() => setQ('')}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-base-content/50 hover:text-error transition-colors"
+                aria-label={tH('clearSearch')}
+                title={tH('clearSearch')}
+              >
+                <Icon name="close" className="h-5 w-5" />
+              </button>
+            )}
+          </div>
+          <div className="join flex-none">
+            <button
+              className="btn btn-outline join-item"
+              onClick={() => setViewMode(v => v === 'table' ? 'gallery' : 'table')}
+              title={viewMode === 'table' ? 'Gallery View' : 'Table View'}
+            >
+              <Icon name={viewMode === 'table' ? 'layout-grid' : 'list'} className="h-4 w-4" />
+              <span className="hidden sm:inline">{viewMode === 'table' ? 'Gallery' : 'Table'}</span>
+            </button>
+            {viewMode === 'gallery' && (
               <button
                 className="btn btn-outline join-item"
-                onClick={() => setViewMode(v => v === 'table' ? 'gallery' : 'table')}
-                title={viewMode === 'table' ? 'Gallery View' : 'Table View'}
+                onClick={() => {
+                  if (allExpanded) {
+                    galleryRef.current?.collapseAll();
+                  } else {
+                    galleryRef.current?.expandAll();
+                  }
+                  setAllExpanded(!allExpanded);
+                }}
+                title={allExpanded ? 'Close All' : 'Open All'}
               >
-                <Icon name={viewMode === 'table' ? 'layout-grid' : 'list'} className="h-4 w-4" />
-                <span className="hidden sm:inline">{viewMode === 'table' ? 'Gallery' : 'Table'}</span>
+                <Icon name="chevron-down" className={`h-4 w-4 ${allExpanded ? 'rotate-180' : ''}`} />
+                <span className="hidden sm:inline">{allExpanded ? 'Close' : 'Open'}</span>
               </button>
-              {viewMode === 'gallery' && (
-                <button
-                  className="btn btn-outline join-item"
-                  onClick={() => {
-                    if (allExpanded) {
-                      galleryRef.current?.collapseAll();
-                    } else {
-                      galleryRef.current?.expandAll();
-                    }
-                    setAllExpanded(!allExpanded);
-                  }}
-                  title={allExpanded ? 'Close All' : 'Open All'}
-                >
-                  <Icon name="chevron-down" className={`h-4 w-4 ${allExpanded ? 'rotate-180' : ''}`} />
-                  <span className="hidden sm:inline">{allExpanded ? 'Close' : 'Open'}</span>
-                </button>
-              )}
-            </div>
+            )}
           </div>
+        </div>
         </div>
 
         {/* Filters */}
         {showFilters && (
-          <div className="bg-base-100 p-4 rounded-xl shadow-sm mb-4 border border-base-200 animate-fadeIn">
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-              <input
-                type="date"
-                className="input input-bordered w-full"
-                value={filters.tanggal}
-                onChange={e => setFilters(s => ({ ...s, tanggal: e.target.value }))}
-              />
-              <input
-                type="date"
-                className="input input-bordered w-full"
-                value={filters.tanggal_end}
-                onChange={e => setFilters(s => ({ ...s, tanggal_end: e.target.value }))}
-              />
-              <input
-                type="text"
-                className="input input-bordered w-full"
-                placeholder={tH('filterNoDokumen')}
-                value={filters.nodokumen}
-                onChange={e => setFilters(s => ({ ...s, nodokumen: e.target.value }))}
-              />
-              <input
-                type="text"
-                className="input input-bordered w-full"
-                placeholder={tH('filterKodeKaryawan')}
-                value={filters.kode_karyawan}
-                onChange={e => setFilters(s => ({ ...s, kode_karyawan: e.target.value }))}
-              />
-              <input
-                type="text"
-                className="input input-bordered w-full"
-                placeholder={tH('filterKemandoran')}
-                value={filters.kemandoran}
-                disabled={isKemandoranLocked}
-                onChange={e => setFilters(s => ({ ...s, kemandoran: e.target.value }))}
-              />
-              <input
-                type="text"
-                className="input input-bordered w-full"
-                placeholder={tH('filterFcba')}
-                value={filters.fcba}
-                disabled={isFcbaLocked}
-                onChange={e => setFilters(s => ({ ...s, fcba: e.target.value }))}
-              />
-              <input
-                type="text"
-                className="input input-bordered w-full"
-                placeholder={tH('filterAfdeling')}
-                value={filters.afdeling}
-                disabled={isAfdelingLocked}
-                onChange={e => setFilters(s => ({ ...s, afdeling: e.target.value }))}
-              />
-              <input
-                type="text"
-                className="input input-bordered w-full"
-                placeholder={tH('filterTph')}
-                value={filters.tph}
-                onChange={e => setFilters(s => ({ ...s, tph: e.target.value }))}
-              />
-            </div>
-
-            <div className="flex justify-start gap-2 pt-3 border-t border-base-200">
-              <button
-                className={`btn btn-outline ${loading ? 'btn-disabled' : ''}`}
-                onClick={() => queryClient.invalidateQueries({ queryKey: ['harvest'] })}
-                disabled={loading}
-                title={tH('filterApplyTooltip')}
-              >
-                {loading ? (
-                  <>
-                    <span className="loading loading-spinner loading-xs" />
-                    {tH('loading')}
-                  </>
-                ) : (
-                  tH('filterApply')
-                )}
-              </button>
-              <button
-                className={`btn ${loading ? 'btn-disabled' : ''}`}
-                onClick={() => {
-                  const resetFilters: Filters = {
-                    tanggal: '',
-                    tanggal_end: '',
-                    nodokumen: '',
-                    kode_karyawan: '',
-                    kemandoran: '',
-                    fcba: '',
-                    afdeling: '',
-                    tph: '',
-                  };
-                  setFilters(getScopedFilters(resetFilters));
-                }}
-                disabled={loading}
-                title={tH('filterResetTooltip')}
-              >
-                {loading ? (
-                  <>
-                    <span className="loading loading-spinner loading-xs" />
-                    {tH('loading')}
-                  </>
-                ) : (
-                  tH('filterReset')
-                )}
-              </button>
-            </div>
-          </div>
+          <FilterBar
+            fields={[
+              { key: 'tanggal', label: '', type: 'date' },
+              { key: 'tanggal_end', label: '', type: 'date' },
+              { key: 'nodokumen', label: tH('filterNoDokumen'), type: 'text', placeholder: tH('filterNoDokumen') },
+              { key: 'kode_karyawan', label: tH('filterKodeKaryawan'), type: 'text', placeholder: tH('filterKodeKaryawan') },
+              { key: 'kemandoran', label: tH('filterKemandoran'), type: 'text', placeholder: tH('filterKemandoran'), disabled: isKemandoranLocked },
+              { key: 'fcba', label: tH('filterFcba'), type: 'text', placeholder: tH('filterFcba'), disabled: isFcbaLocked },
+              { key: 'afdeling', label: tH('filterAfdeling'), type: 'text', placeholder: tH('filterAfdeling'), disabled: isAfdelingLocked },
+              { key: 'tph', label: tH('filterTph'), type: 'text', placeholder: tH('filterTph') },
+            ]}
+            values={filters}
+            onChange={(key, value) => setFilters(s => ({ ...s, [key]: value }))}
+            onApply={() => queryClient.invalidateQueries({ queryKey: QueryKeys.HARVEST() })}
+            onReset={() => {
+              const resetFilters = {
+                tanggal: '', tanggal_end: '', nodokumen: '', kode_karyawan: '',
+                kemandoran: '', fcba: '', afdeling: '', tph: '',
+              };
+              setFilters(getScopedFilters(resetFilters));
+            }}
+            loading={loading}
+            t={tH}
+          />
         )}
 
         {/* Table / Gallery View */}
         {viewMode === 'table' ? (
-          <div className="rounded-lg border border-base-200 shadow-sm overflow-x-auto bg-base-100 animate-slideUp [animation-delay:200ms]" data-tour="data-table">
-            <div className="min-w-[900px] md:min-w-0">
-              {loading ? (
-                <div className="p-8">
-                  <SkeletonTable rows={10} />
-                </div>
-              ) : (
-                <DataTable
-                  keyField="_rowKey"
-                  columns={columns}
-                  data={filtered}
-                  pagination
-                  customStyles={centerHeaderStyle}
-                  paginationPerPage={100}
-                  paginationRowsPerPageOptions={[100, 500, 1000, 5000]}
-                  dense
-                  highlightOnHover
-                  pointerOnHover
-                  fixedHeader
-                  fixedHeaderScrollHeight="520px"
-                  persistTableHead
-                  responsive
-                  noDataComponent={
-                    <EmptyState namespace="Harvest" onClearSearch={q ? () => setQ('') : undefined} />
-                  }
-                  progressPending={loading}
-                />
-              )}
-            </div>
-          </div>
+          <AppDataTable
+            columns={columns}
+            data={filtered}
+            loading={loading}
+            pointerOnHover
+            namespace="Harvest"
+            onClearSearch={q ? () => setQ('') : undefined}
+          />
         ) : (
           <div className="animate-slideUp [animation-delay:200ms]">
             {loading ? (
@@ -2498,7 +855,6 @@ export default function HarvestPage() {
                       options={tphOptions}
                       value={form.tph ?? ''}
                       onChange={v => {
-                        // ⚡ Bolt Optimization: O(1) lookup via Map instead of O(N) .find()
                         const tphItem = tphDetailMap.get(v);
                         setForm(s => ({ ...s, tph: v, noancak: tphItem?.ancakno || '' }));
                       }}
@@ -2767,6 +1123,11 @@ export default function HarvestPage() {
                     className="file-input file-input-bordered w-full"
                     onChange={e => {
                       const file = e.target.files?.[0] || null;
+                      if (file && file.size > 4 * 1024 * 1024) {
+                        toast.error('File maksimal 4 MB');
+                        e.target.value = '';
+                        return;
+                      }
                       setForm(s => ({ ...s, no_ba_exca: file }));
                     }}
                   />
@@ -2808,6 +1169,11 @@ export default function HarvestPage() {
                       className="file-input file-input-bordered w-full"
                       onChange={e => {
                         const file = e.target.files?.[0] || null;
+                        if (file && file.size > 4 * 1024 * 1024) {
+                          toast.error('File maksimal 4 MB');
+                          e.target.value = '';
+                          return;
+                        }
 
                         setForm(s => ({ ...s, images: file }));
 
@@ -2876,48 +1242,7 @@ export default function HarvestPage() {
         </div>
       )}
 
-      {deleteOpen && (
-        <div className="modal modal-open">
-          <div className="modal-box w-full sm:max-w-lg mx-2 sm:mx-0">
-            <h3 className="font-bold text-lg">Hapus Data Panen</h3>
-            <p className="mt-2 text-sm text-base-content/70">
-              Upload lampiran BA Delete dalam format PDF sebelum menghapus data.
-            </p>
-
-            <fieldset className="fieldset mt-3">
-              <legend className="fieldset-legend">Lampiran BA Delete (PDF) *</legend>
-              <input
-                ref={deletePdfRef}
-                type="file"
-                accept="application/pdf"
-                className="file-input file-input-bordered w-full"
-                onChange={e => setDeleteFile(e.target.files?.[0])}
-                required
-              />
-              <p className="text-xs opacity-70">Maksimal 2 MB.</p>
-            </fieldset>
-
-            <div className="modal-action">
-              <button type="button" className="btn" onClick={closeDeleteModal}>
-                Batal
-              </button>
-              <button
-                type="button"
-                className={`btn btn-error ${deleteMutation.isPending ? 'btn-disabled' : ''}`}
-                onClick={handleConfirmDelete}
-                disabled={deleteMutation.isPending || !deleteFile}
-              >
-                {deleteMutation.isPending ? (
-                  <span className="loading loading-spinner loading-sm" />
-                ) : (
-                  'Hapus'
-                )}
-              </button>
-            </div>
-          </div>
-          <div className="modal-backdrop" onClick={closeDeleteModal}></div>
-        </div>
-      )}
+      <DeleteModal open={deleteOpen} onClose={closeDeleteModal} onConfirm={handleConfirmDelete} isLoading={deleteMutation.isPending} />
     </div>
   );
 }
