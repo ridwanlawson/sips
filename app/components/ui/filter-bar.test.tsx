@@ -34,6 +34,22 @@ describe('FilterBar', () => {
     expect(screen.getByText('Inactive')).toBeDefined();
   });
 
+  it('has accessible labels and titles', () => {
+    render(<FilterBar {...defaultProps} />);
+
+    const textInput = screen.getByPlaceholderText('Search name');
+    expect(textInput.getAttribute('aria-label')).toBe('Name');
+    expect(textInput.getAttribute('title')).toBe('Name');
+
+    const dateInput = screen.getByLabelText('Date');
+    expect(dateInput).toBeDefined();
+    expect(dateInput.getAttribute('title')).toBe('Date');
+
+    const selectInput = screen.getByLabelText('Status');
+    expect(selectInput).toBeDefined();
+    expect(selectInput.getAttribute('title')).toBe('Status');
+  });
+
   it('calls onChange when input value changes', () => {
     render(<FilterBar {...defaultProps} />);
 
@@ -46,7 +62,7 @@ describe('FilterBar', () => {
   it('calls onApply when Apply button clicked', () => {
     render(<FilterBar {...defaultProps} />);
 
-    const applyButton = screen.getByText('Apply');
+    const applyButton = screen.getByLabelText('Apply');
     fireEvent.click(applyButton);
 
     expect(defaultProps.onApply).toHaveBeenCalledTimes(1);
@@ -55,7 +71,7 @@ describe('FilterBar', () => {
   it('calls onReset when Reset button clicked', () => {
     render(<FilterBar {...defaultProps} />);
 
-    const resetButton = screen.getByText('Reset');
+    const resetButton = screen.getByLabelText('Reset');
     fireEvent.click(resetButton);
 
     expect(defaultProps.onReset).toHaveBeenCalledTimes(1);
