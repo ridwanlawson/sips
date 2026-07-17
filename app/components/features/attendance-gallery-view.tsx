@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, forwardRef, useImperativeHandle, useCallback } from 'react';
+import { useState, forwardRef, useImperativeHandle, useCallback, memo } from 'react';
 import { PhotoCell } from '@/app/components/ui/photo-cell';
 import { EmptyState } from '@/app/components/feedback/empty-state';
 import { getProxiedImageUrl } from '@/utils/helpers/imageHelper';
 import { buildMapUrl } from '@/utils/services/mapHelper';
-import { Icon } from '@/app/components/ui/icons';
+import { Icon, type IconName } from '@/app/components/ui/icons';
 import { useTranslations } from 'next-intl';
 import { isSafeHref } from '@/lib/utils/inputSanitizer';
 
@@ -13,7 +13,13 @@ type GalleryItem = {
   _rowKey?: string;
   _displayDate?: string;
   _mandorLabel?: string;
+  _mandorCode?: string;
+  _mandorName?: string;
   _karyawanLabel?: string;
+  _karyawanCode?: string;
+  _karyawanName?: string;
+  _timeInDisplay?: string;
+  _timeOutDisplay?: string;
   id: string;
   tanggal: string;
   kemandoran?: string | null;
@@ -53,23 +59,70 @@ export type AttendanceGalleryViewHandle = {
   collapseAll: () => void;
 };
 
-function ItemRow({ label, value }: { label: string; value: React.ReactNode }) {
-  if (!value || value === '-' || value === '') return null;
+/**
+ * ⚡ Bolt Optimization: ItemRow component.
+ * Wrapped in React.memo and uses primitive props to avoid redundant re-renders.
+ */
+const ItemRow = memo(function ItemRow({
+  label,
+  value,
+  href,
+  icon,
+}: {
+  label: string;
+  value?: string | number | null;
+  href?: string;
+  icon?: IconName;
+}) {
+  if (!href && (!value || value === '-' || value === '')) return null;
+  const displayValue = value ?? '-';
+
   return (
     <div className="flex justify-between gap-2 text-sm py-1 border-b border-base-200 last:border-0">
       <span className="text-base-content/60 shrink-0">{label}</span>
-      <span className="text-right font-medium break-all">{value}</span>
+      <span className="text-right font-medium break-all">
+        {href ? (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="link link-primary text-xs flex items-center gap-1 justify-end"
+          >
+            {icon && <Icon name={icon} className="h-4 w-4 inline" />}
+            {displayValue}
+          </a>
+        ) : (
+          displayValue
+        )}
+      </span>
     </div>
   );
-}
+});
 
-function GalleryCard({ item, index, isExpanded, onToggle }: { item: GalleryItem; index: number; isExpanded: boolean; onToggle: () => void }) {
+/**
+ * ⚡ Bolt Optimization: GalleryCard component.
+ * 1. Wrapped in React.memo to prevent unnecessary re-renders of all list items
+ *    when the expansion state of a single item changes.
+ * 2. Uses pre-calculated enriched fields (_karyawanName, _timeInDisplay, etc.)
+ *    to avoid redundant string splitting and formatting during render.
+ */
+const GalleryCard = memo(function GalleryCard({
+  item,
+  index,
+  isExpanded,
+  onToggle,
+}: {
+  item: GalleryItem;
+  index: number;
+  isExpanded: boolean;
+  onToggle: (id: string) => void;
+}) {
   const t = useTranslations('Attendance');
 
   const nameLabel = item._karyawanLabel || item.namakaryawan || item.kode_karyawan || '-';
   const nameParts = nameLabel.includes(' - ') ? nameLabel.split(' - ', 2) : [nameLabel, ''];
-  const displayName = nameParts[1] || nameParts[0];
-  const displayCode = nameParts[1] ? nameParts[0] : '';
+  const displayName = item._karyawanName || nameParts[1] || nameParts[0];
+  const displayCode = item._karyawanCode || (nameParts[1] ? nameParts[0] : '');
 
   const statusColor =
     (item.status_attendance || '').toLowerCase() === 'planned'
@@ -80,12 +133,20 @@ function GalleryCard({ item, index, isExpanded, onToggle }: { item: GalleryItem;
           ? 'badge-error'
           : 'badge-ghost';
 
-  const timeIn = item.time_in
-    ? (item.time_in.includes(' ') ? item.time_in.split(' ')[1]?.slice(0, 5) : item.time_in.slice(0, 5))
-    : '-';
-  const timeOut = item.time_out
-    ? (item.time_out.includes(' ') ? item.time_out.split(' ')[1]?.slice(0, 5) : item.time_out.slice(0, 5))
-    : '-';
+  const timeIn =
+    item._timeInDisplay ||
+    (item.time_in
+      ? item.time_in.includes(' ')
+        ? item.time_in.split(' ')[1]?.slice(0, 5)
+        : item.time_in.slice(0, 5)
+      : '-');
+  const timeOut =
+    item._timeOutDisplay ||
+    (item.time_out
+      ? item.time_out.includes(' ')
+        ? item.time_out.split(' ')[1]?.slice(0, 5)
+        : item.time_out.slice(0, 5)
+      : '-');
 
   return (
     <div
@@ -95,7 +156,7 @@ function GalleryCard({ item, index, isExpanded, onToggle }: { item: GalleryItem;
     >
       <button
         type="button"
-        onClick={onToggle}
+        onClick={() => onToggle(item.id)}
         className="w-full text-left focus:outline-none"
         aria-expanded={isExpanded}
         aria-label={displayName}
@@ -131,8 +192,12 @@ function GalleryCard({ item, index, isExpanded, onToggle }: { item: GalleryItem;
               </span>
             </div>
             <div className="flex items-center gap-3 mt-1 text-xs text-base-content/70">
-              <span>HK: <strong>{item.mandays != null ? item.mandays : '-'}</strong></span>
-              <span>Kemandoran: <strong>{item.kemandoran || '-'}</strong></span>
+              <span>
+                HK: <strong>{item.mandays != null ? item.mandays : '-'}</strong>
+              </span>
+              <span>
+                Kemandoran: <strong>{item.kemandoran || '-'}</strong>
+              </span>
             </div>
           </div>
 
@@ -162,57 +227,22 @@ function GalleryCard({ item, index, isExpanded, onToggle }: { item: GalleryItem;
           <div className="mt-2 pt-2 border-t border-base-200 grid grid-cols-2 gap-x-3">
             <ItemRow
               label={t('colLocIn')}
-              value={
-                item.location_in ? (
-                  <a
-                    href={buildMapUrl(item.location_in)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-ghost btn-xs gap-1"
-                    title={item.location_in}
-                  >
-                    <span aria-hidden>📍</span> {t('gpsDefaultLabel')}
-                  </a>
-                ) : (
-                  '-'
-                )
-              }
+              value={item.location_in ? t('gpsDefaultLabel') : '-'}
+              href={item.location_in ? buildMapUrl(item.location_in) : undefined}
+              icon="globe"
             />
             <ItemRow
               label={t('colLocOut')}
-              value={
-                item.location_out ? (
-                  <a
-                    href={buildMapUrl(item.location_out)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-ghost btn-xs gap-1"
-                    title={item.location_out}
-                  >
-                    <span aria-hidden>📍</span> {t('gpsDefaultLabel')}
-                  </a>
-                ) : (
-                  '-'
-                )
-              }
+              value={item.location_out ? t('gpsDefaultLabel') : '-'}
+              href={item.location_out ? buildMapUrl(item.location_out) : undefined}
+              icon="globe"
             />
             <ItemRow label={t('colExc')} value={item.exception_case} />
             <ItemRow
               label={t('colBaExca')}
-              value={
-                item.no_ba_exca ? (
-                  <a
-                    href={isSafeHref(item.no_ba_exca) ? item.no_ba_exca! : '#'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="link link-primary text-xs"
-                  >
-                    <Icon name="document-attach" className="h-4 w-4 inline" />
-                  </a>
-                ) : (
-                  '-'
-                )
-              }
+              value={item.no_ba_exca ? '' : '-'}
+              href={item.no_ba_exca && isSafeHref(item.no_ba_exca) ? item.no_ba_exca : undefined}
+              icon="document-attach"
             />
             <ItemRow label={t('colDevice')} value={item.id_device} />
             <ItemRow label={t('colMac')} value={item.mac_address} />
@@ -228,7 +258,7 @@ function GalleryCard({ item, index, isExpanded, onToggle }: { item: GalleryItem;
       )}
     </div>
   );
-}
+});
 
 export const AttendanceGalleryView = forwardRef<AttendanceGalleryViewHandle, GalleryViewProps>(
   function AttendanceGalleryView({ items, onClearSearch }, ref) {
@@ -266,7 +296,7 @@ export const AttendanceGalleryView = forwardRef<AttendanceGalleryViewHandle, Gal
               item={item}
               index={index}
               isExpanded={expandedIds.has(item.id)}
-              onToggle={() => toggleExpand(item.id)}
+              onToggle={toggleExpand}
             />
           ))}
         </div>
