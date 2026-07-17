@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import type { TableColumn } from 'react-data-table-component';
 import toast from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
@@ -771,15 +772,13 @@ export default function Approval() {
           return (
             <div className="space-x-1 whitespace-nowrap">
               {r.fcba && r.fddate && r.kemandoran && (
-                <a
+                <Link
                   href={`/lhm/lhm-report?fcba=${r.fcba}&afdeling=${r.afdeling}&tanggal=${tanggal}&kemandoran=${r.kemandoran}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
                   className="tooltip tooltip-right"
                   data-tip={` Print LHM Kemandoran ${r.kemandoran} `}
                 >
                   <Icon name="eye-view" className="h-4 w-4" />
-                </a>
+                </Link>
               )}
             </div>
           );

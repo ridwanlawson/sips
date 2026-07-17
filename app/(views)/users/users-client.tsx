@@ -21,24 +21,26 @@ import { initialUserForm } from '@/types/domain';
 
 const LEVEL_OPTIONS: Option[] = [
   { value: 'MGR', label: 'MGR - Manager' },
-  { value: 'KSI', label: 'KSI - Kepala Administrator' },
+  { value: 'KSI', label: 'KSI - Kepala Administrasi' },
   { value: 'AST', label: 'AST - Asisten' },
   { value: 'MD1', label: 'MD1 - Mandor 1' },
   { value: 'MDP', label: 'MDP - Mandor Panen' },
   { value: 'KRP', label: 'KRP - Kerani Panen' },
   { value: 'KRT', label: 'KRT - Kerani Transport' },
   { value: 'KRA', label: 'KRA - Kerani Afdeling' },
+  { value: 'ADM', label: 'ADM - Administrator' },
 ];
 
 const POSITION_OPTIONS: Option[] = [
   { value: 'EM', label: 'EM - Manager' },
-  { value: 'KASIE', label: 'KASIE - Kepala Administrator' },
+  { value: 'KASIE', label: 'KASIE - Kepala Administrasi' },
   { value: 'ASISTEN', label: 'ASISTEN - Asisten' },
   { value: 'MANDOR1', label: 'MANDOR1 - Mandor 1' },
   { value: 'MD.PANEN', label: 'MD.PANEN - Mandor Panen' },
   { value: 'KR.PANEN', label: 'KR.PANEN - Kerani Panen' },
   { value: 'KR.TRANS', label: 'KR.TRANS - Kerani Transport' },
   { value: 'KR.AFDELING', label: 'KR.AFDELING - Kerani Afdeling' },
+  { value: 'ADMIN', label: 'ADMIN - Administrator' },
 ];
 
 const POSITION_TO_LEVEL: Record<string, string> = {
@@ -50,6 +52,7 @@ const POSITION_TO_LEVEL: Record<string, string> = {
   'KR.PANEN': 'KRP',
   'KR.TRANS': 'KRT',
   'KR.AFDELING': 'KRA',
+  'ADMIN': 'ADM',
 };
 
 const initialBulkRow: UserFormState = { ...initialUserForm, password: '12345678' };
@@ -79,7 +82,7 @@ export default function UsersClient() {
     scopedFcbaOptions,
     sectionOptions, gangOptions,
     bulkSectionOptions, bulkGangOptions,
-    isFcbaRestricted, userFcba,
+    isFcbaRestricted, userFcba, userLevel,
     isLoading, isFetching, filteredUsers,
     setSelFcba, setSelAfdeling,
     form, setForm,
@@ -100,6 +103,16 @@ export default function UsersClient() {
     handleAddUser, handleExport,
     resolveSection,
   } = useUsersData(initialQ, initialFilters);
+
+  const visibleLevelOptions = useMemo(
+    () => (userLevel === 'ADM' ? LEVEL_OPTIONS : LEVEL_OPTIONS.filter(o => o.value !== 'ADM')),
+    [userLevel]
+  );
+
+  const visiblePositionOptions = useMemo(
+    () => (userLevel === 'ADM' ? POSITION_OPTIONS : POSITION_OPTIONS.filter(o => o.value !== 'ADMIN')),
+    [userLevel]
+  );
 
   useEffect(() => {
     const sp = new URLSearchParams();
@@ -390,7 +403,7 @@ export default function UsersClient() {
               </div>
               <div>
                 <SearchSelect
-                  options={LEVEL_OPTIONS}
+                  options={visibleLevelOptions}
                   value={filters.level ?? ''}
                   onChange={v => setFilters(prev => ({ ...prev, level: v || undefined }))}
                   placeholder={t('level')}
@@ -399,7 +412,7 @@ export default function UsersClient() {
               </div>
               <div>
                 <SearchSelect
-                  options={POSITION_OPTIONS}
+                  options={visiblePositionOptions}
                   value={filters.position ?? ''}
                   onChange={v => setFilters(prev => ({ ...prev, position: v || undefined }))}
                   placeholder={t('position')}
@@ -582,7 +595,7 @@ export default function UsersClient() {
                   }}
                 >
                   <option value="">{t('select')}</option>
-                  {POSITION_OPTIONS.map(o => (
+                  {visiblePositionOptions.map(o => (
                     <option key={o.value} value={o.value}>
                       {o.label}
                     </option>
@@ -844,7 +857,7 @@ export default function UsersClient() {
                           }}
                         >
                           <option value="">-</option>
-                          {POSITION_OPTIONS.map(o => (
+                          {visiblePositionOptions.map(o => (
                             <option key={o.value} value={o.value}>
                               {o.value}
                             </option>

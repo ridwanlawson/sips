@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { backendApiUrl } from '@/utils/auth/backendConfig';
 import { Icon } from '@/app/components/ui/icons';
 
@@ -368,9 +369,9 @@ export default function ApkUploadPage() {
           <p className="text-base-content/70 mb-6">
             Halaman ini hanya dapat diakses oleh user dengan level <b>MGR</b> atau <b>ADM</b>.
           </p>
-          <a href="/dashboard" className="btn btn-primary">
+          <Link href="/dashboard" className="btn btn-primary">
             Kembali ke Dashboard
-          </a>
+          </Link>
         </div>
       </div>
     );

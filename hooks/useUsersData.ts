@@ -425,7 +425,7 @@ export function useUsersData(initialQ = '', initialFilters: UserFilters = {}) {
     filters, setFilters, clearFilters,
     afdelingFilterOptions, gangcodeFilterOptions,
     scopedFcbaOptions, fcbaOptions,
-    isFcbaRestricted, userFcba,
+    isFcbaRestricted, userFcba, userLevel,
     isLoading, isFetching, loading, filteredUsers,
     selFcba, setSelFcba, selAfdeling, setSelAfdeling,
     form, setForm,

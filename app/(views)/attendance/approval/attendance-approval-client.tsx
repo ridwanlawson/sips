@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 
 import { AppDataTable } from '@/app/components/data/app-data-table';
 import type { TableColumn } from 'react-data-table-component';
@@ -535,9 +536,9 @@ export default function AttendanceApproval() {
             Halaman ini hanya dapat diakses oleh user dengan level <b>ADM</b> atau <b>MGR</b>.
           </p>
           <div className="mt-4">
-            <a href="/dashboard" className="btn btn-primary btn-sm">
+            <Link href="/dashboard" className="btn btn-primary btn-sm">
               Kembali ke Dashboard
-            </a>
+            </Link>
           </div>
         </div>
       </div>
