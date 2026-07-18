@@ -49,3 +49,7 @@
 ## 2025-06-30 - [O(N) Render-path Lookup in Harvest]
 **Learning:** Performing repeated O(N) array scans (like `.find()`) inside event handlers or render loops for large datasets (like employees or TPH) causes noticeable input lag.
 **Action:** Pre-calculate a `Map` using `useMemo` for O(1) constant-time lookups. This ensures immediate UI responsiveness even as the dataset grows.
+
+## 2026-07-18 - [Pre-calculating Numeric Values in Open LHM]
+**Learning:** Performing repeated string-to-number parsing (`toNumber`) and formatting inside the render loop of data tables slows down UI updates and breaks native client-side sorting (e.g., sorting strings like `"10"` before `"2"`).
+**Action:** Parse and pre-calculate all numeric properties inside the single-pass `enrichedItems` mapping step (`useMemo`). Reference these properties directly as numbers in data table `selector` and `cell` properties to get fast native sorting and O(1) rendering.
