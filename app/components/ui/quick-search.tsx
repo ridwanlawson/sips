@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useTranslations } from 'next-intl';
 import { Icon } from '@/app/components/ui/icons';
 
 interface QuickSearchProps {
@@ -11,7 +10,6 @@ interface QuickSearchProps {
   isFocused?: boolean;
   onFocusChange?: (focused: boolean) => void;
   inputRef?: React.RefObject<HTMLInputElement | null>;
-  namespace?: string;
   className?: string;
 }
 
@@ -22,10 +20,8 @@ export function QuickSearch({
   isFocused,
   onFocusChange,
   inputRef: externalRef,
-  namespace = 'Navbar',
   className,
 }: QuickSearchProps) {
-  const t = useTranslations(namespace);
   const internalRef = useRef<HTMLInputElement>(null);
   const inputRef = externalRef ?? internalRef;
 
@@ -49,7 +45,7 @@ export function QuickSearch({
         ref={inputRef}
         type="text"
         className={`input input-bordered w-full pl-9 pr-10 transition-all${isFocused ? ' input-primary shadow-sm' : ''}`}
-        placeholder={placeholder ?? t('search')}
+        placeholder={placeholder ?? ''}
         value={value}
         onChange={e => onChange(e.target.value)}
         onFocus={() => onFocusChange?.(true)}
@@ -60,7 +56,7 @@ export function QuickSearch({
         <button
           className="absolute right-1 top-1/2 -translate-y-1/2 btn btn-ghost btn-xs"
           onClick={() => onChange('')}
-          aria-label={t('clear') ?? 'Clear'}
+          aria-label="Clear"
         >
           <Icon name="close" className="h-4 w-4" />
         </button>

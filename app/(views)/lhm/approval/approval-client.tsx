@@ -1152,8 +1152,7 @@ export default function Approval() {
             value={q}
             onChange={setQ}
             placeholder={tL('searchPlaceholder')}
-            namespace="Lhm"
-            className="w-full sm:w-72 md:w-80 shrink-0"
+            className="w-full sm:w-72"
           />
         </div>
 

@@ -575,7 +575,7 @@ export default function AttendanceApproval() {
             Total data: <b>{filteredItems.length}</b>
           </div>
 
-          <QuickSearch value={q} onChange={setQ} namespace="Attendance" className="w-full sm:w-72 md:w-80 shrink-0" />
+          <QuickSearch value={q} onChange={setQ} placeholder={t('filterPlaceholder')} className="w-full sm:w-72" />
         </div>
 
         {/* DataTable */}

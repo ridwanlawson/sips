@@ -333,7 +333,7 @@ export default function UsersClient() {
 
         {/* ── Search ── */}
         <div className="flex justify-end">
-          <QuickSearch value={q} onChange={setQ} namespace="Users" className="w-full sm:w-72 md:w-80 shrink-0" />
+          <QuickSearch value={q} onChange={setQ} placeholder={t('searchPlaceholder')} className="w-full sm:w-72" />
         </div>
 
         {/* ── Filters ── */}

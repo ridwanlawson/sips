@@ -1999,7 +1999,7 @@ export default function Attendance() {
 
         {/* Quick Search & View Toggle */}
         <div className="flex items-center gap-2 justify-end animate-slideUp [animation-delay:100ms]">
-          <QuickSearch value={q} onChange={setQ} namespace="Attendance" className="w-full sm:w-72 md:w-80 shrink-0" />
+          <QuickSearch value={q} onChange={setQ} placeholder={t('searchPlaceholder')} className="w-full sm:w-72 sm:shrink-0" />
           <div className="join flex-none">
             <button
               className="btn btn-outline join-item"

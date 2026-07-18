@@ -534,7 +534,7 @@ export default function HarvestPage() {
 
           {/* SEARCH & VIEW TOGGLE */}
           <div className="flex items-center gap-2 md:ml-auto">
-          <QuickSearch value={q} onChange={setQ} namespace="Harvest" className="w-full sm:w-72 md:w-80 shrink-0" />
+          <QuickSearch value={q} onChange={setQ} placeholder={tH('searchPlaceholder')} className="w-full sm:w-72 sm:shrink-0" />
           <div className="join flex-none">
             <button
               className="btn btn-outline join-item"

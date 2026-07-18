@@ -449,7 +449,7 @@ export default function PengangkutanPage() {
             ))}
           </div>
 
-          <QuickSearch value={q} onChange={setQ} namespace="Transport" className="w-full sm:w-72 md:w-80 shrink-0" />
+          <QuickSearch value={q} onChange={setQ} placeholder={t('searchPlaceholder')} className="w-full sm:w-72 sm:shrink-0" />
         </div>
 
         {showFilters && (
