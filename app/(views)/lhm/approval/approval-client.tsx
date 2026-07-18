@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import type { TableColumn } from 'react-data-table-component';
 import toast from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
@@ -10,12 +9,15 @@ import AppTour from '@/app/components/feedback/app-tour';
 import type { TourStep } from '@/app/components/feedback/app-tour';
 import { Icon } from '@/app/components/ui/icons';
 import { ExportButton } from '@/app/components/ui/export-button';
-import { useSearchShortcut } from '@/hooks/useSearchShortcut';
 import { useLocale } from '@/hooks/useLocale';
 import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/auth/authHelper';
 import { getTodayISO, formatDateDMY, getYesterdayISO } from '@/utils/helpers/datetime';
 import { exportJsonToCsv } from '@/utils/services/exportCsv';
 import { formatPerfNumber, formatPerfDate } from '@/utils/helpers/perf-formatter';
+import { QuickSearch } from '@/app/components/ui/quick-search';
+import { FilterBar } from '@/app/components/ui/filter-bar';
+import { NumberCell } from '@/app/components/ui/number-cell';
+import { LhmActionCell } from '@/app/components/ui/lhm-action-cell';
 
 /* =========================
    T Y P E S
@@ -187,8 +189,6 @@ export default function Approval() {
   const tL = useTranslations('Lhm');
   const [q, setQ] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const searchInputRef = useSearchShortcut();
   const handleTourStepChange = useCallback((stepIndex: number) => {
     if (stepIndex === 4) {
       setShowFilters(true);
@@ -685,21 +685,6 @@ export default function Approval() {
   };
 
   /* ===== Columns ===== */
-  const formatNumber = useCallback(
-    (val: string | number | null | undefined) => {
-      // ? Bolt Optimization: Use cached Intl.NumberFormat via formatPerfNumber
-      return formatPerfNumber(val ?? '0', localeTag);
-    },
-    [localeTag]
-  );
-
-  const numCell = useCallback(
-    (val: string | number | null | undefined) => {
-      const formatted = formatNumber(val);
-      return <span className="text-right inline-block w-full text-gray-700">{formatted}</span>;
-    },
-    [formatNumber]
-  );
 
   const tourSteps: TourStep[] = useMemo(
     () => [
@@ -766,23 +751,14 @@ export default function Approval() {
       {
         name: <span title={tL('colAksiTooltip')}>{tL('colAksi')}</span>,
         width: '50px',
-        cell: r => {
-          const tanggal = (r.fddate || '').split(' ')[0];
-
-          return (
-            <div className="space-x-1 whitespace-nowrap">
-              {r.fcba && r.fddate && r.kemandoran && (
-                <Link
-                  href={`/lhm/lhm-report?fcba=${r.fcba}&afdeling=${r.afdeling}&tanggal=${tanggal}&kemandoran=${r.kemandoran}`}
-                  className="tooltip tooltip-right"
-                  data-tip={` Print LHM Kemandoran ${r.kemandoran} `}
-                >
-                  <Icon name="eye-view" className="h-4 w-4" />
-                </Link>
-              )}
-            </div>
-          );
-        },
+        cell: (r: LhmData) => (
+          <LhmActionCell
+            fcba={r.fcba}
+            afdeling={r.afdeling}
+            fddate={r.fddate}
+            kemandoran={r.kemandoran}
+          />
+        ),
         ignoreRowClick: true,
       },
       {
@@ -850,14 +826,14 @@ export default function Approval() {
         selector: r => r._jjgNum ?? 0,
         sortable: true,
         width: '70px',
-        cell: r => numCell(r._jjgNum),
+        cell: r => <NumberCell value={r._jjgNum} />,
       },
       {
         name: <span title="Brondolan (BRD)">BRD</span>,
         selector: r => r._brdNum ?? 0,
         sortable: true,
         width: '70px',
-        cell: r => numCell(r._brdNum),
+        cell: r => <NumberCell value={r._brdNum} />,
       },
       {
         name: (
@@ -888,7 +864,7 @@ export default function Approval() {
           }
 
           // selain MDP ? readonly
-          return numCell(r._haNum);
+          return <NumberCell value={r._haNum} />;
         },
       },
       {
@@ -896,21 +872,21 @@ export default function Approval() {
         selector: r => r._mentahqtyNum ?? 0,
         sortable: true,
         width: '110px',
-        cell: r => numCell(r._mentahqtyNum),
+        cell: r => <NumberCell value={r._mentahqtyNum} />,
       },
       {
         name: <span title="Mentah Rp">Mentah-A (Rp)</span>,
         selector: r => r._mentahrpNum ?? 0,
         sortable: true,
         width: '110px',
-        cell: r => numCell(r._mentahrpNum),
+        cell: r => <NumberCell value={r._mentahrpNum} />,
       },
       {
         name: <span title="Empty Bunch Qty">E (Jjg)</span>,
         selector: r => r._emptybunchqtyNum ?? 0,
         sortable: true,
         width: '70px',
-        cell: r => numCell(r._emptybunchqtyNum),
+        cell: r => <NumberCell value={r._emptybunchqtyNum} />,
       },
       {
         name: (
@@ -922,133 +898,133 @@ export default function Approval() {
         selector: r => r._emptybunchrpNum ?? 0,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r._emptybunchrpNum),
+        cell: r => <NumberCell value={r._emptybunchrpNum} />,
       },
       {
         name: <span title="Jumlah Denda">Jumlah (Rp)</span>,
         selector: r => r._jumlahdendaNum ?? 0,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r._jumlahdendaNum),
+        cell: r => <NumberCell value={r._jumlahdendaNum} />,
       },
       {
         name: <span title="Hasil Netto Jjg">Hasil Netto (Jjg)</span>,
         selector: r => r._totalalljjgNum ?? 0,
         sortable: true,
         width: '80px',
-        cell: r => numCell(r._totalalljjgNum),
+        cell: r => <NumberCell value={r._totalalljjgNum} />,
       },
       {
         name: <span title="Janjang Basis">Basis (Jjg)</span>,
         selector: r => r._basisNum ?? 0,
         sortable: true,
         width: '70px',
-        cell: r => numCell(r._basisNum),
+        cell: r => <NumberCell value={r._basisNum} />,
       },
       {
         name: <span title="Rupiah Siap Basis">Siap Basis (Rp)</span>,
         selector: r => r._rpbasisNum ?? 0,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r._rpbasisNum),
+        cell: r => <NumberCell value={r._rpbasisNum} />,
       },
       {
         name: <span title="Jumlah Janjang Lebih Basis Level 1">Level 1 Jlh Jjg</span>,
         selector: r => r._premilv1Num ?? 0,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r._premilv1Num),
+        cell: r => <NumberCell value={r._premilv1Num} />,
       },
       {
         name: <span title="Rupiah / Janjang Level 1">Level 1 Rp/Jjg</span>,
         selector: r => r._rate1Num ?? 0,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r._rate1Num),
+        cell: r => <NumberCell value={r._rate1Num} />,
       },
       {
         name: <span title="Rupiah Level 1">Level 1 Rp</span>,
         selector: r => r._rplv1Num ?? 0,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r._rplv1Num),
+        cell: r => <NumberCell value={r._rplv1Num} />,
       },
       {
         name: <span title="Jumlah Janjang Lebih Basis Level 2">Level 2 Jlh Jjg</span>,
         selector: r => r._premilv2Num ?? 0,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r._premilv2Num),
+        cell: r => <NumberCell value={r._premilv2Num} />,
       },
       {
         name: <span title="Rupiah / Janjang Level 2">Level 2 Rp/Jjg</span>,
         selector: r => r._rate2Num ?? 0,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r._rate2Num),
+        cell: r => <NumberCell value={r._rate2Num} />,
       },
       {
         name: <span title="Rupiah Level 2">Level 2 Rp</span>,
         selector: r => r._rplv2Num ?? 0,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r._rplv2Num),
+        cell: r => <NumberCell value={r._rplv2Num} />,
       },
       {
         name: <span title="Jumlah Janjang Lebih Basis Level 3">Level 3 Jlh Jjg</span>,
         selector: r => r._premilv3Num ?? 0,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r._premilv3Num),
+        cell: r => <NumberCell value={r._premilv3Num} />,
       },
       {
         name: <span title="Rupiah / Janjang Level 3">Level 3 Rp/Jjg</span>,
         selector: r => r._rate3Num ?? 0,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r._rate3Num),
+        cell: r => <NumberCell value={r._rate3Num} />,
       },
       {
         name: <span title="Rupiah Level 3">Level 3 Rp</span>,
         selector: r => r._rplv3Num ?? 0,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r._rplv3Num),
+        cell: r => <NumberCell value={r._rplv3Num} />,
       },
       {
         name: <span title="Jumlah Premi (Rp)">Jumlah Premi (Rp)</span>,
         selector: r => r._totalrppremiNum ?? 0,
         sortable: true,
         width: '95px',
-        cell: r => numCell(r._totalrppremiNum),
+        cell: r => <NumberCell value={r._totalrppremiNum} />,
       },
       {
         name: <span title="Upah Pokok (Rp)">Upah Pokok (Rp)</span>,
         selector: r => r._rphkNum ?? 0,
         sortable: true,
         width: '95px',
-        cell: r => numCell(r._rphkNum),
+        cell: r => <NumberCell value={r._rphkNum} />,
       },
       {
         name: <span title="Tidak Capai Basis (Rp)">Tidak Capai Basis (Rp)</span>,
         selector: r => r._kurangbasisNum ?? 0,
         sortable: true,
         width: '95px',
-        cell: r => numCell(r._kurangbasisNum),
+        cell: r => <NumberCell value={r._kurangbasisNum} />,
       },
       {
         name: <span title="Premi Panen (Rp)">Premi Panen (Rp)</span>,
         selector: r => r._premiPanenNum ?? 0,
         sortable: true,
         width: '95px',
-        cell: r => numCell(r._premiPanenNum),
+        cell: r => <NumberCell value={r._premiPanenNum} />,
       },
       {
         name: <span title="Premi Brondol (Rp)">Premi Brondol (Rp)</span>,
         selector: r => r._brd_rpNum ?? 0,
         sortable: true,
         width: '95px',
-        cell: r => numCell(r._brd_rpNum),
+        cell: r => <NumberCell value={r._brd_rpNum} />,
       },
       {
         name: <span title="Total">Total</span>,
@@ -1057,12 +1033,12 @@ export default function Approval() {
         width: '100px',
         cell: r => (
           <span className="font-bold w-full text-right inline-block">
-            {formatNumber(r._totalNum)}
+            {formatPerfNumber(r._totalNum ?? '0', localeTag)}
           </span>
         ),
       },
     ],
-    [formatNumber, numCell, userLevel, tL]
+    [userLevel, tL, localeTag]
   );
 
   return (
@@ -1172,166 +1148,54 @@ export default function Approval() {
               </div>
             ))}
           </div>
-          <div className="relative w-full sm:w-72 md:w-80 group shrink-0" data-tour="quick-search">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Icon name="search" className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all" />
-            </div>
-            <input
-              ref={searchInputRef}
-              className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
-              placeholder={tL('searchPlaceholder')}
-              value={q}
-              onChange={e => setQ(e.target.value)}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setIsSearchFocused(false)}
-              aria-label={tL('quickSearch')}
-              title={tL('quickSearch')}
-            />
-            {!isSearchFocused && !q && (
-              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                <kbd className="kbd kbd-sm bg-base-200/50 opacity-50">/</kbd>
-              </div>
-            )}
-            {q && (
-              <button
-                onClick={() => setQ('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-base-content/50 hover:text-error transition-colors"
-                aria-label={tL('clearSearch')}
-                title={tL('clearSearch')}
-              >
-                <Icon name="close" className="h-5 w-5" />
-              </button>
-            )}
-          </div>
+          <QuickSearch
+            value={q}
+            onChange={setQ}
+            placeholder={tL('searchPlaceholder')}
+            namespace="Lhm"
+            className="w-full sm:w-72 md:w-80 shrink-0"
+          />
         </div>
 
         {/* Filter Bar */}
         {showFilters && (
-          <div
-            className="bg-base-100 p-4 rounded-xl shadow-sm mb-4 border border-base-200"
-          >
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-              <input
-                type="date"
-                className="input input-bordered w-full"
-                placeholder={tL('filterDateStart')}
-                value={filters.fddate ?? ''}
-                onChange={e => setFilters(s => ({ ...s, fddate: e.target.value }))}
-                title={tL('filterDateStartTooltip')}
-                required
-              />
-              <input
-                type="date"
-                className="input input-bordered w-full"
-                placeholder={tL('filterDateEnd')}
-                value={filters.fddate_end ?? ''}
-                onChange={e => setFilters(s => ({ ...s, fddate_end: e.target.value }))}
-                title={tL('filterDateEndTooltip')}
-                required
-              />
-              <input
-                className="input input-bordered w-full"
-                placeholder={tL('filterKemandoran')}
-                value={filters.kemandoran ?? ''}
-                onChange={e => setFilters(s => ({ ...s, kemandoran: e.target.value }))}
-                title="Filter berdasarkan kemandoran"
-                disabled={isKemandoranLocked}
-              />
-              <input
-                className="input input-bordered w-full"
-                placeholder={tL('filterKaryawan')}
-                value={filters.employeecode ?? ''}
-                onChange={e => setFilters(s => ({ ...s, employeecode: e.target.value }))}
-                title="Filter berdasarkan kode karyawan"
-              />
-              <input
-                className="input input-bordered w-full"
-                placeholder={tL('filterFcba')}
-                value={filters.fcba ?? ''}
-                onChange={e => setFilters(s => ({ ...s, fcba: e.target.value }))}
-                title="Filter berdasarkan FCBA"
-                disabled={isFcbaLocked}
-              />
-              <input
-                className="input input-bordered w-full"
-                placeholder={tL('filterAfdeling')}
-                value={filters.afdeling ?? ''}
-                onChange={e => setFilters(s => ({ ...s, afdeling: e.target.value }))}
-                title="Filter berdasarkan Afdeling"
-                disabled={isAfdelingLocked}
-              />
-              <input
-                className="input input-bordered w-full"
-                placeholder="Tahun Tanam"
-                value={filters.tahuntanam ?? ''}
-                onChange={e => setFilters(s => ({ ...s, tahuntanam: e.target.value }))}
-                title="Filter berdasarkan tahun tanam"
-              />
-              <input
-                className="input input-bordered w-full"
-                placeholder="Blok"
-                value={filters.blok ?? ''}
-                onChange={e => setFilters(s => ({ ...s, blok: e.target.value }))}
-                title="Filter berdasarkan kode blok"
-              />
-              <select
-                className="select select-bordered w-full"
-                value={filters.attendance ?? ''}
-                onChange={e => setFilters(s => ({ ...s, attendance: e.target.value }))}
-                title="Filter berdasarkan kode attendance"
-              >
-                <option value="">Attendance</option>
-                {['KJ', 'MK', 'WH', 'WS', 'ML', 'P1', 'KB', 'OT'].map(v => (
-                  <option key={`att-${v}`} value={v}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex justify-start gap-2 pt-3 border-t border-base-200">
-              <button
-                className={`btn btn-outline ${loading ? 'btn-disabled' : ''}`}
-                onClick={() => {
-                  if (!filters.fddate && !filters.fddate_end) {
-                    toast.error(tL('toastFilterDateRequired'));
-                    return;
-                  }
-                  setAppliedFilters(getScopedFilters(filters));
-                }}
-                disabled={loading}
-                title={tL('filterApplyTooltip')}
-              >
-                {loading ? (
-                  <>
-                    <span className="loading loading-spinner loading-xs" />
-                    {tL('loading')}
-                  </>
-                ) : (
-                  tL('filterApply')
-                )}
-              </button>
-              <button
-                className={`btn ${loading ? 'btn-disabled' : ''}`}
-                onClick={() => {
-                  const scopedResetFilters = getScopedFilters(getEmptyFilters());
-                  setFilters(scopedResetFilters);
-                  setAppliedFilters(scopedResetFilters);
-                }}
-                disabled={loading}
-                title={tL('filterResetTooltip')}
-              >
-                {loading ? (
-                  <>
-                    <span className="loading loading-spinner loading-xs" />
-                    {tL('loading')}
-                  </>
-                ) : (
-                  tL('filterReset')
-                )}
-              </button>
-            </div>
-          </div>
+          <FilterBar
+            fields={[
+              { key: 'fddate', label: 'Tgl Awal', type: 'date', placeholder: tL('filterDateStart') },
+              { key: 'fddate_end', label: 'Tgl Akhir', type: 'date', placeholder: tL('filterDateEnd') },
+              { key: 'kemandoran', label: 'Kemandoran', type: 'text', placeholder: tL('filterKemandoran'), disabled: isKemandoranLocked },
+              { key: 'employeecode', label: 'Karyawan', type: 'text', placeholder: tL('filterKaryawan') },
+              { key: 'fcba', label: 'FCBA', type: 'text', placeholder: tL('filterFcba'), disabled: isFcbaLocked },
+              { key: 'afdeling', label: 'Afdeling', type: 'text', placeholder: tL('filterAfdeling'), disabled: isAfdelingLocked },
+            ]}
+            values={filters}
+            onChange={(key, val) => setFilters(s => ({ ...s, [key]: val }))}
+            onApply={() => {
+              if (!filters.fddate && !filters.fddate_end) {
+                toast.error(tL('toastFilterDateRequired'));
+                return;
+              }
+              setAppliedFilters(getScopedFilters(filters));
+            }}
+            onReset={() => {
+              const yesterday = getYesterdayISO();
+              const today = getTodayISO();
+              const resetFilters = {
+                fddate: yesterday,
+                fddate_end: today,
+                kemandoran: '',
+                employeecode: '',
+                fcba: '',
+                afdeling: '',
+              };
+              setFilters(resetFilters);
+              setAppliedFilters(resetFilters);
+            }}
+            loading={loading}
+            t={tL}
+            showApply
+            showReset
+          />
         )}
 
         {/* Error */}

@@ -1,6 +1,7 @@
 import type { NextConfig } from 'next';
 import createNextIntlPlugin from 'next-intl/plugin';
 import withBundleAnalyzer from '@next/bundle-analyzer';
+import withSerwist from '@serwist/next';
 
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 
@@ -183,5 +184,13 @@ const nextConfig: NextConfig = {
   // Keep default ETag generation enabled for conditional caching.
 };
 
-export default withNextIntl(withBundle(nextConfig));
+const serwistNextConfig = withSerwist({
+  swSrc: 'app/sw.ts',
+  swDest: 'public/sw.js',
+  disable: process.env.NODE_ENV !== 'production',
+  reloadOnOnline: false,
+  cacheOnNavigation: false,
+})(nextConfig);
+
+export default withNextIntl(withBundle(serwistNextConfig));
 

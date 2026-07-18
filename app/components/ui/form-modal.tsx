@@ -15,6 +15,7 @@ interface FormModalProps {
   formId?: string;
   children: ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
+  footer?: ReactNode;
 }
 
 export function FormModal({
@@ -30,6 +31,7 @@ export function FormModal({
   formId = 'modal-form',
   children,
   size = 'lg',
+  footer,
 }: FormModalProps) {
   if (!open) return null;
 
@@ -76,21 +78,25 @@ export function FormModal({
         )}
 
         <div className="sticky bottom-0 z-10 bg-base-100 pt-2 -mx-2 sm:-mx-6 px-2 sm:px-6 border-t border-base-300">
-          <div className="flex flex-wrap gap-2 justify-end">
-            <button type="button" className="btn" onClick={onClose} disabled={loading}>
-              {cancelText}
-            </button>
-            {onSubmit && (
-              <button
-                type="submit"
-                form={formId}
-                className={`btn btn-primary ${loading ? 'btn-disabled' : ''}`}
-                disabled={loading || confirmDisabled}
-              >
-                {loading ? <span className="loading loading-spinner" /> : confirmText}
+          {footer ? (
+            footer
+          ) : (
+            <div className="flex flex-wrap gap-2 justify-end">
+              <button type="button" className="btn" onClick={onClose} disabled={loading}>
+                {cancelText}
               </button>
-            )}
-          </div>
+              {onSubmit && (
+                <button
+                  type="submit"
+                  form={formId}
+                  className={`btn btn-primary ${loading ? 'btn-disabled' : ''}`}
+                  disabled={loading || confirmDisabled}
+                >
+                  {loading ? <span className="loading loading-spinner" /> : confirmText}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
       <div className="modal-backdrop bg-black/40 backdrop-blur-[2px]" onClick={loading ? undefined : onClose} />

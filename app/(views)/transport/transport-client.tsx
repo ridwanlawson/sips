@@ -5,7 +5,11 @@ import type { TableColumn } from 'react-data-table-component';
 import { useTranslations } from 'next-intl';
 import { AppDataTable } from '@/app/components/data/app-data-table';
 import { SearchSelect } from '@/app/components/ui/search-select';
+import { EmployeeNameCell } from '@/app/components/ui/employee-name-cell';
+import { StatusBadge } from '@/app/components/ui/status-badge';
+import { QuickSearch } from '@/app/components/ui/quick-search';
 import { FilterBar } from '@/app/components/ui/filter-bar';
+import { FormModal } from '@/app/components/ui/form-modal';
 import { Toolbar } from '@/app/components/ui/toolbar';
 import AppTour from '@/app/components/feedback/app-tour';
 import type { TourStep } from '@/app/components/feedback/app-tour';
@@ -27,7 +31,7 @@ export default function PengangkutanPage() {
   const t = useTranslations('Transport');
 
   const {
-    q, setQ, isSearchFocused, setIsSearchFocused, searchInputRef,
+    q, setQ,
     showFilters, setShowFilters,
     filters, setFilters,
     items, filtered, loading, isFetching,
@@ -134,19 +138,7 @@ export default function PengangkutanPage() {
         selector: r => r.status_pengangkutan ?? '-',
         sortable: true,
         width: '120px',
-        cell: r => (
-          <span
-            className={`badge ${
-              (r.status_pengangkutan || '').toLowerCase() === 'planned'
-                ? 'badge-warning'
-                : (r.status_pengangkutan || '').toLowerCase() === 'approved'
-                  ? 'badge-success'
-                  : 'badge-ghost'
-            }`}
-          >
-            {r.status_pengangkutan ?? '-'}
-          </span>
-        ),
+        cell: r => <StatusBadge status={r.status_pengangkutan} />,
       },
       {
         name: <span title={t('colNoTooltip')}>{t('colNo')}</span>,
@@ -183,84 +175,49 @@ export default function PengangkutanPage() {
         selector: r => r.nama_karyawan_kerani || r.kode_karyawan_kerani || '-',
         sortable: true,
         width: '220px',
-        cell: r => (
-          <div>
-            <div className="font-bold">{r.nama_karyawan_kerani}</div>
-            <div className="text-xs text-gray-500">{r.kode_karyawan_kerani}</div>
-          </div>
-        ),
+        cell: r => <EmployeeNameCell name={r.nama_karyawan_kerani} code={r.kode_karyawan_kerani} />,
       },
       {
         name: <span title={t('colDriverTooltip')}>{t('colDriver')}</span>,
         selector: r => r.nama_karyawan_driver || r.kode_karyawan_driver || '-',
         sortable: true,
         width: '220px',
-        cell: r => (
-          <div>
-            <div className="font-bold">{r.nama_karyawan_driver}</div>
-            <div className="text-xs text-gray-500">{r.kode_karyawan_driver}</div>
-          </div>
-        ),
+        cell: r => <EmployeeNameCell name={r.nama_karyawan_driver} code={r.kode_karyawan_driver} />,
       },
       {
         name: <span title={t('colTkbm1Tooltip')}>{t('colTkbm1')}</span>,
         selector: r => r.nama_tkbm1 || r.tkbm1 || '-',
         sortable: true,
         width: '180px',
-        cell: r => (
-          <div>
-            <div className="font-bold">{r.nama_tkbm1 || '-'}</div>
-            <div className="text-xs text-gray-500">{r.tkbm1 || ''}</div>
-          </div>
-        ),
+        cell: r => <EmployeeNameCell name={r.nama_tkbm1} code={r.tkbm1} />,
       },
       {
         name: <span title={t('colTkbm2Tooltip')}>{t('colTkbm2')}</span>,
         selector: r => r.nama_tkbm2 || r.tkbm2 || '-',
         sortable: true,
         width: '180px',
-        cell: r => (
-          <div>
-            <div className="font-bold">{r.nama_tkbm2 || '-'}</div>
-            <div className="text-xs text-gray-500">{r.tkbm2 || ''}</div>
-          </div>
-        ),
+        cell: r => <EmployeeNameCell name={r.nama_tkbm2} code={r.tkbm2} />,
       },
       {
         name: <span title={t('colTkbm3Tooltip')}>{t('colTkbm3')}</span>,
         selector: r => r.nama_tkbm3 || r.tkbm3 || '-',
         sortable: true,
         width: '180px',
-        cell: r => (
-          <div>
-            <div className="font-bold">{r.nama_tkbm3 || '-'}</div>
-            <div className="text-xs text-gray-500">{r.tkbm3 || ''}</div>
-          </div>
-        ),
+        cell: r => <EmployeeNameCell name={r.nama_tkbm3} code={r.tkbm3} />,
       },
       {
         name: <span title={t('colTkbm4Tooltip')}>{t('colTkbm4')}</span>,
         selector: r => r.nama_tkbm4 || r.tkbm4 || '-',
         sortable: true,
         width: '180px',
-        cell: r => (
-          <div>
-            <div className="font-bold">{r.nama_tkbm4 || '-'}</div>
-            <div className="text-xs text-gray-500">{r.tkbm4 || ''}</div>
-          </div>
-        ),
+        cell: r => <EmployeeNameCell name={r.nama_tkbm4} code={r.tkbm4} />,
       },
       {
         name: <span title={t('colTkbm5Tooltip')}>{t('colTkbm5')}</span>,
         selector: r => r.nama_tkbm5 || r.tkbm5 || '-',
         sortable: true,
         width: '180px',
-        cell: r => (
-          <div>
-            <div className="font-bold">{r.nama_tkbm5 || '-'}</div>
-            <div className="text-xs text-gray-500">{r.tkbm5 || ''}</div>
-          </div>
-        ),
+        cell: r => <EmployeeNameCell name={r.nama_tkbm5} code={r.tkbm5} />,
       },
       {
         name: <span title={t('colTypeTooltip')}>{t('colType')}</span>,
@@ -492,39 +449,7 @@ export default function PengangkutanPage() {
             ))}
           </div>
 
-          {/* SEARCH (dorong ke kanan) */}
-          <div className="ml-auto w-full md:w-96 group relative" data-tour="quick-search">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Icon name="search" className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all" />
-            </div>
-            <input
-              ref={searchInputRef}
-              className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
-              placeholder={t('searchPlaceholder')}
-              value={q}
-              onChange={e => setQ(e.target.value)}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setIsSearchFocused(false)}
-              aria-label={t('quickSearch')}
-              title={t('quickSearch')}
-            />
-            {!isSearchFocused && !q && (
-              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none animate-fadeIn">
-                <kbd className="kbd kbd-sm bg-base-200/50 opacity-50">/</kbd>
-              </div>
-            )}
-            {q && (
-              <button
-                type="button"
-                onClick={() => setQ('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-base-content/50 hover:text-error transition-colors"
-                aria-label={t('clearSearch')}
-                title={t('clearSearch')}
-              >
-                <Icon name="close" className="h-5 w-5" />
-              </button>
-            )}
-          </div>
+          <QuickSearch value={q} onChange={setQ} namespace="Transport" className="w-full sm:w-72 md:w-80 shrink-0" />
         </div>
 
         {showFilters && (
@@ -575,495 +500,460 @@ export default function PengangkutanPage() {
           onClearSearch={q ? () => setQ('') : undefined}
         />
 
-        {open && (
-          <div className="modal modal-open">
-            <div className="modal-box max-w-[calc(100vw-1rem)] sm:max-w-5xl mx-2 sm:mx-0 p-2 sm:p-6">
-              {/* Sticky Header */}
-              <div className="sticky top-0 z-10 bg-base-100 pb-2 -mx-2 sm:-mx-6 px-2 sm:px-6 border-b border-base-300">
-                <div className="flex items-start justify-between">
-                  <h3 className="font-bold text-xl">
-                    {isEditing ? t('modalEditTitle') : t('modalAddTitle')}
-                  </h3>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-circle btn-ghost"
-                    onClick={() => setOpen(false)}
-                    aria-label={t('modalClose')}
-                    title={t('modalClose')}
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-              <form
-                id="pengangkutan-form"
-                onSubmit={handleSubmit}
-                className="grid grid-cols-12 gap-3 max-h-[80vh] overflow-y-auto"
+        <FormModal
+          open={open}
+          title={isEditing ? t('modalEditTitle') : t('modalAddTitle')}
+          onClose={() => setOpen(false)}
+          onSubmit={handleSubmit}
+          loading={submitLoading}
+          loadingText={t('modalSaving')}
+          cancelText={t('modalCancel')}
+          confirmText={isEditing ? t('modalUpdate') : t('modalSave')}
+          confirmDisabled={submitLoading || formBelowNodokumenDisabled}
+          formId="pengangkutan-form"
+          size="lg"
+        >
+          <div className="col-span-12 grid grid-cols-12 gap-3">
+            <fieldset className="fieldset col-span-12 md:col-span-3">
+              <legend className="fieldset-legend">{t('formTanggal')}</legend>
+              <input
+                type="date"
+                className="input input-bordered w-full"
+                value={form.tanggal}
+                onChange={e => setForm(s => ({ ...s, tanggal: e.target.value }))}
+                disabled={formDisabled}
+                required
+              />
+            </fieldset>
+            <fieldset className="fieldset col-span-12 md:col-span-2">
+              <legend className="fieldset-legend">{t('formTipe')}</legend>
+              <select
+                className="select select-bordered w-full"
+                value={form.type_pengangkutan}
+                onChange={e => setForm(s => ({ ...s, type_pengangkutan: e.target.value }))}
+                disabled={shouldDisableForm}
+                required
               >
-                <div className="col-span-12 grid grid-cols-12 gap-3">
-                  <fieldset className="fieldset col-span-12 md:col-span-3">
-                    <legend className="fieldset-legend">{t('formTanggal')}</legend>
-                    <input
-                      type="date"
-                      className="input input-bordered w-full"
-                      value={form.tanggal}
-                      onChange={e => setForm(s => ({ ...s, tanggal: e.target.value }))}
-                      disabled={formDisabled}
-                      required
-                    />
-                  </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-2">
-                    <legend className="fieldset-legend">{t('formTipe')}</legend>
-                    <select
-                      className="select select-bordered w-full"
-                      value={form.type_pengangkutan}
-                      onChange={e => setForm(s => ({ ...s, type_pengangkutan: e.target.value }))}
-                      disabled={shouldDisableForm}
-                      required
-                    >
-                      <option value="">Pilih tipe</option>
-                      <option value="1">Langsir</option>
-                      <option value="2">Direct</option>
-                    </select>
-                  </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-3">
-                    <legend className="fieldset-legend">{t('formPabrik')}</legend>
-                    <select
-                      className="select select-bordered w-full"
-                      value={form.pabrik_tujuan}
-                      onChange={e => setForm(s => ({ ...s, pabrik_tujuan: e.target.value }))}
-                      disabled={formDisabled}
-                      required
-                    >
-                      <option value="">Pilih pabrik</option>
-                      {pabrikOptions.map(option => (
-                        <option key={option.fccode} value={option.fccode}>
-                          {option.fccode} - {option.fcname}
-                        </option>
-                      ))}
-                    </select>
-                  </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-4">
-                    <legend className="fieldset-legend">{t('formKerani')}</legend>
-                    <SearchSelect
-                      options={keraniOptionsAsOptions}
-                      value={form.kode_karyawan_kerani}
-                      onChange={v => setForm(s => ({ ...s, kode_karyawan_kerani: v }))}
-                      placeholder={keraniOptions.length === 0 ? 'Tidak ada Kerani' : 'Pilih Kerani'}
-                      required
-                      translationNamespace="Transport"
-                    />
-                  </fieldset>
-                </div>
-                <fieldset className="fieldset col-span-12 md:col-span-4">
-                  <legend className="fieldset-legend">{t('formNoDokumen')}</legend>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full"
-                    value={form.nodokumen}
-                    onChange={e => setForm(s => ({ ...s, nodokumen: e.target.value }))}
-                    disabled={!form.type_pengangkutan}
-                    required
-                  />
-                </fieldset>
-                <fieldset className="fieldset col-span-12 md:col-span-4">
-                  <legend className="fieldset-legend">{t('formNoPengangkutan')}</legend>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full"
-                    value={form.nopengangkutan}
-                    readOnly
-                    tabIndex={-1}
-                    required
-                  />
-                </fieldset>
-                <fieldset className="fieldset col-span-12 md:col-span-4">
-                  <legend className="fieldset-legend">{t('formNoSpb')}</legend>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full"
-                    value={form.nospb}
-                    readOnly
-                    tabIndex={-1}
-                  />
-                </fieldset>
-                {form.nodokumen.trim() ? (
-                  <div className="col-span-12">
-                    <p className={`text-sm ${harvestMatched ? 'text-success' : 'text-warning'}`}>
-                      {harvestStatus}
-                    </p>
-                  </div>
-                ) : null}
-                <fieldset className="fieldset col-span-12 md:col-span-6">
-                  <legend className="fieldset-legend">{t('formKendaraan')}</legend>
-                  <SearchSelect
-                    options={kendaraanOptionsAsOptions}
-                    value={form.kode_kendaraan}
-                    onChange={v => setForm(s => ({ ...s, kode_kendaraan: v }))}
-                    placeholder={
-                      kendaraanData.length === 0 ? 'Tidak ada kendaraan' : 'Pilih Kendaraan'
-                    }
-                    disabled={formBelowNodokumenDisabled}
-                    required
-                    translationNamespace="Transport"
-                  />
-                </fieldset>
-                <fieldset className="fieldset col-span-12 md:col-span-6">
-                  <legend className="fieldset-legend">{t('formDriver')}</legend>
-                  <SearchSelect
-                    options={driverOptionsAsOptions}
-                    value={form.kode_karyawan_driver}
-                    onChange={v => setForm(s => ({ ...s, kode_karyawan_driver: v }))}
-                    placeholder={driverOptionsAsOptions.length === 0 ? 'Tidak ada Driver' : 'Pilih Driver'}
-                    disabled={formBelowNodokumenDisabled}
-                    required
-                    translationNamespace="Transport"
-                  />
-                </fieldset>
-
-                <div className="col-span-12 grid grid-cols-12 gap-3">
-                  <fieldset className="fieldset col-span-12 md:col-span-4">
-                    <legend className="fieldset-legend">{t('formTkbm1')}</legend>
-                    <SearchSelect
-                      options={tkbmOptions}
-                      value={form.tkbm1}
-                      onChange={v => setForm(s => ({ ...s, tkbm1: v }))}
-                      placeholder={
-                        !form.tanggal
-                          ? 'Isi Tanggal dulu'
-                          : !form.kode_karyawan_kerani
-                            ? 'Pilih Kerani dulu'
-                            : isLoadingTkbm
-                              ? 'Memuat TKBM...'
-                              : tkbmOptions.length === 0
-                                ? 'Tidak ada TKBM'
-                                : 'Pilih TKBM'
-                      }
-                      disabled={
-                        formBelowNodokumenDisabled ||
-                        !form.tanggal ||
-                        !form.kode_karyawan_kerani ||
-                        isLoadingTkbm
-                      }
-                      required
-                      translationNamespace="Transport"
-                    />
-                  </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-4">
-                    <legend className="fieldset-legend">TKBM 2</legend>
-                    <SearchSelect
-                      options={tkbmOptions2}
-                      value={form.tkbm2}
-                      onChange={v => setForm(s => ({ ...s, tkbm2: v }))}
-                      placeholder={
-                        !form.tanggal
-                          ? 'Isi Tanggal dulu'
-                          : !form.kode_karyawan_kerani
-                            ? 'Pilih Kerani dulu'
-                            : isLoadingTkbm
-                              ? 'Memuat TKBM...'
-                              : tkbmOptions.length === 0
-                                ? 'Tidak ada TKBM'
-                                : 'Pilih TKBM'
-                      }
-                      disabled={
-                        formBelowNodokumenDisabled ||
-                        !form.tanggal ||
-                        !form.kode_karyawan_kerani ||
-                        isLoadingTkbm
-                      }
-                      translationNamespace="Transport"
-                    />
-                  </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-4">
-                    <legend className="fieldset-legend">TKBM 3</legend>
-                    <SearchSelect
-                      options={tkbmOptions3}
-                      value={form.tkbm3}
-                      onChange={v => setForm(s => ({ ...s, tkbm3: v }))}
-                      placeholder={
-                        !form.tanggal
-                          ? 'Isi Tanggal dulu'
-                          : !form.kode_karyawan_kerani
-                            ? 'Pilih Kerani dulu'
-                            : isLoadingTkbm
-                              ? 'Memuat TKBM...'
-                              : tkbmOptions.length === 0
-                                ? 'Tidak ada TKBM'
-                                : 'Pilih TKBM'
-                      }
-                      disabled={
-                        formBelowNodokumenDisabled ||
-                        !form.tanggal ||
-                        !form.kode_karyawan_kerani ||
-                        isLoadingTkbm
-                      }
-                      translationNamespace="Transport"
-                    />
-                  </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-4">
-                    <legend className="fieldset-legend">TKBM 4</legend>
-                    <SearchSelect
-                      options={tkbmOptions4}
-                      value={form.tkbm4}
-                      onChange={v => setForm(s => ({ ...s, tkbm4: v }))}
-                      placeholder={
-                        !form.tanggal
-                          ? 'Isi Tanggal dulu'
-                          : !form.kode_karyawan_kerani
-                            ? 'Pilih Kerani dulu'
-                            : isLoadingTkbm
-                              ? 'Memuat TKBM...'
-                              : tkbmOptions.length === 0
-                                ? 'Tidak ada TKBM'
-                                : 'Pilih TKBM'
-                      }
-                      disabled={
-                        formBelowNodokumenDisabled ||
-                        !form.tanggal ||
-                        !form.kode_karyawan_kerani ||
-                        isLoadingTkbm
-                      }
-                      translationNamespace="Transport"
-                    />
-                  </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-4">
-                    <legend className="fieldset-legend">TKBM 5</legend>
-                    <SearchSelect
-                      options={tkbmOptions5}
-                      value={form.tkbm5}
-                      onChange={v => setForm(s => ({ ...s, tkbm5: v }))}
-                      placeholder={
-                        !form.tanggal
-                          ? 'Isi Tanggal dulu'
-                          : !form.kode_karyawan_kerani
-                            ? 'Pilih Kerani dulu'
-                            : isLoadingTkbm
-                              ? 'Memuat TKBM...'
-                              : tkbmOptions.length === 0
-                                ? 'Tidak ada TKBM'
-                                : 'Pilih TKBM'
-                      }
-                      disabled={
-                        formBelowNodokumenDisabled ||
-                        !form.tanggal ||
-                        !form.kode_karyawan_kerani ||
-                        isLoadingTkbm
-                      }
-                      translationNamespace="Transport"
-                    />
-                  </fieldset>
-                </div>
-                <details className="col-span-12" open={false}>
-                  <summary className="text-sm font-semibold text-base-content/80 cursor-pointer select-none">
-                    Lokasi Asal & Tujuan
-                  </summary>
-                  <div className="mt-2 border-t border-base-300" />
-                  <div className="grid grid-cols-12 gap-3 mt-2">
-                    <fieldset className="fieldset col-span-12 md:col-span-3">
-                      <legend className="fieldset-legend">FCBA</legend>
-                      <input
-                        type="text"
-                        className="input input-bordered w-full"
-                        value={form.fcba}
-                        readOnly
-                      />
-                    </fieldset>
-                    <fieldset className="fieldset col-span-12 md:col-span-3">
-                      <legend className="fieldset-legend">Afdeling</legend>
-                      <input
-                        type="text"
-                        className="input input-bordered w-full"
-                        value={form.afdeling}
-                        readOnly
-                      />
-                    </fieldset>
-                    <fieldset className="fieldset col-span-12 md:col-span-3">
-                      <legend className="fieldset-legend">Field Code</legend>
-                      <input
-                        type="text"
-                        className="input input-bordered w-full"
-                        value={form.fieldcode}
-                        readOnly
-                      />
-                    </fieldset>
-                    <fieldset className="fieldset col-span-12 md:col-span-3">
-                      <legend className="fieldset-legend">TPH</legend>
-                      <input
-                        type="text"
-                        className="input input-bordered w-full"
-                        value={form.tph}
-                        readOnly
-                      />
-                    </fieldset>
-                    <fieldset className="fieldset col-span-12 md:col-span-3">
-                      <legend className="fieldset-legend">FCBA Tujuan</legend>
-                      <input
-                        type="text"
-                        className="input input-bordered w-full"
-                        value={form.fcba_destination}
-                        readOnly
-                      />
-                    </fieldset>
-                    <fieldset className="fieldset col-span-12 md:col-span-3">
-                      <legend className="fieldset-legend">Afdeling Tujuan</legend>
-                      <input
-                        type="text"
-                        className="input input-bordered w-full"
-                        value={form.afdeling_destination}
-                        readOnly
-                      />
-                    </fieldset>
-                  </div>
-                </details>
-
-                <div className="col-span-12 grid grid-cols-12 gap-3">
-                  <fieldset className="fieldset col-span-12 md:col-span-2">
-                    <legend className="fieldset-legend">Total Janjang</legend>
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      className="input input-bordered w-full"
-                      value={form.totaljanjang}
-                      onChange={e =>
-                        setForm(s => ({ ...s, totaljanjang: normalizeNonNegative(e.target.value) }))
-                      }
-                      disabled={formBelowNodokumenDisabled}
-                      required
-                    />
-                  </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-2">
-                    <legend className="fieldset-legend">Output</legend>
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      className="input input-bordered w-full"
-                      value={form.output}
-                      onChange={e =>
-                        setForm(s => ({ ...s, output: normalizeNonNegative(e.target.value) }))
-                      }
-                      disabled={formBelowNodokumenDisabled}
-                      required
-                    />
-                  </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-2">
-                    <legend className="fieldset-legend">Janjang Normal</legend>
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      className="input input-bordered w-full"
-                      value={form.janjangnormal}
-                      onChange={e =>
-                        setForm(s => ({
-                          ...s,
-                          janjangnormal: normalizeNonNegative(e.target.value),
-                        }))
-                      }
-                      disabled={formBelowNodokumenDisabled}
-                      required
-                    />
-                  </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-2">
-                    <legend className="fieldset-legend">Brondolan</legend>
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      className="input input-bordered w-full pointer-events-none select-none"
-                      value={form.brondolan}
-                      readOnly
-                      tabIndex={-1}
-                    />
-                  </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-2">
-                    <legend className="fieldset-legend">Mentah</legend>
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      className="input input-bordered w-full pointer-events-none select-none"
-                      value={form.mentah}
-                      readOnly
-                      tabIndex={-1}
-                    />
-                  </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-2">
-                    <legend className="fieldset-legend">Abnormal</legend>
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      className="input input-bordered w-full"
-                      value={form.abnormal}
-                      onChange={e =>
-                        setForm(s => ({ ...s, abnormal: normalizeNonNegative(e.target.value) }))
-                      }
-                      disabled={formBelowNodokumenDisabled}
-                      required
-                    />
-                  </fieldset>
-                </div>
-
-                <div className="col-span-12 grid grid-cols-12 gap-3">
-                  <fieldset className="fieldset col-span-12 md:col-span-4">
-                    <legend className="fieldset-legend">ETD</legend>
-                    <input
-                      type="datetime-local"
-                      className="input input-bordered w-full"
-                      value={form.etd}
-                      readOnly
-                      tabIndex={-1}
-                    />
-                  </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-4">
-                    <legend className="fieldset-legend">BA PDF *</legend>
-                    <input
-                      type="file"
-                      accept="application/pdf"
-                      className="file-input file-input-bordered w-full"
-                      onChange={handleNoBaExcaChange}
-                      required={!isEditing}
-                      disabled={formBelowNodokumenDisabled}
-                    />
-                  </fieldset>
-                  <fieldset className="fieldset col-span-12 md:col-span-4">
-                    <legend className="fieldset-legend">Exception Case</legend>
-                    <textarea
-                      className="textarea textarea-bordered w-full h-24"
-                      value={form.exception_case}
-                      onChange={e => setForm(s => ({ ...s, exception_case: e.target.value }))}
-                      disabled={formBelowNodokumenDisabled}
-                      required
-                    />
-                  </fieldset>
-                </div>
-              </form>
-              {/* Sticky Footer */}
-              <div className="sticky bottom-0 z-10 bg-base-100 pt-2 -mx-2 sm:-mx-6 px-2 sm:px-6 border-t border-base-300">
-                <div className="flex flex-wrap gap-2 justify-end">
-                  <button type="button" className="btn btn-outline" onClick={() => setOpen(false)}>
-                    {t('modalCancel')}
-                  </button>
-                  <button
-                    type="submit"
-                    form="pengangkutan-form"
-                    className="btn btn-primary"
-                    disabled={submitLoading || formBelowNodokumenDisabled}
-                  >
-                    {submitLoading
-                      ? t('modalSaving')
-                      : isEditing
-                        ? t('modalUpdate')
-                        : t('modalSave')}
-                  </button>
-                </div>
-              </div>
-            </div>
+                <option value="">Pilih tipe</option>
+                <option value="1">Langsir</option>
+                <option value="2">Direct</option>
+              </select>
+            </fieldset>
+            <fieldset className="fieldset col-span-12 md:col-span-3">
+              <legend className="fieldset-legend">{t('formPabrik')}</legend>
+              <select
+                className="select select-bordered w-full"
+                value={form.pabrik_tujuan}
+                onChange={e => setForm(s => ({ ...s, pabrik_tujuan: e.target.value }))}
+                disabled={formDisabled}
+                required
+              >
+                <option value="">Pilih pabrik</option>
+                {pabrikOptions.map(option => (
+                  <option key={option.fccode} value={option.fccode}>
+                    {option.fccode} - {option.fcname}
+                  </option>
+                ))}
+              </select>
+            </fieldset>
+            <fieldset className="fieldset col-span-12 md:col-span-4">
+              <legend className="fieldset-legend">{t('formKerani')}</legend>
+              <SearchSelect
+                options={keraniOptionsAsOptions}
+                value={form.kode_karyawan_kerani}
+                onChange={v => setForm(s => ({ ...s, kode_karyawan_kerani: v }))}
+                placeholder={keraniOptions.length === 0 ? 'Tidak ada Kerani' : 'Pilih Kerani'}
+                required
+                translationNamespace="Transport"
+              />
+            </fieldset>
           </div>
-        )}
+          <fieldset className="fieldset col-span-12 md:col-span-4">
+            <legend className="fieldset-legend">{t('formNoDokumen')}</legend>
+            <input
+              type="text"
+              className="input input-bordered w-full"
+              value={form.nodokumen}
+              onChange={e => setForm(s => ({ ...s, nodokumen: e.target.value }))}
+              disabled={!form.type_pengangkutan}
+              required
+            />
+          </fieldset>
+          <fieldset className="fieldset col-span-12 md:col-span-4">
+            <legend className="fieldset-legend">{t('formNoPengangkutan')}</legend>
+            <input
+              type="text"
+              className="input input-bordered w-full"
+              value={form.nopengangkutan}
+              readOnly
+              tabIndex={-1}
+              required
+            />
+          </fieldset>
+          <fieldset className="fieldset col-span-12 md:col-span-4">
+            <legend className="fieldset-legend">{t('formNoSpb')}</legend>
+            <input
+              type="text"
+              className="input input-bordered w-full"
+              value={form.nospb}
+              readOnly
+              tabIndex={-1}
+            />
+          </fieldset>
+          {form.nodokumen.trim() ? (
+            <div className="col-span-12">
+              <p className={`text-sm ${harvestMatched ? 'text-success' : 'text-warning'}`}>
+                {harvestStatus}
+              </p>
+            </div>
+          ) : null}
+          <fieldset className="fieldset col-span-12 md:col-span-6">
+            <legend className="fieldset-legend">{t('formKendaraan')}</legend>
+            <SearchSelect
+              options={kendaraanOptionsAsOptions}
+              value={form.kode_kendaraan}
+              onChange={v => setForm(s => ({ ...s, kode_kendaraan: v }))}
+              placeholder={
+                kendaraanData.length === 0 ? 'Tidak ada kendaraan' : 'Pilih Kendaraan'
+              }
+              disabled={formBelowNodokumenDisabled}
+              required
+              translationNamespace="Transport"
+            />
+          </fieldset>
+          <fieldset className="fieldset col-span-12 md:col-span-6">
+            <legend className="fieldset-legend">{t('formDriver')}</legend>
+            <SearchSelect
+              options={driverOptionsAsOptions}
+              value={form.kode_karyawan_driver}
+              onChange={v => setForm(s => ({ ...s, kode_karyawan_driver: v }))}
+              placeholder={driverOptionsAsOptions.length === 0 ? 'Tidak ada Driver' : 'Pilih Driver'}
+              disabled={formBelowNodokumenDisabled}
+              required
+              translationNamespace="Transport"
+            />
+          </fieldset>
+
+          <div className="col-span-12 grid grid-cols-12 gap-3">
+            <fieldset className="fieldset col-span-12 md:col-span-4">
+              <legend className="fieldset-legend">{t('formTkbm1')}</legend>
+              <SearchSelect
+                options={tkbmOptions}
+                value={form.tkbm1}
+                onChange={v => setForm(s => ({ ...s, tkbm1: v }))}
+                placeholder={
+                  !form.tanggal
+                    ? 'Isi Tanggal dulu'
+                    : !form.kode_karyawan_kerani
+                      ? 'Pilih Kerani dulu'
+                      : isLoadingTkbm
+                        ? 'Memuat TKBM...'
+                        : tkbmOptions.length === 0
+                          ? 'Tidak ada TKBM'
+                          : 'Pilih TKBM'
+                }
+                disabled={
+                  formBelowNodokumenDisabled ||
+                  !form.tanggal ||
+                  !form.kode_karyawan_kerani ||
+                  isLoadingTkbm
+                }
+                required
+                translationNamespace="Transport"
+              />
+            </fieldset>
+            <fieldset className="fieldset col-span-12 md:col-span-4">
+              <legend className="fieldset-legend">TKBM 2</legend>
+              <SearchSelect
+                options={tkbmOptions2}
+                value={form.tkbm2}
+                onChange={v => setForm(s => ({ ...s, tkbm2: v }))}
+                placeholder={
+                  !form.tanggal
+                    ? 'Isi Tanggal dulu'
+                    : !form.kode_karyawan_kerani
+                      ? 'Pilih Kerani dulu'
+                      : isLoadingTkbm
+                        ? 'Memuat TKBM...'
+                        : tkbmOptions.length === 0
+                          ? 'Tidak ada TKBM'
+                          : 'Pilih TKBM'
+                }
+                disabled={
+                  formBelowNodokumenDisabled ||
+                  !form.tanggal ||
+                  !form.kode_karyawan_kerani ||
+                  isLoadingTkbm
+                }
+                translationNamespace="Transport"
+              />
+            </fieldset>
+            <fieldset className="fieldset col-span-12 md:col-span-4">
+              <legend className="fieldset-legend">TKBM 3</legend>
+              <SearchSelect
+                options={tkbmOptions3}
+                value={form.tkbm3}
+                onChange={v => setForm(s => ({ ...s, tkbm3: v }))}
+                placeholder={
+                  !form.tanggal
+                    ? 'Isi Tanggal dulu'
+                    : !form.kode_karyawan_kerani
+                      ? 'Pilih Kerani dulu'
+                      : isLoadingTkbm
+                        ? 'Memuat TKBM...'
+                        : tkbmOptions.length === 0
+                          ? 'Tidak ada TKBM'
+                          : 'Pilih TKBM'
+                }
+                disabled={
+                  formBelowNodokumenDisabled ||
+                  !form.tanggal ||
+                  !form.kode_karyawan_kerani ||
+                  isLoadingTkbm
+                }
+                translationNamespace="Transport"
+              />
+            </fieldset>
+            <fieldset className="fieldset col-span-12 md:col-span-4">
+              <legend className="fieldset-legend">TKBM 4</legend>
+              <SearchSelect
+                options={tkbmOptions4}
+                value={form.tkbm4}
+                onChange={v => setForm(s => ({ ...s, tkbm4: v }))}
+                placeholder={
+                  !form.tanggal
+                    ? 'Isi Tanggal dulu'
+                    : !form.kode_karyawan_kerani
+                      ? 'Pilih Kerani dulu'
+                      : isLoadingTkbm
+                        ? 'Memuat TKBM...'
+                        : tkbmOptions.length === 0
+                          ? 'Tidak ada TKBM'
+                          : 'Pilih TKBM'
+                }
+                disabled={
+                  formBelowNodokumenDisabled ||
+                  !form.tanggal ||
+                  !form.kode_karyawan_kerani ||
+                  isLoadingTkbm
+                }
+                translationNamespace="Transport"
+              />
+            </fieldset>
+            <fieldset className="fieldset col-span-12 md:col-span-4">
+              <legend className="fieldset-legend">TKBM 5</legend>
+              <SearchSelect
+                options={tkbmOptions5}
+                value={form.tkbm5}
+                onChange={v => setForm(s => ({ ...s, tkbm5: v }))}
+                placeholder={
+                  !form.tanggal
+                    ? 'Isi Tanggal dulu'
+                    : !form.kode_karyawan_kerani
+                      ? 'Pilih Kerani dulu'
+                      : isLoadingTkbm
+                        ? 'Memuat TKBM...'
+                        : tkbmOptions.length === 0
+                          ? 'Tidak ada TKBM'
+                          : 'Pilih TKBM'
+                }
+                disabled={
+                  formBelowNodokumenDisabled ||
+                  !form.tanggal ||
+                  !form.kode_karyawan_kerani ||
+                  isLoadingTkbm
+                }
+                translationNamespace="Transport"
+              />
+            </fieldset>
+          </div>
+          <details className="col-span-12" open={false}>
+            <summary className="text-sm font-semibold text-base-content/80 cursor-pointer select-none">
+              Lokasi Asal & Tujuan
+            </summary>
+            <div className="mt-2 border-t border-base-300" />
+            <div className="grid grid-cols-12 gap-3 mt-2">
+              <fieldset className="fieldset col-span-12 md:col-span-3">
+                <legend className="fieldset-legend">FCBA</legend>
+                <input
+                  type="text"
+                  className="input input-bordered w-full"
+                  value={form.fcba}
+                  readOnly
+                />
+              </fieldset>
+              <fieldset className="fieldset col-span-12 md:col-span-3">
+                <legend className="fieldset-legend">Afdeling</legend>
+                <input
+                  type="text"
+                  className="input input-bordered w-full"
+                  value={form.afdeling}
+                  readOnly
+                />
+              </fieldset>
+              <fieldset className="fieldset col-span-12 md:col-span-3">
+                <legend className="fieldset-legend">Field Code</legend>
+                <input
+                  type="text"
+                  className="input input-bordered w-full"
+                  value={form.fieldcode}
+                  readOnly
+                />
+              </fieldset>
+              <fieldset className="fieldset col-span-12 md:col-span-3">
+                <legend className="fieldset-legend">TPH</legend>
+                <input
+                  type="text"
+                  className="input input-bordered w-full"
+                  value={form.tph}
+                  readOnly
+                />
+              </fieldset>
+              <fieldset className="fieldset col-span-12 md:col-span-3">
+                <legend className="fieldset-legend">FCBA Tujuan</legend>
+                <input
+                  type="text"
+                  className="input input-bordered w-full"
+                  value={form.fcba_destination}
+                  readOnly
+                />
+              </fieldset>
+              <fieldset className="fieldset col-span-12 md:col-span-3">
+                <legend className="fieldset-legend">Afdeling Tujuan</legend>
+                <input
+                  type="text"
+                  className="input input-bordered w-full"
+                  value={form.afdeling_destination}
+                  readOnly
+                />
+              </fieldset>
+            </div>
+          </details>
+
+          <div className="col-span-12 grid grid-cols-12 gap-3">
+            <fieldset className="fieldset col-span-12 md:col-span-2">
+              <legend className="fieldset-legend">Total Janjang</legend>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                className="input input-bordered w-full"
+                value={form.totaljanjang}
+                onChange={e =>
+                  setForm(s => ({ ...s, totaljanjang: normalizeNonNegative(e.target.value) }))
+                }
+                disabled={formBelowNodokumenDisabled}
+                required
+              />
+            </fieldset>
+            <fieldset className="fieldset col-span-12 md:col-span-2">
+              <legend className="fieldset-legend">Output</legend>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                className="input input-bordered w-full"
+                value={form.output}
+                onChange={e =>
+                  setForm(s => ({ ...s, output: normalizeNonNegative(e.target.value) }))
+                }
+                disabled={formBelowNodokumenDisabled}
+                required
+              />
+            </fieldset>
+            <fieldset className="fieldset col-span-12 md:col-span-2">
+              <legend className="fieldset-legend">Janjang Normal</legend>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                className="input input-bordered w-full"
+                value={form.janjangnormal}
+                onChange={e =>
+                  setForm(s => ({
+                    ...s,
+                    janjangnormal: normalizeNonNegative(e.target.value),
+                  }))
+                }
+                disabled={formBelowNodokumenDisabled}
+                required
+              />
+            </fieldset>
+            <fieldset className="fieldset col-span-12 md:col-span-2">
+              <legend className="fieldset-legend">Brondolan</legend>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                className="input input-bordered w-full pointer-events-none select-none"
+                value={form.brondolan}
+                readOnly
+                tabIndex={-1}
+              />
+            </fieldset>
+            <fieldset className="fieldset col-span-12 md:col-span-2">
+              <legend className="fieldset-legend">Mentah</legend>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                className="input input-bordered w-full pointer-events-none select-none"
+                value={form.mentah}
+                readOnly
+                tabIndex={-1}
+              />
+            </fieldset>
+            <fieldset className="fieldset col-span-12 md:col-span-2">
+              <legend className="fieldset-legend">Abnormal</legend>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                className="input input-bordered w-full"
+                value={form.abnormal}
+                onChange={e =>
+                  setForm(s => ({ ...s, abnormal: normalizeNonNegative(e.target.value) }))
+                }
+                disabled={formBelowNodokumenDisabled}
+                required
+              />
+            </fieldset>
+          </div>
+
+          <div className="col-span-12 grid grid-cols-12 gap-3">
+            <fieldset className="fieldset col-span-12 md:col-span-4">
+              <legend className="fieldset-legend">ETD</legend>
+              <input
+                type="datetime-local"
+                className="input input-bordered w-full"
+                value={form.etd}
+                readOnly
+                tabIndex={-1}
+              />
+            </fieldset>
+            <fieldset className="fieldset col-span-12 md:col-span-4">
+              <legend className="fieldset-legend">BA PDF *</legend>
+              <input
+                type="file"
+                accept="application/pdf"
+                className="file-input file-input-bordered w-full"
+                onChange={handleNoBaExcaChange}
+                required={!isEditing}
+                disabled={formBelowNodokumenDisabled}
+              />
+            </fieldset>
+            <fieldset className="fieldset col-span-12 md:col-span-4">
+              <legend className="fieldset-legend">Exception Case</legend>
+              <textarea
+                className="textarea textarea-bordered w-full h-24"
+                value={form.exception_case}
+                onChange={e => setForm(s => ({ ...s, exception_case: e.target.value }))}
+                disabled={formBelowNodokumenDisabled}
+                required
+              />
+            </fieldset>
+          </div>
+        </FormModal>
 
         <DeleteModal
           open={deleteOpen}

@@ -7,7 +7,10 @@ import { AppDataTable } from '@/app/components/data/app-data-table';
 import type { TableColumn } from 'react-data-table-component';
 import { useQuery } from '@tanstack/react-query';
 import { logoutAndRedirect } from '@/utils/auth/authHelper';
+import { EmployeeNameCell } from '@/app/components/ui/employee-name-cell';
 import { PhotoCell } from '@/app/components/ui/photo-cell';
+import { QuickSearch } from '@/app/components/ui/quick-search';
+import { StatusBadge } from '@/app/components/ui/status-badge';
 import { extractArrayData } from '@/utils/api/apiHelpers';
 import { QueryKeys } from '@/utils/queryKeys';
 
@@ -309,18 +312,7 @@ export default function AttendanceApproval() {
         selector: r => r.status_attendance ?? '-',
         sortable: true,
         width: '120px',
-        cell: r => {
-          const st = (r.status_attendance || '').toLowerCase();
-          const badgeClass =
-            st === 'planned'
-              ? 'badge-warning'
-              : st === 'approved'
-                ? 'badge-success'
-                : st === 'reject'
-                  ? 'badge-error'
-                  : 'badge-ghost';
-          return <span className={`badge ${badgeClass}`}>{r.status_attendance ?? '-'}</span>;
-        },
+        cell: r => <StatusBadge status={r.status_attendance} />,
       },
       {
         name: <span title={t('colRowTooltip')}>{t('colRow')}</span>,
@@ -344,16 +336,7 @@ export default function AttendanceApproval() {
         width: '220px',
         sortable: true,
         selector: r => r.namakaryawan ?? '',
-        cell: r => (
-          <div className="min-w-0">
-            <div className="font-semibold truncate" title={r.namakaryawan || '-'}>
-              {r.namakaryawan || '-'}
-            </div>
-            <div className="text-xs opacity-70 truncate" title={r.kode_karyawan || ''}>
-              {r.kode_karyawan}
-            </div>
-          </div>
-        ),
+        cell: r => <EmployeeNameCell name={r.namakaryawan} code={r.kode_karyawan} />,
       },
       {
         name: <span title={t('colMandorTooltip')}>{t('colMandor')}</span>,
@@ -363,16 +346,7 @@ export default function AttendanceApproval() {
         selector: r => r._mandorCode || '',
         cell: r => {
           if (!r._mandorCode) return <>-</>;
-          return (
-            <div className="min-w-0">
-              <div className="font-medium truncate" title={r._mandorName || '-'}>
-                {r._mandorName || '-'}
-              </div>
-              <div className="text-xs opacity-70 truncate" title={r._mandorCode}>
-                {r._mandorCode}
-              </div>
-            </div>
-          );
+          return <EmployeeNameCell name={r._mandorName} code={r._mandorCode} />;
         },
       },
       {
@@ -398,7 +372,7 @@ export default function AttendanceApproval() {
         selector: r => r.attendance_type,
         sortable: true,
         width: '130px',
-        cell: r => <span className="badge badge-outline">{r.attendance_type}</span>,
+        cell: r => <StatusBadge status={r.attendance_type} />,
       },
       {
         name: <span title={t('colAttdTooltip')}>{t('colAttd')}</span>,
@@ -601,13 +575,7 @@ export default function AttendanceApproval() {
             Total data: <b>{filteredItems.length}</b>
           </div>
 
-          <input
-            className="input input-bordered w-full md:w-80"
-            placeholder={t('filterPlaceholder')}
-            value={q}
-            onChange={e => setQ(e.target.value)}
-            title={t('filterTooltip')}
-          />
+          <QuickSearch value={q} onChange={setQ} namespace="Attendance" className="w-full sm:w-72 md:w-80 shrink-0" />
         </div>
 
         {/* DataTable */}

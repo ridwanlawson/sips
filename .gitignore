@@ -22,6 +22,10 @@ coverage
 /.next/
 /out/
 
+# serwist service worker artifacts
+/public/sw.js
+/public/swe-worker-*.js
+
 # production
 /build
 dist

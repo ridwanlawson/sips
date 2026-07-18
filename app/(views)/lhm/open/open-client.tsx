@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import type { TableColumn } from 'react-data-table-component';
 import toast from 'react-hot-toast';
 import { useTranslations } from 'next-intl';
@@ -10,12 +9,15 @@ import AppTour from '@/app/components/feedback/app-tour';
 import type { TourStep } from '@/app/components/feedback/app-tour';
 import { Icon } from '@/app/components/ui/icons';
 import { ExportButton } from '@/app/components/ui/export-button';
-import { useSearchShortcut } from '@/hooks/useSearchShortcut';
 import { useLocale } from '@/hooks/useLocale';
 import { isUnauthenticatedJson, logoutAndRedirect } from '@/utils/auth/authHelper';
 import { getTodayISO, formatDateDMY, getYesterdayISO } from '@/utils/helpers/datetime';
 import { exportJsonToCsv } from '@/utils/services/exportCsv';
 import { formatPerfNumber, formatPerfDate } from '@/utils/helpers/perf-formatter';
+import { QuickSearch } from '@/app/components/ui/quick-search';
+import { FilterBar } from '@/app/components/ui/filter-bar';
+import { NumberCell } from '@/app/components/ui/number-cell';
+import { LhmActionCell } from '@/app/components/ui/lhm-action-cell';
 
 /* =========================
    T Y P E S
@@ -186,8 +188,6 @@ export default function Open() {
   const localeTag = useLocale();
   const [q, setQ] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const searchInputRef = useSearchShortcut();
   const handleTourStepChange = useCallback((stepIndex: number) => {
     if (stepIndex === 4) {
       setShowFilters(true);
@@ -608,22 +608,6 @@ export default function Open() {
   };
 
   /* ===== Columns ===== */
-  const formatNumber = useCallback(
-    (val: string | number | null | undefined) => {
-      // ? Bolt Optimization: Use cached Intl.NumberFormat via formatPerfNumber
-      return formatPerfNumber(val ?? '0', localeTag);
-    },
-    [localeTag]
-  );
-
-  const numCell = useCallback(
-    (val: string | number | null | undefined) => {
-      const formatted = formatNumber(val);
-      return <span className="text-right inline-block w-full text-gray-700">{formatted}</span>;
-    },
-    [formatNumber]
-  );
-
   const tourSteps: TourStep[] = useMemo(
     () => [
       {
@@ -682,23 +666,14 @@ export default function Open() {
       {
         name: <span title={t('colAksiTooltip')}>{t('colAksi')}</span>,
         width: '50px',
-        cell: r => {
-          const tanggal = (r.fddate || '').split(' ')[0];
-
-          return (
-            <div className="space-x-1 whitespace-nowrap">
-              {r.fcba && r.fddate && r.kemandoran && (
-                <Link
-                  href={`/lhm/lhm-report?fcba=${r.fcba}&afdeling=${r.afdeling}&tanggal=${tanggal}&kemandoran=${r.kemandoran}`}
-                  className="tooltip tooltip-right"
-                  data-tip={` Print LHM Kemandoran ${r.kemandoran} `}
-                >
-                  <Icon name="eye-view" className="h-4 w-4" />
-                </Link>
-              )}
-            </div>
-          );
-        },
+        cell: (r: LhmData) => (
+          <LhmActionCell
+            fcba={r.fcba}
+            afdeling={r.afdeling}
+            fddate={r.fddate}
+            kemandoran={r.kemandoran}
+          />
+        ),
         ignoreRowClick: true,
       },
       {
@@ -766,14 +741,14 @@ export default function Open() {
         selector: r => r._jjgNum ?? 0,
         sortable: true,
         width: '70px',
-        cell: r => numCell(r._jjgNum),
+        cell: r => <NumberCell value={r._jjgNum} />,
       },
       {
         name: <span title="Brondolan (BRD)">BRD</span>,
         selector: r => r._brdNum ?? 0,
         sortable: true,
         width: '70px',
-        cell: r => numCell(r._brdNum),
+        cell: r => <NumberCell value={r._brdNum} />,
       },
       {
         name: <span title="Hektar (HA)">HA</span>,
@@ -800,7 +775,7 @@ export default function Open() {
           }
 
           // selain MDP ? readonly
-          return numCell(r.ha);
+          return <NumberCell value={r.ha} />;
         },
       },
       {
@@ -808,21 +783,21 @@ export default function Open() {
         selector: r => r.mentahqty,
         sortable: true,
         width: '110px',
-        cell: r => numCell(r.mentahqty),
+        cell: r => <NumberCell value={r.mentahqty} />,
       },
       {
         name: <span title="Mentah Rp">Mentah-A (Rp)</span>,
         selector: r => r.mentahrp,
         sortable: true,
         width: '110px',
-        cell: r => numCell(r.mentahrp),
+        cell: r => <NumberCell value={r.mentahrp} />,
       },
       {
         name: <span title="Empty Bunch Qty">E (Jjg)</span>,
         selector: r => r.emptybunchqty,
         sortable: true,
         width: '70px',
-        cell: r => numCell(r.emptybunchqty),
+        cell: r => <NumberCell value={r.emptybunchqty} />,
       },
       {
         name: (
@@ -834,133 +809,133 @@ export default function Open() {
         selector: r => r.emptybunchrp,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r.emptybunchrp),
+        cell: r => <NumberCell value={r.emptybunchrp} />,
       },
       {
         name: <span title="Jumlah Denda">Jumlah (Rp)</span>,
         selector: r => r.jumlahdenda,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r.jumlahdenda),
+        cell: r => <NumberCell value={r.jumlahdenda} />,
       },
       {
         name: <span title="Hasil Netto Jjg">Hasil Netto (Jjg)</span>,
         selector: r => r.totalalljjg,
         sortable: true,
         width: '80px',
-        cell: r => numCell(r.totalalljjg),
+        cell: r => <NumberCell value={r.totalalljjg} />,
       },
       {
         name: <span title="Janjang Basis">Basis (Jjg)</span>,
         selector: r => r.basis,
         sortable: true,
         width: '70px',
-        cell: r => numCell(r.basis),
+        cell: r => <NumberCell value={r.basis} />,
       },
       {
         name: <span title="Rupiah Siap Basis">Siap Basis (Rp)</span>,
         selector: r => r.rpbasis,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r.rpbasis),
+        cell: r => <NumberCell value={r.rpbasis} />,
       },
       {
         name: <span title="Jumlah Janjang Lebih Basis Level 1">Level 1 Jlh Jjg</span>,
         selector: r => r.premilv1,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r.premilv1),
+        cell: r => <NumberCell value={r.premilv1} />,
       },
       {
         name: <span title="Rupiah / Janjang Level 1">Level 1 Rp/Jjg</span>,
         selector: r => r.rate1,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r.rate1),
+        cell: r => <NumberCell value={r.rate1} />,
       },
       {
         name: <span title="Rupiah Level 1">Level 1 Rp</span>,
         selector: r => r.rplv1,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r.rplv1),
+        cell: r => <NumberCell value={r.rplv1} />,
       },
       {
         name: <span title="Jumlah Janjang Lebih Basis Level 2">Level 2 Jlh Jjg</span>,
         selector: r => r.premilv2,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r.premilv2),
+        cell: r => <NumberCell value={r.premilv2} />,
       },
       {
         name: <span title="Rupiah / Janjang Level 2">Level 2 Rp/Jjg</span>,
         selector: r => r.rate2,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r.rate2),
+        cell: r => <NumberCell value={r.rate2} />,
       },
       {
         name: <span title="Rupiah Level 2">Level 2 Rp</span>,
         selector: r => r.rplv2,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r.rplv2),
+        cell: r => <NumberCell value={r.rplv2} />,
       },
       {
         name: <span title="Jumlah Janjang Lebih Basis Level 3">Level 3 Jlh Jjg</span>,
         selector: r => r.premilv3,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r.premilv3),
+        cell: r => <NumberCell value={r.premilv3} />,
       },
       {
         name: <span title="Rupiah / Janjang Level 3">Level 3 Rp/Jjg</span>,
         selector: r => r.rate3,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r.rate3),
+        cell: r => <NumberCell value={r.rate3} />,
       },
       {
         name: <span title="Rupiah Level 3">Level 3 Rp</span>,
         selector: r => r.rplv3,
         sortable: true,
         width: '85px',
-        cell: r => numCell(r.rplv3),
+        cell: r => <NumberCell value={r.rplv3} />,
       },
       {
         name: <span title="Jumlah Premi (Rp)">Jumlah Premi (Rp)</span>,
         selector: r => r.totalrppremi,
         sortable: true,
         width: '95px',
-        cell: r => numCell(r.totalrppremi),
+        cell: r => <NumberCell value={r.totalrppremi} />,
       },
       {
         name: <span title="Upah Pokok (Rp)">Upah Pokok (Rp)</span>,
         selector: r => r.rphk,
         sortable: true,
         width: '95px',
-        cell: r => numCell(r.rphk),
+        cell: r => <NumberCell value={r.rphk} />,
       },
       {
         name: <span title="Tidak Capai Basis (Rp)">Tidak Capai Basis (Rp)</span>,
         selector: r => r.kurangbasis,
         sortable: true,
         width: '95px',
-        cell: r => numCell(r.kurangbasis),
+        cell: r => <NumberCell value={r.kurangbasis} />,
       },
       {
         name: <span title="Premi Panen (Rp)">Premi Panen (Rp)</span>,
         selector: r => r._premiPanenNum ?? 0,
         sortable: true,
         width: '95px',
-        cell: r => numCell(r._premiPanenNum),
+        cell: r => <NumberCell value={r._premiPanenNum} />,
       },
       {
         name: <span title="Premi Brondol (Rp)">Premi Brondol (Rp)</span>,
         selector: r => r.brd_rp,
         sortable: true,
         width: '95px',
-        cell: r => numCell(r.brd_rp),
+        cell: r => <NumberCell value={r.brd_rp} />,
       },
       {
         name: <span title="Total">Total</span>,
@@ -969,12 +944,12 @@ export default function Open() {
         width: '100px',
         cell: r => (
           <span className="font-bold w-full text-right inline-block">
-            {formatNumber(r._totalNum)}
+            {formatPerfNumber(r._totalNum ?? 0, localeTag)}
           </span>
         ),
       },
     ],
-    [formatNumber, numCell, userLevel, t]
+    [userLevel, t, localeTag]
   );
 
   return (
@@ -1084,167 +1059,57 @@ export default function Open() {
               </div>
             ))}
           </div>
-          <div className="relative w-full sm:w-72 md:w-80 group shrink-0" data-tour="quick-search">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Icon name="search" className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all" />
-            </div>
-            <input
-              ref={searchInputRef}
-              className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
-              placeholder={t('searchPlaceholder')}
-              value={q}
-              onChange={e => setQ(e.target.value)}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setIsSearchFocused(false)}
-              aria-label={t('quickSearch')}
-              title={t('quickSearch')}
-            />
-            {!isSearchFocused && !q && (
-              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                <kbd className="kbd kbd-sm bg-base-200/50 opacity-50">/</kbd>
-              </div>
-            )}
-            {q && (
-              <button
-                type="button"
-                onClick={() => setQ('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-base-content/50 hover:text-error transition-colors"
-                aria-label={t('clearSearch')}
-                title={t('clearSearch')}
-              >
-                <Icon name="close" className="h-5 w-5" />
-              </button>
-            )}
-          </div>
+          <QuickSearch
+            value={q}
+            onChange={setQ}
+            placeholder={t('searchPlaceholder')}
+            namespace="Lhm"
+            className="w-full sm:w-72 md:w-80 shrink-0"
+          />
         </div>
 
         {/* Filter Bar */}
         {showFilters && (
-          <div
-            className="bg-base-100 p-4 rounded-xl shadow-sm mb-4 border border-base-200"
-          >
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-              <input
-                type="date"
-                className="input input-bordered w-full"
-                placeholder={t('filterDateStart')}
-                value={filters.fddate ?? ''}
-                onChange={e => setFilters(s => ({ ...s, fddate: e.target.value }))}
-                title={t('filterDateStartTooltip')}
-                required
-              />
-              <input
-                type="date"
-                className="input input-bordered w-full"
-                placeholder={t('filterDateEnd')}
-                value={filters.fddate_end ?? ''}
-                onChange={e => setFilters(s => ({ ...s, fddate_end: e.target.value }))}
-                title={t('filterDateEndTooltip')}
-                required
-              />
-              <input
-                className="input input-bordered w-full"
-                placeholder={t('filterKemandoran')}
-                value={filters.kemandoran ?? ''}
-                onChange={e => setFilters(s => ({ ...s, kemandoran: e.target.value }))}
-                title="Filter berdasarkan kemandoran"
-                disabled={isKemandoranLocked}
-              />
-              <input
-                className="input input-bordered w-full"
-                placeholder={t('filterKaryawan')}
-                value={filters.employeecode ?? ''}
-                onChange={e => setFilters(s => ({ ...s, employeecode: e.target.value }))}
-                title="Filter berdasarkan kode karyawan"
-              />
-              <input
-                className="input input-bordered w-full"
-                placeholder={t('filterFcba')}
-                value={filters.fcba ?? ''}
-                onChange={e => setFilters(s => ({ ...s, fcba: e.target.value }))}
-                title="Filter berdasarkan FCBA"
-                disabled={isFcbaLocked}
-              />
-              <input
-                className="input input-bordered w-full"
-                placeholder={t('filterAfdeling')}
-                value={filters.afdeling ?? ''}
-                onChange={e => setFilters(s => ({ ...s, afdeling: e.target.value }))}
-                title="Filter berdasarkan Afdeling"
-                disabled={isAfdelingLocked}
-              />
-              <input
-                className="input input-bordered w-full"
-                placeholder="Tahun Tanam"
-                value={filters.tahuntanam ?? ''}
-                onChange={e => setFilters(s => ({ ...s, tahuntanam: e.target.value }))}
-                title="Filter berdasarkan tahun tanam"
-              />
-              <input
-                className="input input-bordered w-full"
-                placeholder="Blok"
-                value={filters.blok ?? ''}
-                onChange={e => setFilters(s => ({ ...s, blok: e.target.value }))}
-                title="Filter berdasarkan kode blok"
-              />
-              <select
-                className="select select-bordered w-full"
-                value={filters.attendance ?? ''}
-                onChange={e => setFilters(s => ({ ...s, attendance: e.target.value }))}
-                title="Filter berdasarkan kode attendance"
-              >
-                <option value="">Attendance</option>
-                {['KJ', 'MK', 'WH', 'WS', 'ML', 'P1', 'KB', 'OT'].map(v => (
-                  <option key={`att-${v}`} value={v}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex justify-start gap-2 pt-3 border-t border-base-200">
-              <button
-                className={`btn btn-outline ${loading ? 'btn-disabled' : ''}`}
-                onClick={() => {
-                  if (!filters.fddate && !filters.fddate_end) {
-                    toast.error(t('toastFilterDateRequired'));
-                    return;
-                  }
-                  setAppliedFilters(getScopedFilters(filters));
-                }}
-                disabled={loading}
-                title={t('filterApplyTooltip')}
-              >
-                {loading ? (
-                  <>
-                    <span className="loading loading-spinner loading-xs" />
-                    {t('loading')}
-                  </>
-                ) : (
-                  t('filterApply')
-                )}
-              </button>
-              <button
-                className={`btn ${loading ? 'btn-disabled' : ''}`}
-                onClick={() => {
-                  const scopedResetFilters = getScopedFilters(getEmptyFilters());
-                  setFilters(scopedResetFilters);
-                  setAppliedFilters(scopedResetFilters);
-                }}
-                disabled={loading}
-                title={t('filterResetTooltip')}
-              >
-                {loading ? (
-                  <>
-                    <span className="loading loading-spinner loading-xs" />
-                    {t('loading')}
-                  </>
-                ) : (
-                  t('filterReset')
-                )}
-              </button>
-            </div>
-          </div>
+          <FilterBar
+            fields={[
+              { key: 'fddate', label: 'Tgl Awal', type: 'date', placeholder: t('filterDateStart') },
+              { key: 'fddate_end', label: 'Tgl Akhir', type: 'date', placeholder: t('filterDateEnd') },
+              { key: 'kemandoran', label: t('filterKemandoran'), type: 'text', placeholder: t('filterKemandoran'), disabled: isKemandoranLocked },
+              { key: 'employeecode', label: t('filterKaryawan'), type: 'text', placeholder: t('filterKaryawan') },
+              { key: 'fcba', label: t('filterFcba'), type: 'text', placeholder: t('filterFcba'), disabled: isFcbaLocked },
+              { key: 'afdeling', label: t('filterAfdeling'), type: 'text', placeholder: t('filterAfdeling'), disabled: isAfdelingLocked },
+              { key: 'tahuntanam', label: 'Tahun Tanam', type: 'text', placeholder: 'Tahun Tanam' },
+              { key: 'blok', label: 'Blok', type: 'text', placeholder: 'Blok' },
+              { key: 'attendance', label: 'Attendance', type: 'select', placeholder: 'Attendance', options: [
+                { value: 'KJ', label: 'KJ' },
+                { value: 'MK', label: 'MK' },
+                { value: 'WH', label: 'WH' },
+                { value: 'WS', label: 'WS' },
+                { value: 'ML', label: 'ML' },
+                { value: 'P1', label: 'P1' },
+                { value: 'KB', label: 'KB' },
+                { value: 'OT', label: 'OT' },
+              ] },
+            ]}
+            values={filters}
+            onChange={(key, val) => setFilters(s => ({ ...s, [key]: val }))}
+            onApply={() => {
+              if (!filters.fddate && !filters.fddate_end) {
+                toast.error(t('toastFilterDateRequired'));
+                return;
+              }
+              setAppliedFilters(getScopedFilters(filters));
+            }}
+            onReset={() => {
+              const scopedResetFilters = getScopedFilters(getEmptyFilters());
+              setFilters(scopedResetFilters);
+              setAppliedFilters(scopedResetFilters);
+            }}
+            loading={loading}
+            t={t}
+            showApply
+            showReset
+          />
         )}
 
         {/* Error */}

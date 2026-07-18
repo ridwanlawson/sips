@@ -1,9 +1,12 @@
 {
+  "id": "/",
   "name": "SiPS Mobile",
   "short_name": "SiPS",
   "description": "SKJ Integrated Plantation System Mobile",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "fullscreen"],
   "background_color": "#ffffff",
   "theme_color": "#000000",
   "icons": [
@@ -11,7 +14,7 @@
       "src": "/logo.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any"
+      "purpose": "any maskable"
     }
   ]
 }

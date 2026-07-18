@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { CookieName, UserLevel } from '@/lib/constants';
 
-const PUBLIC_PATHS = new Set<string>(['/', '/login', '/register', '/forgot-password']);
+const PUBLIC_PATHS = new Set<string>(['/', '/login', '/register', '/forgot-password', '/offline']);
 const isProduction = process.env.NODE_ENV === 'production';
 
 function generateRandomHex(length: number): string {

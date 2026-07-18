@@ -17,6 +17,10 @@ import AppTour from '@/app/components/feedback/app-tour';
 import type { TourStep } from '@/app/components/feedback/app-tour';
 import { DeleteModal } from '@/app/components/feedback/delete-modal';
 import { PhotoCell } from '@/app/components/ui/photo-cell';
+import { EmployeeNameCell } from '@/app/components/ui/employee-name-cell';
+import { StatusBadge } from '@/app/components/ui/status-badge';
+import { QuickSearch } from '@/app/components/ui/quick-search';
+import { FormModal } from '@/app/components/ui/form-modal';
 
 const HarvestGalleryView = dynamic(
   () => import('@/app/components/features/harvest-gallery-view').then(mod => mod.HarvestGalleryView),
@@ -91,7 +95,7 @@ export default function HarvestPage() {
   const localeTag = useLocale();
   const tH = useTranslations('Harvest');
   const {
-    q, setQ, isSearchFocused, setIsSearchFocused, searchInputRef,
+    q, setQ,
     showFilters, setShowFilters,
     viewMode, setViewMode, allExpanded, setAllExpanded, galleryRef,
     filters, setFilters,
@@ -215,19 +219,7 @@ export default function HarvestPage() {
         selector: r => r.status_harvesting ?? '-',
         sortable: true,
         width: '120px',
-        cell: r => (
-          <span
-            className={`badge ${
-              (r.status_harvesting || '').toLowerCase() === 'planned'
-                ? 'badge-warning'
-                : (r.status_harvesting || '').toLowerCase() === 'approved'
-                  ? 'badge-success'
-                  : 'badge-ghost'
-            }`}
-          >
-            {r.status_harvesting ?? '-'}
-          </span>
-        ),
+        cell: r => <StatusBadge status={r.status_harvesting} />,
       },
       {
         name: tH('colNo'),
@@ -253,12 +245,7 @@ export default function HarvestPage() {
         selector: row => row.nama_karyawan || row.kode_karyawan,
         sortable: true,
         width: '200px',
-        cell: row => (
-          <div>
-            <div className="font-medium">{row.nama_karyawan}</div>
-            <div className="text-xs text-gray-500">{row.kode_karyawan}</div>
-          </div>
-        ),
+        cell: row => <EmployeeNameCell name={row.nama_karyawan} code={row.kode_karyawan} />,
       },
       {
         name: tH('colKemandoran'),
@@ -547,37 +534,7 @@ export default function HarvestPage() {
 
           {/* SEARCH & VIEW TOGGLE */}
           <div className="flex items-center gap-2 md:ml-auto">
-            <div className="relative flex-1 md:flex-none md:max-w-96 group" data-tour="quick-search">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Icon name="search" className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all" />
-            </div>
-            <input
-              ref={searchInputRef}
-              className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
-              placeholder={tH('searchPlaceholder')}
-              value={q}
-              onChange={e => setQ(e.target.value)}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setIsSearchFocused(false)}
-              aria-label={tH('quickSearch')}
-              title={tH('quickSearch')}
-            />
-            {!isSearchFocused && !q && (
-              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none animate-fadeIn">
-                <kbd className="kbd kbd-sm bg-base-200/50 opacity-50">/</kbd>
-              </div>
-            )}
-            {q && (
-              <button
-                onClick={() => setQ('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-base-content/50 hover:text-error transition-colors"
-                aria-label={tH('clearSearch')}
-                title={tH('clearSearch')}
-              >
-                <Icon name="close" className="h-5 w-5" />
-              </button>
-            )}
-          </div>
+          <QuickSearch value={q} onChange={setQ} namespace="Harvest" className="w-full sm:w-72 md:w-80 shrink-0" />
           <div className="join flex-none">
             <button
               className="btn btn-outline join-item"
@@ -663,41 +620,21 @@ export default function HarvestPage() {
         )}
       </div>
 
-      {/* Modal Form */}
-      {open && (
-        <div className="modal modal-open">
-          <div className="modal-box max-w-[calc(100vw-1rem)] sm:max-w-4xl mx-2 sm:mx-0 p-2 sm:p-6">
-            {/* Sticky Header */}
-            <div className="sticky top-0 z-10 bg-base-100 pb-2 -mx-2 sm:-mx-6 px-2 sm:px-6 border-b border-base-300">
-              <div className="flex items-start justify-between">
-                <h3 className="font-bold text-lg">
-                  {isEditing ? tH('modalEditTitle') : tH('modalAddTitle')}
-                </h3>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-circle btn-ghost"
-                  onClick={() => {
-                    setOpen(false);
-                    setPreview('');
-                  }}
-                  aria-label={tH('modalClose')}
-                >
-                  <Icon name="close" className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-
-            {detailLoading ? (
-              <div className="py-8 text-center">
-                <span className="loading loading-spinner loading-lg"></span>
-                <p className="mt-2">{tH('modalLoadingDetail')}</p>
-              </div>
-            ) : (
-              <form
-                id="harvest-form"
-                onSubmit={handleSubmit}
-                className="grid grid-cols-12 gap-2 max-h-[80vh] overflow-y-auto"
-              >
+      <FormModal
+        open={open}
+        title={isEditing ? tH('modalEditTitle') : tH('modalAddTitle')}
+        onClose={() => { setOpen(false); setPreview(''); }}
+        onSubmit={handleSubmit}
+        loading={mutation.isPending}
+        size="lg"
+      >
+        {detailLoading ? (
+          <div className="py-8 text-center">
+            <span className="loading loading-spinner loading-lg"></span>
+            <p className="mt-2">{tH('modalLoadingDetail')}</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-12 gap-2 max-h-[80vh] overflow-y-auto">
                 <div className="col-span-12">
                   <h4 className="text-sm font-semibold text-base-content/80">
                     {tH('formInfoTitle')}
@@ -1199,48 +1136,9 @@ export default function HarvestPage() {
                     )}
                   </fieldset>
                 </div>
-              </form>
-            )}
-            {/* Sticky Footer */}
-            <div className="sticky bottom-0 z-10 bg-base-100 pt-2 -mx-2 sm:-mx-6 px-2 sm:px-6 border-t border-base-300">
-              <div className="flex flex-wrap gap-2 justify-end">
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={() => {
-                    setOpen(false);
-                    setPreview('');
-                  }}
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  form="harvest-form"
-                  className="btn btn-primary"
-                  disabled={mutation.isPending}
-                >
-                  {mutation.isPending ? (
-                    <>
-                      <span className="loading loading-spinner loading-sm"></span>
-                      Menyimpan...
-                    </>
-                  ) : (
-                    'Simpan'
-                  )}
-                </button>
-              </div>
-            </div>
           </div>
-          <div
-            className="modal-backdrop"
-            onClick={() => {
-              setOpen(false);
-              setPreview('');
-            }}
-          ></div>
-        </div>
-      )}
+        )}
+      </FormModal>
 
       <DeleteModal open={deleteOpen} onClose={closeDeleteModal} onConfirm={handleConfirmDelete} isLoading={deleteMutation.isPending} />
     </div>

@@ -14,6 +14,7 @@ import { EmptyState } from '@/app/components/feedback/empty-state';
 import { useLocale } from '@/hooks/useLocale';
 import { useDashboardData, isNonZeroTime } from '@/hooks/useDashboardData';
 import { formatPerfNumber } from '@/utils/helpers/perf-formatter';
+import { StatusBadge } from '@/app/components/ui/status-badge';
 
 type Timeframe = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
@@ -298,23 +299,23 @@ export default function UserDashboard() {
                     </summary>
                     <div className="mt-2 text-xs text-base-content/60 space-y-0.5">
                       <div className="flex items-center gap-2">
-                        <span className="badge badge-xs badge-ghost">HADIR</span>
+                        <StatusBadge status="HADIR" defaultStyle="ghost" size="xs" />
                         <span>Semua kode kecuali MK dan P1</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="badge badge-xs badge-success">TEPAT WAKTU</span>
+                        <StatusBadge status="TEPAT WAKTU" defaultStyle="success" size="xs" />
                         <span>Hadir tanpa telat & tanpa pulang awal</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="badge badge-xs badge-warning">TELAT</span>
+                        <StatusBadge status="TELAT" defaultStyle="warning" size="xs" />
                         <span><code>total_late_time</code> lebih dari 0</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="badge badge-xs badge-error">PULANG AWAL</span>
+                        <StatusBadge status="PULANG AWAL" defaultStyle="error" size="xs" />
                         <span><code>go_home_early</code> lebih dari 0</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="badge badge-xs badge-neutral">ALPHA</span>
+                        <StatusBadge status="ALPHA" defaultStyle="neutral" size="xs" />
                         <span>P1 (izin) atau MK (mangkir)</span>
                       </div>
                     </div>

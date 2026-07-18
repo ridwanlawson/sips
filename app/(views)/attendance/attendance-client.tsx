@@ -16,7 +16,7 @@ import { PhotoCell } from '@/app/components/ui/photo-cell';
 import { Toolbar } from '@/app/components/ui/toolbar';
 import AppTour from '@/app/components/feedback/app-tour';
 import type { TourStep } from '@/app/components/feedback/app-tour';
-import { useSearchShortcut } from '@/hooks/useSearchShortcut';
+
 import { useLocale } from '@/hooks/useLocale';
 import type { BusinessUnit } from '@/utils/services/businessUnitService';
 import { fetchBusinessUnits } from '@/utils/services/businessUnitService';
@@ -24,6 +24,10 @@ import type { SectionMaster } from '@/utils/services/masterDataService';
 import { fetchGangs, fetchSections } from '@/utils/services/masterDataService';
 import { exportJsonToCsv } from '@/utils/services/exportCsv';
 import { formatPerfDate } from '@/utils/helpers/perf-formatter';
+import { EmployeeNameCell } from '@/app/components/ui/employee-name-cell';
+import { FilterBar, type FilterField } from '@/app/components/ui/filter-bar';
+import { QuickSearch } from '@/app/components/ui/quick-search';
+import { StatusBadge } from '@/app/components/ui/status-badge';
 
 /* =========================
    T Y P E S
@@ -309,8 +313,6 @@ export default function Attendance() {
   const queryClient = useQueryClient();
   const t = useTranslations('Attendance');
   const [q, setQ] = useState('');
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const searchInputRef = useSearchShortcut();
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'gallery'>('table');
   const [allExpanded, setAllExpanded] = useState(false);
@@ -1618,19 +1620,7 @@ export default function Attendance() {
         selector: r => r.status_attendance ?? '-',
         sortable: true,
         width: '120px',
-        cell: r => (
-          <span
-            className={`badge ${
-              (r.status_attendance || '').toLowerCase() === 'planned'
-                ? 'badge-warning'
-                : (r.status_attendance || '').toLowerCase() === 'approved'
-                  ? 'badge-success'
-                  : 'badge-ghost'
-            }`}
-          >
-            {r.status_attendance ?? '-'}
-          </span>
-        ),
+        cell: (r: Absensi) => <StatusBadge status={r.status_attendance} />,
       },
       {
         name: <span title={t('colNoTooltip')}>{t('colNo')}</span>,
@@ -1657,16 +1647,7 @@ export default function Attendance() {
         width: '240px',
         sortable: true,
         sortFunction: (a, b) => sortByLabel(a, b, r => r._karyawanLabel || ''),
-        cell: r => (
-          <div className="min-w-0">
-            <div className="font-semibold truncate" title={r._karyawanName || '-'}>
-              {r._karyawanName || '-'}
-            </div>
-            <div className="text-xs opacity-70 truncate" title={r._karyawanCode || ''}>
-              {r._karyawanCode || ''}
-            </div>
-          </div>
-        ),
+        cell: (r: Absensi) => <EmployeeNameCell name={r._karyawanName} code={r._karyawanCode} />,
       },
       {
         name: <span title={t('colMandorTooltip')}>{t('colMandor')}</span>,
@@ -1674,19 +1655,12 @@ export default function Attendance() {
         style: { flexGrow: 1.5 as number, minWidth: '220px' },
         sortable: true,
         sortFunction: (a, b) => sortByLabel(a, b, r => r._mandorLabel || ''),
-        cell: r => {
-          if (!r._mandorCode) return <>-</>;
-          return (
-            <div className="min-w-0">
-              <div className="font-medium truncate" title={r._mandorName || '-'}>
-                {r._mandorName || '-'}
-              </div>
-              <div className="text-xs opacity-70 truncate" title={r._mandorCode}>
-                {r._mandorCode}
-              </div>
-            </div>
-          );
-        },
+        cell: (r: Absensi) =>
+          r._mandorCode ? (
+            <EmployeeNameCell name={r._mandorName} code={r._mandorCode} />
+          ) : (
+            <>-</>
+          ),
       },
       {
         name: <span title={t('colFcbaTooltip')}>{t('colFcba')}</span>,
@@ -1932,6 +1906,53 @@ export default function Attendance() {
 
   const canAddOrEdit = userLevel === 'ADM' || userLevel === 'KSI';
 
+  const filterFields: FilterField[] = useMemo(() => [
+    { key: 'tanggal', label: 'Tgl Awal', type: 'date', placeholder: t('filterDateStart') },
+    { key: 'tanggal_end', label: 'Tgl Akhir', type: 'date', placeholder: t('filterDateEnd') },
+    { key: 'kemandoran', label: 'Kemandoran', type: 'text', placeholder: t('filterKemandoran'), disabled: isKemandoranLocked },
+    { key: 'kode_karyawan', label: 'Karyawan', type: 'text', placeholder: t('filterKodeKaryawan') },
+    { key: 'kode_karyawan_mandor', label: 'Mandor', type: 'text', placeholder: t('filterMandor') },
+    { key: 'fcba', label: 'FCBA', type: 'text', placeholder: t('filterFcba'), disabled: isFcbaLocked },
+    { key: 'afdeling', label: 'Afdeling', type: 'text', placeholder: t('filterAfdeling'), disabled: isAfdelingLocked },
+    { key: 'gang', label: 'Gang', type: 'text', placeholder: t('filterGang') },
+    { key: 'attendance', label: 'Attendance', type: 'select', placeholder: 'Attendance', options: [
+      { value: '', label: 'All Attendance' },
+      ...['KJ', 'MK', 'WH', 'WS', 'ML', 'P1', 'KB', 'OT'].map(v => ({ value: v, label: v })),
+    ]},
+    { key: 'attendance_type', label: 'Type', type: 'select', placeholder: 'Type', options: [
+      { value: '', label: 'All Types' },
+      { value: 'REGULAR', label: 'REGULAR' },
+      { value: 'ASSISTENSI', label: 'ASSISTENSI' },
+    ]},
+    { key: 'status_attendance', label: 'Status', type: 'select', placeholder: 'Status', options: [
+      { value: '', label: 'All Status' },
+      { value: 'Approved', label: 'Approved' },
+      { value: 'Planned', label: 'Planned' },
+      { value: 'Reject', label: 'Reject' },
+    ]},
+    { key: 'fcba_destination', label: 'FCBA Tujuan', type: 'text', placeholder: t('filterFcbaTujuan') },
+    { key: 'section_destination', label: 'Afdeling Tujuan', type: 'text', placeholder: t('filterAfdelingTujuan') },
+  ], [t, isKemandoranLocked, isFcbaLocked, isAfdelingLocked]);
+
+  const handleFilterReset = useCallback(() => {
+    const resetFilters: Filters = {
+      tanggal: '',
+      tanggal_end: '',
+      kemandoran: '',
+      kode_karyawan_mandor: '',
+      kode_karyawan: '',
+      fcba: '',
+      afdeling: '',
+      gang: '',
+      attendance: '',
+      attendance_type: '',
+      status_attendance: '',
+      fcba_destination: '',
+      section_destination: '',
+    };
+    setFilters(getScopedFilters(resetFilters));
+  }, [getScopedFilters]);
+
   return (
     <div className="min-h-[calc(100vh-64px)] bg-base-200 w-full">
       <div className="p-4 sm:p-6 max-w-screen-2xl mx-auto w-full overflow-x-hidden space-y-4">
@@ -1978,37 +1999,7 @@ export default function Attendance() {
 
         {/* Quick Search & View Toggle */}
         <div className="flex items-center gap-2 justify-end animate-slideUp [animation-delay:100ms]">
-          <div className="relative flex-1 md:flex-none md:w-96 group" data-tour="quick-search">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Icon name="search" className="h-4 w-4 opacity-50 group-focus-within:text-primary group-focus-within:opacity-100 transition-all" />
-            </div>
-            <input
-              ref={searchInputRef}
-              className="input input-bordered w-full pl-9 pr-10 focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm"
-              placeholder={t('searchPlaceholder')}
-              value={q}
-              onChange={e => setQ(e.target.value)}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setIsSearchFocused(false)}
-              aria-label={t('quickSearch')}
-              title={t('quickSearch')}
-            />
-            {!isSearchFocused && !q && (
-              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none animate-fadeIn">
-                <kbd className="kbd kbd-sm bg-base-200/50 opacity-50">/</kbd>
-              </div>
-            )}
-            {q && (
-              <button
-                onClick={() => setQ('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-base-content/50 hover:text-error transition-colors"
-                aria-label={t('clearSearch')}
-                title={t('clearSearch')}
-              >
-                <Icon name="close" className="h-5 w-5" />
-              </button>
-            )}
-          </div>
+          <QuickSearch value={q} onChange={setQ} namespace="Attendance" className="w-full sm:w-72 md:w-80 shrink-0" />
           <div className="join flex-none">
             <button
               className="btn btn-outline join-item"
@@ -2038,193 +2029,16 @@ export default function Attendance() {
           </div>
         </div>
 
-        {/* Filter Bar */}
         {showFilters && (
-          <div className="bg-base-100 p-4 rounded-xl shadow-sm mb-4 border border-base-200">
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-              {/* Tanggal Awal */}
-              <input
-                type="date"
-                className="input input-bordered w-full"
-                placeholder={t('filterDateStart')}
-                value={filters.tanggal ?? ''}
-                onChange={e => setFilters(s => ({ ...s, tanggal: e.target.value }))}
-                title={t('filterDateStartTooltip')}
-              />
-              {/* Tanggal Akhir */}
-              <input
-                type="date"
-                className="input input-bordered w-full"
-                placeholder={t('filterDateEnd')}
-                value={filters.tanggal_end ?? ''}
-                onChange={e => setFilters(s => ({ ...s, tanggal_end: e.target.value }))}
-                title={t('filterDateEndTooltip')}
-              />
-              <input
-                className="input input-bordered w-full"
-                placeholder={t('filterKemandoran')}
-                value={filters.kemandoran ?? ''}
-                onChange={e => setFilters(s => ({ ...s, kemandoran: e.target.value }))}
-                title={t('filterKemandoranTooltip')}
-                disabled={isKemandoranLocked}
-              />
-              <input
-                className="input input-bordered w-full"
-                placeholder={t('filterKodeKaryawan')}
-                value={filters.kode_karyawan ?? ''}
-                onChange={e => setFilters(s => ({ ...s, kode_karyawan: e.target.value }))}
-                title={t('filterKodeKaryawanTooltip')}
-              />
-              <input
-                className="input input-bordered w-full"
-                placeholder={t('filterMandor')}
-                value={filters.kode_karyawan_mandor ?? ''}
-                onChange={e =>
-                  setFilters(s => ({
-                    ...s,
-                    kode_karyawan_mandor: e.target.value,
-                  }))
-                }
-                title={t('filterMandorTooltip')}
-              />
-              <input
-                className="input input-bordered w-full"
-                placeholder={t('filterFcba')}
-                value={filters.fcba ?? ''}
-                onChange={e => setFilters(s => ({ ...s, fcba: e.target.value }))}
-                title={t('filterFcbaTooltip')}
-                disabled={isFcbaLocked}
-              />
-              <input
-                className="input input-bordered w-full"
-                placeholder={t('filterAfdeling')}
-                value={filters.afdeling ?? ''}
-                onChange={e => setFilters(s => ({ ...s, afdeling: e.target.value }))}
-                title={t('filterAfdelingTooltip')}
-                disabled={isAfdelingLocked}
-              />
-              <input
-                className="input input-bordered w-full"
-                placeholder={t('filterGang')}
-                value={filters.gang ?? ''}
-                onChange={e => setFilters(s => ({ ...s, gang: e.target.value }))}
-                title={t('filterGangTooltip')}
-              />
-              <select
-                className="select select-bordered w-full"
-                value={filters.attendance ?? ''}
-                onChange={e => setFilters(s => ({ ...s, attendance: e.target.value }))}
-                title={t('filterKodeAttendanceTooltip')}
-              >
-                <option value="">Attendance</option>
-                {['KJ', 'MK', 'WH', 'WS', 'ML', 'P1', 'KB', 'OT'].map(v => (
-                  <option key={`att-${v}`} value={v}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="select select-bordered w-full"
-                value={filters.attendance_type ?? ''}
-                onChange={e => setFilters(s => ({ ...s, attendance_type: e.target.value }))}
-                title={t('filterJenisAttendanceTooltip')}
-              >
-                <option value="">Type</option>
-                <option value="REGULAR">REGULAR</option>
-                <option value="ASSISTENSI">ASSISTENSI</option>
-              </select>
-              <select
-                className="select select-bordered w-full"
-                value={filters.status_attendance ?? ''}
-                onChange={e =>
-                  setFilters(s => ({
-                    ...s,
-                    status_attendance: e.target.value,
-                  }))
-                }
-                title={t('filterStatusAttendanceTooltip')}
-              >
-                <option value="">Status</option>
-                <option value="Approved">Approved</option>
-                <option value="Planned">Planned</option>
-                <option value="Reject">Reject</option>
-              </select>
-              <input
-                className="input input-bordered w-full"
-                placeholder={t('filterFcbaTujuan')}
-                value={filters.fcba_destination ?? ''}
-                onChange={e =>
-                  setFilters(s => ({
-                    ...s,
-                    fcba_destination: e.target.value,
-                  }))
-                }
-                title={t('filterFcbaTujuanTooltip')}
-              />
-              <input
-                className="input input-bordered w-full"
-                placeholder={t('filterAfdelingTujuan')}
-                value={filters.section_destination ?? ''}
-                onChange={e =>
-                  setFilters(s => ({
-                    ...s,
-                    section_destination: e.target.value,
-                  }))
-                }
-                title={t('filterAfdelingTujuanTooltip')}
-              />
-            </div>
-
-            <div className="flex justify-start gap-2 pt-3 border-t border-base-200">
-              <button
-                className={`btn btn-outline ${loading ? 'btn-disabled' : ''}`}
-                onClick={() => queryClient.invalidateQueries({ queryKey: ['attendance'] })}
-                disabled={loading}
-                title={t('filterApplyTooltip')}
-              >
-                {loading ? (
-                  <>
-                    <span className="loading loading-spinner loading-xs" />
-                    {t('loading')}
-                  </>
-                ) : (
-                  t('filterApply')
-                )}
-              </button>
-              <button
-                className={`btn ${loading ? 'btn-disabled' : ''}`}
-                onClick={() => {
-                  const resetFilters: Filters = {
-                    tanggal: '',
-                    tanggal_end: '',
-                    kemandoran: '',
-                    kode_karyawan_mandor: '',
-                    kode_karyawan: '',
-                    fcba: '',
-                    afdeling: '',
-                    gang: '',
-                    attendance: '',
-                    attendance_type: '',
-                    status_attendance: '',
-                    fcba_destination: '',
-                    section_destination: '',
-                  };
-                  setFilters(getScopedFilters(resetFilters));
-                }}
-                disabled={loading}
-                title={t('filterResetTooltip')}
-              >
-                {loading ? (
-                  <>
-                    <span className="loading loading-spinner loading-xs" />
-                    {t('loading')}
-                  </>
-                ) : (
-                  t('filterReset')
-                )}
-              </button>
-            </div>
-          </div>
+          <FilterBar
+            fields={filterFields}
+            values={filters}
+            onChange={(key, value) => setFilters(s => ({ ...s, [key]: value }))}
+            onApply={() => queryClient.invalidateQueries({ queryKey: ['attendance'] })}
+            onReset={handleFilterReset}
+            loading={loading}
+            t={t}
+          />
         )}
 
         {/* Data Table / Gallery View */}
