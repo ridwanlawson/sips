@@ -55,3 +55,8 @@
 **Learning:** Standardizing unauthorized access states with a localized, visual-first component improves both accessibility for multi-lingual users and the overall professional feel of the application. Pairing technical messages with recognizable visual icons (like a pulsing lock) aids immediate recognition even before the text is read.
 
 **Action:** Use the `Common` translation namespace for global application states. Always pair high-impact feedback (like Access Denied) with thematic icons and entry animations to provide clear, delightful interactive feedback.
+
+## 2025-12-20 - [A11y and Focus states on Responsive Icon-Only Buttons]
+**Learning:** Buttons that selectively hide text labels on smaller viewport sizes (using classes like `hidden sm:inline`) must be configured with programmatic equivalents (`aria-label`) and explicit focus rings (`focus-visible:ring-2 focus-visible:ring-primary`) to maintain accessibility compliance and visible navigation anchors for keyboard/screen-reader users on mobile layouts.
+
+**Action:** Always attach explicit `aria-label` attributes equal to the fallback label and `focus-visible:ring-2 focus-visible:ring-primary` class names to elements that hide their text on smaller screens.
