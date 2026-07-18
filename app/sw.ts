@@ -7,7 +7,6 @@ installSerwist({
   precacheEntries: swManifest,
   skipWaiting: true,
   clientsClaim: true,
-  navigationPreload: true,
   disableDevLogs: true,
   fallbacks: {
     entries: [

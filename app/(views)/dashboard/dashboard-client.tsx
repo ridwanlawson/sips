@@ -21,13 +21,13 @@ type Timeframe = 'daily' | 'weekly' | 'monthly' | 'yearly';
 const timeframeLabel = (tf: Timeframe): string => {
   switch (tf) {
     case 'daily':
-      return 'Per Hari';
+      return 'Hari ini';
     case 'weekly':
       return '7 Hari Terakhir';
     case 'monthly':
-      return 'Per Bulan (bulan ini)';
+      return 'Bulan ini';
     case 'yearly':
-      return 'Per Tahun (tahun ini)';
+      return 'Tahun ini';
     default:
       return '';
   }
@@ -133,16 +133,16 @@ export default function UserDashboard() {
           </div>
 
           {/* Timeframe Selector */}
-          <div className="flex flex-wrap gap-2 items-center">
+          <div className="flex flex-wrap gap-2 items-center w-full sm:w-auto">
             <span className="text-xs uppercase tracking-wide text-base-content/60">
               Periode Data:
             </span>
-            <div className="join">
+            <div className="join w-full sm:w-auto">
               {(['daily', 'weekly', 'monthly', 'yearly'] as Timeframe[]).map(tf => (
                 <button
                   key={tf}
                   type="button"
-                  className={`join-item btn btn-xs md:btn-sm ${
+                  className={`join-item btn btn-xs md:btn-sm flex-1 sm:flex-none ${
                     timeframe === tf ? 'btn-primary' : 'btn-ghost border border-base-300'
                   }`}
                   onClick={() => {
