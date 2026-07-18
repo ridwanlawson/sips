@@ -60,3 +60,8 @@
 **Learning:** Buttons that selectively hide text labels on smaller viewport sizes (using classes like `hidden sm:inline`) must be configured with programmatic equivalents (`aria-label`) and explicit focus rings (`focus-visible:ring-2 focus-visible:ring-primary`) to maintain accessibility compliance and visible navigation anchors for keyboard/screen-reader users on mobile layouts.
 
 **Action:** Always attach explicit `aria-label` attributes equal to the fallback label and `focus-visible:ring-2 focus-visible:ring-primary` class names to elements that hide their text on smaller screens.
+
+## 2026-01-10 - [Accessible Onboarding Tour Focus Management]
+**Learning:** Interactive multi-step onboarding tours (using dialog or modal patterns) need robust focus containment and focus restoration to satisfy WCAG accessibility standards. If focus is not moved into the tour modal upon opening, screen reader and keyboard users can easily miss the new interactive overlay. If focus is not returned to the triggering button upon close or skip, the user's keyboard tab state is lost.
+
+**Action:** Implement trigger and modal references to programmatically shift focus to the modal container on open, and restore focus to the trigger button on close (gating the return-focus with an `isFirstRender` ref). Pair the triggering element with proper `aria-expanded` and `aria-controls` attributes linking it directly to the onboarding dialog.

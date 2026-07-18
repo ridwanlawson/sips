@@ -39,6 +39,11 @@ export default function AppTour({ steps, storageKey, onStepChange, btnClassName 
   const prevPositionRef = useRef<string | null>(null);
   const prevZIndexRef = useRef<string | null>(null);
 
+  // 🎨 Palette Improvement: Refs for focus management and screen reader accessibility
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const modalCardRef = useRef<HTMLDivElement | null>(null);
+  const isFirstRender = useRef(true);
+
   /* ---- Persist dismissal in localStorage ---- */
   const persistDismiss = useCallback(() => {
     if (storageKey) {
@@ -105,6 +110,24 @@ export default function AppTour({ steps, storageKey, onStepChange, btnClassName 
     }
   }, [currentStep, isOpen, steps, applyHighlight, removeHighlight, onStepChange]);
 
+  // 🎨 Palette Improvement: Focus management when isOpen state changes
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    if (!isOpen) {
+      triggerRef.current?.focus();
+    } else {
+      // Short delay to ensure modal is rendered and accessible
+      const timer = setTimeout(() => {
+        modalCardRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
   /* ---- Navigation ---- */
   const handleNext = useCallback(() => {
     if (currentStep < steps.length - 1) {
@@ -156,11 +179,15 @@ export default function AppTour({ steps, storageKey, onStepChange, btnClassName 
   return (
     <>
       {/* Help Button — dibuat mencolok dengan warna warning + animasi */}
+      {/* 🎨 Palette Improvement: aria-expanded & aria-controls added to trigger */}
       <button
-        className={`btn btn-warning btn-sm gap-1.5 shadow-sm hover:shadow-md transition-all duration-200 ${btnClassName}`}
+        ref={triggerRef}
+        className={`btn btn-warning btn-sm gap-1.5 shadow-sm hover:shadow-md transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary ${btnClassName}`}
         onClick={handleOpen}
         title={t('helpHint')}
         aria-label={t('help')}
+        aria-expanded={isOpen}
+        aria-controls={isOpen ? "tour-modal-card" : undefined}
       >
         <Icon name="help" className="h-4 w-4" />
         <span className="hidden sm:inline">{t('help')}</span>
@@ -173,8 +200,12 @@ export default function AppTour({ steps, storageKey, onStepChange, btnClassName 
           <div className="absolute inset-0" onClick={handleSkip} />
 
           {/* Modal Card */}
+          {/* 🎨 Palette Improvement: ref & tabIndex for programmatic focusing, id matching aria-controls */}
           <div
-            className={`relative bg-base-100 rounded-2xl shadow-2xl ${modalWidth} mx-3 sm:mx-4`}
+            ref={modalCardRef}
+            id="tour-modal-card"
+            tabIndex={-1}
+            className={`relative bg-base-100 rounded-2xl shadow-2xl ${modalWidth} mx-3 sm:mx-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary`}
             style={{ animation: 'tourFadeIn 0.25s ease-out' }}
           >
             {/* Progress bar */}
@@ -285,4 +316,3 @@ export default function AppTour({ steps, storageKey, onStepChange, btnClassName 
     </>
   );
 }
-
