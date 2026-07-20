@@ -634,7 +634,7 @@ export default function HarvestPage() {
             <p className="mt-2">{tH('modalLoadingDetail')}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-12 gap-2 max-h-[80vh] overflow-y-auto">
+          <div className="grid grid-cols-12 col-span-12 gap-2 max-h-[80vh] overflow-y-auto">
                 <div className="col-span-12">
                   <h4 className="text-sm font-semibold text-base-content/80">
                     {tH('formInfoTitle')}
