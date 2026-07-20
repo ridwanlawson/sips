@@ -31,13 +31,33 @@ const POSITION_CLASSES: Record<string, string> = {
   bottom: 'items-end justify-center pb-4 sm:pb-8',
 };
 
-export default function AppTour({ steps, storageKey, onStepChange, btnClassName = '' }: AppTourProps) {
+export default function AppTour({
+  steps,
+  storageKey,
+  onStepChange,
+  btnClassName = '',
+}: AppTourProps) {
   const t = useTranslations('Tour');
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const highlightRef = useRef<HTMLElement | null>(null);
   const prevPositionRef = useRef<string | null>(null);
   const prevZIndexRef = useRef<string | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const modalContainerRef = useRef<HTMLDivElement>(null);
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    if (isOpen) {
+      modalContainerRef.current?.focus();
+    } else {
+      triggerRef.current?.focus();
+    }
+  }, [isOpen]);
 
   /* ---- Persist dismissal in localStorage ---- */
   const persistDismiss = useCallback(() => {
@@ -157,10 +177,13 @@ export default function AppTour({ steps, storageKey, onStepChange, btnClassName 
     <>
       {/* Help Button — dibuat mencolok dengan warna warning + animasi */}
       <button
+        ref={triggerRef}
         className={`btn btn-warning btn-sm gap-1.5 shadow-sm hover:shadow-md transition-all duration-200 ${btnClassName}`}
         onClick={handleOpen}
         title={t('helpHint')}
         aria-label={t('help')}
+        aria-expanded={isOpen}
+        aria-controls="tour-modal-container"
       >
         <Icon name="help" className="h-4 w-4" />
         <span className="hidden sm:inline">{t('help')}</span>
@@ -168,13 +191,21 @@ export default function AppTour({ steps, storageKey, onStepChange, btnClassName 
 
       {/* Tour Overlay — no backdrop dimming so highlighted elements stay fully visible */}
       {isOpen && (
-        <div className={`fixed inset-0 z-[999999] flex ${overlayAlign}`} role="dialog" aria-modal="true" aria-label={step.title}>
+        <div
+          className={`fixed inset-0 z-[999999] flex ${overlayAlign}`}
+          role="dialog"
+          aria-modal="true"
+          aria-label={step.title}
+        >
           {/* Invisible click-catcher for skip-on-click-outside */}
           <div className="absolute inset-0" onClick={handleSkip} />
 
           {/* Modal Card */}
           <div
-            className={`relative bg-base-100 rounded-2xl shadow-2xl ${modalWidth} mx-3 sm:mx-4`}
+            id="tour-modal-container"
+            ref={modalContainerRef}
+            tabIndex={-1}
+            className={`relative bg-base-100 rounded-2xl shadow-2xl ${modalWidth} mx-3 sm:mx-4 focus:outline-none`}
             style={{ animation: 'tourFadeIn 0.25s ease-out' }}
           >
             {/* Progress bar */}
@@ -203,7 +234,9 @@ export default function AppTour({ steps, storageKey, onStepChange, btnClassName 
             {/* Body */}
             <div className="px-6 py-4">
               <div className="flex items-start gap-4">
-                <span className="text-3xl shrink-0 mt-0.5" aria-hidden={!step.icon}>{step.icon || '💡'}</span>
+                <span className="text-3xl shrink-0 mt-0.5" aria-hidden={!step.icon}>
+                  {step.icon || '💡'}
+                </span>
                 <div className="min-w-0">
                   <h3 className="text-lg font-bold text-base-content">{step.title}</h3>
                   <p className="text-sm text-base-content/70 mt-1.5 leading-relaxed">
@@ -285,4 +318,3 @@ export default function AppTour({ steps, storageKey, onStepChange, btnClassName 
     </>
   );
 }
-
