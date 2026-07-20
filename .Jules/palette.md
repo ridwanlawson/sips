@@ -65,3 +65,8 @@
 **Learning:** Interactive onboarding tours (like `AppTour`) present complex accessibility challenges, as focusing the onboarding modal container upon activation is critical to allow screen readers to parse the new context. Crucially, focus return logic on close must bypass the initial render to prevent focus hijacking during page loading, and the trigger button must leverage dynamic `aria-expanded` and `aria-controls` properties for robust screen-reader announcement.
 
 **Action:** Gate focus return effects with an `isFirstRender` ref, configure the modal container with `tabIndex={-1}` and focus it on open, and always keep ARIA attributes in sync with component toggle states.
+
+## 2026-03-20 - [Escape Key Dropdown Dismissal & Semantic Triggers]
+**Learning:** Pure CSS-only dropdowns (like DaisyUI's focus-within dropdowns) are simple but lack default keyboard dismissal handlers. Users navigate with Tab but are stuck inside or unable to dismiss the dropdown easily. Implementing an Escape keydown listener on the container, which programmatically blurs `document.activeElement` to clear focus and immediately returns focus back to the trigger button, provides standard accessible behavior. Additionally, using native `<button type="button">` instead of generic `div` elements with `role="button"` ensures native Enter/Space activation without manual key listeners.
+
+**Action:** Always prefer native `<button>` elements for interactive triggers. Implement Escape key listeners on CSS-only dropdown containers to blur active elements and return focus back to the trigger.
