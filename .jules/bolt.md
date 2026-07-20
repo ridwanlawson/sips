@@ -49,3 +49,7 @@
 ## 2025-06-30 - [O(N) Render-path Lookup in Harvest]
 **Learning:** Performing repeated O(N) array scans (like `.find()`) inside event handlers or render loops for large datasets (like employees or TPH) causes noticeable input lag.
 **Action:** Pre-calculate a `Map` using `useMemo` for O(1) constant-time lookups. This ensures immediate UI responsiveness even as the dataset grows.
+
+## 2026-07-20 - [Redundant Cookie Parsing and Object Allocation]
+**Learning:** Even with a single-pass cookie parser (`getCookiesMap`), repeatedly fetching individual cookie values (e.g., fullName, level, section, etc.) across the rendering lifecycle triggers multiple full parses of `document.cookie`, leading to unnecessary CPU and memory allocation churn.
+**Action:** Implement string-identity comparison cache in the parser. Since `document.cookie` is a browser getter, comparing its current string reference/value to a stored `lastCookieString` allows returning a fully-parsed cached map directly in O(1) time if unchanged.
