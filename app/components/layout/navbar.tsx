@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, memo, useCallback } from 'react';
+import { useEffect, useState, memo, useCallback, useRef } from 'react';
 import Image from 'next/image';
 import { getCsrfToken } from '@/lib/auth/fetchWithCsrf';
 import Link from 'next/link';
@@ -27,11 +27,42 @@ export default memo(function Navbar() {
   const [fullNameDisplay, setFullNameDisplay] = useState<string | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isNavigating, setIsNavigating] = useState<string | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const userMenuTriggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // Reset the progress bar when navigation completes.
   useEffect(() => {
     setIsNavigating(null);
   }, [pathname]);
+
+  const closeDropdown = useCallback(() => {
+    setIsMenuOpen(false);
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  }, []);
+
+  const handleDropdownKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeDropdown();
+      userMenuTriggerRef.current?.focus();
+    }
+  }, [closeDropdown]);
+
+  // Handle outside click to close the dropdown
+  useEffect(() => {
+    const onDocClick = (e: MouseEvent) => {
+      if (!menuRef.current) return;
+      const target = e.target as Node | null;
+      if (target && !menuRef.current.contains(target)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, []);
 
   // Read cookies once on mount.
   useEffect(() => {
@@ -52,6 +83,7 @@ export default memo(function Navbar() {
 
   const handleLogout = useCallback(async () => {
     setIsLoggingOut(true);
+    closeDropdown();
     try {
       const response = await fetch('/api/auth/logout', {
         method: 'POST',
@@ -68,15 +100,16 @@ export default memo(function Navbar() {
     } catch {
       setIsLoggingOut(false);
     }
-  }, [router]);
+  }, [router, closeDropdown]);
 
   const handleNavigate = useCallback(
     (href: string) => {
       if (pathname === href) return;
       setIsNavigating(href);
+      closeDropdown();
       router.push(href);
     },
-    [pathname, router]
+    [pathname, router, closeDropdown]
   );
 
   const avatarSrc = getProxiedImageUrl(photoUrl) || FALLBACK_AVATAR;
@@ -101,12 +134,17 @@ export default memo(function Navbar() {
       <div className="navbar-end gap-2">
         <LanguageSwitcher />
 
-        <div className="dropdown dropdown-end">
-          <div
-            tabIndex={0}
-            role="button"
+        <div
+          ref={menuRef}
+          className={`dropdown dropdown-end ${isMenuOpen ? 'dropdown-open' : ''}`}
+          onKeyDown={handleDropdownKeyDown}
+        >
+          <button
+            ref={userMenuTriggerRef}
+            type="button"
             className="btn btn-ghost btn-circle avatar focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             aria-label={t('userMenu')}
+            onClick={() => setIsMenuOpen(prev => !prev)}
           >
             <div className="w-10 rounded-full">
               <Image
@@ -118,76 +156,80 @@ export default memo(function Navbar() {
                 unoptimized
               />
             </div>
-          </div>
+          </button>
 
-          <ul
-            tabIndex={0}
-            className="menu menu-sm dropdown-content bg-base-100 rounded-box z-50 mt-3 w-52 p-2 shadow"
-          >
-            <li>
-              <span className="font-bold">{fullNameDisplay ?? t('pengguna')}</span>
-            </li>
-            <li>
-              <Theme />
-            </li>
-            <li>
-              {env.NEXT_PUBLIC_SITE_URL && (
-                <a
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  href={`${env.NEXT_PUBLIC_SITE_URL}/app_archive.asp`}
-                  className="w-full text-left justify-between flex items-center"
-                >
-                  <span className="flex items-center gap-1">
-                    SIPS Apps
-                    <Icon name="external-link" className="h-4 w-4" />
-                  </span>
-                  <span className="badge">{t('download')}</span>
-                </a>
-              )}
-            </li>
-            {env.NEXT_PUBLIC_SITE_URL && (
+          {isMenuOpen && (
+            <ul
+              tabIndex={0}
+              className="menu menu-sm dropdown-content bg-base-100 rounded-box z-50 mt-3 w-52 p-2 shadow"
+            >
               <li>
-                <a
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  href={env.NEXT_PUBLIC_SITE_URL}
-                  className="justify-between"
-                >
-                  <span className="flex items-center gap-1">
-                    SIPS
-                    <Icon name="external-link" className="h-4 w-4" />
-                  </span>
-                  <span className="badge">{t('visit')}</span>
-                </a>
+                <span className="font-bold">{fullNameDisplay ?? t('pengguna')}</span>
               </li>
-            )}
-            <li>
-              <button
-                onClick={() => handleNavigate('/change-password')}
-                className="w-full text-left"
-                disabled={!!isNavigating}
-              >
-                {t('changePassword')}
-              </button>
-            </li>
-            <li>
-              <button
-                onClick={handleLogout}
-                className={`w-full text-left ${isLoggingOut ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={isLoggingOut}
-              >
-                {isLoggingOut ? (
-                  <span className="flex items-center gap-2">
-                    <span className="loading loading-spinner loading-xs" />
-                    {t('logout')}
-                  </span>
-                ) : (
-                  t('logout')
+              <li>
+                <Theme />
+              </li>
+              <li>
+                {env.NEXT_PUBLIC_SITE_URL && (
+                  <a
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    href={`${env.NEXT_PUBLIC_SITE_URL}/app_archive.asp`}
+                    className="w-full text-left justify-between flex items-center"
+                    onClick={closeDropdown}
+                  >
+                    <span className="flex items-center gap-1">
+                      SIPS Apps
+                      <Icon name="external-link" className="h-4 w-4" />
+                    </span>
+                    <span className="badge">{t('download')}</span>
+                  </a>
                 )}
-              </button>
-            </li>
-          </ul>
+              </li>
+              {env.NEXT_PUBLIC_SITE_URL && (
+                <li>
+                  <a
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    href={env.NEXT_PUBLIC_SITE_URL}
+                    className="justify-between"
+                    onClick={closeDropdown}
+                  >
+                    <span className="flex items-center gap-1">
+                      SIPS
+                      <Icon name="external-link" className="h-4 w-4" />
+                    </span>
+                    <span className="badge">{t('visit')}</span>
+                  </a>
+                </li>
+              )}
+              <li>
+                <button
+                  onClick={() => handleNavigate('/change-password')}
+                  className="w-full text-left"
+                  disabled={!!isNavigating}
+                >
+                  {t('changePassword')}
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={handleLogout}
+                  className={`w-full text-left ${isLoggingOut ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={isLoggingOut}
+                >
+                  {isLoggingOut ? (
+                    <span className="flex items-center gap-2">
+                      <span className="loading loading-spinner loading-xs" />
+                      {t('logout')}
+                    </span>
+                  ) : (
+                    t('logout')
+                  )}
+                </button>
+              </li>
+            </ul>
+          )}
         </div>
       </div>
 
