@@ -70,3 +70,8 @@
 **Learning:** Pure CSS-only dropdowns (like DaisyUI's focus-within dropdowns) are simple but lack default keyboard dismissal handlers. Users navigate with Tab but are stuck inside or unable to dismiss the dropdown easily. Implementing an Escape keydown listener on the container, which programmatically blurs `document.activeElement` to clear focus and immediately returns focus back to the trigger button, provides standard accessible behavior. Additionally, using native `<button type="button">` instead of generic `div` elements with `role="button"` ensures native Enter/Space activation without manual key listeners.
 
 **Action:** Always prefer native `<button>` elements for interactive triggers. Implement Escape key listeners on CSS-only dropdown containers to blur active elements and return focus back to the trigger.
+
+## 2026-03-22 - [Conditionally Rendered State-Controlled CSS Dropdowns]
+**Learning:** In DaisyUI, CSS-only dropdowns stay open under focus or `:focus-within` selectors. When programmatically returning focus to the trigger button upon Escape dismissal, the dropdown remains open because the trigger button itself has focus, satisfying `:focus-within`. Conditionally rendering the dropdown's list (`ul` element) in React based on a local `isMenuOpen` state guarantees that the dropdown closes completely when dismissed, even when focus is returned to the trigger.
+
+**Action:** For dropdowns that require programmatic focus return, pair the semantic `<button>` trigger with a local `isMenuOpen` state and conditionally render the dropdown content (`ul`) to override focus-driven CSS persistence.
