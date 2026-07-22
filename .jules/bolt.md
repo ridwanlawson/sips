@@ -53,3 +53,7 @@
 ## 2026-07-20 - [Redundant Cookie Parsing and Object Allocation]
 **Learning:** Even with a single-pass cookie parser (`getCookiesMap`), repeatedly fetching individual cookie values (e.g., fullName, level, section, etc.) across the rendering lifecycle triggers multiple full parses of `document.cookie`, leading to unnecessary CPU and memory allocation churn.
 **Action:** Implement string-identity comparison cache in the parser. Since `document.cookie` is a browser getter, comparing its current string reference/value to a stored `lastCookieString` allows returning a fully-parsed cached map directly in O(1) time if unchanged.
+
+## 2026-07-22 - [Multi-pass Array Chaining in Hooks]
+**Learning:** Chaining multiple array methods (e.g., `.filter().map()` or `.filter().filter().map()`) in hooks like `useCascadingPicker` results in multiple full array traversals and redundant memory allocations for intermediate arrays.
+**Action:** Convert multi-pass array manipulation chains into high-performance, single-pass `for...of` loops utilizing early checks and `Set` collections for fast deduplication.
