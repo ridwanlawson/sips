@@ -4,9 +4,45 @@ import {
   formatPerfNumber,
   getCachedDateTimeFormat,
   getCachedNumberFormat,
+  getCachedCollator,
+  perfCompare,
 } from './perf-formatter';
 
 describe('perf-formatter', () => {
+  describe('getCachedCollator', () => {
+    it('should return an Intl.Collator instance', () => {
+      const collator = getCachedCollator('en-US');
+      expect(collator).toBeInstanceOf(Intl.Collator);
+    });
+
+    it('should cache instances', () => {
+      const c1 = getCachedCollator('en-US');
+      const c2 = getCachedCollator('en-US');
+      expect(c1).toBe(c2);
+    });
+
+    it('should cache instances with options', () => {
+      const options: Intl.CollatorOptions = { sensitivity: 'base' };
+      const c1 = getCachedCollator('en-US', options);
+      const c2 = getCachedCollator('en-US', options);
+      expect(c1).toBe(c2);
+    });
+  });
+
+  describe('perfCompare', () => {
+    it('should compare strings correctly in alphabetical order', () => {
+      expect(perfCompare('apple', 'banana', 'en-US')).toBeLessThan(0);
+      expect(perfCompare('banana', 'apple', 'en-US')).toBeGreaterThan(0);
+      expect(perfCompare('apple', 'apple', 'en-US')).toBe(0);
+    });
+
+    it('should support options like sensitivity', () => {
+      // With base sensitivity, 'a' and 'A' are considered equal
+      const options: Intl.CollatorOptions = { sensitivity: 'base' };
+      expect(perfCompare('a', 'A', 'en-US', options)).toBe(0);
+    });
+  });
+
   describe('getCachedDateTimeFormat', () => {
     it('should return an Intl.DateTimeFormat instance', () => {
       const formatter = getCachedDateTimeFormat('en-US');
