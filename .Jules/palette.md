@@ -70,3 +70,8 @@
 **Learning:** Pure CSS-only dropdowns (like DaisyUI's focus-within dropdowns) are simple but lack default keyboard dismissal handlers. Users navigate with Tab but are stuck inside or unable to dismiss the dropdown easily. Implementing an Escape keydown listener on the container, which programmatically blurs `document.activeElement` to clear focus and immediately returns focus back to the trigger button, provides standard accessible behavior. Additionally, using native `<button type="button">` instead of generic `div` elements with `role="button"` ensures native Enter/Space activation without manual key listeners.
 
 **Action:** Always prefer native `<button>` elements for interactive triggers. Implement Escape key listeners on CSS-only dropdown containers to blur active elements and return focus back to the trigger.
+
+## 2026-03-21 - [Accessible Dialog Keyboard Dismissal & Loading Guard]
+**Learning:** Destructive confirm/delete modals should handle the standard Escape key for quick, accessible dismissal. However, this must be conditionally guarded against loading states (`isLoading`) to prevent accidental dismissal during critical, in-flight background operations.
+
+**Action:** Implement Escape key listeners inside modals within a dedicated `useEffect` block, and verify that actions are not dismissed if a loading operation is currently pending.
