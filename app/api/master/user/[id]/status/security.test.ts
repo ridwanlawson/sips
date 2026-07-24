@@ -1,23 +1,36 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-
+import { describe, it, expect, vi, beforeEach, Mock } from 'vitest';
 import { PATCH } from './route';
-
 import { NextRequest, NextResponse } from 'next/server';
-
+import { getTokenFromCookie } from '@/utils/api/absensiProxy';
+import { cookies } from 'next/headers';
 import { validateSecurity } from '@/lib/auth/security';
 
-vi.stubGlobal('fetch', vi.fn());
+vi.mock('next/headers', () => ({
+  cookies: vi.fn(),
+}));
+
+vi.mock('@/utils/api/absensiProxy', () => ({
+  getTokenFromCookie: vi.fn(),
+  BACKEND_URL: 'http://trusted-backend.com',
+}));
 
 vi.mock('@/lib/auth/security', () => ({
   validateSecurity: vi.fn(),
 }));
 
-vi.mock('@/utils/api/absensiProxy', () => ({
-  BACKEND_URL: 'http://trusted-backend.com',
-  getTokenFromCookie: vi.fn(() => Promise.resolve('valid-token')),
-}));
-
-describe('User Status API Security', () => {beforeEach(() => {vi.clearAllMocks();
+describe('User Status API Security', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubGlobal('fetch', vi.fn());
+    // Reset default mock implementations to prevent leakage/pollution
+    (validateSecurity as Mock).mockResolvedValue(null);
+    (getTokenFromCookie as Mock).mockResolvedValue('valid-token');
+    (cookies as Mock).mockResolvedValue({
+      get: vi.fn().mockImplementation((name) => {
+        if (name === 'SECURE_USER_LEVEL') return { value: 'ADM' };
+        return null;
+      }),
+    });
   });
 
   const context = { params: Promise.resolve({ id: '123' }) };
@@ -27,7 +40,7 @@ describe('User Status API Security', () => {beforeEach(() => {vi.clearAllMocks()
       status: 403,
     }) as unknown as NextResponse;
 
-    vi.mocked(validateSecurity).mockResolvedValue(errorResponse);
+    (validateSecurity as Mock).mockResolvedValue(errorResponse);
 
     const req = new NextRequest('http://localhost/api/master/user/123/status', { method: 'PATCH' });
     const res = await PATCH(req, context);
@@ -37,10 +50,8 @@ describe('User Status API Security', () => {beforeEach(() => {vi.clearAllMocks()
     expect(data.error).toBe('Security fail');
   });
 
-  it('should return 401 if no token', async () => {vi.mocked(validateSecurity).mockResolvedValue(null);
-    const { getTokenFromCookie } = await import('@/utils/api/absensiProxy');
-
-    vi.mocked(getTokenFromCookie).mockResolvedValue(null);
+  it('should return 401 if no token', async () => {
+    (getTokenFromCookie as Mock).mockResolvedValue(null);
 
     const req = new NextRequest('http://localhost/api/master/user/123/status', { method: 'PATCH' });
     const res = await PATCH(req, context);
@@ -50,8 +61,50 @@ describe('User Status API Security', () => {beforeEach(() => {vi.clearAllMocks()
     expect(data.error).toBe('Unauthenticated');
   });
 
-  it('should return generic error message on upstream failure', async () => {vi.mocked(validateSecurity).mockResolvedValue(null);
+  it('should return 403 if non-admin tries to update status', async () => {
+    (cookies as Mock).mockResolvedValue({
+      get: vi.fn().mockImplementation((name) => {
+        if (name === 'user_Level') return { value: 'MDR' };
+        return null;
+      }),
+    });
 
+    const req = new NextRequest('http://localhost/api/master/user/123/status', {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'Y' }),
+    });
+    const res = await PATCH(req, context);
+
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.error).toBe('Forbidden');
+  });
+
+  it('should allow admin to update status', async () => {
+    (cookies as Mock).mockResolvedValue({
+      get: vi.fn().mockImplementation((name) => {
+        if (name === 'SECURE_USER_LEVEL') return { value: 'ADM' };
+        return null;
+      }),
+    });
+
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true }),
+    } as Response);
+
+    const req = new NextRequest('http://localhost/api/master/user/123/status', {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'Y' }),
+    });
+    const res = await PATCH(req, context);
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.ok).toBe(true);
+  });
+
+  it('should return generic error message on upstream failure', async () => {
     vi.mocked(global.fetch).mockResolvedValue({
       ok: false,
       status: 500,

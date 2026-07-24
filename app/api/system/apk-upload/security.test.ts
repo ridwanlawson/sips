@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach, Mock } from 'vitest';
 import { POST } from './route';
 import { NextRequest } from 'next/server';
-import { getTokenFromCookie } from '@/utils/absensiProxy';
+import { getTokenFromCookie } from '@/utils/api/absensiProxy';
 import { cookies } from 'next/headers';
 import { UserLevel } from '@/lib/constants';
 
-vi.mock('@/utils/absensiProxy', () => ({
+vi.mock('@/utils/api/absensiProxy', () => ({
   getTokenFromCookie: vi.fn(),
   BACKEND_URL: 'http://trusted-backend.com',
 }));
@@ -18,7 +18,7 @@ vi.mock('@/lib/csrf', () => ({
   validateCsrfToken: vi.fn(() => true),
 }));
 
-vi.mock('@/lib/security', () => ({
+vi.mock('@/lib/auth/security', () => ({
   validateSecurity: vi.fn(async () => null),
 }));
 

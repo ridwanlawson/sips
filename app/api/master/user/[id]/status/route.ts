@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { BACKEND_URL, getTokenFromCookie } from '@/utils/api/absensiProxy';
 import { validateSecurity } from '@/lib/auth/security';
 
@@ -15,6 +16,15 @@ export async function PATCH(
   const token = await getTokenFromCookie();
   if (!token) {
     return NextResponse.json({ ok: false, error: 'Unauthenticated' }, { status: 401 });
+  }
+
+  // 🛡️ Admin Check: Only admins can update user status.
+  const cookieStore = await cookies();
+  const userLevel = cookieStore.get('SECURE_USER_LEVEL')?.value || cookieStore.get('user_Level')?.value;
+  const isAdmin = userLevel === 'ADM' || userLevel === 'ADMIN';
+
+  if (!isAdmin) {
+    return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
   }
 
   const { id } = await params;
